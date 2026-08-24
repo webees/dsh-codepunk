@@ -176,12 +176,14 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 2. 合并前校验：evidence 通过 + diff ⊆ write_paths + 门禁文件齐（L/高风险含 review 与 security）→ 写 `approvals/merge.yaml`（`approved_by/approved_at`）。
 3. 失败 → abort/revert，task 回修再排队；**禁止并行合并**；实现三角 MUST NOT 自己合主干；未 done 的 chunk MUST NOT merge。
 4. **文档型交付**（如 docs/ 归档类 run）：合并门适用同一门禁，但「diff ⊆ write_paths」判据为**改动仅限 docs/ 与运行根（总库项目目录）状态文件、无业务代码越界**；合并动作可能只是把交付纳入版本库/标记完成，仍需 `approvals/merge.yaml` 留痕（evidence/acceptance/diff_scope/handoffs/top_index/boundary 逐项 PASS）。
+5. **worktree 生命周期回收（D073，MUST）**：每个 chunk 合并完成即回收其 worktree——`git -C <主仓库> worktree remove --force ../room-<task_id>`（先确认该分支已并入 main、无未提交独有改动）后 `git worktree prune`；**分支 refs 保留**（`dsh-codepunk/<run>/<task>` 留作审计追溯）。未回收的 worktree 会随分支合并持续残留——机制上不会自动销毁，故合并门 MUST 显式销毁。
 
 ### ⑥ 再规划（P06 → ♻️）
 
 1. 综合各组成果、交接、评分、知识库 → 更新 `chunks.yaml`（新轮次）。
 2. 修订招聘标准（引用 `knowledge/hr/` 高分人设/团队画像）与提示词（`knowledge/prompts/`）。
 3. 重新招聘 → 执行 → 直到 goal acceptance 全满足 → 宣布完成（更新 goal 工具为 complete，`announce` 总结）。
+4. **收尾环境核验（MUST，goal complete 前）**：`git -C <主仓库> worktree list` 必须只含主仓库本身（或与显式保留清单一致）；发现残留 worktree → 按 P10 第 5 条回收后再 complete。**环境终态整洁是验收项**，不是可选建议。
 
 ## 3. 硬规则（违反即红灯，`subagent_proc_audit` 检查）
 
@@ -195,7 +197,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 | R6 | 需求变更只进 leadership：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed）→ 受影响 task；禁止小组直接听用户改需求；goal 停留 draft 超时默认挂起（park）而非静默推进 |
 | R7 | 禁止静默丢脏改动：强制解散前 auto-commit/stash 并记 backup_ref |
 | R8 | 审查门：交接/合并前 diff ⊆ write_paths + CHECKLIST + `reviews/` 记录；L/高风险强制独立 code-review |
-| R9 | 合并门：串行合并、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并 |
+| R9 | 合并门：串行合并、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；**合并即回收该 chunk 的 worktree（D073）** |
 | R10 | 每个工程目标用 goal 工具跟踪并从 active 起保持续行（create 即 armed）；resume/fork 后 MUST 先 `update_goal resume` 再开工，否则自动递送失效退回手动；goal `blocked` 或 halt 时 MUST NOT 新 spawn，阻塞解除方可继续 |
 | R11 | 语言纪律：所有内部思考/推理/草稿/评审意见/汇报一律中文；对外输出按用户语言；表达简洁、无废话 |
 | R12 | 结算通知辨识纪律：子代理结算通知是「事件提醒」，可能滞后于交付实况（历史失败/空目录报告 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence.yaml 落盘时刻、git 工作区实况为准重新确认，杜绝被陈旧排队消息误导 |
