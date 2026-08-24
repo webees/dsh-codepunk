@@ -70,6 +70,7 @@ cp -R agent.cordis.yml preset.yml skills "$DST/"
 ```
 
 - 目录结构必须含 `agent.cordis.yml`（组合：persona + 工具 + realm）与 `skills/`（playbook）；`preset.yml` 为可选展示描述。
+- `plans/` 工具脚本为源副本，不随预设复制；运行期装配与正式位见流程手册 `SKILL.md` §1.1。
 - Discovery 每次重读根目录，进程内修改即见；会话/组合按 preset 名引用即挂载。挂载校验：`dsh-agent-presets` 对组合做形状检查（顶层列表 + 每行有 `name` + group 递归），并用 `entryListSchema`（含 `!!js`）解析；格式/语义错误会标记为 broken roster row。
 
 ### 运行引导（工程主责）
@@ -92,14 +93,13 @@ cp -R agent.cordis.yml preset.yml skills "$DST/"
 ```text
 agent.cordis.yml                    # 组合：persona + 工具 + realm（AGENT-PLANE）
 preset.yml                          # 预设描述（roster 展示）
-README.md                           # 本说明
-plans/                              # 工具脚本源副本与规划文档
+README.md                           # 本说明（向使用者）
+CONTRIBUTING.md                     # 贡献指南（向贡献者）
+plans/                              # 工具脚本源副本
   dsh-codepunk-link.sh              # 项目↔总库关联解析（resolve / index / register）
   dsh-codepunk-migrate.sh           # 工程内运行数据迁移工具（--scan / --migrate / --rollback）
   dsh-codepunk-init.sh              # 总库骨架幂等初始化
   verify-worktree.sh                # worktree 落点纪律核验
-  workspace-refactor-chunks.yaml    # 工作区重构分块方案（规划文档）
-  workspace-refactor-product.md     # 工作区重构需求纪要（规划文档）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
   SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R14 + D 决策号）
   references/roles.md               # 岗位人设与派遣模板

@@ -247,28 +247,28 @@ cmd_resolve() {
 
   if [ -n "$id" ]; then
     # ①-a 先按路径精确匹配 INDEX（冲突规则：README 标记 vs INDEX 不一致 → 以 INDEX 为准，product E）
-    local pid_p dsh-codepunk_p
+    local pid_p dcp_p
     pid_p="$(_index_id_by_root "$target")"
     if [ -n "$pid_p" ]; then
       if [ "$pid_p" != "$id" ]; then
         printf '%s: 冲突：README 标记 dsh-codepunk: %s 与 INDEX project_id=%s 不一致，以 INDEX 为准（不回写 README）\n' "$SCRIPT_NAME" "$id" "$pid_p" >&2
       fi
-      dsh-codepunk_p="$(_index_dsh-codepunk_by_id "$pid_p")"
-      [ -n "$dsh-codepunk_p" ] || dsh-codepunk_p="$DSH_CODEPUNK_HOME/projects/$pid_p"
-      printf 'project_id=%s\ndsh-codepunk_path=%s\n' "$pid_p" "$dsh-codepunk_p"
+      dcp_p="$(_index_dsh-codepunk_by_id "$pid_p")"
+      [ -n "$dcp_p" ] || dcp_p="$DSH_CODEPUNK_HOME/projects/$pid_p"
+      printf 'project_id=%s\ndsh-codepunk_path=%s\n' "$pid_p" "$dcp_p"
       return 0
     fi
     # ①-b 再按标记 id 匹配（同 id 不同路径：worktree / 别名场景）
-    local row_bid root_bid dsh-codepunk_bid
+    local row_bid root_bid dcp_bid
     row_bid="$(_index_row_by_id "$id")"
     if [ -n "$row_bid" ]; then
       root_bid="$(_entry_get "$row_bid" root)"
-      dsh-codepunk_bid="$(_entry_get "$row_bid" dsh-codepunk)"
+      dcp_bid="$(_entry_get "$row_bid" dsh-codepunk)"
       if [ -n "$root_bid" ] && [ "$(_norm_path "$root_bid")" != "$target" ]; then
         printf '%s: 提示：%s 的 INDEX project_root=%s 与输入路径不同，按 INDEX 关联输出\n' "$SCRIPT_NAME" "$id" "$root_bid" >&2
       fi
-      [ -n "$dsh-codepunk_bid" ] || dsh-codepunk_bid="$DSH_CODEPUNK_HOME/projects/$id"
-      printf 'project_id=%s\ndsh-codepunk_path=%s\n' "$id" "$dsh-codepunk_bid"
+      [ -n "$dcp_bid" ] || dcp_bid="$DSH_CODEPUNK_HOME/projects/$id"
+      printf 'project_id=%s\ndsh-codepunk_path=%s\n' "$id" "$dcp_bid"
       return 0
     fi
     # ①-c 标记已识别但 INDEX 未登记：pre-register 推算（B 点 projects/<id>/）
@@ -278,12 +278,12 @@ cmd_resolve() {
   fi
 
   # ② 无标记：回退 INDEX 按 project_root 精确匹配
-  local pid2 dsh-codepunk2
+  local pid2 dcp2
   pid2="$(_index_id_by_root "$target")"
   if [ -n "$pid2" ]; then
-    dsh-codepunk2="$(_index_dsh-codepunk_by_id "$pid2")"
-    [ -n "$dsh-codepunk2" ] || dsh-codepunk2="$DSH_CODEPUNK_HOME/projects/$pid2"
-    printf 'project_id=%s\ndsh-codepunk_path=%s\n' "$pid2" "$dsh-codepunk2"
+    dcp2="$(_index_dsh-codepunk_by_id "$pid2")"
+    [ -n "$dcp2" ] || dcp2="$DSH_CODEPUNK_HOME/projects/$pid2"
+    printf 'project_id=%s\ndsh-codepunk_path=%s\n' "$pid2" "$dcp2"
     return 0
   fi
 
@@ -324,18 +324,18 @@ cmd_index() {
     if ! printf '%s\n' "$row" | tr '\t' '\n' | grep -q '^source='; then
       problems="${problems}缺source字段;"
     fi
-    [ -n "$dsh-codepunk" ] || problems="${problems}缺dsh-codepunk_path;"
+    [ -n "$dcp" ] || problems="${problems}缺dsh-codepunk_path;"
     if [ -n "$root" ] && [ ! -d "$(_norm_path "$root")" ]; then
       problems="${problems}project_root空悬($root);"
     fi
-    if [ -n "$dsh-codepunk" ] && [ ! -e "$(_norm_path "$dsh-codepunk")" ]; then
-      problems="${problems}dsh-codepunk_path空悬($dsh-codepunk);"
+    if [ -n "$dcp" ] && [ ! -e "$(_norm_path "$dcp")" ]; then
+      problems="${problems}dsh-codepunk_path空悬($dcp);"
     fi
     if [ -n "$problems" ]; then
       printf '  [FAIL] %s: %s\n' "${pid:-<无id>}" "$problems"
       n_fail=$((n_fail + 1))
     else
-      printf '  [ok]   %s: root=%s dsh-codepunk=%s\n' "$pid" "$root" "$dsh-codepunk"
+      printf '  [ok]   %s: root=%s dsh-codepunk=%s\n' "$pid" "$root" "$dcp"
       n_ok=$((n_ok + 1))
     fi
   done <<< "$rows"
