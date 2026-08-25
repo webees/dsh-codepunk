@@ -556,7 +556,7 @@ EOF
   pre_refactor:
     old_path: $SRC_DSH_CODEPUNK
     new_path: $pre_refactor
-  registry:            # 供 chunk-link register 消费（本工具不写 INDEX.yaml）
+  registry:            # 供 dsh-codepunk-link register 消费（本工具不写 INDEX.yaml）
     project_id: $gid
     repo_path: $SRC_ROOT
     readme_marker: "dsh-codepunk-project: $gid"
