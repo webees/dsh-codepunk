@@ -37,7 +37,7 @@ metadata:
 
 ## 0.0 官方机制对齐（DeepSeek Harness 特性利用基线）
 
-> 每个流程概念都映射到官方 seam，完整对齐表见 `references/harness-alignment.md`（goal/subagent/workflow/compaction/sandbox/approval/jobs 等）；溯源见 `benchmarks/deepseek-harness-study.md`。升级 harness 或排障先对照该表。
+> 每个流程概念映射官方 seam，对齐表见 `references/harness-alignment.md`；溯源 `benchmarks/deepseek-harness-study.md`。
 
 ## 0.1 运行时机制：goal 自动续行 / 子代理回报自动递送（MUST 理解）
 
@@ -189,7 +189,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 ### ⑤′ 合并门（P10 · 串行）
 
 1. 派遣 `subagent_release_eng`（或你执行同一规则）：按 `depends_on` 拓扑排序 done 且门禁通过的 chunk，**每次只合并一个**。
-2. 合并前校验：evidence 通过 + diff ⊆ write_paths + 门禁文件齐（L/高风险含 review 与 security）→ 写 `approvals/merge.yaml`（`approved_by/approved_at`）。
+2. 合并前校验：evidence 经机械校验器（`scripts/evidence-verify.sh`，verdict=PASS 才有效，见 artifacts D069）+ diff ⊆ write_paths + 门禁文件齐（L/高风险含 review 与 security）→ 写 `approvals/merge.yaml`（`approved_by/approved_at`）。
 3. 失败 → abort/revert，task 回修再排队；**禁止并行合并**；实现三角 MUST NOT 自己合主干；未 done 的 chunk MUST NOT merge。
 4. **文档型交付**（如 docs/ 归档类 run）：合并门适用同一门禁，但「diff ⊆ write_paths」判据为**改动仅限 docs/ 与运行根（总库项目目录）状态文件、无业务代码越界**；合并动作可能只是把交付纳入版本库/标记完成，仍需 `approvals/merge.yaml` 留痕（preconditions 四字段 evidence/diff_within_write_paths/review/merge_ack 逐项对齐模板，见 artifacts.md）。
 5. **worktree 生命周期回收（D073，MUST）**：每个 chunk 合并完成即回收其 worktree——`git -C <主仓库> worktree remove --force ../room-<task_id>`（先确认该分支已并入 main、无未提交独有改动）后 `git worktree prune`；**分支 refs 保留**（`dsh-codepunk/<run>/<task>` 留作审计追溯）。未回收的 worktree 会随分支合并持续残留——机制上不会自动销毁，故合并门 MUST 显式销毁。

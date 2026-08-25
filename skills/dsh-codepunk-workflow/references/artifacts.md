@@ -129,6 +129,7 @@ evidence:
 > **交付基线纪律（R12）**：若交付目录 mtime 早于 evidence 生成时刻（空跑/旧快照），或验收时交付尚未落盘，evidence 一律判为无效，打回 sdet 基于最新交付重跑；禁止把「交付前空目录」的 FAIL/NOT_PASS 误当最终结论。
 
 > **schema 强约束（D069，借鉴 outlines/agentskills）**：evidence.yaml / acceptance.yaml 的**结构必须在生成期保证可机器校验**——sdet 产出后先过结构校验（必填字段齐、类型对、exit_code∈{0,非0}、accepted_by 为数组），校验不合格直接回退，不经人工放行滑入下一阶段。证据即接口：交接/评分/审计/合并门一律以「结构合法 + 内容达标」双标准读取，杜绝靠自由文风或长上下文记忆判断。
+> **机械校验器（D069 实现 · 防假通过门）**：`plans/evidence-verify.sh`（正式位 `~/.dsh-codepunk/scripts/evidence-verify.sh`）对 evidence.yaml 做四条机械断言——①command 首词白名单且非描述性文本（自然语言/「详见」式引用即 FAIL）②log_ref 文件真实存在（多前缀探测）③exit_code 常见值 ④`validated_at` 晚于交付目录 mtime（R12 数值化）。sdet 产出后、release-eng 合并前 MUST 执行一次（如 run 状态：`bash ~/.dsh-codepunk/scripts/evidence-verify.sh runs/<id>/tasks/<tid>/handoff/evidence.yaml <task_dir>`）；verdict=FAIL 即整包打回。历史实证：能机械抓出「自然语言命令 + exit_code=0 + 照填 PASS」的伪证据。
 
 `acceptance.yaml`（接收方签收；无此文件不得 dissolved；`accepted_by` 为数组）：
 
