@@ -245,6 +245,10 @@
         toolName: subagent_squad_lead
         backgroundMode: continuable
         maxDepth: 1
+        agentOptions:
+          # D078 模型路由：显式声明，不依赖继承
+          provider: deepseek-official
+          model: deepseek-v4-flash
         toolFilter:
           # 白名单（allow）锚点：默认全关，只放行本岗所需的继承工具（shell/文件/检索/作业/todo/skill）。
           # 未列入的（web、ask_user、goal、编排/委托、其它岗位工具）一律不可见；新增工具不会自动暴露。
@@ -272,6 +276,10 @@
         toolName: subagent_engineer
         backgroundMode: continuable
         maxDepth: 1
+        agentOptions:
+          # D078 模型路由：显式声明，不依赖继承
+          provider: deepseek-official
+          model: deepseek-v4-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -292,6 +300,10 @@
         toolName: subagent_sdet
         backgroundMode: continuable
         maxDepth: 1
+        agentOptions:
+          # D078 模型路由：显式声明，不依赖继承
+          provider: deepseek-official
+          model: deepseek-v4-pro
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -388,6 +400,10 @@
         toolName: subagent_proc_audit
         backgroundMode: one-shot
         maxDepth: 1
+        agentOptions:
+          # D078 模型路由：显式声明，不依赖继承
+          provider: deepseek-official
+          model: deepseek-v4-pro
         toolFilter:
           allow: *role-allow
         persona: |-
