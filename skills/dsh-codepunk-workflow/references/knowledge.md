@@ -15,6 +15,10 @@ knowledge/                        # 位于 ~/.dsh-codepunk/projects/<id>/knowled
 ```
 > 记忆简报：run 内运营于 `runs/<run_id>/docs/memory/`，收官归档入本库（与 SKILL.md §1.2 一致）。
 
+> **压缩先保召回（D074，借鉴 Anthropic compaction）**：L1/L2 记忆简报必须保留字段清单——已改文件、未解 bug、关键决策、测试命令、acceptance 状态；压缩丢失这些 = 流程事故，宁可摘要偏长不可漏关键项。
+
+> **Memory 存经验、不存案例（D074，借鉴 OpenAI memory 分工）**：`knowledge/lessons/` 模板强制「经验 + 可复用规则」输出（触发条件 → 坑 → 标准解法，D070 同源）；单案细节只作示例素材，防止知识库被一次性事实撑爆（符合 R13 归属纪律）。
+
 ## 评分公式（0–100，base 50）
 
 | 项 | 团队分与人设分共有 | 人设分额外（seat） |

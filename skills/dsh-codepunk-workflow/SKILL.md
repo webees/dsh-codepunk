@@ -162,6 +162,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 
 1. **证据**：sdet 产 `evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`。
    - **交付基线（R12）**：验收前 MUST 确认交付目录 mtime 为最新（`ls -la docs/<module>/`），evidence 须带 `validated_at` 与所对的交付基线；疑似交付前空跑/旧快照 → 打回重跑，禁止放行。
+   - **上下文纪律（D074，借鉴 Anthropic 上下文工程）**：①证据/清单只回 `command + exit_code + log_ref`，**拒绝整段 stdout**，命令大输出默认 head/tail 截断后留工作房；②小组向上汇报 ≤1500 token 摘要（明细/日志留工作房），主会话巡检一律读 `summary`/`progress`，**不回传原始大日志**；③主会话每轮收尾把已消化巡检记录压缩为一行结论，防陈旧消息与上下文堆积误导（R12 同源）。
 2. **审查门**：diff 检查（⊆ write_paths）+ CHECKLIST（reviews/CHECKLIST.md）+ 审查记录 `reviews/<task_id>.md`；L 规模或高风险 task 派遣 `subagent_code_review`，其余由你或指定审查者执行；`needs-work` → 小队回修再审。
    - **门禁即显式节点 + 双侧 guardrail（D068，借鉴 crewAI Flow / ADK）**：双门闩/审查门/合并门都是必经的显式路由节点——每道门在**入口校验输入**（简报 schema / diff ⊆ write_paths / evidence 齐）、**出口校验输出**（acceptance / 交接包 / merge 门禁文件），不合格输出**回退重做**而非滑入下一阶段；不得用自由对话绕门。
 3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）。
@@ -241,4 +242,6 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 > 本流程的部分机制（D066 自动递送 / D067 checkpoint 断点续行 / D068 门禁显式节点）参考自 GitHub 高 star 多智能体编排开源项目的**机制思想**（LangGraph durable execution、crewAI Flow、ADK tool confirmation 等），仅作理念借鉴、**不涉及代码抄袭**。完整调研（13 项目对比 + 逐条可借鉴点 + 事实/推断标注）与 agent-skills 生态调研见 `references/../benchmarks/` 目录：
 > - `benchmarks/multi-agent-open-source-benchmark.md` —— 多智能体编排/框架项目对比
 > - `benchmarks/agent-skills-open-source-benchmark.md` —— agent skills 生态/project 对比
+> - `benchmarks/prompt-context-compression.md` —— 提示词压缩 / 上下文优化技巧（D074 来源）
+> **正文预算（D074）**：本文件 ≤32 KiB（现约 28 KiB）；新增内容优先进 references/ 按需文件，正文只留路径与一句话用途；承重规则保留，非承重描述迁出或压缩。
 > 落地时以「公文驱动、轻量增量」为原则，不引入重 runtime/图数据库。
