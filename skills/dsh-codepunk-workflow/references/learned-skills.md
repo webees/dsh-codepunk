@@ -19,6 +19,7 @@
 | **D075** | 消息层纪律：首行=结论、编号≤5、禁寒暄、调试螺旋防空转 | ayghri/i-have-adhd（ADHD 友好输出，MIT） | SKILL P07 + 全员人设 + R11 |
 | **D076** | token 经济学：禁自造缩写/箭头、保护清单、Auto-Clarity 豁免、持久化产物完整行文 | juliusbrussee/caveman（极简输出，MIT） | SKILL P07 + R11 全员参考；sdet 终态拒绝线 / engineer 先取证后改码同源 |
 | **D077** | 反幻觉纪律：完成断言须新鲜证据；不确定即明示；知识冲突显式化；防空壳绿；交叉验证 | superpowers vbc + Anthropic 防幻觉指南 + arXiv 综述 | SKILL P07 + sdet 人设 + references/anti-hallucination-rules.md |
+| **D078** | 模型路由与成本工程：分岗位模型/thinking/错峰/cache | dsh-llm-deepseek（官方适配器，源码实证 agentOptions 覆盖） | references/model-routing.md |
 
 ## 技能类别图谱（方便按需查找）
 
