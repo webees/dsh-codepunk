@@ -18,6 +18,7 @@
 | **D074** | 上下文纪律：证据只回引用、汇报≤1500 token、主会话防腐 | Anthropic 上下文工程（context rot/compaction/tool-result） | SKILL P07 + 三席人设 |
 | **D075** | 消息层纪律：首行=结论、编号≤5、禁寒暄、调试螺旋防空转 | ayghri/i-have-adhd（ADHD 友好输出，MIT） | SKILL P07 + 全员人设 + R11 |
 | **D076** | token 经济学：禁自造缩写/箭头、保护清单、Auto-Clarity 豁免、持久化产物完整行文 | juliusbrussee/caveman（极简输出，MIT） | SKILL P07 + R11 全员参考；sdet 终态拒绝线 / engineer 先取证后改码同源 |
+| **D077** | 反幻觉纪律：完成断言须新鲜证据；不确定即明示；知识冲突显式化；防空壳绿；交叉验证 | superpowers vbc + Anthropic 防幻觉指南 + arXiv 综述 | SKILL P07 + sdet 人设 + references/anti-hallucination-rules.md |
 
 ## 技能类别图谱（方便按需查找）
 
@@ -50,6 +51,7 @@
 | `benchmarks/adhd-workflow-analysis.md` | ayghri/i-have-adhd 输出纪律分析 |
 | `benchmarks/caveman-analysis.md` | juliusbrussee/caveman 极简分析 |
 | `benchmarks/deepseek-harness-study.md` | DeepSeek Harness 官方机制调研（§0.0 对齐表来源） |
+| `benchmarks/anti-hallucination.md` | 防幻觉技术调研（D077 来源） |
 
 ## 应用原则（铁律）
 1. **机制借鉴不抄码**：只借鉴思想/规则，不复制实现；MIT 来源保留 attribution。

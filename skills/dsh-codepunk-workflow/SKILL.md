@@ -41,7 +41,7 @@ metadata:
 
 ## 0.1 运行时机制：goal 自动续行 / 子代理回报自动递送（MUST 理解）
 
-> **官方依据（DeepSeek Harness 开源文档）**：本机制即官方 `dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver` 组合（词汇层级 `Goal → Goal Round → Turn → Step`；armed/disarmed 进程本地、永不持久化；resume 须直接人类消息；默认 256 轮；自动轮只能报 complete/blocked、**不得修改人类目标**——欲写状态一律走工作区文件而非 goal 变更）。调研见 `benchmarks/deepseek-harness-study.md` §2.3。
+> **官方依据**：即官方 `dsh-goal`+`dsh-tool-goal`+`dsh-goal-round-driver`（词汇 Goal→Round→Turn→Step；armed 进程本地；resume 须人类消息；默认 256 轮；自动轮不得改人类目标，写状态走工作区文件）。调研见 `benchmarks/deepseek-harness-study.md` §2.3。
 
 > 你（主会话/主管）平时不常驻运行。子代理在后台完成后，其**结算通知 / report 会进入你的 inbox**。
 > 若当时没有 active goal，这些回报会**堆积成「排队消息」，需要 sponsor 手动点击「立即」才递给你**——
@@ -168,9 +168,10 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 
 1. **证据**：sdet 产 `evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`。
    - **交付基线（R12）**：验收前 MUST 确认交付目录 mtime 为最新（`ls -la docs/<module>/`），evidence 须带 `validated_at` 与所对的交付基线；疑似交付前空跑/旧快照 → 打回重跑，禁止放行。
-   - **上下文纪律（D074，借鉴 Anthropic 上下文工程）**：①证据/清单只回 `command + exit_code + log_ref`，**拒绝整段 stdout**，命令大输出默认 head/tail 截断后留工作房；②小组向上汇报 ≤1500 token 摘要（明细/日志留工作房），主会话巡检一律读 `summary`/`progress`，**不回传原始大日志**；③主会话每轮收尾把已消化巡检记录压缩为一行结论，防陈旧消息与上下文堆积误导（R12 同源）。
-   - **消息层纪律（D075，借鉴 ayghri/i-have-adhd MIT 技能）**：①**首行 = 可执行结论**（动作/命令/路径排第一，不铺垫）；末行给「下一件 2 分钟内可做的事」；发送前做**首末行双读**——只读首末两行是否已含「下一步做什么 + 刚才发生了什么」；②多步任务**编号 ≤5 项**（超则拆 now/later 或 must/nice-to-have）+ **工具清单替叙事**（有 task/todo 工具就用它 restate，不再 prose 复述全计划）；③**禁前导/复述/寒暄**（"Great question"/"Let me..."/"あれ，anyway"式删除；保留承载真实不确定性的 hedge，删除无信息 hedge）；④**安全先于简洁**：破坏性动作（rm -rf / force push / 迁移 / 删表）先确认再执行；⑤**调试螺旋防空转**：连续三轮 "still broken" → 停止改码，改为"点名可能错误的假设 + 问一个诊断问题"。
-   - **token 经济学细则（D076，借鉴 juliusbrussee/caveman MIT）**：①**禁自造缩写与箭头**（cfg/impl/req/res/fn、`→`）——tokenizer 按全词拆分、零节省且伤解码；中文短词（工单/验收）本身单 token 不受影响，英文简报/字段禁缩写；②**保护清单（绝不压缩）**：技术术语/代码块/API 名/CLI 命令/错误字符串逐字保留；数字/单位/日期精确；**never drop not/never/no/only/except**（翻转语义代价大于任何节省）；③**Auto-Clarity 豁免**（退出精简改完整行文）：安全警告、不可逆操作确认、多步序列歧义、压缩本身造成技术歧义、用户困惑；澄清后恢复精简；④**持久化产物豁免**：代码/注释/提交信息/PR/工单/文档/记忆文件一律正常行文（写给人看的产物不压缩）；⑤**压缩风格不压缩语言**：按用户主导语言回复，技术词/代码保原文（中文语境不用文言式缩减）。
+   - **上下文纪律（D074，借鉴 Anthropic 上下文工程）**：①证据/清单只回 `command + exit_code + log_ref`，**拒绝整段 stdout**，命令大输出默认 head/tail 截断后留工作房；②小组汇报 ≤1500 token 摘要；主会话巡检读 `summary`/`progress`，不回传大日志；③主会话每轮收尾把已消化巡检记录压缩为一行结论，防陈旧消息与上下文堆积误导（R12 同源）。
+   - **消息层纪律（D075，借鉴 ayghri/i-have-adhd MIT 技能）**：①**首行 = 可执行结论**（动作/命令先行）；末行给下一件 2 分钟内可做的事；发送前首末行双读（下一步 + 刚发生了什么）；②多步任务**编号 ≤5 项**（超则拆 now/later 或 must/nice-to-have）+ **工具清单替叙事**（有 task/todo 工具就用它 restate，不再 prose 复述全计划）；③**禁前导/复述/寒暄**（"Great question"式删除；保留真实不确定 hedge，删无信息 hedge）；④**安全先于简洁**：破坏性动作（rm -rf / force push / 迁移 / 删表）先确认再执行；⑤**调试螺旋防空转**：连续三轮 "still broken" → 停止改码，改为"点名可能错误的假设 + 问一个诊断问题"。
+   - **反幻觉纪律（D077，细则见 `references/anti-hallucination-rules.md`）**：完成断言须新鲜验证证据；不确定即明示（不编造、无引文即撤回）；知识冲突显式化；缺证据索引整包打回；sdet 防空壳绿。
+   - **token 经济学细则（D076，借鉴 caveman MIT）**：①**禁自造缩写与箭头**（cfg/impl/req/res/fn、`→`）——tokenizer 按全词拆分、零节省且伤解码；中文短词（工单/验收）本身单 token 不受影响，英文简报/字段禁缩写；②**保护清单（绝不压缩）**：技术术语/代码块/API 名/CLI 命令/错误字符串逐字保留；数字/单位/日期精确；**never drop not/never/no/only/except**（翻转语义代价大于任何节省）；③**Auto-Clarity 豁免**（退出精简改完整行文）：安全警告、不可逆操作确认、多步序列歧义、压缩本身造成技术歧义、用户困惑；澄清后恢复精简；④**持久化产物豁免**：代码/注释/提交信息/PR/工单/文档/记忆文件一律正常行文（写给人看的产物不压缩）；⑤**压缩风格不压缩语言**：按用户主导语言回复，技术词/代码保原文。
 2. **审查门**：diff 检查（⊆ write_paths）+ CHECKLIST（reviews/CHECKLIST.md）+ 审查记录 `reviews/<task_id>.md`；L 规模或高风险 task 派遣 `subagent_code_review`，其余由你或指定审查者执行；`needs-work` → 小队回修再审。
    - **门禁即显式节点 + 双侧 guardrail（D068，借鉴 crewAI Flow / ADK）**：双门闩/审查门/合并门都是必经的显式路由节点——每道门在**入口校验输入**（简报 schema / diff ⊆ write_paths / evidence 齐）、**出口校验输出**（acceptance / 交接包 / merge 门禁文件），不合格输出**回退重做**而非滑入下一阶段；不得用自由对话绕门。
 3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）。
@@ -245,6 +246,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 - `references/knowledge.md` —— 知识库布局、评分公式与聚合文件格式、提示词优化流程。
 - `references/standard.md` —— 编号（P01–P17 / D0xx）唯一权威释义。
 - `references/harness-alignment.md` —— 官方机制对齐表（§0.0 完整展开）。
+- `references/anti-hallucination-rules.md` —— 反幻觉纪律细则（D077 完整展开）。
 - `references/learned-skills.md` —— 学到的技能总览（D066–D076 溯源 + 应用铁律 + benchmarks 索引）。
 
 ## 7. 开源基准借鉴（benchmark note）
@@ -255,6 +257,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 > - `benchmarks/prompt-context-compression.md` —— 提示词压缩 / 上下文优化技巧（D074 来源）
 > - `benchmarks/adhd-workflow-analysis.md` —— ADHD 友好输出纪律分析（D075 来源，ayghri/i-have-adhd，MIT）
 > - `benchmarks/caveman-analysis.md` —— token 经济学极简术（D076 来源，juliusbrussee/caveman，MIT）
-> - `benchmarks/deepseek-harness-study.md` —— DeepSeek Harness 官方机制调研（§0.0 对齐表来源，40+ 官方 URL）
+> - `benchmarks/deepseek-harness-study.md` —— DeepSeek Harness 官方机制调研（§0.0 来源）
+> - `benchmarks/anti-hallucination.md` —— 防幻觉技术调研（D077 来源，32 个可溯源来源）
 > **正文预算（D074）**：本文件 ≤32 KiB（现约 30 KiB）；新增内容优先进 references/ 按需文件，正文只留路径与一句话用途；承重规则保留，非承重描述迁出或压缩。
 > 落地时以「公文驱动、轻量增量」为原则，不引入重 runtime/图数据库。

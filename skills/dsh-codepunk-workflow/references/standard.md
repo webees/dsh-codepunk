@@ -41,3 +41,4 @@
 | D074 | 上下文纪律：证据只回 command+exit_code+log_ref（拒绝整段 stdout）；子代理汇报 ≤1500 token 摘要；主会话每轮压缩旧巡检记录防上下文堆积（借鉴 Anthropic 上下文工程） | SKILL.md §2 ④ / agent.cordis.yml 三席人设 |
 | D075 | 消息层纪律：首行=可执行结论+首末行双读验证；多步编号≤5+工具清单替叙事；禁前导/复述/寒暄；安全先于简洁；调试螺旋防空转（借鉴 ayghri/i-have-adhd，MIT） | SKILL.md §2 ④ / benchmarks/adhd-workflow-analysis.md |
 | D076 | token 经济学细则：禁自造缩写与箭头；保护清单逐字保留（术语/代码/数字/否定词）；Auto-Clarity 豁免场景；持久化产物完整行文；压缩风格不压缩语言（借鉴 juliusbrussee/caveman，MIT） | SKILL.md §2 ④ / benchmarks/caveman-analysis.md |
+| D077 | 反幻觉纪律：完成断言须新鲜验证证据（Iron Law）；不确定即明示（不编造来源、无引文即撤回）；知识冲突显式化；证据门控交付；sdet 防空壳绿；多智能体交叉验证（借鉴 superpowers vbc / Anthropic 防幻觉，细则见 references/anti-hallucination-rules.md） | SKILL.md §2 ④ / references/anti-hallucination-rules.md |

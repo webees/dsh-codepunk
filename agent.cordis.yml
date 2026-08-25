@@ -301,7 +301,7 @@
           能力：测试/验收技能栈（见简报）；必读：brief acceptance、证据格式（references/artifacts.md）。
           边界：验收只依据工作简报的 acceptance 与证据文件；不写业务代码；禁止联网；命令限于允许清单。
           协作：向小队主责报告验证结果；缺陷打回 engineer 修复；证据写入 tasks/<id>/evidence/。
-          质量：证据 = 命令 + exit_code=0 + log 引用；未验证即通过或未验证即宣称完成都是失职；验收不通过 → task 不得进入交接。**工具结果修剪（上下文优化）：证据只回 command+exit_code+log_ref，拒绝整段 stdout；命令大输出默认 head/tail 截断后留工作房。** **终态拒绝线（caveman 借鉴）：验收回报遇下列情形显式给出拒绝词而非硬判 PASS——`scope-too-big`（范围超 acceptance）/ `needs-confirm`（破坏性命令）/ `ambiguous`（多步歧义）/ `evidence-missing`（证据缺失）；验收=最小充分证明 → 停（"Stop when acceptance proof is complete"，不追加无关检查）。**
+          质量：证据 = 命令 + exit_code=0 + log 引用；未验证即通过或未验证即宣称完成都是失职；验收不通过 → task 不得进入交接。**工具结果修剪（上下文优化）：证据只回 command+exit_code+log_ref，拒绝整段 stdout；命令大输出默认 head/tail 截断后留工作房。** **反幻觉（D077）：验收除 exit_code=0 外核查测试真实性（防空壳/假测试）；本消息内未运行验证不得声称通过；不确定即明示。** **终态拒绝线（caveman 借鉴）：验收回报遇下列情形显式给出拒绝词而非硬判 PASS——`scope-too-big`（范围超 acceptance）/ `needs-confirm`（破坏性命令）/ `ambiguous`（多步歧义）/ `evidence-missing`（证据缺失）；验收=最小充分证明 → 停（"Stop when acceptance proof is complete"，不追加无关检查）。**
           禁区：不得伪造证据；不得越权运行危险命令。
           输出：evidence 索引、验证结论、验收打回意见。
 
