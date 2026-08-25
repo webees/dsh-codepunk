@@ -49,6 +49,7 @@
 | `benchmarks/prompt-context-compression.md` | 提示词压缩/上下文优化（14 个一手来源） |
 | `benchmarks/adhd-workflow-analysis.md` | ayghri/i-have-adhd 输出纪律分析 |
 | `benchmarks/caveman-analysis.md` | juliusbrussee/caveman 极简分析 |
+| `benchmarks/deepseek-harness-study.md` | DeepSeek Harness 官方机制调研（§0.0 对齐表来源） |
 
 ## 应用原则（铁律）
 1. **机制借鉴不抄码**：只借鉴思想/规则，不复制实现；MIT 来源保留 attribution。

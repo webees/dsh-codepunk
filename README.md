@@ -1,6 +1,6 @@
 # dsh-codepunk · 多智能体开发流程预设
 
-**dsh-codepunk** 是运行于 DeepSeek Harness 的多智能体开发流程预设：以**六阶段闭环**编排一组固定角色子代理，将工程从需求推进到交付——并行、可审计、持续进化。
+**dsh-codepunk** 是运行于 DeepSeek Harness 的多智能体开发流程预设（官方「创造模式」产品形态：user preset + skill + 团队编排三层）：以**六阶段闭环**编排一组固定角色子代理，将工程从需求推进到交付——并行、可审计、持续进化；goal 自动续行 / skill 渐进披露 / subagent / sandbox-approval 均基于官方机制（见 benchmarks/deepseek-harness-study.md）。
 
 主会话兼任 **工程主责（run-lead）· 技术统筹（tpm）· 会话调度（sess-mgr）** 三席，不联网、不写业务码；派遣**实现三角**与**职能岗**子代理，以公文驱动（简报 → 交接包 → 证据 → 签收）推进工程。工程目录零污染，运行状态统一存于用户级总库 `~/.dsh-codepunk/`（总库语义）。
 
@@ -133,3 +133,4 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
 - **编号可解析**：`Pxx` / `D0xx` 一律以 `references/standard.md` 为唯一释义；禁止引入该文件之外的任何外部编号引用。
 - **文件归宿（R13）**：预设自身的资料（开源基准、流程改进）存本预设 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写入任何工程目录；各 run 的 `research/briefs/` 只放该工程业务调研。
 - **产出归位复核（R14）**：接收子代理产出时核对内容归属域与实际落位一致；错位立即移出并核销引用，不让漂移文件跨 run 传播。
+- **官方版本漂移监控**：DeepSeek Harness 为 developer preview（官方承诺 breaking changes）；每大 run 前 `npm view @deepseek-ai/dsh version` + 扫 GitHub releases，机制变更对照 `benchmarks/deepseek-harness-study.md` §0.0 对齐表。

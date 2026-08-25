@@ -35,7 +35,13 @@ metadata:
 
 辅助编制：**文档小组** `subagent_docs`（简报组装/交接合并/申请队列/记忆/提示词优化）、**调研小组** `subagent_research`（唯一联网岗）、**流程审计** `subagent_proc_audit`（红灯）、**代码审查** `subagent_code_review`、**发布执行** `subagent_release_eng`、**知识库**（跨组沉淀）。
 
+## 0.0 官方机制对齐（DeepSeek Harness 特性利用基线）
+
+> 每个流程概念都映射到官方 seam，完整对齐表见 `references/harness-alignment.md`（goal/subagent/workflow/compaction/sandbox/approval/jobs 等）；溯源见 `benchmarks/deepseek-harness-study.md`。升级 harness 或排障先对照该表。
+
 ## 0.1 运行时机制：goal 自动续行 / 子代理回报自动递送（MUST 理解）
+
+> **官方依据（DeepSeek Harness 开源文档）**：本机制即官方 `dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver` 组合（词汇层级 `Goal → Goal Round → Turn → Step`；armed/disarmed 进程本地、永不持久化；resume 须直接人类消息；默认 256 轮；自动轮只能报 complete/blocked、**不得修改人类目标**——欲写状态一律走工作区文件而非 goal 变更）。调研见 `benchmarks/deepseek-harness-study.md` §2.3。
 
 > 你（主会话/主管）平时不常驻运行。子代理在后台完成后，其**结算通知 / report 会进入你的 inbox**。
 > 若当时没有 active goal，这些回报会**堆积成「排队消息」，需要 sponsor 手动点击「立即」才递给你**——
@@ -209,7 +215,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 | R9 | 合并门：串行合并、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；**合并即回收该 chunk 的 worktree（D073）** |
 | R10 | 每个工程目标用 goal 工具跟踪并从 active 起保持续行（create 即 armed）；resume/fork 后 MUST 先 `update_goal resume` 再开工，否则自动递送失效退回手动；goal `blocked` 或 halt 时 MUST NOT 新 spawn，阻塞解除方可继续 |
 | R11 | 语言纪律：所有内部思考/推理/草稿/评审意见/汇报一律中文；对外输出按用户主导语言；表达简洁、无废话；消息纪律（D075）全员适用——首行=可执行结论、多步编号≤5、禁前导/复述/寒暄；上下文纪律（D074）与 token 经济学（D076）全员适用（细则见 §2④） |
-| R12 | 结算通知辨识纪律：子代理结算通知是「事件提醒」，可能滞后于交付实况（历史失败/空目录报告 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence.yaml 落盘时刻、git 工作区实况为准重新确认，杜绝被陈旧排队消息误导 |
+| R12 | 结算通知辨识纪律：子代理结算通知是「事件提醒」，可能滞后于交付实况（历史失败/空目录报告 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence.yaml 落盘时刻、git 工作区实况为准重新确认，杜绝被陈旧排队消息误导（官方机理：in-process 子代理子步骤/工具调用不写入父日志，父日志只记 spawn 的 tool/call 与 tool/result，见 benchmarks/deepseek-harness-study.md §2.7） |
 | R13 | 文件归宿纪律（防污染其他文件夹/资料）：内容归什么域，就写进什么域——**关于预设/流程自身的 meta 资料（开源基准、流程改进、运营观察）必须写入预设目录**（`~/.dsh/.agent-presets/dsh-codepunk/skills/dsh-codepunk-workflow/benchmarks/` 或预设 `knowledge/`），**绝不写进任何工程的 .dsh-codepunk/**；工程 run 的 `research/briefs/`、`docs/` 等只放该工程业务内容。误写即污染，MUST 立即移出并核销引用 |
 | R14 | 产出归位复核（接收子代理产出时）：run-lead 在接任何子代理产出/调研简报时，MUST 核对「内容归属域」与「实际落位」一致；发现错位 → 立即移出到正确归属域，并检查是否已在错误位置被引用（grep 核销），不得留着漂移文件跨 run 传播 |
 
@@ -238,6 +244,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 - `references/artifacts.md` —— goal/chunks/brief/staffing/handoff/evidence/acceptance/scores 文件模板。
 - `references/knowledge.md` —— 知识库布局、评分公式与聚合文件格式、提示词优化流程。
 - `references/standard.md` —— 编号（P01–P17 / D0xx）唯一权威释义。
+- `references/harness-alignment.md` —— 官方机制对齐表（§0.0 完整展开）。
 - `references/learned-skills.md` —— 学到的技能总览（D066–D076 溯源 + 应用铁律 + benchmarks 索引）。
 
 ## 7. 开源基准借鉴（benchmark note）
@@ -248,5 +255,6 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 > - `benchmarks/prompt-context-compression.md` —— 提示词压缩 / 上下文优化技巧（D074 来源）
 > - `benchmarks/adhd-workflow-analysis.md` —— ADHD 友好输出纪律分析（D075 来源，ayghri/i-have-adhd，MIT）
 > - `benchmarks/caveman-analysis.md` —— token 经济学极简术（D076 来源，juliusbrussee/caveman，MIT）
+> - `benchmarks/deepseek-harness-study.md` —— DeepSeek Harness 官方机制调研（§0.0 对齐表来源，40+ 官方 URL）
 > **正文预算（D074）**：本文件 ≤32 KiB（现约 30 KiB）；新增内容优先进 references/ 按需文件，正文只留路径与一句话用途；承重规则保留，非承重描述迁出或压缩。
 > 落地时以「公文驱动、轻量增量」为原则，不引入重 runtime/图数据库。
