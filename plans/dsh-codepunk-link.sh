@@ -432,7 +432,15 @@ EOF
     dsh-codepunk_path: $target
     migrated_at: null
     source: register"
-  if ! printf '%s\n' "$line" >> "$DSH_CODEPUNK_INDEX"; then
+  if ! python3 - "$DSH_CODEPUNK_INDEX" "$line" <<'PYEOF'
+import sys, re
+f, line = sys.argv[1], sys.argv[2]
+s = open(f, encoding='utf-8').read()
+if not s.endswith('\n'): s += '\n'
+s = re.sub(r'^(last_updated:.*)$', lambda m: line.rstrip('\n') + '\n' + m.group(1), s, count=1, flags=re.M)
+open(f, 'w', encoding='utf-8').write(s)
+PYEOF
+    then
     printf '%s: 写入失败，已回滚（备份 %s）\n' "$SCRIPT_NAME" "$bak" >&2
     cp "$bak" "$DSH_CODEPUNK_INDEX"
     rm -f "$DSH_CODEPUNK_INDEX.bak"

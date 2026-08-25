@@ -47,14 +47,14 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
 提交 PR 前，以下四条逐项自检，任一不过即应回修：
 
 1. **无说明即不改 README.md 之外**：除 `README.md` 外，仓库不存在「顺手改一下、无需说明」的文件——任何非 README 改动都必须在 PR 描述 / commit message 中说明目的、影响面与验证方式；README 自身改动也不得破坏其与仓库实况的一致性（命令、路径、目录结构、编号引用逐一对齐）
-2. **零旧名残留**：全仓（含 README、plans 脚本、组合配置、skill 文档）不得残留历史旧系统名及其目录名 / 变量名 / 路径变体；提交前用 `grep -rni 'p[i]code' .`（正则拆写，排除 `.git`）自检，须 0 命中
+2. **零旧名残留（核心发布内容）**：README、plans 脚本、组合配置、skill 文档不得残留历史旧系统名及其目录名 / 变量名 / 路径变体；提交前用 `git grep -rni 'p\[i\]code' -- .` 自检须 0 命中（拆写+转义，避开字面自命中）（git grep 只扫跟踪文件，自然排除本地运行工件目录与未跟踪文件）
 3. **agent.cordis.yml 必须过 entryListSchema 校验**：组合须通过形状检查（顶层为列表、每行有 `name`、group 递归）+ `entryListSchema`（含 `!!js` 表达式）解析；格式 / 语义错误会标记为 broken roster row，必须修复后才能合入
 4. **skill 文档须过结构检查**：`SKILL.md` 六阶段闭环与硬规则编号须与 `references/standard.md` 一致；`references/`（roles/artifacts/knowledge/standard）四件齐、结构完整，代码块 / 表格闭合，新增引用有对应释义
 
 ## 提交前检查清单
 
 - [ ] 改动仅限必要文件，diff 清晰、commit message 说明充分
-- [ ] `grep -rni 'p[i]code' .` 0 命中（含目录名 / 变量名变体）
+- [ ] `git grep -rni 'p\[i\]code' -- .` 0 命中（跟踪内容；含目录名 / 变量名变体）
 - [ ] `agent.cordis.yml` 过 entryListSchema 校验，无 broken roster row
 - [ ] skill 文档通过结构检查；编号引用与 `references/standard.md` 一致
 - [ ] 目录结构 / 命令 / 路径有变动时，`README.md` 已同步

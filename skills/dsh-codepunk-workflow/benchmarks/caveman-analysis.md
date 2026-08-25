@@ -128,7 +128,7 @@
 ### 3.2 license 可复用性（重点）
 
 - **双轨许可**：`skills/`、`agents/`、`commands/`、`evals/`、SDK、CLI、contracts、provider catalog、extension shell、mem 薄客户端 = **MIT**（可自由复用、改写，须保留版权声明）；`engine/`、`proxy/`、`cacheengine/`、`rewriter/`、`browse/`、`mcp/`、`shrink/`、mem Go 核心、`shared/platform/` = **BSL-1.1**（source-available；Additional Use Grant 允许自用/自托管第一方流量含生产；第三方托管/托管/嵌入服务需商业许可；**2030-06-21 或各版本发布 4 年后转 Apache-2.0**）。
-- **对 dsh-codepunk**：【事实】规则文本（SKILL.md/子代理 persona/工作模式）在 MIT 域，可直接借鉴改写为 dsh 纪律，须标注来源与保留版权声明（MIT 要求 copies/substantial portions 附带许可声明）；【事实】BSL 引擎代码不可复制，但 dsh-codepunk 现做法本就是「理念借鉴、不涉及代码抄袭」（benchmark note），无冲突；【推断】若未来 dsh 想直接引用其 SKILL.md 原文段落做内置规则，应把来源 URL + license 注记写入 references/standard.md 的「外部 § 引用对照」。
+- **对 dsh-codepunk**：【事实】规则文本（SKILL.md/子代理 persona/工作模式）在 MIT 域，可直接借鉴改写为 dsh 纪律，须标注来源与保留版权声明（MIT 要求 copies/substantial portions 附带许可声明）；【事实】BSL 引擎代码不可复制，但 dsh-codepunk 现做法本就是「理念借鉴、不涉及代码抄袭」（benchmark note），无冲突；【推断】若未来 dsh 想直接引用其 SKILL.md 原文段落做内置规则，应把来源 URL + license 注记写入 references/standard.md 决策号出处（或 references/learned-skills.md 溯源表）。
 - 商标： "Caveman" 属 Julius Brussee，dsh 使用其规则思想不构成商标使用，但**不得在产品名/预设名中冒充 Caveman 官方**。
 
 ## 4. 引用留痕（全部 retrieved_at = 2026-08-25T19:29:20Z，除非另注）

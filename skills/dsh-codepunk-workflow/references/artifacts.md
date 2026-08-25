@@ -1,6 +1,6 @@
 # 产物文件模板（references/artifacts.md）
 
-运行目录：`.dsh-codepunk/`（run 根），知识库：`knowledge/`。所有 YAML 用 UTF-8，字段名保持稳定以便知识库聚合与跨轮复用。
+运行目录：`~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/`（总库语义 D072），知识库：`~/.dsh-codepunk/projects/<project_id>/knowledge/`。所有 YAML 用 UTF-8，字段名保持稳定以便知识库聚合与跨轮复用。
 
 ## goal.yaml（①，sponsor 确认后 active）
 

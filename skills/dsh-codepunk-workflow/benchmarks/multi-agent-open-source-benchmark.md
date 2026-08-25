@@ -14,7 +14,7 @@
 | MetaGPT | https://github.com/FoundationAgents/MetaGPT | 69,892 | 软件公司 SOP 化多角色流水线 | `Code=SOP(Team)`，PM/架构/工程/QA 以**产出物文档**为中间介质串行衔接 |
 | AutoGen | https://github.com/microsoft/autogen | 60,507 | 多智能体对话/编排框架 | Core/AgentChat/Extensions 分层，GroupChat 发言者仲裁 + human-in-the-loop（**2026 已进维护模式**） |
 | crewAI | https://github.com/crewAIInc/crewAI | 57,301 | 角色化 Crews + 事件驱动 Flows | 自主协作 Crew + 确定性 Flow 状态机；hierarchical manager 委托+结果验证 |
-| agno（原 phidata） | https://github.com/agno-agi/agno | 41,776 | 自托管 agent 平台 | session/memory/.dsh-codepunk/knowledge/traces 全存自有库，JWT-RBAC，学习回路 |
+| agno（原 phidata） | https://github.com/agno-agi/agno | 41,776 | 自托管 agent 平台 | session/memory/~/.dsh-codepunk/projects/<id>/knowledge/traces 全存自有库，JWT-RBAC，学习回路 |
 | LangGraph | https://github.com/langchain-ai/langgraph | 40,001 | 低层图编排框架 | 图 nodes/edges + **持久化 checkpoint（durable execution）** + interrupts(HITL) + 长短双记忆 |
 | ChatDev | https://github.com/OpenBMB/ChatDev | 34,034 | 瀑布流虚拟软件公司 | CEO/CTO/Programmer 专项讨论会，ChatChain 配置化 Phase 序列；经验共学习 ECL/IER、MacNet DAG（2.0 转型 zero-code 平台） |
 | graphiti | https://github.com/getzep/graphiti | 30,080 | 时序上下文图谱记忆层 | 实体/事实(triplet)/episodes 溯源 + 时间有效性窗口，增量更新避免全量重算 |
@@ -107,7 +107,7 @@
 **优点【事实/推断】**：b) Human reviewer 介入模式；c) **经验共学习**是"跨轮沉淀降错"的实证思路；a) Chain 配置化让流水线可编辑；根本机制贴合 dsh-codepunk 六阶段闭环。
 
 **对 dsh-codepunk 的可借鉴**【推断】：
-1. **经验共学习落地到知识库**：把高分小组的"回修教训/捷径经验"沉淀为**结构化经验模板**（触发条件→常见坑→标准解法），供再规划与后续小组检索，直接降低重复缺陷（对应 .dsh-codepunk/knowledge/ 强化）。
+1. **经验共学习落地到知识库**：把高分小组的"回修教训/捷径经验"沉淀为**结构化经验模板**（触发条件→常见坑→标准解法），供再规划与后续小组检索，直接降低重复缺陷（对应 ~/.dsh-codepunk/projects/<id>/knowledge/ 强化）。
 2. **Human-Reviewer 介入点**：代码审查门可设计为"审查者以建议注入、不直接改码"的人际交互形态（现审查记录 reviews/ 已是雏形）。
 - 适配注意：ChatDev 单线程串行；dsh-codepunk 并行小组需靠 depends_on 拓扑维持，借鉴"经验积累 + 审查介入 + 流程配置化"而非流水线形状。MacNet DAG 思路可作为多并行 chunk 的拓扑参考【事实→理念，推断】。
 
@@ -171,7 +171,7 @@
 **优点【事实/推断】**：c) 带时间戳与溯源的共享记忆，避免"记忆漂移/陈旧事实"；增量更新省成本。
 
 **对 dsh-codepunk 的可借鉴**【推断】：
-1. **知识库加"时间有效性 + 溯源"字段**：.dsh-codepunk/knowledge/ 记忆条目标记"生效/失效时间"与"来源证据(file/evidence)"，再规划与参考时能识别陈旧结论；轻量采纳字段即可，不必引入图谱 DB。
+1. **知识库加"时间有效性 + 溯源"字段**：~/.dsh-codepunk/projects/<id>/knowledge/ 记忆条目标记"生效/失效时间"与"来源证据(file/evidence)"，再规划与参考时能识别陈旧结论；轻量采纳字段即可，不必引入图谱 DB。
 2. **增量沉淀**：交接/评分后**增量**写入 knowledge（而非重写),降低维护与 token 成本。
 - 适配注意：dsh-codepunk 是公文驱动，用"时间窗+溯源"结构化字段即可，无谓引入图数据库层。
 
@@ -183,7 +183,7 @@
 
 **outlines / dottxt-ai**（15,647★）【事实】：在**生成期**用 JSON schema / regex / grammar / Pydantic **保证**结构化输出，而非生成后解析修复。→ 借鉴【推断】：全部产出/证据文件（brief/evidence/handoff）以 schema 在生成期强约束，减少 parse 失败与无效重试，直接降成本、提验收通过率。
 
-**agno**（41,776★）【事实】：自托管 agent 平台，session/memory/.dsh-codepunk/knowledge/traces 全存自有数据库，JWT-RBAC 安全，learning loop（simulations + usage data）。→ 借鉴【推断】：工程落地上坚持自托管与数据掌控；traces/usage data 反向驱动优化。
+**agno**（41,776★）【事实】：自托管 agent 平台，session/memory/~/.dsh-codepunk/projects/<id>/knowledge/traces 全存自有数据库，JWT-RBAC 安全，learning loop（simulations + usage data）。→ 借鉴【推断】：工程落地上坚持自托管与数据掌控；traces/usage data 反向驱动优化。
 
 ---
 
@@ -212,7 +212,7 @@
    - 适配注意：需在公文层记录"修改了哪个状态、谁改、何时"以可审计。
 
 6. **可验证信号驱动分解-评分-再规划回路**【理念源自 CAMEL verifiable rewards / ChatDev 经验共学习，推断】
-   - 用 acceptance 通过率、缺陷密度、回修次数等**硬信号**注入评分公式与下一轮分块/招聘标准；把高分小组"回修教训"沉淀为**结构化经验模板**进 .dsh-codepunk/knowledge/，跨轮降错。
+   - 用 acceptance 通过率、缺陷密度、回修次数等**硬信号**注入评分公式与下一轮分块/招聘标准；把高分小组"回修教训"沉淀为**结构化经验模板**进 ~/.dsh-codepunk/projects/<id>/knowledge/，跨轮降错。
    - 适配注意：信号需落 evidence 自动采集，避免依赖主管印象。
 
 7. **执行路径可观测 / trace**【理念源自 LangSmith / crewAI tracing / OpenAI SDK tracing，推断】

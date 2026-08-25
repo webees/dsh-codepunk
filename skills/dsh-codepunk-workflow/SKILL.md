@@ -45,7 +45,7 @@ metadata:
 2. **臂上之后，你每次进入 idle 都会被自动唤醒**：host 的 `goal-round-driver` 在你空闲时预留下一轮 `<goal_round>` 提示词，把 inbox 里排队的所有子代理回报（验收 evidence / 结算通知）一次领起给你——**实现「子代理完成 → 主管自动消化 → 实时规划」全程无需人工点击**。`maxGoalRounds` 可设上限（默认 256）做预算护栏。
 3. **会话恢复（resume/fork）后会 disarm（停用续行）**：goal 的 phase 与轮次计数持久化，但**续行启用状态是进程本地的**。恢复后**必须先 `update_goal resume` 重新武装**，否则自动续行不生效、又退回手动递送。所以每次开工第一步：`get_goal` 检查 phase 与激活态，非 active+armed 就 `resume`。
 4. **状态判定纪律**：不要把 goal 的 phase 当唯一信号——`goal blocked`/`completed` 是权威，但各轮次与子代理处理状态以运行根（`~/.dsh-codepunk/projects/<id>/`）文件实况为准（见 §2 ④ 结算通知辨识纪律）。
-5. **收尾**：目标完成前 `get_goal` 收集证据（7/7 验收 + 总索引 + merge 留痕齐），再 `update_goal complete`；受阻时（外部阻塞/halt）`blocked`——`blocked` 状态下 MUST NOT 新 spawn。
+5. **收尾**：目标完成前 `get_goal` 收集证据（全部 task 验收齐：evidence/acceptance 签收 + 总索引 + merge 留痕），再 `update_goal complete`；受阻时（外部阻塞/halt）`blocked`——`blocked` 状态下 MUST NOT 新 spawn。
 6. **`maxGoalRounds` 是轮次预算不是资源预算**（token/时间/费用不受其约束）；耗尽后需 sponsor 授权的 `resume` 才能继续。
 
 > 依赖组件：goal 服务 / goal-round-driver / `/goal` 命令 / `tool-goal` 均在 host 装配（dsh-base 默认携带），预设只需挂 `tool-goal` 即可获得模型端工具。
@@ -63,7 +63,7 @@ metadata:
    - 项目 README 有 `dsh-codepunk: <id>` frontmatter → 主通道命中；
    - 无标记 → INDEX 兜底命中；都无 → 未注册（先 `dsh-codepunk-link register <工程根> <id>` 登记）。
 2. **装载路径常量**：`source ~/.dsh-codepunk/dsh-codepunk-home.sh`（导出 `DSH_CODEPUNK_HOME`/`DSH_CODEPUNK_PROJECTS`/`DSH_CODEPUNK_INDEX`）。
-3. **建运行根**：`mkdir -p ~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/`——本 run 的全部状态（goal/chunks/plan/tasks/rooms/handoff）写进该目录，**绝不写入工程目录**。
+3. **建运行根**：`mkdir -p ~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/`——本 run 的全部状态（goal/chunks/plan/tasks/handoff）写进该目录，**绝不写入工程目录**（隔离工作区等工程域产物见 §1 文件隔离硬要求：worktree 在工程父目录、S 规模 rooms/ 在工程根内，均不进总库）。
 
 ### 1.2 运行根结构（位于 `~/.dsh-codepunk/projects/<project_id>/` 下）
 
@@ -81,7 +81,7 @@ projects/<project_id>/            # 该项目用户级总库根（= 运行根 DS
     docs/memory/                  # L1 叙事 / L2 简报（文档小组运营）
     reviews/<task_id>.md          # 代码审查记录（Reviewed-by + pass|needs-work）
     errors/YYYY-MM-DD.md          # 错误日志（文档小组维护，collected→…→closed）
-    rooms/squad-<task_id>/        # 封闭工作房（各小组独立目录）
+    rooms/squad-<task_id>/        # S 规模封闭工作房（工程根内，非总库——见 §1 文件隔离硬要求）
     tasks/<task_id>/
       brief/    WORK_BRIEF.md + brief.yaml
       staffing/ request.yaml + personas/*.md + staffing.yaml + scores.yaml
@@ -184,7 +184,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 1. 派遣 `subagent_release_eng`（或你执行同一规则）：按 `depends_on` 拓扑排序 done 且门禁通过的 chunk，**每次只合并一个**。
 2. 合并前校验：evidence 通过 + diff ⊆ write_paths + 门禁文件齐（L/高风险含 review 与 security）→ 写 `approvals/merge.yaml`（`approved_by/approved_at`）。
 3. 失败 → abort/revert，task 回修再排队；**禁止并行合并**；实现三角 MUST NOT 自己合主干；未 done 的 chunk MUST NOT merge。
-4. **文档型交付**（如 docs/ 归档类 run）：合并门适用同一门禁，但「diff ⊆ write_paths」判据为**改动仅限 docs/ 与运行根（总库项目目录）状态文件、无业务代码越界**；合并动作可能只是把交付纳入版本库/标记完成，仍需 `approvals/merge.yaml` 留痕（evidence/acceptance/diff_scope/handoffs/top_index/boundary 逐项 PASS）。
+4. **文档型交付**（如 docs/ 归档类 run）：合并门适用同一门禁，但「diff ⊆ write_paths」判据为**改动仅限 docs/ 与运行根（总库项目目录）状态文件、无业务代码越界**；合并动作可能只是把交付纳入版本库/标记完成，仍需 `approvals/merge.yaml` 留痕（preconditions 四字段 evidence/diff_within_write_paths/review/merge_ack 逐项对齐模板，见 artifacts.md）。
 5. **worktree 生命周期回收（D073，MUST）**：每个 chunk 合并完成即回收其 worktree——`git -C <主仓库> worktree remove --force ../room-<task_id>`（先确认该分支已并入 main、无未提交独有改动）后 `git worktree prune`；**分支 refs 保留**（`dsh-codepunk/<run>/<task>` 留作审计追溯）。未回收的 worktree 会随分支合并持续残留——机制上不会自动销毁，故合并门 MUST 显式销毁。
 
 ### ⑥ 再规划（P06 → ♻️）
@@ -200,15 +200,15 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 |---|---|
 | R1 | 双门闩：brief 批准 ∧ staffing 批准，缺一不得 spawn 实现三角 |
 | R2 | 仅调研岗可联网；主会话、实现组/文档/人事/审计/审查/发布禁止自助 web |
-| R3 | 小组只在各自工作房与写集内活动；主会话只写运行根（`~/.dsh-codepunk/projects/<id>/`）状态与 knowledge/，不写业务码 |
+| R3 | 小组只在各自工作房与写集内活动；主会话只写运行根（`~/.dsh-codepunk/projects/<id>/`）状态与 knowledge/，不写业务码；git 管理操作（worktree add/remove、登记表维护）作用于主仓库与工程父目录，属流程管理豁免 |
 | R4 | 未签收不得解散；交接材料由文档小组归档 |
 | R5 | 评分不阻断；解散即评分 |
-| R6 | 需求变更只进 leadership：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed）→ 受影响 task；禁止小组直接听用户改需求；goal 停留 draft 超时默认挂起（park）而非静默推进 |
+| R6 | 需求变更只进 leadership：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed）→ 受影响 task；禁止小组直接听用户改需求；goal 停留 draft 超时不自动推进（保持 draft，须 sponsor 或 run-lead resume 才能 active） |
 | R7 | 禁止静默丢脏改动：强制解散前 auto-commit/stash 并记 backup_ref |
 | R8 | 审查门：交接/合并前 diff ⊆ write_paths + CHECKLIST + `reviews/` 记录；L/高风险强制独立 code-review |
 | R9 | 合并门：串行合并、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；**合并即回收该 chunk 的 worktree（D073）** |
 | R10 | 每个工程目标用 goal 工具跟踪并从 active 起保持续行（create 即 armed）；resume/fork 后 MUST 先 `update_goal resume` 再开工，否则自动递送失效退回手动；goal `blocked` 或 halt 时 MUST NOT 新 spawn，阻塞解除方可继续 |
-| R11 | 语言纪律：所有内部思考/推理/草稿/评审意见/汇报一律中文；对外输出按用户语言；表达简洁、无废话；消息纪律（D075）全员适用——首行=可执行结论、多步编号≤5、禁前导/复述/寒暄 |
+| R11 | 语言纪律：所有内部思考/推理/草稿/评审意见/汇报一律中文；对外输出按用户主导语言；表达简洁、无废话；消息纪律（D075）全员适用——首行=可执行结论、多步编号≤5、禁前导/复述/寒暄；上下文纪律（D074）与 token 经济学（D076）全员适用（细则见 §2④） |
 | R12 | 结算通知辨识纪律：子代理结算通知是「事件提醒」，可能滞后于交付实况（历史失败/空目录报告 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence.yaml 落盘时刻、git 工作区实况为准重新确认，杜绝被陈旧排队消息误导 |
 | R13 | 文件归宿纪律（防污染其他文件夹/资料）：内容归什么域，就写进什么域——**关于预设/流程自身的 meta 资料（开源基准、流程改进、运营观察）必须写入预设目录**（`~/.dsh/.agent-presets/dsh-codepunk/skills/dsh-codepunk-workflow/benchmarks/` 或预设 `knowledge/`），**绝不写进任何工程的 .dsh-codepunk/**；工程 run 的 `research/briefs/`、`docs/` 等只放该工程业务内容。误写即污染，MUST 立即移出并核销引用 |
 | R14 | 产出归位复核（接收子代理产出时）：run-lead 在接任何子代理产出/调研简报时，MUST 核对「内容归属域」与「实际落位」一致；发现错位 → 立即移出到正确归属域，并检查是否已在错误位置被引用（grep 核销），不得留着漂移文件跨 run 传播 |
@@ -237,15 +237,16 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 - `references/roles.md` —— 全部岗位人设（含人设维度表）与派遣提示词模板。
 - `references/artifacts.md` —— goal/chunks/brief/staffing/handoff/evidence/acceptance/scores 文件模板。
 - `references/knowledge.md` —— 知识库布局、评分公式与聚合文件格式、提示词优化流程。
-- `references/standard.md` —— 编号（P01–P17 / D0xx）权威释义与外部 § 引用对照。
+- `references/standard.md` —— 编号（P01–P17 / D0xx）唯一权威释义。
 - `references/learned-skills.md` —— 学到的技能总览（D066–D076 溯源 + 应用铁律 + benchmarks 索引）。
 
 ## 7. 开源基准借鉴（benchmark note）
 
-> 本流程的部分机制（D066 自动递送 / D067 checkpoint 断点续行 / D068 门禁显式节点）参考自 GitHub 高 star 多智能体编排开源项目的**机制思想**（LangGraph durable execution、crewAI Flow、ADK tool confirmation 等），仅作理念借鉴、**不涉及代码抄袭**。完整调研（13 项目对比 + 逐条可借鉴点 + 事实/推断标注）与 agent-skills 生态调研见 `references/../benchmarks/` 目录：
+> 本流程的部分机制（D067 checkpoint 断点续行 / D068 门禁显式节点 / D069 schema 强约束 / D070 硬信号评分）参考自 GitHub 高 star 多智能体编排开源项目的**机制思想**（LangGraph durable execution、crewAI Flow、ADK tool confirmation、CAMEL verifiable rewards 等），仅作理念借鉴、**不涉及代码抄袭**。完整调研（13 项目对比 + 逐条可借鉴点 + 事实/推断标注）与 agent-skills 生态调研见 `references/../benchmarks/` 目录：
 > - `benchmarks/multi-agent-open-source-benchmark.md` —— 多智能体编排/框架项目对比
 > - `benchmarks/agent-skills-open-source-benchmark.md` —— agent skills 生态/project 对比
 > - `benchmarks/prompt-context-compression.md` —— 提示词压缩 / 上下文优化技巧（D074 来源）
 > - `benchmarks/adhd-workflow-analysis.md` —— ADHD 友好输出纪律分析（D075 来源，ayghri/i-have-adhd，MIT）
-> **正文预算（D074）**：本文件 ≤32 KiB（现约 28 KiB）；新增内容优先进 references/ 按需文件，正文只留路径与一句话用途；承重规则保留，非承重描述迁出或压缩。
+> - `benchmarks/caveman-analysis.md` —— token 经济学极简术（D076 来源，juliusbrussee/caveman，MIT）
+> **正文预算（D074）**：本文件 ≤32 KiB（现约 30 KiB）；新增内容优先进 references/ 按需文件，正文只留路径与一句话用途；承重规则保留，非承重描述迁出或压缩。
 > 落地时以「公文驱动、轻量增量」为原则，不引入重 runtime/图数据库。

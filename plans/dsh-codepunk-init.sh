@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# workspace-refactor · chunk-hub init：幂等建立 dsh-codepunk 统一总库骨架
+# dsh-codepunk-init：幂等建立 dsh-codepunk 统一总库骨架
 # -----------------------------------------------------------------------------
 # 落位：预设 plans/ 下（待评审后移入正式位 scripts/init-hub.sh）。
 # 职责（只增不改）：
@@ -9,7 +9,7 @@
 #      不产生重复条目，注册表条目后续由 dsh-codepunk-link 演进）
 #   3. 绝不触碰 ~/.dsh-codepunk/config.yaml（配置层与运营层职责分离）
 # 重复执行：无任何副作用、不报错、不覆盖任何既有文件。
-# 用法：bash workspace-refactor-hub.sh [--check]     --check=只断言不创建
+# 用法：bash dsh-codepunk-init.sh [--check]     --check=只断言不创建
 # =============================================================================
 set -euo pipefail
 
@@ -45,7 +45,7 @@ else
   fi
   cat > "$DSH_CODEPUNK_INDEX" <<'EOF'
 # =============================================================================
-# dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，chunk-hub 产出）
+# dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
 # 条目 schema（骨架期声明；条目本体由 dsh-codepunk-link 的 register 构建）：
 #   project_id:    项目 slug（目录名直用，冲突加路径 hash 后缀）
 #   repo_path:     工程根绝对路径
