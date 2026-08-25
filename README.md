@@ -117,6 +117,12 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
 
 用户级总库 `~/.dsh-codepunk/`：`INDEX.yaml`（项目注册表）、`dsh-codepunk-home.sh`（路径常量）、`projects/<id>/`（各项目全部 run 记忆与知识库）。
 
+### 总库现状
+
+- `~/.dsh-codepunk/` 为唯一权威用户级总库（INDEX.yaml 已登记全部项目，含历史迁移项）。
+- 历史双库已统一：旧库数据（7 项目）与迁移状态已并入本库，旧库目录已整体改名为点前缀隐藏目录并写入归档标记（勿再引用，仅作回滚窗）。
+- 路径常量统一经 `source ~/.dsh-codepunk/dsh-codepunk-home.sh` 装载；无遗留双库分叉。
+
 ---
 
 ## 维护公约（改动前必读）

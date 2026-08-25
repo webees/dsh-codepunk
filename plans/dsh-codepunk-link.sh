@@ -193,7 +193,7 @@ _entry_get() {
     printf '%s' "$got"
     return 0
   fi
-  if [ "$key" = "dsh-codepunk" ]; then
+  if [ "$key" = "dsh-codepunk_path" ] || [ "$key" = "dsh-codepunk" ]; then
     got="$(printf '%s\n' "$row" | tr '\t' '\n' | sed -n 's/^dsh-codepunk_path=//p' | head -1)"
     [ -n "$got" ] || got="$(printf '%s\n' "$row" | tr '\t' '\n' | sed -n 's/^dsh-codepunk=//p' | head -1)"
     printf '%s' "$got"
@@ -263,7 +263,7 @@ cmd_resolve() {
     row_bid="$(_index_row_by_id "$id")"
     if [ -n "$row_bid" ]; then
       root_bid="$(_entry_get "$row_bid" root)"
-      dcp_bid="$(_entry_get "$row_bid" dsh-codepunk)"
+      dcp_bid="$(_entry_get "$row_bid" dsh_codepunk_path)"
       if [ -n "$root_bid" ] && [ "$(_norm_path "$root_bid")" != "$target" ]; then
         printf '%s: 提示：%s 的 INDEX project_root=%s 与输入路径不同，按 INDEX 关联输出\n' "$SCRIPT_NAME" "$id" "$root_bid" >&2
       fi
@@ -307,12 +307,12 @@ cmd_index() {
   fi
   n_ok=0; n_fail=0
   printf '%s: 校验 %s\n' "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX"
-  local row pid root dsh-codepunk
+  local row pid root dcp
   while IFS= read -r row; do
     [ -n "$row" ] || continue
     pid="$(_entry_get "$row" project_id)"
     root="$(_entry_get "$row" project_root)"
-    dsh-codepunk="$(_entry_get "$row" dsh-codepunk)"
+    dcp="$(_entry_get "$row" dsh_codepunk_path)"
     local problems=""
     # 必填校验（run-lead 裁决标准 5 字段）：project_id / project_root / dsh-codepunk_path 必须有值；
     # migrated_at / source 字段必须存在（migrated_at 可为 null——未迁移项目合法，骨架注释允许）

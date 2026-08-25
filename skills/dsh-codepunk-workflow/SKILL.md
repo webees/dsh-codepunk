@@ -131,6 +131,12 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 ### ③ 多小组并行开发（P05–P06）
 
 1. 创建各小组工作房时先确认主仓库已归位工程根，再依其**父目录**建 worktree（受 §1「文件隔离硬要求」约束）：`git -C <主仓库路径> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>`，建成后以 `git -C <主仓库路径> worktree list` 复核落点；**禁止在非工程根目录创建 worktree**。S 规模（单小组）可用 `rooms/squad-<task_id>/` 子目录 + 人设写集纪律。
+1b. **创建即登记（worktree 登记表，MUST）**：worktree 建成（含重建/恢复）后**立即**把该 worktree 登记进 `runs/<run_id>/README.md` 的「worktree 登记表」——首次创建时在「小组名单登记」表外新建此表，固定表头为：
+
+    | 仓库 | 路径 | 分支 | run | 用途 | 状态 |
+    |------|------|------|-----|------|------|
+
+    行字段：仓库（项目名/别名）、路径（worktree 绝对路径）、分支（`dsh-codepunk/<run_id>/<task_id>`）、run（归属 run_id）、用途（会话/工作区说明）、状态。**状态三态全程登记**：`active`（创建/重建在用）→ `recovered`（异常恢复后复用）→ `recycled`（D073 合并后回收时联动标记；行保留字段不删，分支 refs 留作审计追溯）。登记以 git 只读实况为准（`git -C <主仓库> worktree list`），不凭记忆。
 2. **并行**派遣三人组（全部后台 continuable，同一轮消息里一起发出）：
    - `subagent_squad_lead(prompt=简报全量 + 工作房路径 + 汇报节奏)`
    - `subagent_engineer(prompt=简报技术切片 + 写集 + 工作房)`
