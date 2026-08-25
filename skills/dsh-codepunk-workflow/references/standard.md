@@ -39,3 +39,4 @@
 | D072 | 总库语义：运行根统一存 `~/.dsh-codepunk/projects/<id>/`，工程目录保持纯净；开工三件事（resolve → source dsh-codepunk-home.sh → 建运行根） | SKILL.md §1 |
 | D073 | worktree 生命周期回收：合并完成即 `worktree remove --force + prune`（分支 refs 保留审计）；goal complete 前 MUST 核验 `worktree list` 仅主仓库（环境终态整洁是验收项） | SKILL.md §2 ⑤′ P10.5 / §2 ⑥.4 |
 | D074 | 上下文纪律：证据只回 command+exit_code+log_ref（拒绝整段 stdout）；子代理汇报 ≤1500 token 摘要；主会话每轮压缩旧巡检记录防上下文堆积（借鉴 Anthropic 上下文工程） | SKILL.md §2 ④ / agent.cordis.yml 三席人设 |
+| D075 | 消息层纪律：首行=可执行结论+首末行双读验证；多步编号≤5+工具清单替叙事；禁前导/复述/寒暄；安全先于简洁；调试螺旋防空转（借鉴 ayghri/i-have-adhd，MIT） | SKILL.md §2 ④ / benchmarks/adhd-workflow-analysis.md |

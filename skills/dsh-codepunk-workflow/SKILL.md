@@ -163,6 +163,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 1. **证据**：sdet 产 `evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`。
    - **交付基线（R12）**：验收前 MUST 确认交付目录 mtime 为最新（`ls -la docs/<module>/`），evidence 须带 `validated_at` 与所对的交付基线；疑似交付前空跑/旧快照 → 打回重跑，禁止放行。
    - **上下文纪律（D074，借鉴 Anthropic 上下文工程）**：①证据/清单只回 `command + exit_code + log_ref`，**拒绝整段 stdout**，命令大输出默认 head/tail 截断后留工作房；②小组向上汇报 ≤1500 token 摘要（明细/日志留工作房），主会话巡检一律读 `summary`/`progress`，**不回传原始大日志**；③主会话每轮收尾把已消化巡检记录压缩为一行结论，防陈旧消息与上下文堆积误导（R12 同源）。
+   - **消息层纪律（D075，借鉴 ayghri/i-have-adhd MIT 技能）**：①**首行 = 可执行结论**（动作/命令/路径排第一，不铺垫）；末行给「下一件 2 分钟内可做的事」；发送前做**首末行双读**——只读首末两行是否已含「下一步做什么 + 刚才发生了什么」；②多步任务**编号 ≤5 项**（超则拆 now/later 或 must/nice-to-have）+ **工具清单替叙事**（有 task/todo 工具就用它 restate，不再 prose 复述全计划）；③**禁前导/复述/寒暄**（"Great question"/"Let me..."/"あれ，anyway"式删除；保留承载真实不确定性的 hedge，删除无信息 hedge）；④**安全先于简洁**：破坏性动作（rm -rf / force push / 迁移 / 删表）先确认再执行；⑤**调试螺旋防空转**：连续三轮 "still broken" → 停止改码，改为"点名可能错误的假设 + 问一个诊断问题"。
 2. **审查门**：diff 检查（⊆ write_paths）+ CHECKLIST（reviews/CHECKLIST.md）+ 审查记录 `reviews/<task_id>.md`；L 规模或高风险 task 派遣 `subagent_code_review`，其余由你或指定审查者执行；`needs-work` → 小队回修再审。
    - **门禁即显式节点 + 双侧 guardrail（D068，借鉴 crewAI Flow / ADK）**：双门闩/审查门/合并门都是必经的显式路由节点——每道门在**入口校验输入**（简报 schema / diff ⊆ write_paths / evidence 齐）、**出口校验输出**（acceptance / 交接包 / merge 门禁文件），不合格输出**回退重做**而非滑入下一阶段；不得用自由对话绕门。
 3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）。
@@ -206,7 +207,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 | R8 | 审查门：交接/合并前 diff ⊆ write_paths + CHECKLIST + `reviews/` 记录；L/高风险强制独立 code-review |
 | R9 | 合并门：串行合并、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；**合并即回收该 chunk 的 worktree（D073）** |
 | R10 | 每个工程目标用 goal 工具跟踪并从 active 起保持续行（create 即 armed）；resume/fork 后 MUST 先 `update_goal resume` 再开工，否则自动递送失效退回手动；goal `blocked` 或 halt 时 MUST NOT 新 spawn，阻塞解除方可继续 |
-| R11 | 语言纪律：所有内部思考/推理/草稿/评审意见/汇报一律中文；对外输出按用户语言；表达简洁、无废话 |
+| R11 | 语言纪律：所有内部思考/推理/草稿/评审意见/汇报一律中文；对外输出按用户语言；表达简洁、无废话；消息纪律（D075）全员适用——首行=可执行结论、多步编号≤5、禁前导/复述/寒暄 |
 | R12 | 结算通知辨识纪律：子代理结算通知是「事件提醒」，可能滞后于交付实况（历史失败/空目录报告 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence.yaml 落盘时刻、git 工作区实况为准重新确认，杜绝被陈旧排队消息误导 |
 | R13 | 文件归宿纪律（防污染其他文件夹/资料）：内容归什么域，就写进什么域——**关于预设/流程自身的 meta 资料（开源基准、流程改进、运营观察）必须写入预设目录**（`~/.dsh/.agent-presets/dsh-codepunk/skills/dsh-codepunk-workflow/benchmarks/` 或预设 `knowledge/`），**绝不写进任何工程的 .dsh-codepunk/**；工程 run 的 `research/briefs/`、`docs/` 等只放该工程业务内容。误写即污染，MUST 立即移出并核销引用 |
 | R14 | 产出归位复核（接收子代理产出时）：run-lead 在接任何子代理产出/调研简报时，MUST 核对「内容归属域」与「实际落位」一致；发现错位 → 立即移出到正确归属域，并检查是否已在错误位置被引用（grep 核销），不得留着漂移文件跨 run 传播 |
@@ -243,5 +244,6 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 > - `benchmarks/multi-agent-open-source-benchmark.md` —— 多智能体编排/框架项目对比
 > - `benchmarks/agent-skills-open-source-benchmark.md` —— agent skills 生态/project 对比
 > - `benchmarks/prompt-context-compression.md` —— 提示词压缩 / 上下文优化技巧（D074 来源）
+> - `benchmarks/adhd-workflow-analysis.md` —— ADHD 友好输出纪律分析（D075 来源，ayghri/i-have-adhd，MIT）
 > **正文预算（D074）**：本文件 ≤32 KiB（现约 28 KiB）；新增内容优先进 references/ 按需文件，正文只留路径与一句话用途；承重规则保留，非承重描述迁出或压缩。
 > 落地时以「公文驱动、轻量增量」为原则，不引入重 runtime/图数据库。
