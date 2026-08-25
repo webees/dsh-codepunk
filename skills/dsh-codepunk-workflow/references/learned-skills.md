@@ -54,6 +54,7 @@
 | `benchmarks/deepseek-harness-study.md` | DeepSeek Harness 官方机制调研（§0.0 对齐表来源） |
 | `benchmarks/anti-hallucination.md` | 防幻觉技术调研（D077 来源） |
 | `benchmarks/dsh-deepseek-analysis.md` | dsh-llm-deepseek 适配器分析（模型路由/成本/thinking 规划输入） |
+| `benchmarks/dsh-deepseek-realrun-projection.md` | 错峰节支/1M 承载/并发 429 离线实测算 |
 
 ## 应用原则（铁律）
 1. **机制借鉴不抄码**：只借鉴思想/规则，不复制实现；MIT 来源保留 attribution。
