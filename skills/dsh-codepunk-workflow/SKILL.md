@@ -37,7 +37,7 @@ metadata:
 
 ## 0.0 官方机制对齐（DeepSeek Harness 特性利用基线）
 
-> 流程概念映射官方 seam，见 `references/harness-alignment.md`；模型路由/成本见 `references/model-routing.md`（D078）。
+> 流程概念↔官方 seam 见 `references/harness-alignment.md`；模型路由见 `references/model-routing.md`（D078）。
 
 ## 0.1 运行时机制：goal 自动续行 / 子代理回报自动递送（MUST 理解）
 
@@ -168,13 +168,13 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 
 1. **证据**：sdet 产 `evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`。
    - **交付基线（R12）**：验收前 MUST 确认交付目录 mtime 为最新（`ls -la docs/<module>/`），evidence 须带 `validated_at` 与所对的交付基线；疑似交付前空跑/旧快照 → 打回重跑，禁止放行。
-   - **上下文纪律（D074，借鉴 Anthropic 上下文工程）**：①证据/清单只回 `command + exit_code + log_ref`，**拒绝整段 stdout**，命令大输出默认 head/tail 截断后留工作房；②小组汇报 ≤1500 token 摘要；主会话巡检读 `summary`/`progress`，不回传大日志；③主会话每轮收尾把已消化巡检记录压缩为一行结论，防陈旧消息与上下文堆积误导（R12 同源）。
-   - **消息层纪律（D075，借鉴 ayghri/i-have-adhd MIT 技能）**：①**首行 = 可执行结论**（动作/命令先行）；末行给下一件 2 分钟内可做的事；发送前首末行双读（下一步 + 刚发生了什么）；②多步任务**编号 ≤5 项**（超则拆 now/later 或 must/nice-to-have）+ **工具清单替叙事**（有 task/todo 工具就用它 restate，不再 prose 复述全计划）；③**禁前导/复述/寒暄**（"Great question"式删除；保留真实不确定 hedge，删无信息 hedge）；④**安全先于简洁**：破坏性动作（rm -rf / force push / 迁移 / 删表）先确认再执行；⑤**调试螺旋防空转**：连续三轮 "still broken" → 停止改码，改为"点名可能错误的假设 + 问一个诊断问题"。
-   - **反幻觉纪律（D077，细则见 `references/anti-hallucination-rules.md`）**：完成断言须新鲜证据；不确定即明示（不编造、无引文即撤回）；冲突显式化；缺证据索引打回；防空壳绿。
-   - **token 经济学细则（D076，借鉴 caveman MIT）**：①**禁自造缩写与箭头**（cfg/impl/req/res/fn、`→`）——tokenizer 按全词拆分、零节省且伤解码；中文短词（工单/验收）本身单 token 不受影响，英文简报/字段禁缩写；②**保护清单（绝不压缩）**：术语/代码/API 名/CLI 命令/错误串逐字保留；数字/日期精确；**never drop not/no/only/except**（翻转语义代价大于节省）；③**Auto-Clarity 豁免**（退出精简改完整行文）：安全警告、不可逆操作确认、多步序列歧义、压缩本身造成技术歧义、用户困惑；澄清后恢复精简；④**持久化产物豁免**：代码/注释/提交信息/PR/工单/文档/记忆文件一律正常行文（写给人看的产物不压缩）；⑤**压缩风格不压缩语言**：按用户主导语言回复，技术词/代码保原文。
+   - **上下文纪律（D074，借鉴 Anthropic 上下文工程）**：①证据/清单只回 `command + exit_code + log_ref`，拒绝整段 stdout，大输出 head/tail 截断留工作房；②小组汇报 ≤1500 token 摘要；主会话巡检读 `summary`/`progress`，不回传大日志；③主会话每轮收尾把已消化巡检记录压缩为一行结论，防陈旧消息与上下文堆积误导（R12 同源）。
+   - **消息层纪律（D075，借鉴 ayghri/i-have-adhd MIT 技能）**：①**首行 = 可执行结论**（动作/命令先行）；末行给下一件 2 分钟内可做的事；发送前首末行双读（下一步 + 刚发生了什么）；②多步任务**编号 ≤5 项**（超则拆 now/later）+ **工具清单替叙事**（有 todo 工具就用它 restate，不复述全计划）；③**禁前导/复述/寒暄**（"Great question"式删除；保留真实不确定 hedge，删无信息 hedge）；④**安全先于简洁**：破坏性动作先确认再执行；⑤**调试螺旋防空转**：三轮 "still broken" → 停改码，点名可疑假设 + 问一个诊断问题。
+   - **反幻觉纪律（D077，细则见 `references/anti-hallucination-rules.md`）**：完成断言须新鲜证据；不确定即明示；冲突显式化；缺证据索引打回；防空壳绿。
+   - **token 经济学细则（D076，借鉴 caveman MIT）**：①**禁自造缩写与箭头**（cfg/impl/req/fn、`→`）——零节省且伤解码；中文短词单 token 不受影响，英文字段禁缩写；②**保护清单（绝不压缩）**：术语/代码/API 名/CLI 命令/错误串逐字保留；数字/日期精确；**never drop not/no/only/except**（翻转语义代价大于节省）；③**Auto-Clarity 豁免**（退出精简改完整行文）：安全警告、不可逆操作确认、多步序列歧义、压缩本身造成技术歧义、用户困惑；澄清后恢复精简；④**持久化产物豁免**：代码/注释/提交信息/PR/工单/文档/记忆文件一律正常行文（写给人看的产物不压缩）；⑤**压缩风格不压缩语言**：按用户主导语言回复，技术词/代码保原文。
 2. **审查门**：diff 检查（⊆ write_paths）+ CHECKLIST（reviews/CHECKLIST.md）+ 审查记录 `reviews/<task_id>.md`；L 规模或高风险 task 派遣 `subagent_code_review`，其余由你或指定审查者执行；`needs-work` → 小队回修再审。
    - **门禁即显式节点 + 双侧 guardrail（D068，借鉴 crewAI Flow / ADK）**：双门闩/审查门/合并门都是必经的显式路由节点——每道门在**入口校验输入**（简报 schema / diff ⊆ write_paths / evidence 齐）、**出口校验输出**（acceptance / 交接包 / merge 门禁文件），不合格输出**回退重做**而非滑入下一阶段；不得用自由对话绕门。
-3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）。
+3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）、**残留自查节（D079，MUST）**——缺自查整包打回（细则见 references/file-hygiene.md）。
 4. **签收**：有下游 → 下游小队主责签 `acceptance.yaml`（`accepted_by[]` 数组）；无下游 → **文档主责或技术统筹**签收（不是 run-lead 默认）。
 5. diff 门禁：`git diff --name-only base...HEAD` ⊆ write_paths。
 6. **文档小组**归档交接材料进 run 记忆，并评估是否入库 `knowledge/handoffs/`。
@@ -248,6 +248,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 - `references/harness-alignment.md` —— 官方机制对齐表（§0.0 完整展开）。
 - `references/anti-hallucination-rules.md` —— 反幻觉纪律细则（D077 完整展开）。
 - `references/model-routing.md` —— 角色分模型路由选型表 + 成本杠杆（D078）。
+- `references/file-hygiene.md` —— 工作房卫生契约（D079：防残留/清理自查/强制门闩）。
 - `references/learned-skills.md` —— 学到的技能总览（D066–D076 溯源 + 应用铁律 + benchmarks 索引）。
 
 ## 7. 开源基准借鉴（benchmark note）
@@ -258,7 +259,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 > - `benchmarks/prompt-context-compression.md` —— 提示词压缩 / 上下文优化技巧（D074 来源）
 > - `benchmarks/adhd-workflow-analysis.md` —— ADHD 友好输出纪律分析（D075 来源，ayghri/i-have-adhd，MIT）
 > - `benchmarks/caveman-analysis.md` —— token 经济学极简术（D076 来源，juliusbrussee/caveman，MIT）
-> - `benchmarks/deepseek-harness-study.md` —— DeepSeek Harness 官方机制调研（§0.0 来源）
+> - `benchmarks/deepseek-harness-study.md` —— Harness 官方机制（§0.0 来源）
 > - `benchmarks/anti-hallucination.md` —— 防幻觉技术调研（D077 来源，32 个可溯源来源）
 > **正文预算（D074）**：本文件 ≤32 KiB（现约 30 KiB）；新增内容优先进 references/ 按需文件，正文只留路径与一句话用途；承重规则保留，非承重描述迁出或压缩。
 > 落地时以「公文驱动、轻量增量」为原则，不引入重 runtime/图数据库。
