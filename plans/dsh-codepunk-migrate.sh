@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# migrate-dsh-codepunk.sh —— 项目 .dsh-codepunk → 总库一次性迁移工具
+# dsh-codepunk-migrate.sh —— 项目 .dsh-codepunk → 总库一次性迁移工具
 # 团队: 移星 | 实现: 挑山 (engineer@chunk-migrate)
 #
 # 职责（WORK_BRIEF chunk-migrate acceptance 6 条）：
@@ -27,7 +27,7 @@ shopt -s nocasematch
 # 固定 C locale：规避 bash 3.2 在 C.UTF-8 下「||/&& 右侧函数实参含局部变量时 unbound」bug
 export LC_ALL=C
 
-SCRIPT_NAME="migrate-dsh-codepunk.sh"
+SCRIPT_NAME="dsh-codepunk-migrate.sh"
 SCHEMA="migrate-report-v1"
 
 # ---------------------------------------------------------------------------
@@ -79,11 +79,11 @@ die()  { printf '[migrate] 错误: %s\n' "$*" >&2; exit 1; }
 usage() {
   cat <<'EOF'
 用法:
-  migrate-dsh-codepunk.sh --scan [dir ...]
+  dsh-codepunk-migrate.sh --scan [dir ...]
      只读扫描 .dsh-codepunk：无参数 = 内置已知清单（Desktop 全量 9 处）；
      带参数 = 扫描指定目录（存在 .dsh-codepunk 则纳入；也接受直接给 .dsh-codepunk 路径）。
      输出 TSV：path / size / runs / files / asset_files / asset_size / structure。
-  migrate-dsh-codepunk.sh --migrate <src> <project_id> [选项]
+  dsh-codepunk-migrate.sh --migrate <src> <project_id> [选项]
      <src>        工程根目录（内部找 .dsh-codepunk）或 .dsh-codepunk 目录本身
      <project_id> 目标 id，仅 [A-Za-z0-9._-]，禁止 '..'
      选项:
@@ -93,10 +93,10 @@ usage() {
        --dest <dir>       目标 projects 根（默认 ~/.dsh-codepunk/projects；夹具演练可隔离指定）
        --report-out <f>   报告输出路径（默认 $PROJECTS_DIR/.migrate-state/reports/<id>.yaml）
        -v                 详细日志
-  migrate-dsh-codepunk.sh --rollback <project_id> [--dry-run] [--restore]
+  dsh-codepunk-migrate.sh --rollback <project_id> [--dry-run] [--restore]
      回滚保留窗：把 <工程根>/.pre-refactor-dsh-codepunk 还原为 .dsh-codepunk；
      --restore 额外从 $DSH_CODEPUNK_HOME/projects/<id>/ 复制回工程根。
-  migrate-dsh-codepunk.sh --help | --version
+  dsh-codepunk-migrate.sh --help | --version
 退出码: 0 成功 | 1 用法/参数错误 | 2 复制/校验失败 | 3 目标冲突（拒绝覆盖）
 EOF
 }
