@@ -20,6 +20,8 @@
 | **D076** | token 经济学：禁自造缩写/箭头、保护清单、Auto-Clarity 豁免、持久化产物完整行文 | juliusbrussee/caveman（极简输出，MIT） | SKILL P07 + R11 全员参考；sdet 终态拒绝线 / engineer 先取证后改码同源 |
 | **D077** | 反幻觉纪律：完成断言须新鲜证据；不确定即明示；知识冲突显式化；防空壳绿；交叉验证 | superpowers vbc + Anthropic 防幻觉指南 + arXiv 综述 | SKILL P07 + sdet 人设 + references/anti-hallucination-rules.md |
 | **D078** | 模型路由与成本工程：分岗位模型/thinking/错峰/cache | dsh-llm-deepseek（官方适配器，源码实证 agentOptions 覆盖） | references/model-routing.md |
+| **D080** | 撰写标准：方块标签【节名】、禁 ##、一行一节、全角标点、动宾起头、禁修饰副词 | 实战教训 | references/roles.md |
+| **D081** | 产出纪律（YAGNI）：七级阶梯+根因修复+简化留痕+自检配额+输出契约+审查五 tag | DietrichGebert/ponytail（115k★ MIT） | references/anti-overengineering.md / engineer+sdet 人设 |
 | **D079** | 文件卫生：防残留/清理自查/终态门闩 | agent-housekeeping（MIT）+ davila7 + SoloDawn RB-37 | references/file-hygiene.md |
 
 ## 技能类别图谱（方便按需查找）
@@ -56,6 +58,7 @@
 | `benchmarks/anti-hallucination.md` | 防幻觉技术调研（D077 来源） |
 | `benchmarks/dsh-deepseek-analysis.md` | dsh-llm-deepseek 适配器分析（模型路由/成本/thinking 规划输入） |
 | `benchmarks/dsh-deepseek-realrun-projection.md` | 错峰节支/1M 承载/并发 429 离线实测算 |
+| `benchmarks/ponytail-analysis.md` | YAGNI 产出纪律分析（D081 来源） |
 
 ## 应用原则（铁律）
 1. **机制借鉴不抄码**：只借鉴思想/规则，不复制实现；MIT 来源保留 attribution。
