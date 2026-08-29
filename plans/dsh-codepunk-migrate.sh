@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # dsh-codepunk-migrate.sh —— 项目 .dsh-codepunk → 总库一次性迁移工具
-# 团队: 移星 | 实现: 挑山 (engineer@chunk-migrate)
+# 团队: 天工
 #
 # 职责（WORK_BRIEF chunk-migrate acceptance 6 条）：
 #   1. --scan                      只读扫描全部 .dsh-codepunk（路径/大小/runs 数/素材量估算），不写任何目标
@@ -16,7 +16,7 @@
 # 配套：
 #   - --rollback <project_id>      保留窗回滚（把 .pre-refactor-dsh-codepunk 还原为 .dsh-codepunk；
 #                                  --restore 额外把总库内容复制回工程根）
-#   - 复用 chunk-hub 的 dsh-codepunk-home.sh 常量（存在则 source，否则内置默认）
+#   - 复用 dsh-codepunk-home.sh 常量（存在则 source，否则内置默认）
 #
 # 环境：bash 3.2+（macOS 自带），仅依赖 rsync（可选，无则 cp 兜底）+ shasum
 # =============================================================================
@@ -33,7 +33,7 @@ SCHEMA="migrate-report-v1"
 # ---------------------------------------------------------------------------
 # 常量与状态目录
 # ---------------------------------------------------------------------------
-# 优先复用 chunk-hub 产出的常量（hub 已落位 ~/.dsh-codepunk/dsh-codepunk-home.sh）；未产出时内置默认（总库根 = ~/.dsh-codepunk）
+# 优先复用总库常量（总库已落位 ~/.dsh-codepunk/dsh-codepunk-home.sh）；未产出时内置默认（总库根 = ~/.dsh-codepunk）
 for _hubf in "$HOME/.dsh-codepunk/dsh-codepunk-home.sh" "$HOME/.dsh-codepunk/scripts/dsh-codepunk-home.sh"; do
   if [ -f "$_hubf" ]; then
     # shellcheck disable=SC1091
@@ -101,7 +101,7 @@ usage() {
 EOF
 }
 
-version() { printf '%s %s (移星/chunk-migrate)\n' "$SCRIPT_NAME" "$SCHEMA"; }
+version() { printf '%s %s\n' "$SCRIPT_NAME" "$SCHEMA"; }
 
 # 人类可读大小（K/M/G）
 human_size() {

@@ -254,13 +254,6 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 
 ## 7. 开源基准借鉴（benchmark note）
 
-> 本流程的部分机制（D067 checkpoint 断点续行 / D068 门禁显式节点 / D069 schema 强约束 / D070 硬信号评分）参考自 GitHub 高 star 多智能体编排开源项目的**机制思想**（LangGraph durable execution、crewAI Flow、ADK tool confirmation、CAMEL verifiable rewards 等），仅作理念借鉴、**不涉及代码抄袭**。完整调研（13 项目对比 + 逐条可借鉴点 + 事实/推断标注）与 agent-skills 生态调研见 `references/../benchmarks/` 目录：
-> - `benchmarks/multi-agent-open-source-benchmark.md` —— 多智能体编排/框架项目对比
-> - `benchmarks/agent-skills-open-source-benchmark.md` —— agent skills 生态/project 对比
-> - `benchmarks/prompt-context-compression.md` —— 提示词压缩 / 上下文优化技巧（D074 来源）
-> - `benchmarks/adhd-workflow-analysis.md` —— ADHD 友好输出纪律分析（D075 来源，ayghri/i-have-adhd，MIT）
-> - `benchmarks/caveman-analysis.md` —— token 经济学极简术（D076 来源，juliusbrussee/caveman，MIT）
-> - `benchmarks/deepseek-harness-study.md` —— Harness 官方机制（§0.0 来源）
-> - `benchmarks/anti-hallucination.md` —— 防幻觉技术调研（D077 来源）
-> **正文预算（D074）**：本文件 ≤32 KiB（现约 30 KiB）；新增内容优先进 references/ 按需文件，正文只留路径与一句话用途；承重规则保留，非承重描述迁出或压缩。
+> 本流程部分机制（D067-D070）借鉴高 star 开源项目**机制思想**（LangGraph/crewAI/ADK/CAMEL），不涉及代码抄袭；完整调研与 agent-skills 生态见 `benchmarks/`（决策号溯源见 `references/learned-skills.md`）。
+> **正文预算（D074）**：≤32 KiB（当前已满，新增一律进 references/ 按需文件）；承重规则保留，非承重迁出或压缩。
 > 落地时以「公文驱动、轻量增量」为原则，不引入重 runtime/图数据库。

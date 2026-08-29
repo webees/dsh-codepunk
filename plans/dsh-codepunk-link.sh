@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dsh-codepunk-link.sh — 项目↔总库记忆关联解析器（chunk-link · 连衡产出）
+# dsh-codepunk-link.sh — 项目↔总库记忆关联解析器
 #
 # 用法：
 #   dsh-codepunk-link resolve <项目路径>   三态路由：
@@ -33,7 +33,7 @@ SCRIPT_NAME="dsh-codepunk-link"
 # ---------- 初始化：DSH_CODEPUNK_HOME / DSH_CODEPUNK_INDEX ----------
 # 外部显式环境变量优先（测试覆写刚需），其次 hub 的 dsh-codepunk-home.sh 常量，最后默认值。
 # 注：hub 文件无条件 export DSH_CODEPUNK_INDEX（与其自身「允许测试覆写」注释矛盾，
-#     缺陷见 chunk-link handoff known_issues），故 source 后恢复外部显式值。
+#     缺陷见早期 handoff known_issues），故 source 后恢复外部显式值。
 _DSH_CODEPUNK_HOME_EXT="${DSH_CODEPUNK_HOME:-}"
 _DSH_CODEPUNK_INDEX_EXT="${DSH_CODEPUNK_INDEX:-}"
 _resolve_dsh-codepunk_home() {
@@ -362,11 +362,11 @@ cmd_register() {
     return 2
   fi
 
-  # INDEX 缺失 → 按 chunk-hub 骨架初始化（幂等，不触碰 config.yaml）
+  # INDEX 缺失 → 按总库骨架初始化（幂等，不触碰 config.yaml）
   if [ ! -f "$DSH_CODEPUNK_INDEX" ]; then
     mkdir -p "$(dirname "$DSH_CODEPUNK_INDEX")"
     cat > "$DSH_CODEPUNK_INDEX" <<EOF
-# dsh-codepunk 全局项目索引（骨架模板，chunk-hub 约定；条目由 dsh-codepunk-link register 构建）
+# dsh-codepunk 全局项目索引（骨架模板；条目由 dsh-codepunk-link register 构建）
 schema_version: 1
 projects: []
 

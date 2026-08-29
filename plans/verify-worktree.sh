@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# verify-worktree.sh —— worktree 治理核验脚本（chunk-worktree · 归墟）
+# verify-worktree.sh —— worktree 治理核验脚本
 # ----------------------------------------------------------------------------
 # 用法:
 #   verify-worktree.sh [主仓库路径] [--quiet]

@@ -106,13 +106,14 @@ plans/                              # 工具脚本源副本
   dsh-codepunk-migrate.sh           # 工程内运行数据迁移工具（--scan / --migrate / --rollback）
   dsh-codepunk-init.sh              # 总库骨架幂等初始化
   verify-worktree.sh                # worktree 落点纪律核验
+  evidence-verify.sh                # 证据机械校验器（D069：防假通过门）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
   SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R14 + D 决策号）
   references/roles.md               # 岗位人设与派遣模板
   references/artifacts.md           # 产物文件模板（goal/chunks/brief/…）
   references/knowledge.md           # 知识库布局 + 评分公式 + 聚合格式
   references/standard.md            # 编号（P01–P17 / D0xx）唯一权威释义
-  benchmarks/                       # 开源基准调研（多智能体编排 / agent-skills）
+  benchmarks/                       # 开源基准调研 ×11（D074-D081 溯源，清单见 references/learned-skills.md）
 ```
 
 用户级总库 `~/.dsh-codepunk/`：`INDEX.yaml`（项目注册表）、`dsh-codepunk-home.sh`（路径常量）、`projects/<id>/`（各项目全部 run 记忆与知识库）。
