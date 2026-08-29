@@ -31,6 +31,7 @@
 | **D082** | 文档配图：产出按场景配图+4px 网格+密度 4/10 | cathrynlavery/diagram-design（MIT，39 种视觉类型） | references/diagram-guide.md / docs 人设 | v1.0 |
 | **D083** | 技能治理：外部 skill 系统性应用与升级（四态生命周期+三件套+版本标记） | 自研治理机制（承接全部 D066-D082） | references/skill-governance.md / 文档小组 | v1.0 |
 | **D084** | 注入防护：工具返回不可信+阻断上报；记忆 canary；skill 供应链门；PIT-* 分类法 | defender/SkillSpector/rebuff/arc_pi（Apache-2.0/CC-BY） | references/prompt-injection-rules.md / 巡检 | v1.0 |
+| **D085** | 知识库记忆增强：knowledge/ 三级化（L0/L1/L2）+ 过期三态 + 自包含互链 + 多信号检索 + 异步抽经验 | Mem0/OpenViking/Letta/OpenHuman（仅机制思想） | references/memory-enhancement.md / knowledge/ | v1.0 |
 | **D079** | 文件卫生：防残留/清理自查/终态门闩 | agent-housekeeping（MIT）+ davila7 + SoloDawn RB-37 | references/file-hygiene.md | v1.0 |
 
 ## 技能类别图谱（方便按需查找）
@@ -70,6 +71,7 @@
 | `benchmarks/ponytail-analysis.md` | YAGNI 产出纪律分析（D081 来源） |
 | `benchmarks/diagram-design-analysis.md` | 文档配图技能分析（D082 来源） |
 | `benchmarks/prompt-injection-guardrails.md` | 注入防护调研（D084 来源） |
+| `benchmarks/agent-memory-management.md` | agent 记忆管理调研（D085 来源） |
 
 ## 应用原则（铁律）
 1. **机制借鉴不抄码**：只借鉴思想/规则，不复制实现；MIT 来源保留 attribution。

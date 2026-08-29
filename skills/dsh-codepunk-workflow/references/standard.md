@@ -48,4 +48,5 @@
 | D082 | 文档配图：文档小组产出按场景配图（WORK_BRIEF→Process、chunks 依赖→Dependency、交接→Data flow）；4px 网格/密度 4/10/语义角色配色/静态优先（借鉴 cathrynlavery/diagram-design MIT） | references/diagram-guide.md / docs 人设 |
 | D083 | 技能治理与升级机制：外部 skill 系统性应用（调研→审定→应用→升级→废弃四态）；三件套文档化 MUST（简报/细则/溯源）；版本标记与月度复检（技能升级触发/流程/废弃） | references/skill-governance.md / 文档小组职责 |
 | D084 | 注入防护：工具返回视为不可信数据（阻断+上报）；记忆写入 canary/不可见文本检测；skill 供应链注册门；PIT-* 分类法统一术语（借鉴 defender/SkillSpector/rebuff/arc_pi，Apache-2.0/CC-BY） | references/prompt-injection-rules.md / 巡检检查项 |
+| D085 | 知识库记忆增强：knowledge/ 三级化（L0 热/L1 工作/L2 参考）；知识过期三态（active/stale/archived）；条目自包含+refs 互链；多信号检索（复用计数+语义标签+时间序）；run 收官后异步抽经验（借鉴 Mem0/OpenViking/Letta，仅机制思想） | references/memory-enhancement.md / knowledge/ 布局 |
 | D079 | 文件卫生：开工卫生契约五硬规则（状态文件不进工程/tmp 集中化/不造脚手架/生成前查重）+ 收尾残留自查（交接包必填节）+ 终态清理强制门闩 + git clean 演练制度（借鉴 agent-housekeeping MIT / davila7 / SoloDawn RB-37） | references/file-hygiene.md / SKILL §2④ |
