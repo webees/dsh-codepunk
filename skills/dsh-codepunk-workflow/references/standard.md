@@ -45,4 +45,6 @@
 | D078 | 模型路由与成本杠杆：全岗位统一 deepseek-v4-flash（用户决策 D080，禁 pro）；agentOptions 显式声明；错峰调度半价；cache 前缀稳定性优先；reasoning_tokens 可归因；maxTokens 自配防溢出（基于 dsh-llm-deepseek） | references/model-routing.md |
 | D080 | 撰写标准：节名用方块标签【节名】、禁 ## 标题于 prompt 正文；一行一节；中文全角标点；每节 ≤40 字动宾起头；禁修饰副词；实战照抄模板不自创格式 | references/roles.md（§派遣 prompt 模板） |
 | D081 | 产出纪律（YAGNI）：七级递减阶梯（需要吗→复用→stdlib→平台→已装依赖→一行→最小=先理解后上阶梯）；根因修复（grep 全部 caller 一次修）；简化留痕 dsh-debt: 注释标天花板+升级路径；Not-lazy 保护清单；检查纪律（非平凡一个自检，不建框架）；输出契约 code-first+≤3 行；审查五 tag+net: 行（借鉴 ponytail 115k★ MIT） | references/anti-overengineering.md / agent.cordis.yml engineer/sdet 人设 |
+| D082 | 文档配图：文档小组产出按场景配图（WORK_BRIEF→Process、chunks 依赖→Dependency、交接→Data flow）；4px 网格/密度 4/10/语义角色配色/静态优先（借鉴 cathrynlavery/diagram-design MIT） | references/diagram-guide.md / docs 人设 |
+| D083 | 技能治理与升级机制：外部 skill 系统性应用（调研→审定→应用→升级→废弃四态）；三件套文档化 MUST（简报/细则/溯源）；版本标记与月度复检（技能升级触发/流程/废弃） | references/skill-governance.md / 文档小组职责 |
 | D079 | 文件卫生：开工卫生契约五硬规则（状态文件不进工程/tmp 集中化/不造脚手架/生成前查重）+ 收尾残留自查（交接包必填节）+ 终态清理强制门闩 + git clean 演练制度（借鉴 agent-housekeeping MIT / davila7 / SoloDawn RB-37） | references/file-hygiene.md / SKILL §2④ |

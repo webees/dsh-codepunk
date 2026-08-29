@@ -250,7 +250,9 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 - `references/model-routing.md` —— 角色分模型路由选型表 + 成本杠杆（D078）。
 - `references/file-hygiene.md` —— 工作房卫生契约（D079：防残留/清理自查/强制门闩）。
 - `references/anti-overengineering.md` —— 产出纪律（D081：YAGNI 阶梯/根因修复/简化留痕/审查契约）。
-- `references/learned-skills.md` —— 学到的技能总览（D066–D076 溯源 + 应用铁律 + benchmarks 索引）。
+- `references/diagram-guide.md` —— 文档配图规范（D082：场景→图类型 + 4px 网格/密度/语义色）。
+- `references/skill-governance.md` —— 技能治理与升级机制（D083：四态生命周期 + 三件套文档化 + 版本标记）。
+- `references/learned-skills.md` —— 学到的技能总览（D066–D083 溯源 + 应用铁律 + benchmarks 索引）。
 
 ## 7. 开源基准借鉴（benchmark note）
 
