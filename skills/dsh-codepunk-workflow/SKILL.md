@@ -149,6 +149,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
    - `subagent_sdet(prompt=acceptance + 证据格式 + 允许命令)`
    - prompt 里必须给：工作房绝对路径、write_paths、read 材料、报告对象（你）、交接要求。
 3. **并行上限按 scale**：S ≤1 组 / M ≤3 组 / L ≤6 组同时进行（软上限 `max_awake` 8，D024）；双门闩齐即**自动**开工（D031），不必再等你人工点头。
+   - **限流自适应（D086，细则见 references/rate-limit-adaptation.md）**：spawn 前查限流历史（knowledge/lessons/rate-limit-history.yaml），当日已有 ≥2 次 429 → 自动降并发（L1：≤2/批+10s 间隔 / L2：串行 / L3：暂停+通知 sponsor）。
 4. **登记子代理 id（MUST）**：每次 spawn 后把 `task → seat → subagent id` 记入 `runs/<run_id>/README.md`（长流程中你是靠这张表巡检/追问/解散的，不要只依赖记忆）。固定表头：
 
     | task_id | seat       | subagent_id       | status |
