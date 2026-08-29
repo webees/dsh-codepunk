@@ -7,6 +7,12 @@
 
 | 决策号 | 学到什么（技能本质） | 来源（仓库/文档，License） | 应用到哪 |
 |---|---|---|---|
+| **D024** | 并行软上限：S=1 / M=3 / L=6（max_awake 8） | 流程设计（三档规模） | SKILL §2 ③ |
+| **D031** | 双门闩齐即自动开工，不必再等人工点头 | 流程设计 | SKILL.md §2 ③ |
+| **D034** | goal active 前 `product_acceptance[]` 必须非空 | 流程设计（验收先决条件） | SKILL.md §2 ① / artifacts.md |
+| **D035** | sponsor 通道与 goal 终裁/确认记时归工程主责（`user_confirmed_at`） | 流程设计（sponsor 通道） | SKILL.md §2 ① / agent.cordis.yml |
+| **D038** | 需求变更只走 `change_orders`（proposed→applied→closed） | 流程设计（变更管控） | SKILL.md §3 R6 / artifacts.md |
+| **D065** | sponsor 可随时投喂信息，按类分诊并入 | 流程设计（sponsor 投喂） | SKILL.md §2 ① |
 | **D066** | goal 自动续行 / 子代理回报自动递送：create 即 armed、idle 自动唤醒、resume 重武装 | DSH 平台机制（源码排查） | SKILL §0.1 / R10 |
 | **D067** | checkpoint 断点续行：progress/handoff/evidence 即重放状态，中断后从断点续行 | langchain langgraph（durable execution） | SKILL §2③ |
 | **D068** | 门禁即显式节点 + 双侧 guardrail：入口验输入、出口验输出 | crewAI Flow / Google ADK（tool confirmation） | SKILL §2④ |
