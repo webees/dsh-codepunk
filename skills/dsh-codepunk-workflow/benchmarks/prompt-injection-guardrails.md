@@ -1,5 +1,7 @@
 # Prompt Injection 防护：高星仓库调研简报
 
+> 支撑决策号：D084（注入防护）
+
 > 调研小组：ind-res  
 > 检索时间：2026-08-29T20:44:24Z  
 > 检索渠道：GitHub REST API（`search/repositories`）+ raw.githubusercontent.com 直连  

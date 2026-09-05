@@ -251,7 +251,6 @@
           # 关键：report 是延续子代理注册在「自身层」（own layer）的汇报工具，不受此过滤 —— 切勿列入，
           #       否则 restrict 会把它当作未知全局工具直接 throw（dsh-tools restrictableNames 语义）。
           # 平台门控注意：只列「本机已挂载的全局工具」—— pwsh（Windows）与 bash（POSIX）只挂其一，
-          # str_replace_editor 也不是所有运行时都挂载；点名未挂载工具会让 restrict 直接 throw（fail-closed）。
           # macOS/POSIX 用 bash；Windows 移植时把 bash 换成 pwsh 即可。
           allow: &role-allow [bash, read, write, edit, read_image, glob, grep, job_list, job_output, job_kill, todo_write, skill]
         persona: |-

@@ -2,6 +2,7 @@
 
 > 归属域：本文件属**预设/流程自身**资料（R13），不得出现在任何工程的 run 目录里。
 > 工程业务取证请写各自 `projects/<id>/runs/<run>/research/briefs/`。
+> **性质**：缺陷修复台账（F-xxx 编号），非决策号调研——不占 D 系列，供 D083 月度复检引用。
 
 ## F-001 · dsh-codepunk-link register 把工程目录写成总库路径（2026-09-05，sectest-rebuild run 中发现）
 

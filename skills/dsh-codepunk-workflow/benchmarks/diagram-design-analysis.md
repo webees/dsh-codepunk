@@ -1,5 +1,7 @@
 # Diagram Design（cathrynlavery/diagram-design）深度分析简报
 
+> 支撑决策号：D082（文档配图）
+
 > 归属域：dsh-codepunk 预设 meta 调研（R13）｜产出：ind-res（调研小组）
 > 检索时间：2026-08-29T17:49:00Z（UTC）｜通道：curl 直连 GitHub REST API + raw.githubusercontent.com（web 通道不可用，直连透明；两次 SSL 抖动重试当场补回）
 > 前置关联：本简报为 dsh-codepunk 文档小组（`subagent_docs`）的**图表化能力**调研，与既有的 `ponytail-analysis.md`（产出纪律）、`caveman-analysis.md`（表述层 token 经济）形成**表述/产出/视觉**三姊妹。供工程主责审核后下发文档小组。

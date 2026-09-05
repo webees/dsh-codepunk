@@ -1,5 +1,7 @@
 # 提示词压缩 / 上下文优化 · 行业调研简报
 
+> 支撑决策号：D074（上下文纪律）
+
 > 调研小组 ind-res 出品 · 面向 dsh-codepunk 多智能体预设备料
 > 检索时间：2026-08-26 02:50 (CST) / 2026-08-25T18:50Z，同一会话内分批抓取（retrieved_at 见来源表）
 > 渠道说明：**web_search 认证失败（api key 无效），全部改由 curl 直连官方 docs / GitHub 一手来源抓取**，URL 均为实测可达（部分页面在新域名 docs.claude.com / developers.openai.com / learn.chatgpt.com）。

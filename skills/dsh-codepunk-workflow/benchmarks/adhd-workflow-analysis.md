@@ -1,5 +1,7 @@
 # i-have-adhd（ayghri/i-have-adhd）调研简报：ADHD 友好输出的提示词工程基准
 
+> 支撑决策号：D075（消息纪律）
+
 > 委托方：run-lead（dsh-codepunk 六阶段多智能体开发流程，benchmarks/ 基准对照）
 > 调研岗：ind-res（唯一联网岗）
 > 检索窗口：2026-08-26 02:17（UTC+7）

@@ -1,5 +1,7 @@
 # 高 star「AI Agent Skills / 技能型」开源项目与 skill 生态调研简报
 
+> 支撑决策号：D068（门禁）/ D069（schema）/ D070（评分）
+
 > 委托方：run-lead（dsh-codepunk 六阶段多智能体开发流程预设 · skill 层强化）
 > 调研岗：ind-res（唯一联网岗）
 > 检索窗口：2026-08-19（UTC+7）

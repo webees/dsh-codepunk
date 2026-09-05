@@ -1,5 +1,7 @@
 # DeepSeek Harness 深度调研简报（dsh-codepunk 特性利用基线）
 
+> 支撑决策号：D066（goal 续行）/ D078（模型路由）
+
 > 调研岗：ind-res（行业分析）
 > 检索窗口：2026-08-26 03:00–03:20（UTC+7）
 > 归属：dsh-codepunk（预设 meta 调研，R13 归位 benchmarks/）

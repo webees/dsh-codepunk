@@ -1,5 +1,7 @@
 # dsh-codepunk · 多智能体开发流程预设
 
+## 定位
+
 **dsh-codepunk** 是运行于 DeepSeek Harness 的多智能体开发流程预设（官方「创造模式」产品形态：user preset + skill + 团队编排三层）：以**六阶段闭环**编排一组固定角色子代理，将工程从需求推进到交付——并行、可审计、持续进化；goal 自动续行 / skill 渐进披露 / subagent / sandbox-approval 均基于官方机制（见 benchmarks/deepseek-harness-study.md）。
 
 主会话兼任 **工程主责（run-lead）· 技术统筹（tpm）· 会话调度（sess-mgr）** 三席，不联网、不写业务码；派遣**实现三角**与**职能岗**子代理，以公文驱动（简报 → 交接包 → 证据 → 签收）推进工程。工程目录零污染，运行状态统一存于用户级总库 `~/.dsh-codepunk/`（总库语义）。

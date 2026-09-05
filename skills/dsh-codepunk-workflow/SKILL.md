@@ -143,7 +143,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
     |------|------|------|-----|------|------|
 
     行字段：仓库（项目名/别名）、路径（worktree 绝对路径）、分支（`dsh-codepunk/<run_id>/<task_id>`）、run（归属 run_id）、用途（会话/工作区说明）、状态。**状态三态全程登记**：`active`（创建/重建在用）→ `recovered`（异常恢复后复用）→ `recycled`（D073 合并后回收时联动标记；行保留字段不删，分支 refs 留作审计追溯）。登记以 git 只读实况为准（`git -C <主仓库> worktree list`），不凭记忆。
-2. **并行**派遣三人组（全部后台 continuable，同一轮消息里一起发出）：
+2. **并行**派遣三人组（全部后台 continuable〔D088 可恢复性〕，同一轮消息里一起发出）：
    - `subagent_squad_lead(prompt=简报全量 + 工作房路径 + 汇报节奏)`
    - `subagent_engineer(prompt=简报技术切片 + 写集 + 工作房)`
    - `subagent_sdet(prompt=acceptance + 证据格式 + 允许命令)`
