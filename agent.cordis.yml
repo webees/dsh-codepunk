@@ -313,7 +313,7 @@
       config:
         provider: spawn
         toolName: subagent_product
-        backgroundMode: one-shot
+        backgroundMode: continuable
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -331,7 +331,7 @@
       config:
         provider: spawn
         toolName: subagent_research
-        backgroundMode: one-shot
+        backgroundMode: continuable
         maxDepth: 1
         # 唯一保留 web 工具的岗位：allow = 基础工具集 + web_search/web_fetch。
         # 其余岗位（&role-allow）默认无 web。
@@ -351,7 +351,7 @@
       config:
         provider: spawn
         toolName: subagent_people
-        backgroundMode: one-shot
+        backgroundMode: continuable
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -370,7 +370,7 @@
       config:
         provider: spawn
         toolName: subagent_docs
-        backgroundMode: one-shot
+        backgroundMode: continuable
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -388,7 +388,7 @@
       config:
         provider: spawn
         toolName: subagent_proc_audit
-        backgroundMode: one-shot
+        backgroundMode: continuable
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -407,7 +407,7 @@
       config:
         provider: spawn
         toolName: subagent_sys_arch
-        backgroundMode: one-shot
+        backgroundMode: continuable
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -426,7 +426,7 @@
       config:
         provider: spawn
         toolName: subagent_code_review
-        backgroundMode: one-shot
+        backgroundMode: continuable
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -445,7 +445,7 @@
       config:
         provider: spawn
         toolName: subagent_release_eng
-        backgroundMode: one-shot
+        backgroundMode: continuable
         maxDepth: 1
         toolFilter:
           allow: *role-allow

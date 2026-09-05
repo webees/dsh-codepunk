@@ -56,3 +56,18 @@
   `llm-deepseek` 与 `freebuff` 两个 provider 目录里的裸名/前缀名不一致，且上游 region_limited——
   要么给 freebuff-proxy 配上游别名与放行区，要么把 `llm-deepseek.baseURL` 指回可用端点；
   否则任何仍指向 `deepseek-official` 的 harness 内部 agent 会持续重试空转。
+
+## F-003 · one-shot 子代理被限流打断即整轮报废（2026-09-05，sectest-rebuild run）
+
+- 症状：`subagent_code_review` 的扣分明细轮（D1 首试、R4 常驻尝试）中途 429 失败后，
+  GUI 记录显示「一次性子代理记录 · 一次性任务不支持后续消息」，且「仅可从已完成轮次的最后一条消息分支」——
+  失败轮没有已完成轮可分支 ⇒ **该轮工作不可恢复**，只能重新 spawn、从零取证。
+- 影响：本 run 的评分循环因此重复消耗 3 次完整取证轮（D1 首试、R3 首试返回 null、R4 一次性）。
+- 根因：预设 13 个岗位里 8 个 `backgroundMode: one-shot`（product/research/people/docs/
+  proc-audit/sys_arch/code_review/release_eng）。one-shot 在网关抖动（本会话 llm-deepseek 上游
+  region_limited + bai 配额）下等于"每轮都可能整轮作废"。
+- 修复：`agent.cordis.yml` 全 13 岗位改 `continuable`（`subagent_codex`/`subagent_claude_code`
+  为外部后端，保持 `enableRunInBackground: false` 不动）。YAML 已 ruby 校验通过。
+- 生效障碍：同 F-002——agentOptions/backgroundMode 在插件注册期解析，**须新开对话或重启 DSH** 才生效。
+- 未重启前的可用替代：① `workflow` 的 `agent(prompt, {provider,model})` 逐次显式路由（已验证可跑）；
+  ② 通用 `subagent`（本就是 continuable）承担评审轮，失败后可 send_message 续跑。
