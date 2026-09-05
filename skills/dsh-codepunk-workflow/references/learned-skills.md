@@ -76,6 +76,8 @@
 | `benchmarks/prompt-injection-guardrails.md` | 注入防护调研（D084 来源） |
 | `benchmarks/file-hygiene-skill.md` | 文件卫生技能调研（D079 来源） |
 | `benchmarks/preset-tool-fixes.md` | 预设工具缺陷台账（F-001~F-004，D090 双要件实证来源，非决策号调研） |
+| `benchmarks/prompt-compression-methods.md` | 提示词精简方法论（D074 延伸应用） |
+| `benchmarks/prompt-compression-methods-v2.md` | 精简技巧收敛调研 v2（D074 延伸应用） |
 | `benchmarks/agent-memory-management.md` | agent 记忆管理调研（D085 来源） |
 
 ## 应用原则（铁律）

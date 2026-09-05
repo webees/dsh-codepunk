@@ -1,5 +1,7 @@
 # 简报：AI agent 系统提示词/预设文件精简技巧（v2 限时收敛版）
 
+> 支撑决策号：D074（上下文纪律）延伸应用 · 性质：方法论调研（收敛版，6 次工具调用内完成）
+
 - 作者：ind-res ｜ retrieved_at：2026-07-29 ｜ 6 次工具调用内收敛
 - 检索实况：本会话 web provider 不可用（web_fetch 报 "no usable web provider"）；改用 curl 直取，docs.claude.com 与 api.github.com 均返回 HTTP 200，但**正文未逐条核对**，下述技巧标注来源可信度。
 
