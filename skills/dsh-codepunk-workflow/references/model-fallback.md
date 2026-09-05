@@ -12,11 +12,15 @@
 
 ## 二、回退链（三级，按序）
 
-| 级 | provider（settings 名） | 模型 | 适用 |
-|---|---|---|---|
-| **主** | bai（api.b.ai） | qwen3.8-flash | 默认路由 |
-| **备 1** | llm-deepseek（opencode 网关） | deepseek-v4-flash | bai 持续失败时 |
-| **备 2** | mtplx（本地 127.0.0.1:8000） | mtplx-qwen38-27b-optimized-speed | 云端均失败时（本地兜底） |
+| 级 | provider（settings 名） | 模型 | 探针状态（2026-09-06） | 适用 |
+|---|---|---|---|---|
+| **主** | bai（api.b.ai） | qwen3.8-flash | ✅ **verified 可用**（ping→pong） | 默认路由 |
+| **备 1** | freebuff-proxy（127.0.0.1:3457） | deepseek/deepseek-v4-flash | ❌ 上游日额度耗尽（12h15m 重置，提示换 z-ai/glm-5.3-flash） | bai 失败时优先试 |
+| **备 2** | mtplx（本地 127.0.0.1:8000） | mtplx-qwen38-27b-optimized-speed | ✅ **verified 可用**（本地 Qwen3.8 正常） | 云端均失败时（本地兜底，**当前可靠备选**） |
+| ~~备 3~~ | llm-deepseek（opencode 网关） | deepseek-v4-flash | ❌ 周额度耗尽（1 天重置） | 暂不可用 |
+| ~~备 4~~ | bai | deepseek-v4-flash | ❌ 余额不足（balance=0） | 暂不可用 |
+
+> **探针纪律（优先测已配置模型）**：回退切换前，先跑最小探针验证目标模型可用（见 §五 命令），**只切到 verified 的模型**；本表探针状态每次实测后更新（mark 日期）。
 
 ## 三、回退触发与执行（run-lead 纪律）
 
@@ -41,6 +45,13 @@
 
 ## 五、执行要点
 
+- **探针测试命令（切换前 MUST 先验）**：
+  ```bash
+  curl -sS -m 20 -X POST "<baseURL>/v1/chat/completions" \
+    -H "Authorization: Bearer <KEY>" -H "Content-Type: application/json" \
+    -d '{"model":"<model>","messages":[{"role":"user","content":"ping"}],"max_tokens":5}'
+  ```
+  ✅ 响应含 `choices` → 可用；`error` → 记 code/message 到本表探针列。
 - **主进程默认已统一**：`bai/qwen3.8-flash`（settings）
 - **岗位零声明**：agent.cordis.yml 已删 13 处 agentOptions（本次）
 - 回退是**run-lead 裁决动作**：识别持续失败 → 切换 → 验证 → 记录

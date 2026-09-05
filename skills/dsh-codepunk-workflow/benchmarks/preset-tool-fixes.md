@@ -71,3 +71,21 @@
 - 生效障碍：同 F-002——agentOptions/backgroundMode 在插件注册期解析，**须新开对话或重启 DSH** 才生效。
 - 未重启前的可用替代：① `workflow` 的 `agent(prompt, {provider,model})` 逐次显式路由（已验证可跑）；
   ② 通用 `subagent`（本就是 continuable）承担评审轮，失败后可 send_message 续跑。
+
+## F-003 补充 · 跨预设范围（2026-09-05 sponsor 追加指令「所有 one-shot 子代理改为可对话」）
+
+- 全量清点 `~/.dsh/.agent-presets/`（10 个预设）：只有 3 个预设带 subagent 岗位——
+  dsh-codepunk 13 岗位、edu-team 11 岗位、standard-zh 4 岗位；其余 7 个预设无子代理岗位。
+- 处置：
+  - dsh-codepunk：13/13 已 continuable（本轮之前完成），`agentOptions` 已全部移除，子代理继承主进程路由；
+  - edu-team：5 个岗位（mentor / expert / journal_editor / stats / peer_reviewer）由 one-shot 改 continuable，
+    已 ruby YAML 校验，备份 `/tmp/edu-team.agent.bak`；
+  - standard-zh：仅 2 个外部后端，无需改。
+- **刻意不改的 4 处**：`subagent_codex` / `subagent_claude_code`（edu-team、standard-zh 各一对）。
+  它们是外部 CLI 后端（`provider: codex` / `claude-code`，`enableRunInBackground: false`），
+  不是 harness 内常驻会话，改 backgroundMode 既无意义也可能破坏其后端语义。
+- 历史 one-shot 记录（会话缓存实测 122 条 one-shot / 5 条 continuable）**无法转为可对话**：
+  其运行时对象已随轮次结束释放，且平台只允许从"已完成轮次的最后一条消息"分支；
+  其中还含插件自有的 fire-and-forget 维护任务（如 `Mnemon idle checkpoint review`），本就不该可对话。
+- 生效条件：`backgroundMode` 与 `agentOptions` 都在插件注册期解析 →
+  **新开一次对话**即对 dsh-codepunk 岗位生效；改 `settings.yaml`（模型/retryPolicy）才需要重启 DSH Desktop。
