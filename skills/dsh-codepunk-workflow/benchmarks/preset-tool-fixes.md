@@ -90,3 +90,16 @@
   其中还含插件自有的 fire-and-forget 维护任务（如 `Mnemon idle checkpoint review`），本就不该可对话。
 - 生效条件：`backgroundMode` 与 `agentOptions` 都在插件注册期解析 →
   **新开一次对话**即对 dsh-codepunk 岗位生效；改 `settings.yaml`（模型/retryPolicy）才需要重启 DSH Desktop。
+
+## F-004 · D089 的"删 agentOptions 即继承主模型"被实测否证（2026-09-06）
+
+- D089 曾把 13 岗位 `agentOptions` 全删，假设"子代理继承父模型"。实测否证：
+  UI 注入的路由不在 `parent.options` 上，孩子落**产品默认** `deepseek-v4-flash`
+  （descriptor 实证；`dsh-subagent/lib/index.js:780-781` 的继承链只在父 options 有值时生效）。
+  该默认路由上游 `freebuff-proxy(127.0.0.1:3457)` 已 region_limited ⇒ 重启后照样全挂。
+- 反证样本：R4（`542566d2`）与 R5（`2882e7e1`）的 `request/header` 均为 `bai / qwen3.8-flash`——
+  它们 spawn 时 agentOptions 尚在，故能跑通；说明"能跑"来自显式声明，不来自继承。
+- 修复（D090）：13 岗位重新写入 `agentOptions: {provider: bai, model: qwen3.8-flash}`，
+  与 `backgroundMode: continuable` 并列为**双要件**；ruby YAML 校验通过，备份 `/tmp/agent.pre-d090.bak`。
+- 附带事实：`workflow` 的 `agent()` 与 `run_in_background: false` 结构性一次性，
+  记录不可续聊、历史不可追溯 ⇒ 需要"可续聊"就必须走 continuable 岗位工具，不能靠 workflow。

@@ -221,6 +221,11 @@
         provider: spawn
         toolName: subagent
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
 
     - id: tool-subagent-fork
       name: '@deepseek-ai/dsh-tool-subagent'
@@ -228,6 +233,11 @@
         provider: fork
         toolName: subagent_fork
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
 
     # ── 多智能体开发流程 · 岗位子代理 ─────────────────────────────────────────
     # 每个岗位 = 一个独立命名的 subagent 工具实例：spawn 提供者 + 固定角色人设
@@ -244,6 +254,11 @@
         provider: spawn
         toolName: subagent_squad_lead
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           # 白名单（allow）锚点：默认全关，只放行本岗所需的继承工具（shell/文件/检索/作业/todo/skill）。
@@ -270,6 +285,11 @@
         provider: spawn
         toolName: subagent_engineer
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -290,6 +310,11 @@
         provider: spawn
         toolName: subagent_sdet
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -313,6 +338,11 @@
         provider: spawn
         toolName: subagent_product
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -331,6 +361,11 @@
         provider: spawn
         toolName: subagent_research
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         # 唯一保留 web 工具的岗位：allow = 基础工具集 + web_search/web_fetch。
         # 其余岗位（&role-allow）默认无 web。
@@ -351,6 +386,11 @@
         provider: spawn
         toolName: subagent_people
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -370,6 +410,11 @@
         provider: spawn
         toolName: subagent_docs
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -388,6 +433,11 @@
         provider: spawn
         toolName: subagent_proc_audit
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -407,6 +457,11 @@
         provider: spawn
         toolName: subagent_sys_arch
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -431,6 +486,11 @@
         provider: spawn
         toolName: subagent_code_review
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -450,6 +510,11 @@
         provider: spawn
         toolName: subagent_release_eng
         backgroundMode: continuable
+        agentOptions:
+          # D090：必须显式声明。实测删除 agentOptions 后孩子并不继承主会话模型，
+          # 而是落产品默认 deepseek-v4-flash（该路由上游已 region_limited，必挂）。
+          provider: bai
+          model: qwen3.8-flash
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -468,6 +533,8 @@
     - id: tool-subagent-codex
       name: '@deepseek-ai/dsh-tool-subagent'
       disabled: true
+      # 外部后端（codex/claude-code）无 prepareContinuable —— 不支持 backgroundMode: continuable，
+      # 保持 one-shot + enableRunInBackground:false（前台一次性）；启用前勿改这两项（平台限制）。
       config:
         provider: codex
         toolName: subagent_codex
