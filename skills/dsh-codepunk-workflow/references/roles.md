@@ -36,7 +36,7 @@
 | 软件开发 | engineer | L4 | subagent_engineer | ③每 task 招聘 |
 | 测试验证 | sdet | L4 | subagent_sdet | ③每 task 招聘 |
 | 代码审查 | code-review | L5 | subagent_code_review | ④审查门（L/高风险强制） |
-| 发布执行 | release-eng | L5 | subagent_release_eng | ⑤′合并门（串行） |
+| 发布执行 | release-eng | L5 | subagent_release_eng | ⑤合并门（串行） |
 | 流程审计 | proc-audit | L3 | subagent_proc_audit | 巡检/门禁前 |
 | 业务赞助 | sponsor | L0 | （人类，非 LLM） | ask_user_question |
 | 会话调度 | sess-mgr | L2 | （主会话兼） | — |
@@ -109,7 +109,7 @@
 【边界】只读；不写业务码；不联网；不替代 sdet 证据。
 ```
 
-### 发布执行（⑤′）
+### 发布执行（⑤）
 
 ```
 【岗位】release-eng@run-<run_id>

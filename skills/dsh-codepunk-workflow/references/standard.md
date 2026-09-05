@@ -12,7 +12,7 @@
 | P05–P06 | ③ 多小组并行开发 | SKILL.md §2 ③ |
 | P06（复用） | ⑥ 再规划入口（♻️） | SKILL.md §2 ⑥ |
 | P07 | ④ 巡检与交接（并覆盖 ⑤ 解散的开头） | SKILL.md §2 ④ / §2 ⑤ |
-| P10 | ⑤′ 合并门（串行） | SKILL.md §2 ⑤′ |
+| P10 | ⑤ 合并门（串行） | SKILL.md §2 ⑤ |
 | P11 | 记忆简报（文档小组 → 工程主责） | references/artifacts.md「记忆简报」 |
 | P14 | 强制解散（外因超时 / 失败，先保存 WIP） | SKILL.md §5 失败处理 |
 | P16 | ⑤ 解散与评分（人事） | SKILL.md §2 ⑤ / references/knowledge.md 评分公式 |
@@ -37,7 +37,7 @@
 | D070 | 硬信号驱动评分-再规划 + 经验→skill 沉淀回路：评分/再规划以证据文件事实为准，经验模板沉淀至 knowledge/lessons/（借鉴 CAMEL / ChatDev / graphify） | references/knowledge.md「硬信号驱动评分-再规划」 |
 | D071 | 委托契约：每席显式声明「单轮受控输出 vs 多轮任务」，双侧 guardrail 校验（借鉴 ADK Task API / Swarm handoff） | references/roles.md「委托契约」 |
 | D072 | 总库语义：运行根统一存 `~/.dsh-codepunk/projects/<id>/`，工程目录保持纯净；开工三件事（resolve → source dsh-codepunk-home.sh → 建运行根） | SKILL.md §1 |
-| D073 | worktree 生命周期回收：合并完成即 `worktree remove --force + prune`（分支 refs 保留审计）；goal complete 前 MUST 核验 `worktree list` 仅主仓库（环境终态整洁是验收项） | SKILL.md §2 ⑤′ P10.5 / §2 ⑥.4 |
+| D073 | worktree 生命周期回收：合并完成即 `worktree remove --force + prune`（分支 refs 保留审计）；goal complete 前 MUST 核验 `worktree list` 仅主仓库（环境终态整洁是验收项） | SKILL.md §2 ⑤ P10.5 / §2 ⑥.4 |
 | D074 | 上下文纪律：证据只回 command+exit_code+log_ref（拒绝整段 stdout）；子代理汇报 ≤1500 token 摘要；主会话每轮压缩旧巡检记录防上下文堆积（借鉴 Anthropic 上下文工程） | SKILL.md §2 ④ / agent.cordis.yml 三席人设 |
 | D075 | 消息层纪律：首行=可执行结论+首末行双读验证；多步编号≤5+工具清单替叙事；禁前导/复述/寒暄；安全先于简洁；调试螺旋防空转（借鉴 ayghri/i-have-adhd，MIT） | SKILL.md §2 ④ / benchmarks/adhd-workflow-analysis.md |
 | D076 | token 经济学细则：禁自造缩写与箭头；保护清单逐字保留（术语/代码/数字/否定词）；Auto-Clarity 豁免场景；持久化产物完整行文；压缩风格不压缩语言（借鉴 juliusbrussee/caveman，MIT） | SKILL.md §2 ④ / benchmarks/caveman-analysis.md |

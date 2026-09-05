@@ -165,7 +165,7 @@ comments:
   - "<打回/放行意见>"
 ```
 
-## 合并门（⑤′，P10）
+## 合并门（⑤，P10）
 
 `approvals/merge.yaml`：
 

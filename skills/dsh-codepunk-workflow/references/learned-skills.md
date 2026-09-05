@@ -20,7 +20,7 @@
 | **D070** | 硬信号驱动评分-再规划 + 经验→skill 沉淀回路 | CAMEL（verifiable rewards）/ ChatDev（经验共学习）/ graphify | references/knowledge.md | v1.0 |
 | **D071** | 委托契约：单轮受控输出 vs 多轮任务 + 双侧 guardrail | Google ADK Task API / openai swarm handoff | references/roles.md | v1.0 |
 | **D072** | 总库语义：运行根统一用户级总库，工程目录零污染 | 自研工作区治理（含迁移/回滚窗） | SKILL §1 / README | v1.0 |
-| **D073** | worktree 生命周期：创建登记→回收→prune，分支 refs 留审计 | 实战教训（worktree 残留根因复盘） | SKILL §2⑤′/⑥ + knowledge/lessons/ | v1.0 |
+| **D073** | worktree 生命周期：创建登记→回收→prune，分支 refs 留审计 | 实战教训（worktree 残留根因复盘） | SKILL §2⑤/⑥ + knowledge/lessons/ | v1.0 |
 | **D074** | 上下文纪律：证据只回引用、汇报≤1500 token、主会话防腐 | Anthropic 上下文工程（context rot/compaction/tool-result） | SKILL P07 + 三席人设 | v1.0 |
 | **D075** | 消息层纪律：首行=结论、编号≤5、禁寒暄、调试螺旋防空转 | ayghri/i-have-adhd（ADHD 友好输出，MIT） | SKILL P07 + 全员人设 + R11 | v1.0 |
 | **D076** | token 经济学：禁自造缩写/箭头、保护清单、Auto-Clarity 豁免、持久化产物完整行文 | juliusbrussee/caveman（极简输出，MIT） | SKILL P07 + R11 全员参考；sdet 终态拒绝线 / engineer 先取证后改码同源 | v1.0 |

@@ -73,7 +73,7 @@
 | D070 | 硬信号评分 | CAMEL/ChatDev | knowledge.md | v1.0 |
 | D071 | 委托契约 | ADK/Swarm | roles.md | v1.0 |
 | D072 | 总库语义 | 自研 | SKILL §1 | v1.0 |
-| D073 | worktree 生命周期 | 实战 | SKILL §2⑤′ | v1.0 |
+| D073 | worktree 生命周期 | 实战 | SKILL §2⑤ | v1.0 |
 | D074 | 上下文纪律 | Anthropic | SKILL P07 + 人设 | v1.0 |
 | D075 | 消息纪律 | i-have-adhd | SKILL P07 + 全员 | v1.0 |
 | D076 | token 经济学 | caveman | SKILL P07 + 人设 | v1.0 |

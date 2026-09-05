@@ -30,7 +30,7 @@ metadata:
 | ③ 并行开发 | 每块招三人组，后台并行派遣 | `subagent_squad_lead`/`subagent_engineer`/`subagent_sdet` | 各工作房代码、`progress/` |
 | ④ 巡检与交接 | 巡检进度、审查门、组织交接、签收 | 小队主责 + `subagent_code_review` + 接收方 | `reviews/`、`handoff/`、`acceptance.yaml` |
 | ⑤ 解散与评分 | 就地解散，人事评分沉淀 | `subagent_people` | `scores.yaml`、`knowledge/hr/` |
-| ⑤′ 合并门 | 串行合并 done 且门禁通过的 chunk | `subagent_release_eng` | `approvals/merge.yaml` |
+| ⑤ 合并门 | 串行合并 done 且门禁通过的 chunk | `subagent_release_eng` | `approvals/merge.yaml` |
 | ⑥ 再规划 | 综合成果 + 知识库，规划下一轮 | 你 + 技术统筹 | 新一轮 `chunks.yaml` |
 
 辅助编制：**文档小组** `subagent_docs`（简报组装/交接合并/申请队列/记忆/提示词优化）、**调研小组** `subagent_research`（唯一联网岗）、**流程审计** `subagent_proc_audit`（红灯）、**代码审查** `subagent_code_review`、**发布执行** `subagent_release_eng`、**知识库**（跨组沉淀）。
@@ -80,7 +80,7 @@ projects/<project_id>/            # 该项目用户级总库根（= 运行根 DS
   chunks.yaml                     # 分块表（write_paths 互斥 + depends_on 无环）
   plan_draft.md                   # 规划草案（①→②）
   change_orders/<id>.yaml         # 需求变更单（proposed→applied→closed，D038）
-  approvals/merge.yaml            # 合并门批准（⑤′）
+  approvals/merge.yaml            # 合并门批准（⑤）
   runs/<run_id>/                  # 每轮运营的独立目录
     briefs/                       # 各 task 工作简报
     research/briefs/<topic>.md    # 调研简报（URL + retrieved_at）
@@ -187,7 +187,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 2. 派遣 `subagent_people` 评分：按信号（evidence / status / handoff 完整度 / ack / retries）对**团队**与**每个个人**打 0–100（base 50，公式见 references/knowledge.md）。
 3. 沉淀：`tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`（按人设名/团队名聚合，跨轮优化依据）。评分不阻断流程。
 
-### ⑤′ 合并门（P10 · 串行）
+### ⑤ 合并门（P10 · 串行）
 
 1. 派遣 `subagent_release_eng`（或你执行同一规则）：按 `depends_on` 拓扑排序 done 且门禁通过的 chunk，**每次只合并一个**。
 2. 合并前校验：evidence 经机械校验器（`scripts/evidence-verify.sh`，verdict=PASS 才有效，见 artifacts D069）+ diff ⊆ write_paths + 门禁文件齐（L/高风险含 review 与 security）→ 写 `approvals/merge.yaml`（`approved_by/approved_at`）。
