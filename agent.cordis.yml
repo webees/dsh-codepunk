@@ -221,11 +221,6 @@
         provider: spawn
         toolName: subagent
         backgroundMode: continuable
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
 
     - id: tool-subagent-fork
       name: '@deepseek-ai/dsh-tool-subagent'
@@ -233,11 +228,6 @@
         provider: fork
         toolName: subagent_fork
         backgroundMode: continuable
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
 
     # ── 多智能体开发流程 · 岗位子代理 ─────────────────────────────────────────
     # 每个岗位 = 一个独立命名的 subagent 工具实例：spawn 提供者 + 固定角色人设
@@ -255,10 +245,6 @@
         toolName: subagent_squad_lead
         backgroundMode: continuable
         maxDepth: 1
-        agentOptions:
-          # D078 模型路由：显式声明，不依赖继承
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           # 白名单（allow）锚点：默认全关，只放行本岗所需的继承工具（shell/文件/检索/作业/todo/skill）。
           # 未列入的（web、ask_user、goal、编排/委托、其它岗位工具）一律不可见；新增工具不会自动暴露。
@@ -286,10 +272,6 @@
         toolName: subagent_engineer
         backgroundMode: continuable
         maxDepth: 1
-        agentOptions:
-          # D078 模型路由：显式声明，不依赖继承
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -310,10 +292,6 @@
         toolName: subagent_sdet
         backgroundMode: continuable
         maxDepth: 1
-        agentOptions:
-          # D078 模型路由：显式声明，不依赖继承
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -337,11 +315,6 @@
         toolName: subagent_product
         backgroundMode: one-shot
         maxDepth: 1
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -360,11 +333,6 @@
         toolName: subagent_research
         backgroundMode: one-shot
         maxDepth: 1
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
         # 唯一保留 web 工具的岗位：allow = 基础工具集 + web_search/web_fetch。
         # 其余岗位（&role-allow）默认无 web。
         toolFilter:
@@ -385,11 +353,6 @@
         toolName: subagent_people
         backgroundMode: one-shot
         maxDepth: 1
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -409,11 +372,6 @@
         toolName: subagent_docs
         backgroundMode: one-shot
         maxDepth: 1
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -432,10 +390,6 @@
         toolName: subagent_proc_audit
         backgroundMode: one-shot
         maxDepth: 1
-        agentOptions:
-          # D078 模型路由：显式声明，不依赖继承
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -455,11 +409,6 @@
         toolName: subagent_sys_arch
         backgroundMode: one-shot
         maxDepth: 1
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -479,11 +428,6 @@
         toolName: subagent_code_review
         backgroundMode: one-shot
         maxDepth: 1
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-
@@ -503,11 +447,6 @@
         toolName: subagent_release_eng
         backgroundMode: one-shot
         maxDepth: 1
-        agentOptions:
-          # D087 模型路由（sponsor 2026-09-05 指令）：显式走 bai / qwen3.8-flash，
-          # 不依赖继承，不再使用已失效的 deepseek-official / deepseek-v4-flash。
-          provider: bai
-          model: qwen3.8-flash
         toolFilter:
           allow: *role-allow
         persona: |-

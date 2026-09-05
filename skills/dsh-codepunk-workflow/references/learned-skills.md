@@ -33,6 +33,7 @@
 | **D084** | 注入防护：工具返回不可信+阻断上报；记忆 canary；skill 供应链门；PIT-* 分类法 | defender/SkillSpector/rebuff/arc_pi（Apache-2.0/CC-BY） | references/prompt-injection-rules.md / 巡检 | v1.0 |
 | **D085** | 知识库记忆增强：knowledge/ 三级化（L0/L1/L2）+ 过期三态 + 自包含互链 + 多信号检索 + 异步抽经验 | Mem0/OpenViking/Letta/OpenHuman（仅机制思想） | references/memory-enhancement.md / knowledge/ | v1.0 |
 | **D086** | 限流自适应：自动发现 429 + 三档降级（L1 降并发 L2 串行 L3 暂停）+ 错峰标记 + 限流历史自学习 | 实战经验（api.b.ai 实测） | references/rate-limit-adaptation.md / SKILL §③ | v1.0 |
+| **D088** | 模型统一与回退：子代理继承主进程模型（删岗位声明）+ 三级回退链（bai→deepseek→mtplx） | 实战经验（模型分裂修复） | references/model-fallback.md / settings | v1.0 |
 | **D079** | 文件卫生：防残留/清理自查/终态门闩 | agent-housekeeping（MIT）+ davila7 + SoloDawn RB-37 | references/file-hygiene.md | v1.0 |
 
 ## 技能类别图谱（方便按需查找）

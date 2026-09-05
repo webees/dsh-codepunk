@@ -254,6 +254,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 - `references/diagram-guide.md` —— 文档配图规范（D082：场景→图类型 + 4px 网格/密度/语义色）。
 - `references/skill-governance.md` —— 技能治理与升级机制（D083：四态生命周期 + 三件套文档化 + 版本标记）。
 - `references/prompt-injection-rules.md` —— 注入防护纪律（D084：工具返回不可信/记忆 canary/供应链门）。
+- `references/model-fallback.md` —— 模型统一与回退机制（D088）。
 - `references/memory-enhancement.md` —— 知识库记忆增强（D085：knowledge/ 三级化/过期三态/自包含互链）。
 - `references/learned-skills.md` —— 学到的技能总览（D066–D083 溯源 + 应用铁律 + benchmarks 索引）。
 
