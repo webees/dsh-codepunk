@@ -62,10 +62,16 @@
 - 升级历史追加在该技能行下（缩进列表），不覆盖旧记录（可追溯演进）。
 - SKILL.md §7 引用加「（当前 vX.Y）」标注最新。
 
-## 五、实施规划（当前已应用技能全景）
+## 五、实施规划（当前已应用技能全景，30 条全接线）
 
 | 决策号 | 技能 | 来源 | 应用位置 | 版本 |
 |---|---|---|---|---|
+| D024 | 并行软上限：S=1 / M=3 / L=6（max_awake 8） | 流程设计 | SKILL §2 ③ | v1.0 |
+| D031 | 双门闩齐即自动开工 | 流程设计 | SKILL §2 ③ | v1.0 |
+| D034 | goal active 前 product_acceptance[] 非空 | 流程设计 | SKILL §2 ① / artifacts | v1.0 |
+| D035 | sponsor 通道与 goal 终裁归工程主责 | 流程设计 | SKILL §2 ① / agent.cordis.yml | v1.0 |
+| D038 | 需求变更只走 change_orders | 流程设计 | SKILL §3 R6 / artifacts | v1.0 |
+| D065 | sponsor 随时投喂、分诊并入 | 流程设计 | SKILL §2 ① | v1.0 |
 | D066 | goal 自动续行 | DSH 平台 | SKILL §0.1 | v1.0 |
 | D067 | checkpoint 断点续行 | langgraph | SKILL §2③ | v1.0 |
 | D068 | 门禁 guardrail | crewAI/ADK | SKILL §2④ | v1.0 |
@@ -82,7 +88,14 @@
 | D079 | 文件卫生 | agent-housekeeping | file-hygiene.md | v1.0 |
 | D080 | 撰写标准 | 实战 | roles.md | v1.0 |
 | D081 | 产出纪律 | ponytail | anti-overengineering.md | v1.0 |
-| D082 | 文档配图 | diagram-design | diagram-guide.md + docs 人设 | v1.0（应用日期 2026-08-30） |
+| D082 | 文档配图 | diagram-design | diagram-guide.md + docs 人设 | v1.0 |
+| D083 | 技能治理与升级 | 自研治理机制 | skill-governance.md / 文档小组 | v1.0 |
+| D084 | 注入防护 | defender/SkillSpector/rebuff | prompt-injection-rules.md / 巡检 | v1.0 |
+| D085 | 知识库记忆增强 | Mem0/OpenViking/Letta | memory-enhancement.md / knowledge | v1.0 |
+| D086 | 限流自适应 | 实战经验 | rate-limit-adaptation.md / SKILL §③ | v1.0 |
+| D087 | ⚠已废弃（D089 取代）岗位路由改道 | 实战 | model-routing.md §五 | v1.0 |
+| D088 | 子代理可恢复性（continuable） | 实战 | agent.cordis.yml / preset-tool-fixes F-003 | v1.0 |
+| D089 | 模型统一与回退 | 实战经验 | model-fallback.md / settings | v1.0 |
 
 ## 六、文档小组职责（技能治理执行者）
 
