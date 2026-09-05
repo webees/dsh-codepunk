@@ -42,7 +42,7 @@
 | D075 | 消息层纪律：首行=可执行结论+首末行双读验证；多步编号≤5+工具清单替叙事；禁前导/复述/寒暄；安全先于简洁；调试螺旋防空转（借鉴 ayghri/i-have-adhd，MIT） | SKILL.md §2 ④ / benchmarks/adhd-workflow-analysis.md |
 | D076 | token 经济学细则：禁自造缩写与箭头；保护清单逐字保留（术语/代码/数字/否定词）；Auto-Clarity 豁免场景；持久化产物完整行文；压缩风格不压缩语言（借鉴 juliusbrussee/caveman，MIT） | SKILL.md §2 ④ / benchmarks/caveman-analysis.md |
 | D077 | 反幻觉纪律：完成断言须新鲜验证证据（Iron Law）；不确定即明示（不编造来源、无引文即撤回）；知识冲突显式化；证据门控交付；sdet 防空壳绿；多智能体交叉验证（借鉴 superpowers vbc / Anthropic 防幻觉，细则见 references/anti-hallucination-rules.md） | SKILL.md §2 ④ / references/anti-hallucination-rules.md |
-| D078 | 模型路由与成本杠杆：全岗位统一 deepseek-v4-flash（用户决策 D080，禁 pro）；agentOptions 显式声明；错峰调度半价；cache 前缀稳定性优先；reasoning_tokens 可归因；maxTokens 自配防溢出（基于 dsh-llm-deepseek） | references/model-routing.md |
+| D078 | 模型路由与成本杠杆：全岗位统一 flash 档（现行型号见 **D087**，档位纪律承自 D080 禁 pro/max）；agentOptions 显式声明；错峰调度半价；cache 前缀稳定性优先；reasoning_tokens 可归因；maxTokens 自配防溢出 | references/model-routing.md |
 | D080 | 撰写标准：节名用方块标签【节名】、禁 ## 标题于 prompt 正文；一行一节；中文全角标点；每节 ≤40 字动宾起头；禁修饰副词；实战照抄模板不自创格式 | references/roles.md（§派遣 prompt 模板） |
 | D081 | 产出纪律（YAGNI）：七级递减阶梯（需要吗→复用→stdlib→平台→已装依赖→一行→最小=先理解后上阶梯）；根因修复（grep 全部 caller 一次修）；简化留痕 dsh-debt: 注释标天花板+升级路径；Not-lazy 保护清单；检查纪律（非平凡一个自检，不建框架）；输出契约 code-first+≤3 行；审查五 tag+net: 行（借鉴 ponytail 115k★ MIT） | references/anti-overengineering.md / agent.cordis.yml engineer/sdet 人设 |
 | D082 | 文档配图：文档小组产出按场景配图（WORK_BRIEF→Process、chunks 依赖→Dependency、交接→Data flow）；4px 网格/密度 4/10/语义角色配色/静态优先（借鉴 cathrynlavery/diagram-design MIT） | references/diagram-guide.md / docs 人设 |
@@ -51,3 +51,4 @@
 | D085 | 知识库记忆增强：knowledge/ 三级化（L0 热/L1 工作/L2 参考）；知识过期三态（active/stale/archived）；条目自包含+refs 互链；多信号检索（复用计数+语义标签+时间序）；run 收官后异步抽经验（借鉴 Mem0/OpenViking/Letta，仅机制思想） | references/memory-enhancement.md / knowledge/ 布局 |
 | D086 | 限流自适应：自动发现 429 RATE_LIMIT 模式（三档降级：L1 降并发 L2 串行 L3 暂停）；自我学习（限流历史入 knowledge/lessons/ 供后续参考）；错峰标记复用 D078 调度 | references/rate-limit-adaptation.md / SKILL §③ |
 | D079 | 文件卫生：开工卫生契约五硬规则（状态文件不进工程/tmp 集中化/不造脚手架/生成前查重）+ 收尾残留自查（交接包必填节）+ 终态清理强制门闩 + git clean 演练制度（借鉴 agent-housekeeping MIT / davila7 / SoloDawn RB-37） | references/file-hygiene.md / SKILL §2④ |
+| D087 | 岗位模型路由改道：全 13 个岗位（含通用 subagent / subagent_fork）agentOptions **显式**声明 `provider: bai` + `model: qwen3.8-flash`，取代 D080 的 deepseek-official 路由；**档位纪律不变**（只用 flash，禁 pro/max）；外部后端 codex / claude-code 不套本表。动因：deepseek-official 上游改用带前缀型号名致子代理启动即 UNKNOWN_MODEL，退化为"零工具调用 + 幻觉汇报已落盘"（sectest-rebuild 实跑取证）。**生效条件**：工具挂载在会话创建时冻结，路由变更后 MUST **新开对话**（无需重启 app），旧对话派生的子代理仍走旧路由；**放大器**：`retryPolicy.mode: always` 无上限且不区分错误类型，永久性 400 会被无限重试成死锁（已改 normal/3）。回滚须先跑最小探针子代理验证 | agent.cordis.yml / references/model-routing.md §五 §六 |

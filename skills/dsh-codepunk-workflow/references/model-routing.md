@@ -1,20 +1,29 @@
 # 角色分模型路由选型表（references/model-routing.md）
 
 > dsh-deepseek（官方 `dsh-llm-deepseek` 适配器）能力落地方案。
-> **用户决策（D080，2026-08-26）**：**全岗位只允许 `deepseek-v4-flash`，禁 pro**——agent.cordis.yml 已统一接线；pro 仅保留于调研记录，不作为任何岗位模型。**接入方式已源码实证**：`dsh-tool-subagent` Config schema 支持 `agentOptions: { provider, model, maxTokens }`（每岗可配）；子代理默认继承父模型、可被 agentOptions 显式覆盖（`dsh-subagent/lib/index.js:780-781`）。溯源：`benchmarks/dsh-deepseek-analysis.md`（10 一手来源）+ 本地源码核对（2026-08-26）。
+> **现行决策（D087，2026-09-05，sponsor 指令）**：**全岗位走 `provider: bai` + `model: qwen3.8-flash`**（含通用 `subagent` / `subagent_fork`），
+> agent.cordis.yml 已 13 个岗位全部**显式**接线，不依赖继承。
+> 取代 D080（2026-08-26「全岗位只允许 deepseek-v4-flash，禁 pro」）——D080 的档位纪律（**只用 flash 档，禁 pro/max**）继续有效，
+> 换的是 provider 与型号名。沿革与判据见本文 §五。
+> **接入方式已源码实证**：`dsh-tool-subagent` Config schema 支持 `agentOptions: { provider, model, maxTokens }`（每岗可配）；
+> 子代理默认继承父模型、可被 agentOptions 显式覆盖（`dsh-subagent/lib/index.js:780-781`）。
+> 溯源：`benchmarks/dsh-deepseek-analysis.md`（10 一手来源）+ 本地源码核对（2026-08-26）+ sectest-rebuild run 实跑故障（2026-09-05）。
 
 ## 一、岗位 × 模型路由表
 
-| 岗位 | 建议模型 | thinking effort | 理由（成本/质量杠杆） |
+| 岗位 | 模型路由（D087） | thinking effort | 理由（成本/质量杠杆） |
 |---|---|---|---|
-| **sdet（验收）** | deepseek-v4-flash | 默认 | 统一 flash（用户决策，见下） |
-| **squad-lead（调度）** | v4-flash | low | 巡检/汇报是信息整理，低档足够；省 token |
-| **engineer（实现）** | v4-flash | low | 写集实现以执行验证为准（D077 Iron Law），thinking 非主杠杆 |
-| **proc-audit（审计）** | v4-flash | 默认 | 统一 flash（用户决策） |
-| **docs / research / people / product / sys-arch / code-review / release-eng** | v4-flash（默认继承） | 默认 | 职能岗以流程与文件为核心，flash 足够；深挖场景临时覆盖 |
-| **vision 岗（若引入）** | v4-flash-vision-exp | 默认 | 仅该型号支持图像输入（Files API durable attachment） |
+| **sdet（验收）** | bai / qwen3.8-flash | 默认 | 统一 flash 档（档位纪律承自 D080） |
+| **squad-lead（调度）** | bai / qwen3.8-flash | low | 巡检/汇报是信息整理，低档足够；省 token |
+| **engineer（实现）** | bai / qwen3.8-flash | low | 写集实现以执行验证为准（D077 Iron Law），thinking 非主杠杆 |
+| **proc-audit（审计）** | bai / qwen3.8-flash | 默认 | 统一 flash 档 |
+| **subagent / subagent_fork（通用）** | bai / qwen3.8-flash | 默认 | 显式声明，避免继承路径不确定 |
+| **docs / research / people / product / sys-arch / code-review / release-eng** | bai / qwen3.8-flash | 默认 | 职能岗以流程与文件为核心，flash 足够；深挖场景临时覆盖 |
+| **vision 岗（若引入）** | bai / deepseek-v4-flash-vision-exp | 默认 | 需图像输入时单独接线（尚未启用） |
 
-> 实施姿态：统一 flash（用户决策），agentOptions 显式声明 provider/model，不依赖隐式继承（D076 显式优于隐式）。**provider/model 名经 agentOptions 显式声明**，不依赖隐式继承（D076 显式优于隐式）。
+> 实施姿态：**全岗位 agentOptions 显式声明 provider/model，不依赖隐式继承**（D076 显式优于隐式）。
+> 例外：`subagent_codex` / `subagent_claude_code` 是外部后端（`provider: codex` / `claude-code`，`maxDepth: provider-managed`），
+> 不套本表，也不得被改成 bai 路由。
 
 ## 二、成本杠杆纪律（D078，基于 dsh-deepseek 定价）
 
@@ -42,3 +51,54 @@
 | off-peak 错峰收益 | ⏳ 账单依赖 | 同工单 peak/off-peak 双跑比对账单 |
 | 1M context 真实承载 | ⏳ 运行依赖 | 长会话（≥50 轮工具型）观测水位 + CONTEXT_WINDOW_EXCEEDED 率 |
 | vision-exp 流程落地 | ⏳ 场景依赖 | 有 UI/图表验收需求时验证 Files API 路径 |
+
+## 五、决策沿革（为什么换掉 deepseek-official）
+
+| 决策 | 日期 | 内容 | 状态 |
+|---|---|---|---|
+| D080 | 2026-08-26 | 全岗位 `deepseek-official / deepseek-v4-flash`，禁 pro | **已被 D087 取代**（档位纪律"只用 flash、禁 pro/max"仍有效） |
+| D087 | 2026-09-05 | 全岗位 `bai / qwen3.8-flash`，13 个岗位显式接线 | 现行 |
+
+**D087 触发事实**（sectest-rebuild run 实跑取证，非推测）：
+
+1. 三席实现子代理与评审子代理启动即失败，报错
+   `Model 'deepseek-v4-flash' is not available. Supported models: openai/gpt-5.6-luna, upstage/solar-pro4,
+   z-ai/glm-5.3-flash, deepseek/deepseek-v4-flash, mimo/mimo-v2.5`
+   —— 上游已改用**带前缀的型号名**，而 `llm-deepseek` 目录里登记的是裸名 `deepseek-v4-flash`。
+2. 该 baseURL 为 `http://127.0.0.1:3457/v1`（本地代理）；同一 baseURL 的 `freebuff` provider
+   已按前缀名登记（`deepseek/deepseek-v4-flash` 等），可作旁证。
+3. 故障期间子代理会话日志显示每轮 `llm/retry` 16–21 次、**工具调用数 0**，
+   却向主会话回报"已落盘/已 commit"——主会话用 `git log`/`reflog`/全盘 `find` 证伪。
+   结论：**路由失效会让子代理退化成纯文本幻觉**，比慢更糟，必须显式修路由而非靠继承。
+4. 主会话当时正跑在 `bai / qwen3.8-flash` 上且工作正常 → 选它作为全岗位统一路由，
+   顺带消除"部分岗位显式、部分继承"的双轨不确定性。
+
+**回滚条件**：若 `deepseek-official` 目录修正（裸名 ↔ 前缀名对齐）且实跑探针通过，
+可把 13 处 agentOptions 改回；改回前必须先跑一次最小探针子代理验证，不接受"应该好了"。
+
+## 六、生效条件与失效放大器（D087 落地补录，2026-09-06 实跑取证）
+
+改完 `agent.cordis.yml` 不等于改完就生效。三条必须记住的机理：
+
+1. **工具挂载在会话创建时冻结**（承重）。岗位子代理的 `agentOptions` 随父会话的工具实例一次性解析，
+   之后**父会话派生的所有子代理都继承那份旧路由**，与磁盘上的预设文件无关。
+   实测：22:50 改完预设 → 00:17 由旧会话（06:48 创建）派生的探针仍报 `deepseek-v4-flash`；
+   而 00:30 新建会话派生的探针零错误通过。
+   **结论：路由变更后必须新开对话**；旧对话（含其 goal、工作房、子代理）不可救，只能弃用。
+   预设发现层本身是热读的（`dsh-agent-presets/discovery` 每次调用重读根目录），**不需要重启 app**。
+2. **`retryPolicy.mode: always` 是放大器，不是保险**。`always` 无重试上限、且不区分错误类型
+   （`dsh-llm/lib/index.js` 的 `alwaysPolicySchema` 只有 `mode` + `backoff`，没有 `retryableCodes`），
+   于是 `INVALID_REQUEST`(400) 这类**永久性错误**会被无限重试：实测单轮 40+ 次、每次 30 秒，
+   把一次配置错误放大成整轮死锁。`mode: normal` 才按 `retryableCodes`
+   （默认 EMPTY_RESPONSE / RATE_LIMIT / SERVER / TIMEOUT / TRANSPORT）区分可恢复与永久。
+   已把 `~/.dsh/settings.yaml` 的 `llm-deepseek.retryPolicy` 改为 `normal / maxRetries: 3 / 500ms→10s`。
+3. **目录 id 必须与上游实况一致**。`llm-deepseek.models` 原登记裸名 `deepseek-v4-flash`，
+   而 `:3457` 代理只认前缀名 → 已改为 `deepseek/deepseek-v4-flash`；
+   上游未提供的 `deepseek-v4-pro` 与 `deepseek-v4-flash-vision-exp` 两条**注释留存**
+   （留在目录里等于在模型选择器里埋一颗必炸的按钮）。
+   注意 §三 那条"模型 id 未列入目录仍可直通（advisory）"：本地目录**不拦**未知 id，
+   请求照发到上游，所以真正的报错来自上游 400，而不是本地校验。
+
+**变更后自检（MUST，2 分钟内可做完）**：新开对话 → 派一个最小探针子代理（只让它 `echo` 一条命令、
+明确禁止写文件）→ 探针回报无 `llm/retry` 且工具调用数 ≥1，才算路由真的换过来了。
+探针回报"成功"但工作区无变化时，按 D077 反幻觉纪律以 `git log` / 目录 mtime 证伪，不接受叙述。
