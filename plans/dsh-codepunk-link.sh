@@ -193,8 +193,9 @@ _entry_get() {
     printf '%s' "$got"
     return 0
   fi
-  if [ "$key" = "dsh-codepunk_path" ] || [ "$key" = "dsh-codepunk" ]; then
-    got="$(printf '%s\n' "$row" | tr '\t' '\n' | sed -n 's/^dsh-codepunk_path=//p' | head -1)"
+  if [ "$key" = "dsh-codepunk_path" ] || [ "$key" = "dsh_codepunk_path" ] || [ "$key" = "dsh-codepunk" ]; then
+    got="$(printf '%s\n' "$row" | tr '\t' '\n' | sed -n 's/^dsh_codepunk_path=//p' | head -1)"
+    [ -n "$got" ] || got="$(printf '%s\n' "$row" | tr '\t' '\n' | sed -n 's/^dsh-codepunk_path=//p' | head -1)"
     [ -n "$got" ] || got="$(printf '%s\n' "$row" | tr '\t' '\n' | sed -n 's/^dsh-codepunk=//p' | head -1)"
     printf '%s' "$got"
     return 0
@@ -424,12 +425,15 @@ EOF
   [ -n "$(tail -c1 "$DSH_CODEPUNK_INDEX" 2>/dev/null)" ] && printf '\n' >> "$DSH_CODEPUNK_INDEX"
   local line
   # 注：run-lead 裁决（字段冲突）——INDEX 条目标准 5 字段：
-  #     project_id / project_root / dsh-codepunk_path / migrated_at / source；
+  #     project_id / project_root / dsh_codepunk_path / migrated_at / source；
   #     骨架扩展字段 repo_path/readme_marker/status 由 run-lead 合并时统一修订，register 不写；
-  #     dsh-codepunk_path 默认 = project_root（夹具/未迁移托管位），迁移项目由 migrate 报告回填
+  #     dsh_codepunk_path = 总库托管路径（D072）。2026-09-05 修正：原「默认 = project_root」
+  #     会让 resolve 把工程目录当总库、把运行状态写进工程造成污染，现改为总库真实路径。
+  local hosted="$DSH_CODEPUNK_HOME/projects/$id"
+  mkdir -p "$hosted" || { printf '%s: 总库目录创建失败: %s\n' "$SCRIPT_NAME" "$hosted" >&2; return 1; }
   line="  - project_id: $id
     project_root: $target
-    dsh-codepunk_path: $target
+    dsh_codepunk_path: $hosted
     migrated_at: null
     source: register"
   if ! python3 - "$DSH_CODEPUNK_INDEX" "$line" <<'PYEOF'
