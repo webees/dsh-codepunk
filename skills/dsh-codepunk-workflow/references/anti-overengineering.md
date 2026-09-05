@@ -1,6 +1,6 @@
 # 产出纪律：YAGNI 阶梯与根因修复（references/anti-overengineering.md）
 
-> D081 完整展开。借鉴 DietrichGebert/ponytail（115k★，纯 MIT）——「让 agent 像最懒的高级工程师：最好的代码是没写的代码」。与 D076（表述层 token 经济）构成**表述/产出姊妹对**：D076 管「怎么说」，D081 管「写什么」。溯源：`benchmarks/ponytail-analysis.md`。
+> D081 完整展开。借鉴 DietrichGebert/ponytail（~128k★，纯 MIT）——「让 agent 像最懒的高级工程师：最好的代码是没写的代码」。与 D076（表述层 token 经济）构成**表述/产出姊妹对**：D076 管「怎么说」，D081 管「写什么」。溯源：`benchmarks/ponytail-analysis.md`。
 
 ## 一、七级递减阶梯（写码前停在第一个成立的档位）
 

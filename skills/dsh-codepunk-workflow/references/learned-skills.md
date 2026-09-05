@@ -27,7 +27,7 @@
 | **D077** | 反幻觉纪律：完成断言须新鲜证据；不确定即明示；知识冲突显式化；防空壳绿；交叉验证 | superpowers vbc + Anthropic 防幻觉指南 + arXiv 综述 | SKILL P07 + sdet 人设 + references/anti-hallucination-rules.md | v1.0 |
 | **D078** | 模型路由与成本工程：分岗位模型/thinking/错峰/cache | dsh-llm-deepseek（官方适配器，源码实证 agentOptions 覆盖） | references/model-routing.md | v1.0 |
 | **D080** | 撰写标准：方块标签【节名】、禁 ##、一行一节、全角标点、动宾起头、禁修饰副词 | 实战教训 | references/roles.md | v1.0 |
-| **D081** | 产出纪律（YAGNI）：七级阶梯+根因修复+简化留痕+自检配额+输出契约+审查五 tag | DietrichGebert/ponytail（115k★ MIT） | references/anti-overengineering.md / engineer+sdet 人设 | v1.0 |
+| **D081** | 产出纪律（YAGNI）：七级阶梯+根因修复+简化留痕+自检配额+输出契约+审查五 tag | DietrichGebert/ponytail（~128k★ MIT） | references/anti-overengineering.md / engineer+sdet 人设 | v1.0 |
 | **D082** | 文档配图：产出按场景配图+4px 网格+密度 4/10 | cathrynlavery/diagram-design（MIT，39 种视觉类型） | references/diagram-guide.md / docs 人设 | v1.0 |
 | **D083** | 技能治理：外部 skill 系统性应用与升级（四态生命周期+三件套+版本标记） | 自研治理机制（承接全部 D066-D082） | references/skill-governance.md / 文档小组 | v1.0 |
 | **D084** | 注入防护：工具返回不可信+阻断上报；记忆 canary；skill 供应链门；PIT-* 分类法 | defender/SkillSpector/rebuff/arc_pi（Apache-2.0/CC-BY） | references/prompt-injection-rules.md / 巡检 | v1.0 |
