@@ -97,6 +97,9 @@
    把一次配置错误放大成整轮死锁。`mode: normal` 才按 `retryableCodes`
    （默认 EMPTY_RESPONSE / RATE_LIMIT / SERVER / TIMEOUT / TRANSPORT）区分可恢复与永久。
    已把 `~/.dsh/settings.yaml` 的 `llm-deepseek.retryPolicy` 改为 `normal / maxRetries: 3 / 500ms→10s`。
+   **2026-09-06 现状**：用户改判「模型请求失败必须无条件无限重试」——全部 5 路由
+   `mode: always`（500ms→30s 指数退避 + jitter 0.1）。本段 normal/3 是 D087 时代的历史取舍记录；
+   当前采用 always（见 D086 限流自适应 + 用户指令），永久错误风险由 D089 回退机制对冲。
 3. **目录 id 必须与上游实况一致**。`llm-deepseek.models` 原登记裸名 `deepseek-v4-flash`，
    而 `:3457` 代理只认前缀名 → 已改为 `deepseek/deepseek-v4-flash`；
    上游未提供的 `deepseek-v4-pro` 与 `deepseek-v4-flash-vision-exp` 两条**注释留存**
