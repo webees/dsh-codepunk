@@ -109,7 +109,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 > 创建后**必须**以 `git -C <主仓库路径> worktree list` 复核落点（预期 `../room-<task_id>` 出现在主仓库父目录内，而非散落于桌面根等非工程根目录）；**禁止在非工程根目录创建 worktree**；
 > S 规模（单小组）可用 `rooms/squad-<task_id>/` 子目录 + 人设写集纪律（`rooms/` 位于主仓库工程根内）；越界兜底始终是 R8 审查门（`git diff ⊆ write_paths`）。
 
-> **项目记忆关联**：项目 ↔ 总库记忆通过双通道关联——**主通道**为工程根 `README.md` 顶部 YAML frontmatter 的 `dsh-codepunk: <project_id>`（无 frontmatter 的项目可用 `<!-- dsh-codepunk: <id> -->` 注释行兼容）；**兜底**为 `~/.dsh-codepunk/INDEX.yaml` 注册表（条目标准 5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source，骨架见该文件，条目由 dsh-codepunk-link register 子命令填充）。解析工具 `dsh-codepunk-link resolve <项目路径>` 按「README 标记命中 → INDEX 回退 → 未注册报错」三态路由；`dsh-codepunk-link index` 校验注册表无空悬；`dsh-codepunk-link register <项目路径> <id>` 追加注册条目（不覆盖既有、需确认）。README 标记与 INDEX 冲突时以 INDEX 为准。**不批量改写项目 README**：标记的实际写入由 run-lead 决策，工具只提供标记格式与解析。`dsh-codepunk-link` 工具正式位 `~/.dsh-codepunk/scripts/dsh-codepunk-link.sh`（预设 `plans/` 仅保留源副本，正式位为准）。
+> **项目记忆关联**：项目 ↔ 总库记忆通过双通道关联——**主通道**为工程根 `README.md` 顶部 YAML frontmatter 的 `dsh-codepunk: <project_id>`（无 frontmatter 的项目可用 `<!-- dsh-codepunk: <id> -->` 注释行兼容）；**兜底**为 `~/.dsh-codepunk/INDEX.yaml` 注册表（条目标准 5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source（由 dsh-codepunk-link register 填充））。解析工具 `dsh-codepunk-link resolve <项目路径>` 按「README 标记命中 → INDEX 回退 → 未注册报错」三态路由；`dsh-codepunk-link index` 校验注册表无空悬；`dsh-codepunk-link register <项目路径> <id>` 追加注册条目（不覆盖既有、需确认）。README 标记与 INDEX 冲突时以 INDEX 为准。**不批量改写项目 README**：标记的实际写入由 run-lead 决策，工具只提供标记格式与解析。`dsh-codepunk-link` 工具正式位 `~/.dsh-codepunk/scripts/dsh-codepunk-link.sh`（预设 `plans/` 仅保留源副本，正式位为准）。
 
 ## 2. 阶段详解
 
