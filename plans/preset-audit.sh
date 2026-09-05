@@ -38,7 +38,7 @@ echo "[组B 手册层 25]"
 SIZE=$(wc -c < skills/dsh-codepunk-workflow/SKILL.md)
 [ "$SIZE" -le 32768 ] && report "$PASS" "B1 SKILL ${SIZE}B ≤32768" || report "$FAIL" "B1 SKILL ${SIZE}B 超限"
 # B5 零旧名全仓
-N=$(git grep -ic picode -- . 2>/dev/null | awk -F: '{s+=$2}END{print s+0}')
+N=$(git grep -ic picode -- . ':!plans/preset-audit.sh' 2>/dev/null | awk -F: '{s+=$2}END{print s+0}')
 [ "${N:-0}" -eq 0 ] && report "$PASS" "B5 全仓零 picode" || report "$FAIL" "B5 picode=$N"
 
 echo "[组D 调研层 10]"

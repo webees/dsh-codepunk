@@ -1,28 +1,30 @@
 # 角色分模型路由选型表（references/model-routing.md）
 
 > dsh-deepseek（官方 `dsh-llm-deepseek` 适配器）能力落地方案。
-> **现行决策（D087，2026-09-05 二次修订，sponsor 指令）**：子代理**继承主进程** `bai / qwen3.8-flash`——
-> 13 个岗位的 `agentOptions` 已全部删除（实测 `grep -c agentOptions agent.cordis.yml` = 0），不再逐岗写死路由；
+> **现行决策（D090，2026-09-06，双要件）**：13 岗位**必须同时**显式
+> `agentOptions: {provider: bai, model: qwen3.8-flash}` + `backgroundMode: continuable`。
+> 依据实测：**删除 agentOptions 后子代理不继承主会话模型**，落产品默认 `deepseek-v4-flash`（上游 region_limited 必挂）；
+> one-shot 被 429 打断即整轮报废。D087「继承主进程」主张已被 D090 反驳作废。
 > 回退链 bai→deepseek→mtplx，同一路由连续失败 ≥3 次由 run-lead 切换。
 > 取代 D080（2026-08-26「全岗位只允许 deepseek-v4-flash，禁 pro」）——D080 的档位纪律（**只用 flash 档，禁 pro/max**）继续有效，
 > 换的是 provider 与型号名。沿革与判据见本文 §五。
 > **接入方式已源码实证**：`dsh-tool-subagent` Config schema 支持 `agentOptions: { provider, model, maxTokens }`（每岗可配）；
-> 子代理默认继承父模型、可被 agentOptions 显式覆盖（`dsh-subagent/lib/index.js:780-781`）。
+> ⚠ 实测反驳：删 agentOptions 后子代理**不继承**父会话模型、落产品默认（`dsh-subagent/lib/index.js:780-781`）——故 MUST 显式声明。
 > 溯源：`benchmarks/dsh-deepseek-analysis.md`（10 一手来源）+ 本地源码核对（2026-08-26）+ sectest-rebuild run 实跑故障（2026-09-05）。
 
 ## 一、岗位 × 模型路由表
 
-| 岗位 | 模型路由（D087 二次修订） | thinking effort | 理由（成本/质量杠杆） |
+| 岗位 | 模型路由（D090 双要件） | thinking effort | 理由（成本/质量杠杆） |
 |---|---|---|---|
-| **sdet（验收）** | 继承主进程（bai / qwen3.8-flash） | 默认 | 统一 flash 档（档位纪律承自 D080） |
-| **squad-lead（调度）** | 继承主进程（bai / qwen3.8-flash） | low | 巡检/汇报是信息整理，低档足够；省 token |
-| **engineer（实现）** | 继承主进程（bai / qwen3.8-flash） | low | 写集实现以执行验证为准（D077 Iron Law），thinking 非主杠杆 |
-| **proc-audit（审计）** | 继承主进程（bai / qwen3.8-flash） | 默认 | 统一 flash 档 |
-| **subagent / subagent_fork（通用）** | 继承主进程（bai / qwen3.8-flash） | 默认 | 显式声明，避免继承路径不确定 |
-| **docs / research / people / product / sys-arch / code-review / release-eng** | 继承主进程（bai / qwen3.8-flash） | 默认 | 职能岗以流程与文件为核心，flash 足够；深挖场景临时覆盖 |
+| **sdet（验收）** | 显式 bai / qwen3.8-flash（D090） | 默认 | 统一 flash 档（档位纪律承自 D080） |
+| **squad-lead（调度）** | 显式 bai / qwen3.8-flash（D090） | low | 巡检/汇报是信息整理，低档足够；省 token |
+| **engineer（实现）** | 显式 bai / qwen3.8-flash（D090） | low | 写集实现以执行验证为准（D077 Iron Law），thinking 非主杠杆 |
+| **proc-audit（审计）** | 显式 bai / qwen3.8-flash（D090） | 默认 | 统一 flash 档 |
+| **subagent / subagent_fork（通用）** | 显式 bai / qwen3.8-flash（D090） | 默认 | 显式声明，避免继承路径不确定 |
+| **docs / research / people / product / sys-arch / code-review / release-eng** | 显式 bai / qwen3.8-flash（D090） | 默认 | 职能岗以流程与文件为核心，flash 足够；深挖场景临时覆盖 |
 | **vision 岗（若引入）** | bai / deepseek-v4-flash-vision-exp | 默认 | 需图像输入时单独接线（尚未启用） |
 
-> 实施姿态（二次修订）：**岗位不写 agentOptions，统一继承主进程路由**。理由：逐岗写死会在网关换 provider 时留下 13 处漂移点，
+> 实施姿态（D090）：**13 岗位全部显式 agentOptions + continuable**（防双轨漂移）。
 > 而本次故障恰恰是"写死的路由失效 + 进程不热加载"叠加所致。换模型只需改主会话一处。
 > 例外：`subagent_codex` / `subagent_claude_code` 是外部后端（`provider: codex` / `claude-code`，`maxDepth: provider-managed`），
 > 不套本表，也不得被改成 bai 路由。
@@ -59,7 +61,8 @@
 | 决策 | 日期 | 内容 | 状态 |
 |---|---|---|---|
 | D080 | 2026-08-26 | 全岗位 `deepseek-official / deepseek-v4-flash`，禁 pro | **已被 D087 取代**（档位纪律"只用 flash、禁 pro/max"仍有效） |
-| D087 | 2026-09-05 | 全岗位 `bai / qwen3.8-flash`，13 个岗位显式接线 | 现行 |
+| D087 | 2026-09-05 | 全岗位 `bai / qwen3.8-flash`，13 个岗位显式接线 → 二次修订删 agentOptions「继承主进程」 | ⚠ 继承主张已被 D090 实测反驳 |
+| D090 | 2026-09-06 | 13 岗位**必须同时**显式 agentOptions（bai/qwen3.8-flash）+ continuable | **现行**（双要件） |
 
 **D087 触发事实**（sectest-rebuild run 实跑取证，非推测）：
 
@@ -78,7 +81,7 @@
 **回滚条件**：若 `deepseek-official` 目录修正（裸名 ↔ 前缀名对齐）且实跑探针通过，
 可把 13 处 agentOptions 改回；改回前必须先跑一次最小探针子代理验证，不接受"应该好了"。
 
-## 六、生效条件与失效放大器（D087 落地补录，2026-09-06 实跑取证）
+## 六、生效条件与失效放大器（D090 落地补录，2026-09-06 实跑取证）
 
 改完 `agent.cordis.yml` 不等于改完就生效。三条必须记住的机理：
 

@@ -1,11 +1,11 @@
 # 模型统一与回退机制（references/model-fallback.md）
 
-> D089 完整展开。目的：①全链路（主进程+13 岗位）统一单一模型路由，消除「子代理用 bai、主进程用 deepseek」的模型分裂；②主模型失败时按链回退，不中断流程。
+> D089 完整展开。**D090 修正本文件「继承主进程」主张**：实测孩子不继承主模型，须显式 agentOptions（双要件见 standard.md D090）。回退链部分仍有效。目的：①全链路（主进程+13 岗位）统一单一模型路由，消除「子代理用 bai、主进程用 deepseek」的模型分裂；②主模型失败时按链回退，不中断流程。
 > 背景：harness（dsh-llm/agent-loop）**无原生 provider fallback**——回退须由流程纪律层实现（run-lead 认知 + 工具层重试后切换）。
 
 ## 一、模型统一（全链路继承，杜绝分裂）
 
-- **原则**：子代理不声明模型（agent.cordis.yml 无 agentOptions 覆盖），**默认继承主进程模型**（settings `agent-default-model`）。
+- **原则（D090 修正）**：子代理**必须显式声明模型**——agent.cordis.yml 13 岗位 `agentOptions: {provider: bai, model: qwen3.8-flash}` + `backgroundMode: continuable`（实测删声明后孩子不继承主模型，落产品默认必挂）。
 - **单一事实源**：所有会话/子代理共用 `agent-default-model.provider/model`——改一处即全局生效。
 - **当前统一值**：`provider: bai, model: qwen3.8-flash`（sponsor 2026-09-05 指令延续）。
 - **为何不自声明**：D087 曾让 13 岗位显式 bai/qwen3.8-flash，造成「子代理 ≠ 主进程」分裂；D089 改回继承——继承即一致，避免多源漂移。
