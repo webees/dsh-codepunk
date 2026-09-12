@@ -15,6 +15,11 @@
    - worktree 落点建在**工程父目录**（仓库外），无需忽略；
    - 同时**清除历史旧名条目**（若 `.gitignore` 残留旧系统名目录，一并删除，避免死规则误导）。
    核对命令：`git -C <工程根> check-ignore -v rooms` 有输出即已忽略；无输出则补一行 `rooms/`。
+7. **推送前泄露防护（MUST）**：凡提交/推送前跑一次泄露防护门（`plans/dsh-codepunk-leak-guard.sh`）：
+   - 默认扫索引（`--staged`，作 pre-commit）；`--history` 扫近 20 提交（作 pre-push）；`--install-hook` 一键装 pre-push 钩子；
+   - **禁词留本地**（`~/.dsh-codepunk/denylist.txt` 或 `DSH_CODEPUNK_DENYLIST`），公开仓库的守卫脚本本身不得含私人词；
+   - 命中即阻断（退出码 1）；`--no-verify` 绕过须在交接包留痕说明。
+   - 为何必需：`git push --force` **不会删除服务端旧对象**，旧提交仍可经公开 Events API 枚举 SHA 后 raw 直链读取——唯一可靠的事后补救是删除并重建仓库。
 
 ## 二、收尾残留自查清单（交接包必填节）
 

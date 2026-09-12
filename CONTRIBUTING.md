@@ -24,6 +24,7 @@ plans/                              # 工具脚本（源副本；运行期正式
   verify-worktree.sh                # worktree 落点纪律核验
   evidence-verify.sh                # 证据机械校验器（防假通过门）
   preset-audit.sh                   # 预设质量审计（100 分制）
+  dsh-codepunk-leak-guard.sh        # 泄露防护门（推送前守卫，禁词留本地；--install-hook 装钩子）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
   SKILL.md                          # 流程唯一权威正文（六阶段 + 硬规则 R1–R14 + D 决策号）
   references/roles.md               # 岗位人设与派遣模板
@@ -57,6 +58,7 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
 
 - [ ] 改动仅限必要文件，diff 清晰、commit message 说明充分
 - [ ] 品牌卫生：无历史旧名残留（如有改名史，`OLD_NAME=<旧名> bash plans/preset-audit.sh` 0 命中）
+- [ ] 泄露防护门通过：`bash plans/dsh-codepunk-leak-guard.sh --history`（禁词留本地 `~/.dsh-codepunk/denylist.txt`）
 - [ ] `agent.cordis.yml` 过 entryListSchema 校验，无 broken roster row
 - [ ] skill 文档通过结构检查；编号引用与 `references/standard.md` 一致
 - [ ] 目录结构 / 命令 / 路径有变动时，`README.md` 已同步
