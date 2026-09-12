@@ -1,0 +1,16 @@
+# dsh-codepunk 发布仓库：默认忽略一切，白名单放行发布内容
+*
+
+!.gitignore
+!LICENSE
+!README.md
+!CONTRIBUTING.md
+!agent.cordis.yml
+!preset.yml
+!plans/
+!plans/**
+!skills/
+!skills/**
+
+# macOS
+.DS_Store
