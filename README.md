@@ -126,7 +126,7 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
 ## 维护公约（改动前必读）
 
 - **Host/Agent 平面边界**：服务注册不进本预设；需要 `isolate` realm 的行必须放在带 `isolate:` 的 group 内。改动前对照 `editing-cordis-compositions` skill。
-- **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点 `&role-allow`（调研岗唯一例外，内联追加 `web_search, web_fetch`）。allow 是**全关只放行**列表，未列入的工具一律不可见。新增岗位/工具须同步锚点；allow 只能列本机已挂载的全局工具名——名字不存在会在 spawn 时随 `tools.restrict()` 直接 throw（fail-closed）。`report` 是延续子代理注册在自身层的汇报工具，不受过滤，**切勿列入 allow**。
+- **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点 `&role-allow`（调研岗唯一例外，内联追加 `web_search, web_fetch`）。allow 是**全关只放行**列表，未列入的工具一律不可见。新增岗位/工具须同步锚点；allow 只能列当前 DSH 实例已挂载的全局工具名——名字不存在会在 spawn 时随 `tools.restrict()` 直接 throw（fail-closed）。`report` 是延续子代理注册在自身层的汇报工具，不受过滤，**切勿列入 allow**。
 - **画布工具权限是机械强制**（restrict 真移除工具）；**文件写集是约定强制**（人设自律 + 审查门 diff ⊆ 写集 + worktree 隔离），不是沙箱。
 - **编号可解析**：`Pxx` / `D0xx` 一律以 `references/standard.md` 为唯一释义；禁止引入该文件之外的任何外部编号引用。
 - **文件归宿（R13）**：预设自身的资料（开源基准、流程改进）存本预设 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写入任何工程目录；各 run 的 `research/briefs/` 只放该工程业务调研。

@@ -276,7 +276,7 @@
           # 未列入的（web、ask_user、goal、编排/委托、其它岗位工具）一律不可见；新增工具不会自动暴露。
           # 关键：report 是延续子代理注册在「自身层」（own layer）的汇报工具，不受此过滤 —— 切勿列入，
           #       否则 restrict 会把它当作未知全局工具直接 throw（dsh-tools restrictableNames 语义）。
-          # 平台门控注意：只列「本机已挂载的全局工具」—— pwsh（Windows）与 bash（POSIX）只挂其一，
+          # 平台门控注意：只列「当前实例已挂载的全局工具」—— pwsh（Windows）与 bash（POSIX）只挂其一，
           # macOS/POSIX 用 bash；Windows 移植时把 bash 换成 pwsh 即可。
           allow: &role-allow [bash, read, write, edit, read_image, glob, grep, job_list, job_output, job_kill, todo_write, skill]
         persona: |-

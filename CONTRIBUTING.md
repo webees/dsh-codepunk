@@ -40,7 +40,7 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
 对任何文件动手前，先读 `README.md` 末尾「维护公约（改动前必读）」与 `skills/dsh-codepunk-workflow/SKILL.md`。以下四点是硬约束：
 
 1. **Host/Agent 平面边界**：服务注册（bash-sandbox、fs 服务、goal 服务、任务注册表等 host 平面组件）不进本预设；需要 `isolate` realm 的行必须放在带 `isolate:` 的 group 内。改组合前对照 `editing-cordis-compositions` skill。
-2. **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点 `&role-allow`；调研岗是唯一例外，内联追加 `web_search, web_fetch`。allow 是「全关只放行」列表，未列入的工具一律不可见；**只能列本机已挂载的全局工具名**（未挂载会让 spawn 时 `tools.restrict()` 直接 throw）；`report` 是延续子代理注册在自身层的汇报工具，**切勿列入 allow**。
+2. **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点 `&role-allow`；调研岗是唯一例外，内联追加 `web_search, web_fetch`。allow 是「全关只放行」列表，未列入的工具一律不可见；**只能列当前 DSH 实例已挂载的全局工具名**（未挂载会让 spawn 时 `tools.restrict()` 直接 throw）；`report` 是延续子代理注册在自身层的汇报工具，**切勿列入 allow**。
 3. **编号可解析**：`Pxx` / `D0xx` 一律以 `references/standard.md` 为唯一释义；禁止引入该文件之外的任何外部编号引用。变更涉及编号时，先改 `standard.md` 登记，再引用。
 4. **文件归宿（R13/R14）**：关于预设本身的调研 / 基准 / 优化资料写本预设 `skills/dsh-codepunk-workflow/benchmarks/`，**绝不写进任何工程目录**；接收子代理产出时核对「内容归属域 vs 实际落位」一致，错位立即移出并 grep 核销引用。
 
