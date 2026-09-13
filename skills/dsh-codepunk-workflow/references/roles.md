@@ -23,15 +23,13 @@
 | 中文 | ID | 层 | 派遣工具 | 何时派遣 |
 |---|---|---|---|---|
 | 产品策划 | pm | L3 | subagent_product | ①需求确认 |
-| 行业分析 | ind-res | L3 | subagent_research | ①需求确认、方案前、资料申请（🌐 唯一联网岗）|
+| 行业分析 | ind-res | L3 | subagent_research | ①需求确认、方案前、资料申请（🌐 唯一联网岗） |
 | 代码勘察 | scout | L3 | subagent_sys_arch | ②规划（勘察分块） |
 | 软件架构 | sys-arch | L3 | subagent_sys_arch | ②规划（本仓方案） |
 | 人才主责 | people-lead | L2 | subagent_people | ②招聘、⑤评分 |
-| 招聘专员 | recruiter | L3 | （并入 subagent_people） | — |
-| 编制合规 | people-qa | L3 | （并入 subagent_people） | — |
+| 招聘专员 / 编制合规 | recruiter / people-qa | L3 | （并入 subagent_people） | — |
 | 文档主责 | docs-lead | L2 | subagent_docs | ②简报、④归档、⑥提示词 |
-| 技术写作 | tech-writer | L3 | （并入 subagent_docs） | — |
-| 文档质检 | docs-qa | L3 | （并入 subagent_docs） | — |
+| 技术写作 / 文档质检 | tech-writer / docs-qa | L3 | （并入 subagent_docs） | — |
 | 小队主责 | squad-lead | L4 | subagent_squad_lead | ③每 task 招聘 |
 | 软件开发 | engineer | L4 | subagent_engineer | ③每 task 招聘 |
 | 测试验证 | sdet | L4 | subagent_sdet | ③每 task 招聘 |
@@ -132,12 +130,12 @@
 
 | 席 | 委托契约 | 返回形态 | 验收方式 |
 |---|---|---|---|
-| product / research / people / docs / proc-audit / sys-arch / code-review / release-eng | **单轮受控输出** | 固定结构产物（brief/evidence/review/merge 等，schema 见 artifacts.md） | 结构校验 + 内容达标；不合格回退重做 |
+| product/research/people/docs/proc-audit/sys-arch/code-review/release-eng | **单轮受控输出** | 固定结构产物（schema 见 artifacts.md） | 结构校验 + 内容达标；不合格回退重做 |
 | sdet | **单轮受控输出** | evidence.yaml（固定 schema，D069） | 机器校验 + 交付基线（R12） |
 | engineer（实现） | **多轮任务** | 工作房内代码 + artifact_index | sdet evidence 门 + 审查门 |
 | squad-lead | **受控交接摘要** | handoff/summary + 组织签收 | 交接包齐全 + 接收方签收 |
 
-> 双侧 guardrail（D068）：派发时输入侧校验简报 schema，回收时输出侧校验产物 schema；契约不清导致的歧义在派遣 prompt 里显式声明，禁止用自由对话补语义。
+> 双侧 guardrail（D068）：派发时输入侧校验简报 schema，回收时输出侧校验产物 schema；契约歧义 MUST 在派遣 prompt 显式声明，禁止用自由对话补语义。
 
 ## 三三制（MUST）
 
