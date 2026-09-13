@@ -7,6 +7,8 @@
 > 归属：dsh-codepunk（预设 meta 调研，R13 归位 benchmarks/）
 > 状态：交付工程主责（run-lead）审核；禁直接投递实现组
 
+> **版本漂移记录（滚动更新）**：本简报为 2026-08-26 快照。后续复核：npm `@deepseek-ai/dsh` 已至 **0.1.5-rc.1**（2026-09-13 实测 `npm view`）；DSH Desktop 外壳 **2.0.9**（2026-09-10 更新，`app.asar` 结构变化；`app.asar.unpacked` 仅剩 node-addon 包）。2026-09-13 已按 §0.0 对齐表全量复核：24 个引用插件包全部存在、`entryListSchema` 解析通过（18 顶层条目）、`toolFilter` 工具名全有效、三组 `isolate` realm 齐备；官方 standard 预设新增 `command-goal` 与 `present` 两行（本预设已同步）。
+
 ## 0. 检索窗口 / 渠道说明（透明披露）
 
 | 渠道 | 结果 | 备注 |
