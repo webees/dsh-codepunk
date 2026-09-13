@@ -16,7 +16,7 @@
 | 项目 | 仓库 URL | star(约) | 定位 | 核心机制一句话 |
 |---|---|---|---|---|
 | obra/superpowers | https://github.com/obra/superpowers | 273,914 | 基于可组合 skill 的完整软件工程方法 | 触发式流程 skill 链（brainstorm→plan→subagent 开发→review→收尾）+ **writing-skills 元 skill 与 drill 评测**
-| anthropics/skills | https://github.com/anthropics/skills | 170,382 | Anthropic 官方 Agent Skills 示例/文档 skill 库 | 每 skill 自含 SKILL.md（frontmatter+指令）+ scripts/references；文档 skill(docx/pdf/pptx/xlsx) 生产级 | 
+| anthropics/skills | https://github.com/anthropics/skills | 170,382 | Anthropic 官方 Agent Skills 示例/文档 skill 库 | 每 skill 自含 SKILL.md（frontmatter+指令）+ scripts/references；文档 skill(docx/pdf/pptx/xlsx) 生产级 |
 | anthropics/claude-code | https://github.com/anthropics/claude-code | 141,956 | 终端 agentic 编码工具（skill 上下文载体） | skill/agents 动态装载；Plugin marketplace 发布/安装
 | affaan-m/ECC | https://github.com/affaan-m/ECC | 241,049 | agent harness 性能优化系统（skill/hooks/config） | 以可组合 skill + 规则约束 harness 行为、防 token 浪费
 | nextlevelbuilder/ui-ux-pro-max-skill | https://github.com/nextlevelbuilder/ui-ux-pro-max-skill | 118,070 | UI/UX 设计智能单 skill 示例 | 单 SKILL.md 封装设计智能（示范"高价值单 skill"形态）

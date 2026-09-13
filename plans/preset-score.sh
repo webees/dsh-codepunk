@@ -71,6 +71,22 @@ done
 UNLABELED=$(grep -rnE "<[A-Z_]{3,}>" "$SKILL" 2>/dev/null | grep -vcE "占位|示例|模板|<project_id>|<run_id>|<task_id>|<PROVIDER>|<MODEL>" || true)
 [ "${UNLABELED:-0}" -gt 3 ] && ded A2 10 "未标注的占位符 ${UNLABELED} 处"
 
+# 行尾空白 / 连续 3+ 空行（格式卫生）
+WS=$(python3 - <<'PYEOF2'
+import subprocess
+files = subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
+bad = 0
+for f in files:
+    try: txt = open(f, encoding='utf-8').read()
+    except (OSError, UnicodeDecodeError): continue
+    for ln in txt.split("\n"):
+        if ln != ln.rstrip() and ln.strip(): bad += 1
+    if "\n\n\n\n" in txt: bad += 1
+print(bad)
+PYEOF2
+)
+[ "${WS:-0}" -gt 0 ] && ded A2 10 "行尾空白/连续空行 ${WS} 处"
+
 # ── A3 准确性 ───────────────────────────────────────────────────────────────
 NB=$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')
 DOCB=$(grep -oE '×[0-9]+' README.md 2>/dev/null | head -1 | tr -d '×')

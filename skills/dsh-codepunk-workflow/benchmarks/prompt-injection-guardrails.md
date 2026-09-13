@@ -2,10 +2,10 @@
 
 > 支撑决策号：D084（注入防护）
 
-> 调研小组：ind-res  
-> 检索时间：2026-08-29T20:44:24Z  
-> 检索渠道：GitHub REST API（`search/repositories`）+ raw.githubusercontent.com 直连  
-> 关键词：「prompt injection」(exact) / 「prompt injection protection」/ 「llm guardrails」/ 「promptguard」+「rebuff」+「llm-guard」  
+> 调研小组：ind-res
+> 检索时间：2026-08-29T20:44:24Z
+> 检索渠道：GitHub REST API（`search/repositories`）+ raw.githubusercontent.com 直连
+> 关键词：「prompt injection」(exact) / 「prompt injection protection」/ 「llm guardrails」/ 「promptguard」+「rebuff」+「llm-guard」
 > 目标：为 dsh-codepunk 多智能体开发流程提炼可落地的 prompt injection 防护内容
 
 ---
