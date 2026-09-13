@@ -93,8 +93,6 @@ knowledge/                      # 知识库（跨 run 沉淀）
   research/<topic>.md  handoffs/<task_id>.md  prompts/roles/<role_id>.md
 ```
 
-> **兼容注记**：工程目录若残留旧 `.dsh-codepunk/`，用 `dsh-codepunk-migrate.sh --migrate <工程>/.dsh-codepunk <id>` 归位总库。
-
 > **文件隔离硬要求**：git 仓库且并行小组 ≥2（M/L）**MUST** 每组建 **worktree**。前置：主仓库先归位工程根（禁留桌面根/下载等散落位），再依其**父目录**建：`git -C <主仓库> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>` → `git -C <主仓库> worktree list` 复核落点。**禁止在非工程根目录建 worktree**。S 规模用 `rooms/squad-<task_id>/`（工程根内，**须确保工程 `.gitignore` 忽略 `rooms/`**，file-hygiene §一.6）。越界兜底 R8 审查门（`git diff ⊆ write_paths`）。
 
 > **项目记忆关联**：主通道 = 工程根 `README.md` 顶部 YAML frontmatter `dsh-codepunk: <project_id>`（无 frontmatter 可用 `<!-- dsh-codepunk: <id> -->`）；兜底 = `~/.dsh-codepunk/INDEX.yaml` 注册表（5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source）。工具 `dsh-codepunk-link resolve <项目路径>` 三态路由「README 标记 → INDEX 回退 → 未注册报错」；`index` 校验无空悬；`register` 追加（不覆盖、需确认）。**冲突以 INDEX 为准**；不批量改写项目 README。正式位 `~/.dsh-codepunk/scripts/`（`plans/` 仅源副本）。

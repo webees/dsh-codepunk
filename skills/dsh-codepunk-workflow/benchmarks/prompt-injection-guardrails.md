@@ -7,6 +7,7 @@
 > 检索渠道：GitHub REST API（`search/repositories`）+ raw.githubusercontent.com 直连
 > 关键词：「prompt injection」(exact) / 「prompt injection protection」/ 「llm guardrails」/ 「promptguard」+「rebuff」+「llm-guard」
 > 目标：为 dsh-codepunk 多智能体开发流程提炼可落地的 prompt injection 防护内容
+> 快照日期 2026-08-29——内容为该日实况；上游版本漂移后不代表现状
 
 ## 一、仓库对比表
 

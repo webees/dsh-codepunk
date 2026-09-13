@@ -114,7 +114,7 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 ```
 
 两套实现语义等价（resolve 三态路由、INDEX 字段约定、退出码一致）。Windows 版当前覆盖
-**home / init / link / leak-guard** 四个核心脚本；`migrate`、`preset-audit`、`evidence-verify`、
+**home / init / link / leak-guard** 四个核心脚本；`preset-audit`、`evidence-verify`、
 `verify-worktree` 仍为 POSIX 版，Windows 上经 Git Bash 或 WSL 调用（属一次性迁移与运维场景，
 非日常流程必需）。
 
@@ -155,7 +155,6 @@ README.md                           # 本说明（向使用者）
 CONTRIBUTING.md                     # 贡献指南（向贡献者）
 plans/                              # 工具脚本源副本（运行期正式位见 SKILL.md §1.1）
   dsh-codepunk-link.sh              # 项目↔总库关联解析（resolve / index / register）
-  dsh-codepunk-migrate.sh           # 工程内运行数据迁移工具（--scan / --migrate / --rollback）
   dsh-codepunk-init.sh              # 总库骨架幂等初始化
   verify-worktree.sh                # worktree 落点纪律核验
   evidence-verify.sh                # 证据机械校验器（D069：防假通过门）

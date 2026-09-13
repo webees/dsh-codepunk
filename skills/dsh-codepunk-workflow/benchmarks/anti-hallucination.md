@@ -8,6 +8,7 @@
 > 检索方式透明说明：本次检索中 `web_search`（api key 无效，Authentication Fails）/`web_fetch` 通道不可用，已全部改用 **curl 直连**：arXiv API（export.arxiv.org，元数据+摘要一核验）、Anthropic 官方站（docs/engineering）、OpenAI cookbook（GitHub raw）、GitHub REST API 与 raw.githubusercontent。若 `curl` 也失败则：anthropic.com/engineering 之 `reducing-hallucinations*` 两篇旧工程文已从 sitemap 消失（404，疑似下线，未纳入）；openai.com/index/planning-for-ai-agents 返回 403、Codex 官方 best-practices 页 404/连接失败（未纳入，不以记忆转述其内容）。
 > 证据标注：【事实】= 来源页可直接核对；【推断】= 基于事实对 dsh-codepunk 的映射/推导。
 > ⚠️ 边界声明：以下为机制/纪律借鉴，不代码抄袭；具体落地须经 run-lead 审定后由文档小组写入正式规范，ind-res 不代替决策。
+> 快照日期 2026-08-26——内容为该日实况；上游版本漂移后不代表现状
 
 ## 0. 一页速览
 

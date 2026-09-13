@@ -6,6 +6,7 @@
 > 检索时间：2026-08-26 02:50 (CST) / 2026-08-25T18:50Z，同一会话内分批抓取（retrieved_at 见来源表）
 > 渠道说明：**web_search 认证失败（api key 无效），全部改由 curl 直连官方 docs / GitHub 一手来源抓取**，URL 均为实测可达（部分页面在新域名 docs.claude.com / developers.openai.com / learn.chatgpt.com）。
 > 标注：【事实】= 来源原文明确陈述；【推断】= 调研者对 dsh-codepunk 的转译判断。
+> 快照日期 2026-08-26——内容为该日实况；上游版本漂移后不代表现状
 
 ## 一、技巧清单
 

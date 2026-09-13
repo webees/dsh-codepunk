@@ -5,6 +5,7 @@
 > 归属域：dsh-codepunk 预设 meta 调研（R13）｜产出：ind-res（调研小组）
 > 检索时间：2026-08-28T22:52:27Z（UTC）｜通道：curl 直连 GitHub REST API + raw.githubusercontent.com（web 通道对 API/raw 高频抓取不高效，故直连；全程透明）
 > 前置关联：`agent-skills-open-source-benchmark.md`（高 star 生态）已列为 agent-skills 样板；本简报为**产出/建筑纪律**维度拆解，与既有的 `caveman-analysis.md`（D076 来源，**表述层** token 经济）形成**表述/产出**姊妹对，供工程主责审核后下发。
+> 快照日期 2026-08-28——内容为该日实况；上游版本漂移后不代表现状
 
 ## 0. 抓取与元数据
 

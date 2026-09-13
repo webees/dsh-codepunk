@@ -6,6 +6,7 @@
 > 调研岗：ind-res（唯一联网岗）
 > 检索窗口：2026-08-30（UTC+7）
 > 检索方式：**curl 直连 GitHub REST API**（`search/repositories` 按 stars 排序抓元数据 + `repos/{owner}/{repo}` 抓仓库详情 + `repos/{owner}/{repo}/readme` 抓官方 README），一手来源，无第三方转引。每条结论标注【事实】（README/API 可核对）或【推断】（基于可靠知识的推导）。star 数取 GitHub API 实况值。
+> 快照日期 2026-08-30——内容为该日实况；上游版本漂移后不代表现状
 
 ## 0. 检索渠道与过滤逻辑
 

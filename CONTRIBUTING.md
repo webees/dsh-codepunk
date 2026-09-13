@@ -14,7 +14,7 @@ dsh-codepunk 是一份**多智能体开发流程预设**：基于 DeepSeek Harne
 
 **唯一权威清单在 `README.md` 的「目录结构」段**——本文件不再复述，以免两处清单各自漂移（本仓早期即在两处各维护一份，属重复源）。改动目录/文件时只需更新 README 那一处。
 
-要点回顾（避免误改）：`agent.cordis.yml` 是 AGENT-PLANE 组合（权威岗位配置）；`preset.yml` 只承载展示元数据；`plans/` 为工具脚本源副本（运行期正式位见 `SKILL.md` §1.1，`index.sh`/`migrate.sh` 等仍以总库 `scripts/` 为准）；`skills/dsh-codepunk-workflow/` 是流程 playbook 与按需加载的 `references/`、`benchmarks/`。
+要点回顾（避免误改）：`agent.cordis.yml` 是 AGENT-PLANE 组合（权威岗位配置）；`preset.yml` 只承载展示元数据；`plans/` 为工具脚本源副本（运行期正式位见 `SKILL.md` §1.1）；`skills/dsh-codepunk-workflow/` 是流程 playbook 与按需加载的 `references/`、`benchmarks/`。
 
 ## 如何改：维护公约要点
 

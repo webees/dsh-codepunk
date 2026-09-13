@@ -8,6 +8,7 @@
 > 检索方式透明说明：本次检索中 `web_search`/`web_fetch` 通道不可用（`web_search` 返回 api key 无效，与上次同况），已改用 **curl 直连 GitHub REST API**（repos 一手 star 元数据）+ **raw.githubusercontent 官方 README/SKILL.md**（一手机制说明）+ **agentskills.io 官方规范文档（.md 端点）** 核实。所有 URL 均为真实官方地址；star 数取 GitHub API 实况值（2026-08-19），非第三方转引。每条结论标注【事实】（来源可核对）或【推断】（基于事实的推导/映射）。
 >
 > ⚠️ 边界声明：以下项目仅作**机制/规范/流程借鉴**，不代码抄袭；涉及 dsh-codepunk 的具体改造落地须经 run-lead 审定后由文档小组写入正式规范，ind-res 不代替决策。
+> 快照日期 2026-08-19——内容为该日实况；上游版本漂移后不代表现状
 
 ## 0. 项目/skill 清单表
 
