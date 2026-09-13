@@ -226,6 +226,12 @@ function Invoke-Register([string]$targetIn, [string]$id) {
     if ($root -and (Normalize-Path $root) -eq $target) { Write-Err "已存在，不覆盖: project_root=$target 已在 INDEX.yaml（追加语义）"; $script:rc = 1; return }
   }
 
+  # 归一空内联列表：init 骨架写 `projects: []`，其后不能再追加列表项
+  #   （否则产出非法 YAML）。先改为 `projects:` 再追加。
+  $idxText = [System.IO.File]::ReadAllText($DSH_CODEPUNK_INDEX, [System.Text.Encoding]::UTF8)
+  $idxText = [regex]::Replace($idxText, '(?m)^projects:\s*\[\]\s*$', 'projects:')
+  [System.IO.File]::WriteAllText($DSH_CODEPUNK_INDEX, $idxText, (New-Object System.Text.UTF8Encoding($false)))
+
   $dcp = Join-Path $DSH_CODEPUNK_HOME "projects/$id"
   $ts  = (Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')
   $block = @"

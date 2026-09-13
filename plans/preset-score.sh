@@ -218,6 +218,18 @@ STRAY=$(git status --short 2>/dev/null | grep -c '^??' || true)
 DS=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
 [ "${DS:-0}" -gt 0 ] && ded B14 10 "工作区有 ${DS} 个 .DS_Store 杂散"
 
+# 注册表 schema 合法性（本地总库；不存在则跳过）：能过真实 YAML 解析器 + 键名一致
+IDX="$HOME/.dsh-codepunk/INDEX.yaml"
+if [ -f "$IDX" ] && command -v ruby >/dev/null 2>&1; then
+  ruby -ryaml -e '
+    d = YAML.load_file(ARGV[0])
+    raise "顶层非映射" unless d.is_a?(Hash)
+    raise "缺 schema_version" unless d.key?("schema_version")
+    raise "缺 projects 或非数组" unless d["projects"].is_a?(Array) || d["projects"].nil?
+  ' "$IDX" 2>/dev/null || ded B14 20 "总库 INDEX.yaml schema 非法（真实 YAML 解析失败或键名不符）"
+fi
+# 本地脚本正式位与本仓源副本的 schema 约定一致性由 F2 同步检查覆盖
+
 # ── B15 演进性 ──────────────────────────────────────────────────────────────
 grep -qE "版本|version" "$REF/learned-skills.md" 2>/dev/null || ded B15 20 "learned-skills 缺版本列"
 grep -qE "升级|废弃" "$REF/skill-governance.md" 2>/dev/null || ded B15 20 "缺 skill 升级/废弃机制"

@@ -421,6 +421,15 @@ EOF
     printf '%s\n' "$lu_new" >> "$DSH_CODEPUNK_INDEX"
   fi
 
+  # ①-b 归一空内联列表：init 骨架写 `projects: []`，其后**不能**再追加列表项
+  #      （否则产出非法 YAML：`projects: []` 已声明为空列表，任何真实 YAML 解析器都会报错；
+  #        工具自身靠行级解析才"能用"，属隐式缺陷）。先改为 `projects:` 再追加。
+  if grep -qE '^projects:[[:space:]]*\[\][[:space:]]*$' "$DSH_CODEPUNK_INDEX"; then
+    tmpf="$(mktemp)"
+    sed 's/^projects:[[:space:]]*\[\][[:space:]]*$/projects:/' "$DSH_CODEPUNK_INDEX" > "$tmpf" \
+      && mv "$tmpf" "$DSH_CODEPUNK_INDEX"
+  fi
+
   # ② 追加条目（先确保文件末尾有换行，防与末行粘行）
   [ -n "$(tail -c1 "$DSH_CODEPUNK_INDEX" 2>/dev/null)" ] && printf '\n' >> "$DSH_CODEPUNK_INDEX"
   local line
