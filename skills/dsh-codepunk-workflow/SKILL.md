@@ -221,6 +221,7 @@ knowledge/                      # 知识库（跨 run 沉淀）
 | `references/harness-alignment.md` | 官方机制对齐表（§0.0 展开） |
 | `references/anti-hallucination-rules.md` | 反幻觉细则（D077 展开） |
 | `references/model-routing.md` | 分模型路由 + 成本杠杆（D078） |
+| `references/rate-limit-adaptation.md` | 限流自适应（D086：429 探测与降并发） |
 | `references/file-hygiene.md` | 工作房卫生契约（D079） |
 | `references/anti-overengineering.md` | 产出纪律（D081：YAGNI 阶梯/根因修复/留痕/审查） |
 | `references/diagram-guide.md` | 文档配图规范（D082） |
