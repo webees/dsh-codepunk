@@ -214,6 +214,9 @@ for f in LICENSE .gitattributes .gitignore; do
 done
 STRAY=$(git status --short 2>/dev/null | grep -c '^??' || true)
 [ "${STRAY:-0}" -gt 0 ] && ded B14 10 "工作区有 ${STRAY} 个未跟踪项（可能杂散）"
+# 工作区物理杂散（被忽略但仍占工作区；D079 卫生纪律：不留杂散）
+DS=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
+[ "${DS:-0}" -gt 0 ] && ded B14 10 "工作区有 ${DS} 个 .DS_Store 杂散"
 
 # ── B15 演进性 ──────────────────────────────────────────────────────────────
 grep -qE "版本|version" "$REF/learned-skills.md" 2>/dev/null || ded B15 20 "learned-skills 缺版本列"
