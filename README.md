@@ -127,13 +127,20 @@ agent.cordis.yml                    # 组合：persona + 工具 + realm（AGENT-
 preset.yml                          # 预设描述（roster 展示）
 README.md                           # 本说明（向使用者）
 CONTRIBUTING.md                     # 贡献指南（向贡献者）
-plans/                              # 工具脚本源副本
+plans/                              # 工具脚本源副本（运行期正式位见 SKILL.md §1.1）
   dsh-codepunk-link.sh              # 项目↔总库关联解析（resolve / index / register）
   dsh-codepunk-migrate.sh           # 工程内运行数据迁移工具（--scan / --migrate / --rollback）
   dsh-codepunk-init.sh              # 总库骨架幂等初始化
   verify-worktree.sh                # worktree 落点纪律核验
   evidence-verify.sh                # 证据机械校验器（D069：防假通过门）
   preset-audit.sh                   # 预设质量审计（6 组 rubric，100 分制）
+  dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
+  preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
+  windows/                          # Windows 原生（PowerShell）等价实现
+    dsh-codepunk-home.ps1           # 共享路径常量（点源载入）
+    dsh-codepunk-init.ps1           # 总库骨架（-Check 只断言）
+    dsh-codepunk-link.ps1           # 关联解析（resolve / index / register）
+    dsh-codepunk-leak-guard.ps1     # 泄露防护门（-Tree / -History / -InstallHook / -List）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
   SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R14 + D 决策号）
   references/roles.md               # 岗位人设与派遣模板

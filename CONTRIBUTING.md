@@ -12,34 +12,9 @@ dsh-codepunk 是一份**多智能体开发流程预设**：基于 DeepSeek Harne
 
 ## 目录结构
 
-```text
-agent.cordis.yml                    # AGENT-PLANE 组合：persona + 工具 + realm（权威岗位配置）
-preset.yml                          # 预设描述（roster 展示）
-README.md                           # 项目总说明（向使用者）
-CONTRIBUTING.md                     # 本文件（向贡献者）
-plans/                              # 工具脚本（源副本；运行期正式位见 SKILL.md §1.1）
-  dsh-codepunk-init.sh              # 总库骨架幂等初始化
-  dsh-codepunk-link.sh              # 项目↔总库记忆关联解析（resolve/index/register）
-  dsh-codepunk-migrate.sh           # 工程内旧运行数据 → 总库迁移工具（scan/migrate/rollback）
-  verify-worktree.sh                # worktree 落点纪律核验
-  evidence-verify.sh                # 证据机械校验器（防假通过门）
-  preset-audit.sh                   # 预设质量审计（100 分制）
-  dsh-codepunk-leak-guard.sh        # 泄露防护门（推送前守卫，禁词留本地；--install-hook 装钩子）
-  windows/                          # Windows 原生（PowerShell）等价脚本
-    dsh-codepunk-home.ps1           # 共享路径常量（点源载入）
-    dsh-codepunk-init.ps1           # 总库骨架（-Check 只断言）
-    dsh-codepunk-link.ps1           # 关联解析（resolve/index/register）
-    dsh-codepunk-leak-guard.ps1     # 泄露防护门（-Tree/-History/-InstallHook/-List）
-skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
-  SKILL.md                          # 流程唯一权威正文（六阶段 + 硬规则 R1–R14 + D 决策号）
-  references/roles.md               # 岗位人设与派遣模板
-  references/artifacts.md           # 产物文件模板（goal/chunks/brief/handoff/evidence）
-  references/knowledge.md           # 知识库布局 + 评分公式 + 聚合格式
-  references/standard.md            # 编号（P01–P17 / D0xx）唯一权威释义
-  benchmarks/                       # 外部基准与技能调研（编排框架 / 输出纪律 / 上下文优化 / 安全等，清单见 references/learned-skills.md）
-```
+**唯一权威清单在 `README.md` 的「目录结构」段**——本文件不再复述，以免两处清单各自漂移（本仓早期即在两处各维护一份，属重复源）。改动目录/文件时只需更新 README 那一处。
 
-> 目录结构若有变动，`README.md` 的「目录结构」段必须同步更新。
+要点回顾（避免误改）：`agent.cordis.yml` 是 AGENT-PLANE 组合（权威岗位配置）；`preset.yml` 只承载展示元数据；`plans/` 为工具脚本源副本（运行期正式位见 `SKILL.md` §1.1，`index.sh`/`migrate.sh` 等仍以总库 `scripts/` 为准）；`skills/dsh-codepunk-workflow/` 是流程 playbook 与按需加载的 `references/`、`benchmarks/`。
 
 ## 如何改：维护公约要点
 
