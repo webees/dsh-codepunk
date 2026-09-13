@@ -43,15 +43,13 @@ metadata:
 
 > **官方依据**：即官方 `dsh-goal`+`dsh-tool-goal`+`dsh-goal-round-driver`（词汇 Goal→Round→Turn→Step；armed 进程本地；resume 须人类消息；默认 256 轮；自动轮不得改人类目标，写状态走工作区文件）。调研见 `benchmarks/deepseek-harness-study.md` §2.3。
 
-> 你（主会话/主管）平时不常驻运行。子代理在后台完成后，其**结算通知 / report 会进入你的 inbox**。
-> 若当时没有 active goal，这些回报会**堆积成「排队消息」，需要 sponsor 手动点击「立即」才递给你**——
-> 一个多小时的工程就卡在那 4 条消息上。正确的自动化做法如下：
+> 子代理完成后其**结算通知/report 进你的 inbox**；若无 active goal，回报会**堆积成排队消息，须 sponsor 手动点「立即」才递送**（工程即卡住）。正确做法：
 
 1. **每个工程目标用 `create_goal` 建立会话级 goal 并保持 active**。`create_goal` 创建的目标**默认为 active 且启用自动续行（armed）**。
-2. **臂上之后，你每次进入 idle 都会被自动唤醒**：host 的 `goal-round-driver` 在你空闲时预留下一轮 `<goal_round>` 提示词，把 inbox 里排队的所有子代理回报（验收 evidence / 结算通知）一次领起给你——**实现「子代理完成 → 主管自动消化 → 实时规划」全程无需人工点击**。`maxGoalRounds` 可设上限（默认 256）做预算护栏。
-3. **会话恢复（resume/fork）后会 disarm（停用续行）**：goal 的 phase 与轮次计数持久化，但**续行启用状态是进程本地的**。恢复后**必须先 `update_goal resume` 重新武装**，否则自动续行不生效、又退回手动递送。所以每次开工第一步：`get_goal` 检查 phase 与激活态，非 active+armed 就 `resume`。
+2. **臂上后每次 idle 自动唤醒**：host `goal-round-driver` 空闲时预留下一轮 `<goal_round>`，把 inbox 排队的子代理回报一次领起——**实现「子代理完成 → 主管自动消化 → 实时规划」，无需人工点击**。`maxGoalRounds` 可设上限（默认 256）作预算护栏。
+3. **会话恢复（resume/fork）后 disarm**：phase 与轮次计数持久化，但**续行启用状态是进程本地的**；恢复后 MUST 先 `update_goal resume` 重新武装，否则退回手动递送。故开工第一步：`get_goal` 查 phase 与激活态，非 active+armed 即 `resume`。
 4. **状态判定纪律**：不要把 goal 的 phase 当唯一信号——`goal blocked`/`completed` 是权威，但各轮次与子代理处理状态以运行根（`~/.dsh-codepunk/projects/<id>/`）文件实况为准（见 §2 ④ 结算通知辨识纪律）。
-5. **收尾**：目标完成前 `get_goal` 收集证据（全部 task 验收齐：evidence/acceptance 签收 + 总索引 + merge 留痕），再 `update_goal complete`；受阻时（外部阻塞/halt）`blocked`——`blocked` 状态下 MUST NOT 新 spawn。
+5. **收尾**：完成前 `get_goal` 收集证据（全部 task 验收齐：evidence/acceptance 签收 + 总索引 + merge 留痕）再 `update_goal complete`；受阻（外部阻塞/halt）置 `blocked`——该态 MUST NOT 新 spawn。
 6. **`maxGoalRounds` 是轮次预算不是资源预算**（token/时间/费用不受其约束）；耗尽后需 sponsor 授权的 `resume` 才能继续。
 
 > 依赖组件：goal 服务 / goal-round-driver / `/goal` 命令 / `tool-goal` 均在 host 装配（dsh-base 默认携带），预设只需挂 `tool-goal` 即可获得模型端工具。
@@ -76,42 +74,31 @@ metadata:
 ### 1.2 运行根结构（位于 `~/.dsh-codepunk/projects/<project_id>/` 下）
 
 ```text
-projects/<project_id>/            # 该项目用户级总库根（= 运行根 DSH_CODEPUNK_PROJECTS/<id>/）
-  README.md                       # run 总览：run_id、goal、状态、小组名单
-  goal.yaml                       # 目标（sponsor 确认后 status=active；active⇄blocked）
-  chunks.yaml                     # 分块表（write_paths 互斥 + depends_on 无环）
-  plan_draft.md                   # 规划草案（①→②）
-  change_orders/<id>.yaml         # 需求变更单（proposed→applied→closed，D038）
+projects/<project_id>/            # 项目总库根（= 运行根 DSH_CODEPUNK_PROJECTS/<id>/）
+  README.md  goal.yaml  chunks.yaml  plan_draft.md
+  change_orders/<id>.yaml         # 变更单（D038）
   approvals/merge.yaml            # 合并门批准（⑤）
-  runs/<run_id>/                  # 每轮运营的独立目录
-    briefs/                       # 各 task 工作简报
-    research/briefs/<topic>.md    # 调研简报（URL + retrieved_at）
-    docs/memory/                  # L1 叙事 / L2 简报（文档小组运营）
-    reviews/<task_id>.md          # 代码审查记录（Reviewed-by + pass|needs-work）
-    errors/YYYY-MM-DD.md          # 错误日志（文档小组维护，collected→…→closed）
-    rooms/squad-<task_id>/        # S 规模封闭工作房（工程根内，非总库——见 §1 文件隔离硬要求）
+  runs/<run_id>/                  # 每轮独立目录
+    briefs/  research/briefs/<topic>.md  docs/memory/
+    reviews/<task_id>.md          # 审查记录（Reviewed-by + pass|needs-work）
+    errors/YYYY-MM-DD.md          # 错误日志（collected→…→closed）
+    rooms/squad-<task_id>/        # S 规模工作房（工程根内，非总库）
     tasks/<task_id>/
-      brief/    WORK_BRIEF.md + brief.yaml
-      staffing/ request.yaml + personas/*.md + staffing.yaml + scores.yaml
-      handoff/  summary.md + artifact_index.md + known_issues.md + diff_scope.md + evidence.yaml + acceptance.yaml
-      progress/ progress.md
-knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-codepunk/projects/<id>/knowledge/）
-  hr/personas/<codename>.yaml     # 人设分聚合（评分档案）
-  hr/teams/<team_name>.yaml       # 团队分聚合
-  lessons/<topic>.yaml            # 结构化经验模板（D070）
-  research/<topic>.md             # 高价值调研沉淀
-  handoffs/<task_id>.md           # 交接摘要归档
-  prompts/roles/<role_id>.md      # 各角色提示词（持续优化，招聘引用）
+      brief/     WORK_BRIEF.md + brief.yaml
+      staffing/  request.yaml + personas/*.md + staffing.yaml + scores.yaml
+      handoff/   summary/artifact_index/known_issues/diff_scope.md + evidence/acceptance.yaml
+      progress/  progress.md
+knowledge/                        # 知识库（跨 run 沉淀）
+  hr/personas/<codename>.yaml  hr/teams/<team_name>.yaml
+  lessons/<topic>.yaml            # 结构化经验（D070）
+  research/<topic>.md  handoffs/<task_id>.md  prompts/roles/<role_id>.md
 ```
 
-> **兼容注记**：2026-08 前历史 run 的 `.dsh-codepunk/` 已迁移进 `~/.dsh-codepunk/projects/<id>/`（源工程保留窗已清）；若发现工程目录仍有旧 `.dsh-codepunk/`，用 `~/.dsh-codepunk/scripts/dsh-codepunk-migrate.sh --migrate <工程>/.dsh-codepunk <id>` 归位。
+> **兼容注记**：工程目录若残留旧 `.dsh-codepunk/`，用 `dsh-codepunk-migrate.sh --migrate <工程>/.dsh-codepunk <id>` 归位总库。
 
-> **文件隔离硬要求**：若工作区是 git 仓库，凡并行小组 ≥ 2（M/L 规模）**必须**为每个小组建 **git worktree** 做真目录隔离。**前置：主仓库必须先归位工程根**（如 `~/Desktop/projects/<repo>` 或 `__GITHUB__/<repo>`；禁止把主仓库留在桌面根、下载等散落位置），再依主仓库**父目录**创建 worktree：
-> `git -C <主仓库路径> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>`；
-> 创建后**必须**以 `git -C <主仓库路径> worktree list` 复核落点（预期 `../room-<task_id>` 出现在主仓库父目录内，而非散落于桌面根等非工程根目录）；**禁止在非工程根目录创建 worktree**；
-> S 规模（单小组）可用 `rooms/squad-<task_id>/` 子目录 + 人设写集纪律（`rooms/` 位于主仓库工程根内，**须确保工程 `.gitignore` 忽略 `rooms/`**（file-hygiene §一.6））；越界兜底是 R8 审查门（`git diff ⊆ write_paths`）。
+> **文件隔离硬要求**：git 仓库且并行小组 ≥2（M/L）**MUST** 每组建 **worktree**。前置：主仓库先归位工程根（禁止留在桌面根/下载等散落位置），再依其**父目录**建：`git -C <主仓库> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>`，建成后 MUST 以 `git -C <主仓库> worktree list` 复核落点（预期出现在主仓库父目录内）；**禁止在非工程根目录建 worktree**。S 规模可用 `rooms/squad-<task_id>/`（工程根内，**须确保工程 `.gitignore` 忽略 `rooms/`**，file-hygiene §一.6）。越界兜底为 R8 审查门（`git diff ⊆ write_paths`）。
 
-> **项目记忆关联**：项目 ↔ 总库记忆通过双通道关联——**主通道**为工程根 `README.md` 顶部 YAML frontmatter 的 `dsh-codepunk: <project_id>`（无 frontmatter 的项目可用 `<!-- dsh-codepunk: <id> -->` 注释行兼容）；**兜底**为 `~/.dsh-codepunk/INDEX.yaml` 注册表（条目 5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source）。解析工具 `dsh-codepunk-link resolve <项目路径>` 按「README 标记命中 → INDEX 回退 → 未注册报错」三态路由；`dsh-codepunk-link index` 校验注册表无空悬；`dsh-codepunk-link register <项目路径> <id>` 追加注册条目（不覆盖既有、需确认）。README 标记与 INDEX 冲突时以 INDEX 为准。**不批量改写项目 README**：标记的实际写入由 run-lead 决策，工具只提供标记格式与解析。`dsh-codepunk-link` 正式位 `~/.dsh-codepunk/scripts/`（`plans/` 仅源副本）。
+> **项目记忆关联**：项目 ↔ 总库记忆通过双通道关联——**主通道**为工程根 `README.md` 顶部 YAML frontmatter 的 `dsh-codepunk: <project_id>`（无 frontmatter 的项目可用 `<!-- dsh-codepunk: <id> -->` 注释行兼容）；**兜底**为 `~/.dsh-codepunk/INDEX.yaml` 注册表（条目 5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source）。解析工具 `dsh-codepunk-link resolve <项目路径>` 按「README 标记 → INDEX 回退 → 未注册报错」三态路由；`index` 校验无空悬；`register` 追加（不覆盖、需确认）。**冲突以 INDEX 为准**；**不批量改写项目 README**（写入由 run-lead 决策）。正式位 `~/.dsh-codepunk/scripts/`（`plans/` 仅源副本）。
 
 ## 2. 阶段详解
 
@@ -144,24 +131,18 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
     | 仓库 | 路径 | 分支 | run | 用途 | 状态 |
     |------|------|------|-----|------|------|
 
-    行字段：仓库（项目名/别名）、路径（worktree 绝对路径）、分支（`dsh-codepunk/<run_id>/<task_id>`）、run（归属 run_id）、用途（会话/工作区说明）、状态。**状态三态全程登记**：`active`（创建/重建在用）→ `recovered`（异常恢复后复用）→ `recycled`（D073 合并后回收时联动标记；行保留字段不删，分支 refs 留作审计追溯）。登记以 git 只读实况为准（`git -C <主仓库> worktree list`），不凭记忆。
+    行字段：仓库 / 路径（绝对）/ 分支（`dsh-codepunk/<run_id>/<task_id>`）/ run / 用途 / 状态。**状态三态**：`active`（在用）→ `recovered`（恢复复用）→ `recycled`（D073 合并后回收标记；行不删、分支 refs 留审计）。以 `git -C <主仓库> worktree list` 实况为准，不凭记忆。
 2. **并行**派遣三人组（全部后台 continuable〔D088 可恢复性〕，同一轮消息里一起发出）：
-   - `subagent_squad_lead(prompt=简报全量 + 工作房路径 + 汇报节奏)`
-   - `subagent_engineer(prompt=简报技术切片 + 写集 + 工作房)`
-   - `subagent_sdet(prompt=acceptance + 证据格式 + 允许命令)`
-   - prompt 里必须给：工作房绝对路径、write_paths、read 材料、报告对象（你）、交接要求。
+   - `subagent_squad_lead`（简报全量 + 工作房 + 汇报节奏）· `subagent_engineer`（技术切片 + 写集 + 工作房）· `subagent_sdet`（acceptance + 证据格式 + 允许命令）
+   - prompt MUST 含：工作房绝对路径、write_paths、read 材料、报告对象（你）、交接要求。
 3. **并行上限按 scale**：S ≤1 组 / M ≤3 组 / L ≤6 组同时进行（软上限 `max_awake` 8，D024）；双门闩齐即**自动**开工（D031），不必再等你人工点头。
-   - **限流自适应（D086，细则见 references/rate-limit-adaptation.md）**：spawn 前查限流历史（knowledge/lessons/rate-limit-history.yaml），当日已有 ≥2 次 429 → 自动降并发（L1：≤2/批+10s 间隔 / L2：串行 / L3：暂停+通知 sponsor）。
+   - **限流自适应（D086，细则见 references/rate-limit-adaptation.md）**：spawn 前查 `knowledge/lessons/rate-limit-history.yaml`；当日 ≥2 次 429 → 降并发（L1 ≤2/批+10s / L2 串行 / L3 暂停并通知 sponsor）。
 4. **登记子代理 id（MUST）**：每次 spawn 后把 `task → seat → subagent id` 记入 `runs/<run_id>/README.md`（长流程中你是靠这张表巡检/追问/解散的，不要只依赖记忆）。固定表头：
 
-    | task_id | seat       | subagent_id       | status |
-    |---------|------------|-------------------|--------|
-    | chunk-a | squad-lead | <spawn 返回的 id> |        |
-    | chunk-a | engineer   | <id>              |        |
-    | chunk-a | sdet       | <id>              |        |
+    列：`task_id | seat | subagent_id | status`；每 spawn 一行（seat ∈ squad-lead/engineer/sdet），id 取 spawn 返回值。
 5. 小组独立开发、互不干扰；你通过 `list_agents` / 结算通知 / `send_message` 巡检。
    - S 规模默认启用**三帽折叠**（run-lead 兼三席，产物须换帽留痕 `seat=`，见 roles.md 三三制）以降低运载；M/L 全席上阵。
-6. **checkpoint 断点续行（D067，借鉴 LangGraph durable execution）**：每个 chunk 的 `progress/` + `handoff/` + `evidence.yaml` + 工作房即**可重放状态**——每有阶段产出即为一个 checkpoint；中断/失败/回归后，通过 `list_agents` 定位子代理闲置态 + 读 `progress/` 找到最近断点，`send_message` 从该点精确续行，而不是整轮重来或凭记忆续接。
+6. **checkpoint 断点续行（D067，借鉴 LangGraph durable execution）**：`progress/` + `handoff/` + `evidence.yaml` + 工作房即**可重放状态**（每有阶段产出即一个 checkpoint）；中断后经 `list_agents` 定位闲置态 + 读 `progress/` 找最近断点，`send_message` 精确续行，不整轮重来。
 7. 连续 2 次无实质进展 → `at_risk`，你催办或介入；超时 → 延长 / 失败 / 触发强制解散（P14）。
 8. 缺资料 → 小组成员申请 → 你 approve/redact/deny → `subagent_docs` 打包下发；**禁止小组自行联网**。
 
@@ -171,10 +152,7 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 
 1. **证据**：sdet 产 `evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`。
    - **交付基线（R12）**：验收前 MUST 确认交付目录 mtime 为最新（`ls -la docs/<module>/`），evidence 须带 `validated_at` 与所对的交付基线；疑似交付前空跑/旧快照 → 打回重跑，禁止放行。
-   - **上下文纪律（D074，借鉴 Anthropic 上下文工程）**：①证据只回 `command + exit_code + log_ref`，拒绝整段 stdout，大输出 head/tail 截断；②小组汇报 ≤1500 token 摘要；主会话巡检读 `summary`/`progress`，不回传大日志；③主会话每轮收尾把已消化巡检记录压缩为一行结论，防陈旧消息与上下文堆积误导（R12 同源）。
-   - **消息层纪律（D075，借鉴 ayghri/i-have-adhd MIT 技能）**：①**首行 = 可执行结论**（动作/命令先行）；末行给下一件 2 分钟内可做的事；发送前首末行双读（下一步 + 刚发生了什么）；②多步任务**编号 ≤5 项**（超则拆 now/later）+ **工具清单替叙事**（有 todo 工具就用它 restate，不复述全计划）；③**禁前导/复述/寒暄**（"Great question"式删除；保留真实不确定 hedge，删无信息 hedge）；④**安全先于简洁**：破坏性动作先确认再执行；⑤**调试螺旋防空转**：三轮仍 broken → 停改码，点名可疑假设 + 问一个诊断问题。
-   - **反幻觉纪律（D077，细则见 `references/anti-hallucination-rules.md`）**：完成断言须新鲜证据；不确定即明示；冲突显式化；缺证据索引打回。
-   - **token 经济学细则（D076，借鉴 caveman MIT）**：①**禁自造缩写与箭头**（cfg/impl/req/fn、`→`）——零节省且伤解码；中文短词单 token 不受影响，英文字段禁缩写；②**保护清单（绝不压缩）**：术语/代码/API 名/CLI 命令/错误串逐字保留；数字/日期精确；**never drop not/no/only/except**（翻转语义代价大于节省）；③**Auto-Clarity 豁免**：安全警告、不可逆操作确认、多步歧义、压缩致技术歧义、用户困惑；澄清后恢复；④**持久化产物豁免**：代码/注释/提交信息/PR/工单/文档/记忆文件一律正常行文（写给人看的产物不压缩）；⑤**压缩风格不压缩语言**：按用户主导语言回复，技术词/代码保原文。
+   - **输出与通信纪律（D074 上下文 / D075 消息 / D076 token 经济 / D077 反幻觉，全员适用）**：细则见 `references/output-discipline.md`（D077 另见 `references/anti-hallucination-rules.md`）。速记：证据只回 `command+exit_code+log_ref`；汇报 ≤1500 token；**首行=结论**、编号 ≤5、禁寒暄；完成断言须新鲜证据。
 2. **审查门**：diff 检查（⊆ write_paths）+ CHECKLIST（reviews/CHECKLIST.md）+ 审查记录 `reviews/<task_id>.md`；L 规模或高风险 task 派遣 `subagent_code_review`，其余由你或指定审查者执行；`needs-work` → 小队回修再审。
    - **门禁即显式节点 + 双侧 guardrail（D068，借鉴 crewAI Flow / ADK）**：双门闩/审查门/合并门都是必经的显式路由节点——每道门在**入口校验输入**（简报 schema / diff ⊆ write_paths / evidence 齐）、**出口校验输出**（acceptance / 交接包 / merge 门禁文件），不合格输出**回退重做**而非滑入下一阶段；不得用自由对话绕门。
 3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）、**残留自查节（D079，MUST）**——缺自查整包打回（细则见 references/file-hygiene.md）。
@@ -210,18 +188,18 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 |---|---|
 | R1 | 双门闩：brief 批准 ∧ staffing 批准，缺一不得 spawn 实现三角 |
 | R2 | 仅调研岗可联网；主会话、实现组/文档/人事/审计/审查/发布禁止自助 web |
-| R3 | 小组只在各自工作房与写集内活动；主会话只写运行根（`~/.dsh-codepunk/projects/<id>/`）状态与 knowledge/，不写业务码；git 管理操作（worktree add/remove、登记表维护）作用于主仓库与工程父目录，属流程管理豁免 |
+| R3 | 小组只在各自工作房与写集内活动；主会话只写运行根（`~/.dsh-codepunk/projects/<id>/`）状态与 knowledge/，不写业务码；git 管理操作（worktree add/remove、登记表）作用于主仓库与工程父目录，属流程豁免 |
 | R4 | 未签收不得解散；交接材料由文档小组归档 |
 | R5 | 评分不阻断；解散即评分 |
-| R6 | 需求变更只进 leadership：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed）→ 受影响 task；禁止小组直接听用户改需求；goal 停留 draft 超时不自动推进（保持 draft，须 sponsor 或 run-lead resume 才能 active） |
+| R6 | 需求变更只走单通道：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed）→ 受影响 task；**禁止小组直接听用户改需求**；goal 停留 draft 超时**不自动推进**（须 sponsor 或 run-lead resume 才 active） |
 | R7 | 禁止静默丢脏改动：强制解散前 auto-commit/stash 并记 backup_ref |
 | R8 | 审查门：交接/合并前 diff ⊆ write_paths + CHECKLIST + `reviews/` 记录；L/高风险强制独立 code-review |
 | R9 | 合并门：串行合并、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；**合并即回收该 chunk 的 worktree（D073）** |
-| R10 | 每个工程目标用 goal 工具跟踪并从 active 起保持续行（create 即 armed）；resume/fork 后 MUST 先 `update_goal resume` 再开工，否则自动递送失效退回手动；goal `blocked` 或 halt 时 MUST NOT 新 spawn，阻塞解除方可继续 |
-| R11 | 语言纪律：所有内部思考/推理/草稿/评审意见/汇报一律中文；对外输出按用户主导语言；表达简洁、无废话；消息纪律（D075）全员适用——首行=可执行结论、多步编号≤5、禁前导/复述/寒暄；上下文纪律（D074）与 token 经济学（D076）全员适用（细则见 §2④） |
-| R12 | 结算通知辨识纪律：子代理结算通知是「事件提醒」，可能滞后于交付实况（历史失败/空目录报告 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence.yaml 落盘时刻、git 工作区实况为准重新确认，杜绝被陈旧排队消息误导（官方机理：in-process 子代理子步骤/工具调用不写入父日志，父日志只记 spawn 的 tool/call 与 tool/result，见 benchmarks/deepseek-harness-study.md §2.7） |
-| R13 | 文件归宿纪律（防污染其他文件夹/资料）：内容归什么域，就写进什么域——**关于预设/流程自身的 meta 资料（开源基准、流程改进、运营观察）必须写入预设目录**（`~/.dsh/.agent-presets/dsh-codepunk/skills/dsh-codepunk-workflow/benchmarks/` 或预设 `knowledge/`），**绝不写进任何工程的 .dsh-codepunk/**；工程 run 的 `research/briefs/`、`docs/` 等只放该工程业务内容。误写即污染，MUST 立即移出并核销引用 |
-| R14 | 产出归位复核（接收子代理产出时）：run-lead 在接任何子代理产出/调研简报时，MUST 核对「内容归属域」与「实际落位」一致；发现错位 → 立即移出到正确归属域，并检查是否已在错误位置被引用（grep 核销），不得留着漂移文件跨 run 传播 |
+| R10 | 每工程目标用 goal 工具跟踪并保持续行（create 即 armed）；resume/fork 后 MUST 先 `update_goal resume` 再开工，否则自动递送失效；goal `blocked`/halt 时 **MUST NOT 新 spawn**，解除后方可继续 |
+| R11 | 语言纪律：内部思考/推理/草稿/评审/汇报一律中文；对外按用户主导语言；简洁无废话。**D074 上下文 / D075 消息 / D076 token 经济 全员适用**（细则见 `references/output-discipline.md`） |
+| R12 | 结算通知辨识纪律：结算通知是「事件提醒」，可能滞后于实况（历史失败/空目录报告 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence 落盘时刻、git 实况为准重确认，防被陈旧排队消息误导（机理：in-process 子代理子步骤不写入父日志，父日志只记 spawn 的 tool/call 与 tool/result，见 benchmarks/deepseek-harness-study.md §2.7） |
+| R13 | 文件归宿纪律：内容归什么域就写进什么域——**预设/流程自身的 meta 资料（开源基准、流程改进、运营观察）MUST 写入预设** `skills/dsh-codepunk-workflow/benchmarks/`，**绝不写进任何工程目录**；工程 run 的 `research/briefs/`、`docs/` 只放该工程业务内容。误写即污染，MUST 立即移出并 grep 核销引用 |
+| R14 | 产出归位复核：run-lead 接收任何子代理产出/简报时 MUST 核对「内容归属域 vs 实际落位」；错位 → 立即移出并 grep 核销引用，不得留漂移文件跨 run 传播 |
 
 ## 4. 工具映射速查
 
@@ -244,21 +222,22 @@ knowledge/                        # 知识库（跨 run 沉淀，位于 ~/.dsh-c
 
 ## 6. 参考文件（按需读取）
 
-- `references/roles.md` —— 全部岗位人设（含人设维度表）与派遣提示词模板。
-- `references/artifacts.md` —— goal/chunks/brief/staffing/handoff/evidence/acceptance/scores 文件模板。
-- `references/knowledge.md` —— 知识库布局、评分公式与聚合文件格式、提示词优化流程。
+- `references/roles.md` —— 全部岗位人设（含维度表）与派遣提示词模板。
+- `references/output-discipline.md` —— 输出与通信纪律（D074/D075/D076 细则 + D077 指引）。
+- `references/artifacts.md` —— 各产物文件模板（goal/chunks/brief/staffing/handoff/evidence/acceptance/scores）。
+- `references/knowledge.md` —— 知识库布局、评分公式与聚合格式、提示词优化流程。
 - `references/standard.md` —— 编号（P01–P17 / D0xx）唯一权威释义。
-- `references/harness-alignment.md` —— 官方机制对齐表（§0.0 完整展开）。
+- `references/harness-alignment.md` —— 官方机制对齐表（§0.0 展开）。
 - `references/anti-hallucination-rules.md` —— 反幻觉纪律细则（D077 完整展开）。
-- `references/model-routing.md` —— 角色分模型路由选型表 + 成本杠杆（D078）。
+- `references/model-routing.md` —— 分模型路由选型 + 成本杠杆（D078）。
 - `references/file-hygiene.md` —— 工作房卫生契约（D079：防残留/清理自查/强制门闩）。
 - `references/anti-overengineering.md` —— 产出纪律（D081：YAGNI 阶梯/根因修复/简化留痕/审查契约）。
 - `references/diagram-guide.md` —— 文档配图规范（D082：场景→图类型 + 4px 网格/密度/语义色）。
-- `references/skill-governance.md` —— 技能治理与升级机制（D083：四态生命周期 + 三件套文档化 + 版本标记）。
+- `references/skill-governance.md` —— 技能治理（D083：四态生命周期 + 三件套文档化 + 版本标记）。
 - `references/prompt-injection-rules.md` —— 注入防护纪律（D084：工具返回不可信/记忆 canary/供应链门）。
 - `references/model-fallback.md` —— 回退机制（D089，双要件见 D090）。
-- `references/memory-enhancement.md` —— 知识库记忆增强（D085：knowledge/ 三级化/过期三态/自包含互链）。
-- `references/learned-skills.md` —— 学到的技能总览（D066–D083 溯源 + 应用铁律 + benchmarks 索引）。
+- `references/memory-enhancement.md` —— 记忆增强（D085：三级化/过期三态/自包含互链）。
+- `references/learned-skills.md` —— 技能溯源总览（D066–D083 + 应用铁律 + benchmarks 索引）。
 
 ## 7. 开源基准借鉴（benchmark note）
 
