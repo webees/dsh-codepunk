@@ -6,16 +6,12 @@
 > 目标：找到「防产生」+「及时清理」双管齐下的可落地机制。
 > 撰写：ind-res（调研小组）· 2026-08-25T21:45Z（本地 2026-08-26 05:45）
 
----
-
 ## 0. 检索窗口 / 渠道（透明声明）
 
 - **渠道：全程 curl 直连 GitHub REST API / raw.githubusercontent / 官方文档 llms.txt**。`web_search` 与 `web_fetch` 工具在本次检索中不可用（web_search API key 无效；web_fetch 无可用 provider），故全部改用 curl，可复现。
 - 检索对象：GitHub 仓库全树（git/trees API）、仓库元数据（star/license）、SKILL.md / 文档 raw 全文、Claude Code 官方文档全集（llms-full.txt 8.0MB）、agentskills.io 规范站（llms.txt + llms-full.txt）。
 - **局限**：GitHub code-search（按内容搜代码）需认证 token，未使用；只做了仓库级检索 + 树级文件名/关键词过滤，可能漏掉「文件名不含关键词」的清洗类 skill；agentskills.io 的 `skill-creation/best-practices.md` 抓取失败（SSL 断连，重试失败），其规范侧卫生条款未能核实。
 - 检索时间窗：2026-08-25T21:30Z – 21:45Z。所有 URL 的 retrieved_at 均为此窗口。
-
----
 
 ## 1. 定位结论（有没有现成 skill？哪个最好？）
 
@@ -60,8 +56,6 @@
 
 【推断】对 dsh-codepunk 的最优路线 = **「借用官方引擎机制 + 移植 agent-housekeeping 规则 + davila7 命令族做巡检工具 + SoloDawn 式强制门闩」，而非等待/寻找一个现成的通用清理 skill（不存在）**。
 
----
-
 ## 2. 技巧清单（技巧 | 来源 | 适用场景 | 对 dsh-codepunk 的应用建议【事实/推断】）
 
 | # | 技巧 | 来源 | 适用 | 对 dsh-codepunk 应用建议 |
@@ -81,8 +75,6 @@
 | T13 | Agent Teams 共享目录 session 结束自动清理 | Claude Code Agent Teams 文档（llms-full line 359） | 多 agent 协作 | 【事实】官方机制。【推断】dsh 团队公共区（共享 scratch/目标目录）生命周期绑定小组会话，解散阶段自动清扫 |
 | T14 | 规则要少而硬：CLAUDE.md 膨胀会导致 agent 忽略指令 | Claude Code best-practices（https://code.claude.com/docs/en/best-practices） | 纪律设计 | 【事实】官方 best-practices 原话。【推断】dsh 卫生契约限「少量硬规则 + IMPORTANT 强调」，避免「规则太多被忽略」的已知失效模式 |
 
----
-
 ## 3. TOP 落地清单（按价值排序，9 条）
 
 1. **双门机制**：开工加载「卫生契约」（T1 五条硬规则，防产生）+ 收尾必跑「残留自查清单」（T3，及时清理）——两者都已有现成可复用文本（agent-housekeeping），是目前已知性价比最高的动作。【T1/T3】
@@ -94,8 +86,6 @@
 7. **终态清理设为硬门闩**：把「残留自查通过」做成小组解散/交接的前置条件（SoloDawn RB-37 的强制思路 T12），与现有巡检双门闩并列。【T12/T3】
 8. **防重复 artifacts**：生成任何产物前先 glob 查重（编辑优先于新建，agent-housekeeping 软规则），需求确认阶段显式声明「本次产出文件清单」。【T1】
 9. **契约精简**：卫生规则控制在「5 硬规则 + 1 自查清单 + 1 报告模板」规模，配 IMPORTANT 强调，避免 CLAUDE.md 膨胀失效（T14）。【T14】
-
----
 
 ## 4. License / 复用性
 
@@ -110,8 +100,6 @@
 | Claude Code 官方文档 / agentskills.io | 官方文档 | 【事实】机制说明引用性使用（已注明 URL），不受代码 license 约束 |
 
 **复用路线建议**：以 agent-housekeeping（MIT）为骨架 → 并入 davila7 的 worktree-cleanup / repo-cleanup-loop 命令做巡检工具 → 参照官方引擎机制与 SoloDawn 强制门闩补「清理执行层」→ 产出 dsh-codepunk 卫生 skill。
-
----
 
 ## 附：来源清单（全部 retrieved_at = 2026-08-25T21:30–21:45Z）
 

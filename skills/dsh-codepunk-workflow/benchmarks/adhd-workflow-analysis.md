@@ -7,8 +7,6 @@
 > 检索窗口：2026-08-26 02:17（UTC+7）
 > 检索方式：本次检索中 web_search/web_fetch 通道不可用，按惯例改用 **curl 直连 GitHub REST API**（仓库元数据/文件树/提交记录）与 **raw.githubusercontent 官方 raw 正文**（全量文件抓取，56 个 blob 逐一落盘核对）核实。所有 URL 均为真实官方地址；star/时间取 GitHub API 实况值。每条结论标注【事实】（来源可核对）或【推断】（基于可靠知识的推导）。
 
----
-
 ## 0. 仓库元数据快照【事实】
 
 来源：https://api.github.com/repos/ayghri/i-have-adhd （retrieved_at=2026-08-26）
@@ -26,8 +24,6 @@
 | 仓库形态 | 技能+插件多平台发行包（无 CI 失败迹象，含 tests/ + evals/ 全套验证） |
 
 最近提交（https://api.github.com/repos/ayghri/i-have-adhd/commits?per_page=10 ，retrieved_at=2026-08-26）显示活跃：8-21 合并 AI Agora 讨论路由（PR #128）、8-18~19 SessionStart hook 超时修复（PR #123）与 docs/contributing 体系建立（PR #121）。**仓库在快速迭代期，机制均为现行版本（main@b42a45a）。**
-
----
 
 ## 1. 仓库是什么【事实】
 
@@ -58,8 +54,6 @@
 | `evals/cases.jsonl` + `rubric.md` + `README.md` + `scripts/run_evals.py` | — | **双条件 A/B 评测**：盲评 + 五维加权 + 发布门禁 + 费用预算 |
 | `AGENTS.md`/`CONTRIBUTING.md`/`.github/pull_request_template.md` | — | 多智能体协作治理：authorship 三分类披露、安全红线、兼容性检查表 |
 | `tests/`（test_always_on_hooks.py 等 5 个） | — | hook 跨平台一致性、eval 工具、plugin 加载的单元测试 |
-
----
 
 ## 3. 核心机制（文件逐条归纳 + 原文摘录）
 
@@ -127,8 +121,6 @@
 - PR 模板含 Target/Author/Workflow 三组标签 + 安全 side-effect 检查表 + "最终责任"勾选（human 对全 diff 负责）。
 - `AGENTS.md` 的 AI Agora 制度：agent 可读任意 issue/PR，但**只能评论自己 author 的 PR**；评论他人 issue 须带 `AI Agora` 标签（当前 #127）；每条评论一个提案、区分 observation/inference、引证据、不重复前人评论。
 
----
-
 ## 4. 亮点与独特价值（对「AI 助手辅助工作效率」的可迁移思想）
 
 1. **输出塑形而非任务管理**【推断】：全仓库不做提醒/清单/番茄钟，只做"回答长什么样"——零运行时状态、零自建记忆，接入成本 = 一段注入文本。对 dsh-codepunk 这种重流程编排者，输出塑形是**可与流程正交叠加的薄层**，不冲突。
@@ -139,8 +131,6 @@
 6. **把提示词质量工程化**【事实】：A/B 双条件 + 盲评 + 五维加权 + 预算 + release gate + 运行可恢复。其中"**隔离评测环境防自污染**"（自己的 always-on flag 会污染基线）是被多数项目忽略的洞察。
 7. **多平台发行模式**【事实】：一份 canonical SKILL.md → 9 个平台适配（hook/extension/command/system-transform/@import 各平台原语不同，行为契约一致）——"单一事实源 + 适配点管理"。
 8. **agent 协作治理**【事实】：provenance 强制披露 + AI Agora 讨论区 + "agent 不得评论非本人 PR"——对开放 agent 协作仓库的边界设计。
-
----
 
 ## 5. 对 dsh-codepunk 的适配点（每条标注【事实】/【推断】）
 
@@ -172,8 +162,6 @@
 - MIT 许可文本明示覆盖 "this software and associated documentation files"——SKILL.md 规则文本、AGENTS.md/CONTRIBUTING.md 等文档均在许可范围内。【推断】规则思想与表达可被 dsh-codepunk 借鉴/改写；落地时**保留 attribution**：在引入文件（如 roles.md 或 benchmarks 索引）注明"输出纪律结构基于 ayghri/i-have-adhd（MIT, https://github.com/ayghri/i-have-adhd）"，并附 MIT 许可副本。这与 dsh 既有惯例（benchmark note：机制借鉴、不涉代码抄袭）一致。
 - 【推断】规则本身（如"lead with next action"）属通用提示词工程思想，不受版权主张约束；但对**具体表达文本**（如 Pre-send check 的逐条措辞）的整段照抄仍需 MIT attribution。
 
----
-
 ## 6. 引用留痕
 
 > 检索方式声明：本简报全部结论基于 **GitHub REST API + raw.githubusercontent 一手抓取**（web_search/web_fetch 通道本次不可用）。所有 URL 均为真实官方地址，retrieved_at 统一 = 2026-08-26 02:17（UTC+7）。
@@ -201,8 +189,6 @@
 | LICENSE（MIT，Copyright 2026 Ayoub Ghriss） | https://raw.githubusercontent.com/ayghri/i-have-adhd/main/LICENSE | 2026-08-26 |
 | 各平台 manifest（.claude-plugin/.codex-plugin/kimi/qwen/gemini） | https://raw.githubusercontent.com/ayghri/i-have-adhd/main/.codex-plugin/plugin.json （及各等价路径） | 2026-08-26 |
 | SKILL 镜像一致性（diff 实测同一） | https://raw.githubusercontent.com/ayghri/i-have-adhd/main/.cursor/skills/i-have-adhd/SKILL.md | 2026-08-26 |
-
----
 
 ## 7. 附：方法与局限
 

@@ -2,10 +2,8 @@
 
 > 支撑决策号：D066（goal 续行）/ D078（模型路由）
 
-> 调研岗：ind-res（行业分析）
-> 检索窗口：2026-08-26 03:00–03:20（UTC+7）
-> 归属：dsh-codepunk（预设 meta 调研，R13 归位 benchmarks/）
-> 状态：交付工程主责（run-lead）审核；禁直接投递实现组
+> 调研岗 ind-res（行业分析）｜检索窗口 2026-08-26 03:00–03:20（UTC+7）
+> 归属 dsh-codepunk（预设 meta 调研，R13 归位 benchmarks/）｜状态 交付工程主责（run-lead）审核；禁直接投递实现组
 
 > **版本漂移记录（滚动更新）**：本简报为 2026-08-26 快照。后续复核：npm `@deepseek-ai/dsh` 已至 **0.1.5-rc.1**（2026-09-13 实测 `npm view`）；DSH Desktop 外壳 **2.0.9**（2026-09-10 更新，`app.asar` 结构变化；`app.asar.unpacked` 仅剩 node-addon 包）。2026-09-13 已按 §0.0 对齐表全量复核：24 个引用插件包全部存在、`entryListSchema` 解析通过（18 顶层条目）、`toolFilter` 工具名全有效、三组 `isolate` realm 齐备；官方 standard 预设新增 `command-goal` 与 `present` 两行（本预设已同步）。
 
@@ -25,8 +23,6 @@
 
 引文约定：`[F]` = 官方原文事实（可直接验证）；`[I]` = 本调研推断/跨源比对判断。所有检索均在 2026-08-26 完成，`retrieved_at` 统一记为 `2026-08-26`。
 
----
-
 ## 1. 定位结论（一句话 + 论据）
 
 **DeepSeek Harness（`dsh`）是 DeepSeek AI 出品的开源 Agent Harness：以 Cordis 插件系统为内核的「一切皆插件」执行环境/agent runtime，官方定位为「Agent = Model + Harness」——模型之上提供工具、技能、会话、沙箱、存储、循环、调度、UI 等全部能力，开发者预览阶段（明确声明有兼容性破坏变更）。**
@@ -37,8 +33,6 @@
 - 许可证 MIT、语言 TypeScript、~195k stars / ~22k forks、topics: `ai-agents, cordis, dsh, dsh-plugin`。[GitHub API 仓库元数据](https://api.github.com/repos/deepseek-ai/deepseek-harness)
 - 安装通道：`npx @deepseek-ai/dsh web`（Web UI 默认 `http://127.0.0.1:3080`）或源码运行；npm latest = `0.1.1-rc.2`（登录 `rc` 前缀印证预览期）。[README.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/README.md)、[npm registry](https://registry.npmjs.org/@deepseek-ai%2Fdsh)
 - 底层框架 Cordis 及其设计论文《A Programming Paradigm for Spatiotemporal Composability》。[README.md](https://github.com/deepseek-ai/deepseek-harness/blob/master/README.md)、[cordiverse/cordis](https://github.com/cordiverse/cordis)、[cordiverse/paper](https://github.com/cordiverse/paper)
-
----
 
 ## 2. 能力特性清单（源 + 事实/推断标注）
 
@@ -175,8 +169,6 @@
 - [F] skill：`context: fork`、parameter hints、per-skill tool 约束等字段不在已交付契约内。[skill-system](https://github.com/deepseek-ai/deepseek-harness/blob/master/.agents/notes/implemented/feature/2026-07-05-skill-system.md)
 - [F] 社区通道：GitHub Discussions + Discord（README 提供）；[讨论区实际可见](https://github.com/deepseek-ai/deepseek-harness/discussions)（含置顶「Welcome/Plugin Category Guidelines」、中文飞书群，及一条真实 Bug 讨论：*[Bug] Subagents always fail with 400 "Reasoning is mandatory" when parent uses a thinking-…*）。[I] 该 Bug 讨论提示：**父会话启用思考模型时子代理请求可能触发 400**——dsh-codepunk 多智能体场景需验证此边界。[retrieved_at: 2026-08-26]
 
----
-
 ## 3. dsh-codepunk「充分利用建议」（按价值排序，共 11 条）
 
 > [I] 以下为调研推断建议；落地决策权归工程主责。标注与官方机制号对应。
@@ -203,8 +195,6 @@
 
 11. **建立「官方版本漂移监控」**（成本最低、收益长期）：项目处于 developer preview，breaking changes 是官方承诺（2.13）；建议在预设 planning 中加入轻量「版本核对」步骤（如每次大 run 前 `npm view @deepseek-ai/dsh version` + GitHub releases 扫描），并把本文档列为进一步调研的起点索引。
 
----
-
 ## 4. 未知 / 需验证项（不编造，如实列出）
 
 1. **本地部署差异**：官方 Web UI 默认端口为 3080；本地以其他端口运行时属装配差异，未深究（未反编译 app.asar）。Web UI 端口随安装形态变化的官方说明未检索到。
@@ -214,8 +204,6 @@
 5. **Agent Teams 稳定性**：实验性（experimental 前缀）API 的兼容性与生产可性未定。[F] 官方即标记 experimental。
 6. **goal 对「完成后立即评分/解散」等流程可否由自动轮完整驱动**：官方限定自动轮只报 complete/blocked，对 dsh-codepunk 自动评分链路的兼容性需实测（见建议 2）。
 7. 未检索 GitHub Releases/CHANGELOG 时间线（本次聚焦文档与结构；版本漂移监控留作建议 11 的起点）。
-
----
 
 ## 5. 附：本次引用的核心官方 URL 清单（均已 retrieved_at 2026-08-26）
 

@@ -6,8 +6,6 @@
 > 检索时间：2026-08-29T17:49:00Z（UTC）｜通道：curl 直连 GitHub REST API + raw.githubusercontent.com（web 通道不可用，直连透明；两次 SSL 抖动重试当场补回）
 > 前置关联：本简报为 dsh-codepunk 文档小组（`subagent_docs`）的**图表化能力**调研，与既有的 `ponytail-analysis.md`（产出纪律）、`caveman-analysis.md`（表述层 token 经济）形成**表述/产出/视觉**三姊妹。供工程主责审核后下发文档小组。
 
----
-
 ## 0. 抓取与元数据
 
 | 项 | 值 |
@@ -22,8 +20,6 @@
 | 抓取量 | 文件树 455 节点（含 424 个文件 / 31 个目录）；正文本体抓取 **28 个 .md 文件 + 8 个 ADR + LICENSE** 全部成功（2 次 SSL 抖动重试补回）；`skills/` 内 39 个 type-*.md 全量下载 28 个、余 11 个因超时未全部拉取但非关键；核心 SKILL.md（39KB）、README.md（41KB）、style-guide.md（8.7KB）、semantic-patterns.md（10KB）、animation.md（12KB）、output-spec.md（14KB）、profiles.md（14KB）、onboarding.md（14KB）全部完整 |
 | 404/私有/空 | 无。仓库公开、MIT 单轨、全路径可读；`docs/adr/0002-semantic-patterns-do-not-expand-the-taxonomy.md` 在 `raw.githubusercontent.com` 上按文件名 `0002-semantic-patterns-do-not-expand-the-taxonomy.md` 读取成功（未含 `-` 后段则 404，经确认存在） |
 
----
-
 ## 1. 仓库定位（一句话 + 核心机制/设计思想）
 
 **定位一句话**：**一套 39 种编辑品质图表的 AI agent skill，让 LLM 生成"设计师看不上的"专业级 SVG 图表，而非草稿质感——精确到像素级的 SVG 坐标系、4px 网格、语义角色色彩系统，且完全无 Mermaid/无阴影/无通用圆角盒。**
@@ -36,8 +32,6 @@
 4. **4px 网格硬规则 + 几何验证**：所有坐标、尺寸、间距必须为 4 的倍数（非强制则判 AI 生成味）。标签位置被 `verify-geometry.py` 几何门禁捕获（ADR 0005），避免标签被后续节点覆盖。
 5. **静态优先 + 可选动效**：默认输出是单文件无 JS 的 HTML。动效仅在显式请求时启用，`reveal` 是唯一允许的自动播放模式（ADR 0003），且必须通过硬编码的、审计过的 pinned controller（ADR 0001）。
 6. **导入降级四轴（Format × Size × Detail × Audience）**：draw.io 或 Mermaid 导入时走四维参数化——格式、尺寸、详细程度、受众——每个轴独立控制输出形态，而非简单转换（output-spec.md）。
-
----
 
 ## 2. 文件逐条归纳 + 关键原文摘录
 
@@ -87,8 +81,6 @@
 | `prompts/` | 对应 Pi 的 4 个 prompt 模板 |
 | `scripts/` | 20+ Python 脚本：验证/几何/布局/截图/自检/图例/图标构建 |
 | `skills/diagram-design/scripts/` | 3 个打包脚本：drawio_extract.py / mermaid_extract.py / self_check.py |
-
----
 
 ## 3. 对 dsh-codepunk 文档小组的适配点
 
@@ -161,8 +153,6 @@
 - 唯一要求：保留原件版权声明
 - 第三方图标：`scripts/vendor/icons/tabler/`（Tabler Icons，MIT）、`scripts/vendor/icons/simple/`（Simple Icons，CC0），各自许可独立
 
----
-
 ## 4. 引用留痕
 
 | 来源 | URL | Retrieved At |
@@ -190,7 +180,5 @@
 | type-dependency.md | https://raw.githubusercontent.com/cathrynlavery/diagram-design/main/skills/diagram-design/references/type-dependency.md | 2026-08-29T17:49:00Z |
 | type-loop.md | https://raw.githubusercontent.com/cathrynlavery/diagram-design/main/skills/diagram-design/references/type-loop.md | 2026-08-29T17:49:00Z |
 | type-sequence.md | https://raw.githubusercontent.com/cathrynlavery/diagram-design/main/skills/diagram-design/references/type-sequence.md | 2026-08-29T17:49:00Z |
-
----
 
 *end of brief — 可据此向工程主责提交审核，审核通过后由文档小组结合具体场景落地。*

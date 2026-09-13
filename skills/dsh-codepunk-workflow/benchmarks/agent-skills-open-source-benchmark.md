@@ -9,8 +9,6 @@
 >
 > ⚠️ 边界声明：以下项目仅作**机制/规范/流程借鉴**，不代码抄袭；涉及 dsh-codepunk 的具体改造落地须经 run-lead 审定后由文档小组写入正式规范，ind-res 不代替决策。
 
----
-
 ## 0. 项目/skill 清单表
 
 | 项目 | 仓库 URL | star(约) | 定位 | 核心机制一句话 |
@@ -36,8 +34,6 @@
 
 > 注：题目中提到的 claude-flow（smtg-ai）与 dolphin-flow 仓库已不可寻（GitHub 404，疑似迁移/改名/归档），**未纳入**；punkpeye/awesome-claude-skills 已 404，其生态位置由 ComposioHQ/awesome-claude-skills 与 VoltAgent 承接。Skyvern 不含 frontmatter 式 skill，仅作"工作流自动化"对照，非 skill 规范来源。
 
----
-
 ## 1. Anthropic 官方：anthropics/skills + agentskills.io 规范（skill 生态事实标准）
 
 **定位/核心机制【事实】**（README + https://agentskills.io/specification + agentskills.io/llms.txt，retrieved_at=2026-08-19）：
@@ -59,8 +55,6 @@
 2. **渐进披露迁移长内容**：现有 workload 长手册主体可压到 <500 行/≤5000 token，把六阶段细节、岗位卡、评分公式、交接包 schema 移入 references/，并在正文写"遇到 X 阶段→读 references/stage-X.md"，控主会话 token。
 3. **description 触发器化**（进阶）：描述写"何时调此 skill"而非"它做什么"，防过度/欠触发。
 
----
-
 ## 2. obra/superpowers（273,914★，与 dsh-codepunk 同构度最高的"skill 即方法论"范例）
 
 **定位/核心机制【事实】**（README + skills/writing-skills/SKILL.md + skills/using-superpowers/SKILL.md，retrieved_at=2026-08-19）：
@@ -77,8 +71,6 @@
 2. **写一个 `dsh-codepunk-writing-skills` 元 skill**：把"如何给 dsh-codepunk 写/改 skill"沉淀为内部 authoring 规范（frontmatter 格式、body 结构、SDO、token 预算、测试要求），供实现岗与文档岗复用。
 3. **skill 质量门引入"无测试不合并"的铁律**：每个 skill 变更附一个最小触发/输出测试（见 §B-c），未过不得进索引。
 
----
-
 ## 3. skill 集合/发现：VoltAgent、ComposioHQ、hesreallyhim（catalog 爆炸的对策样本）
 
 **定位/核心机制【事实】**（README，retrieved_at=2026-08-19）：
@@ -92,8 +84,6 @@
 1. **为 dsh-codepunk skill 库建"入库门槛 checklist"**（借鉴 VoltAgent Quality Standards）：描述触发器化、正文<500 行、无绝对路径、依赖工具显式声明、附至少一个触发/验收用例；**新 skill 至少经一轮真实流程验证后方可入索引**（对应"不接收 3 小时前新 skill"）。
 2. **建"skill 索引/目录"单一发现入口**：索引表 = 每个子 skill 的 name + 触发器描述 + 层级/依赖 + 版本，一行一个；由 run-lead 维护，防 catalog 爆炸与重复。（详见 §6 TOP-4）
 
----
-
 ## 4. 同类高 star 单 skill / 工具（参考"单 skill 形态"与"skilling 自动化"）
 
 **定位/核心机制【事实】**（README+检索，retrieved_at=2026-08-19；部分为轻量核对，标推断）：
@@ -105,8 +95,6 @@
 - **microsoft/semantic-kernel（28,463★）**：以 plug-ins/skills（skprompt.txt+config）为技能单元 + Agent Framework【事实：README 提及 plugins/agents】。
 - **Skyvern（22,786★）**：浏览器自动化工作流（自然语言→步骤），非 skill 规范；对照参考"把重复流程模板化为可复用 workflow"【事实 README；机制推论标推断】。
 - **UfoMiao/zcf（6,078★）**：零配置初始化 Claude Code/Codex 的工作流/技能装配工具（CLAUDE.md/工作流/MCP 模板）。→ 借鉴【推断】：dsh-codepunk 可提供"一条命令打全套 skill 模板"的脚手架/初始化脚本，降低接入成本。
-
----
 
 ## 5. B 部分核心结论：skill 内部机制/质量对比提炼（已在上文各小节展开，此处汇总）
 
@@ -133,8 +121,6 @@
 1. **给 dsh-codepunk-workflow 及所有子 skill 补语义 frontmatter**（name/description/version/licenses/compatibility/metadata），对齐 agentskills.io 规范（可跑 `skills-ref` 校验），这是"更易写/更易发现"的地基。
 2. **渐进披露重构**：SKILL.md 主体压缩 + references/ 按需（"读 stage-X 当进入 X 阶段"），直接控主会话 token。
 3. **建 skill 索引 + 入库门槛 + eval 门**（见 TOP-4/5）。
-
----
 
 ## 6. 综合建议 TOP 清单（对 dsh-codepunk 价值排序，5-8 条可落地）
 
@@ -170,8 +156,6 @@
 
 8. **环境/依赖显式声明 + 工具最小化**【事实标准→推断】
    - 为各子 skill 声明 `compatibility`（需要的运行时/网络/包）与 `allowed-tools` 白名单，杜绝"绝对路径/工具一把梭"，提升跨设备、跨 run 可移植性。
-
----
 
 ## 7. 事实与推断划分小结
 

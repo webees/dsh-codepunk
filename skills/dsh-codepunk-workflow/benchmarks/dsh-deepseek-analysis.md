@@ -6,8 +6,6 @@
 > 检索完成于：2026-08-25T20:50Z（UTC）
 > 下文每条结论标注【事实】/【推断】；来源见 §0 清单，URL 附于各条。
 
----
-
 ## 0. 检索窗口与渠道（透明注明）
 
 - **检索窗口**：2026-08-25（UTC），单轮集中调研。
@@ -28,8 +26,6 @@
   - S8 [官方文档 Configure models（providers 指南）](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/providers.md)（本地 clone 读取）
   - S9 [LLM adapter 开发文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/practice/llm-adapter.md)（本地 clone 读取）
   - S10 [GitHub Discussions 列表](https://github.com/deepseek-ai/deepseek-harness/discussions)
-
----
 
 ## 1. 定位结论（成分分析）
 
@@ -71,8 +67,6 @@ deepseek-v4-flash-vision-exp // text+image，Vision 实验版
 - master 最近 release：`dsh-v0.1.1-rc.2`（2026-08-21 发布，`prerelease=true`；此前全为 -rc.x）—— 整个 dsh 处于 **RC 制**。
 - npm `dsh-llm-deepseek`：latest tag 停在 `0.0.1-rc.1`，next = `0.1.1-rc.2`；README（master）与 npm latest 存在**细节漂移**（npm license 字段 BSD-3-Clause vs master package.json MIT）→ 【推断】发布管道仍在追赶 master，安装时以 `next` 为准，license 以源码为准。
 - 【事实】官方 README 原文：*"DeepSeek Harness is currently in **developer preview** and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**"*（S5 root README）。
-
----
 
 ## 2. 能力矩阵（模型接入能力）
 
@@ -120,8 +114,6 @@ deepseek-v4-flash-vision-exp // text+image，Vision 实验版
 
 `AUTH`(401/403) / `QUOTA`(余额/配额耗尽识别) / `RATE_LIMIT`(429) / `CONTEXT_WINDOW_EXCEEDED`(400+上下文溢出识别) / `INVALID_REQUEST`(400/413) / `SERVER`(5xx) / `HTTP_<status>` / `TRANSPORT`（DNS/连接/TLS，命名端点）/ `TIMEOUT`（流空闲超时）/ `ABORTED` / `STREAM_CLOSED`（无 [DONE]）/ `MALFORMED_RESPONSE`（坏 JSON）/ `EMPTY_RESPONSE`（stop 无内容，默认重试）/ `UNSUPPORTED_REASONING_EFFORT`（网络 I/O 前拒绝）/ `MISSING_CREDENTIAL`、`INVALID_CREDENTIAL` / `UNKNOWN_MODEL`（pi-ai 侧）/ `DUPLICATE_ADAPTER`（重复注册 deepseek-official 抛错）。错误附带 `Retry-After`、`x-request-id`/`x-deepseek-request-id`。
 
----
-
 ## 3. 与 dsh 集成方式（model adapter seam 全链路）
 
 ### 3.1 seam 机制（【事实】，S2/S5/S9）
@@ -149,8 +141,6 @@ deepseek-v4-flash-vision-exp // text+image，Vision 实验版
 ### 3.3 模型选择链（【事实】，S5）
 
 `agent-default-model`（settings 段 `agent-default-model`，Web 模型选择器写入，`saveSelection()`）→ Agent 未显式指定时的默认 → AgentOptions（provider/model/maxTokens/reasoningEffort）→ `GenerateOptions` → `llm/stream`。会话一旦发过请求即锁定该会话自己的模型（S8）。
-
----
 
 ## 4. thinking 边界（机制 + 已知交互问题）
 
@@ -185,8 +175,6 @@ deepseek-v4-flash-vision-exp // text+image，Vision 实验版
 - 缓存命中与否由**前缀稳定性**决定：扩 prefix、模型路由变更、prompt/schema/历史/图片预算变化都从第一个变更 token 起失效；**reasoning passback 逐轮追加天然打破部分前缀**。
 - cache hit 输入价比 cache miss 便宜约 30 倍（flash：$0.007 vs $0.22）→ 长会话缓存命中率是成本主杠杆。
 
----
-
 ## 5. 对 dsh-codepunk 的价值点（含子代理模型路由 / 评测 / 成本）
 
 1. **子代理分模型路由的官方挂点已确认**：agent-loop 每 agent 可配 provider/model（S9），in-process 子代理默认继承父模型、可被 agentOptions 覆盖（S5）→ **规划阶段即可差异化**：sdet/巡检/规划用 deepseek-v4-pro（重推理，3× 价），engineer/会话标题用 v4-flash（低成本），vision 岗位用 vision-exp。
@@ -197,8 +185,6 @@ deepseek-v4-flash-vision-exp // text+image，Vision 实验版
 6. **双路径防锁定与降级**：`deepseek-official`（官方直连）+ pi-ai dormant（custom provider / 自建网关 / 多厂商）并存——官方断供或限流时切 pi-ai 网关不改 harness 语义；provider 名不可变（S8），切换走"新增→删除"而非改名。
 7. **thinking 默认开=质量默认项**：官方默认 enabled/high，dsh 默认 effort high 且 thinking 是部署级配置——流程默认即深思考，一致性风险更低；需要快响应（如标题/轻量巡检）用 `purpose`/effort 显式降档（session-title 已强制 off）。
 8. **评测/验收的稳定性来源**：`DeepSeekAdapter` 是 harness "first real LlmAdapter"，SSE 翻译与错误分类有完整 e2e 测试（`tests/`：adapter.spec/e2e、sse、files-api、translate）→ 模型侧行为回归风险低于生态第三方组件。
-
----
 
 ## 6. 限制与风险
 
@@ -215,8 +201,6 @@ deepseek-v4-flash-vision-exp // text+image，Vision 实验版
 - **【推断·中风险】**：pro 并发上限 500 且为多组并行主选时，峰值队可能与官方 Rate Limit 政策交互；错峰/重试策略（默认 5 次）需在真实负载下验证。
 - **【推断】**：全量 reasoning passback（超配遵守）在长工具链会话中放大输入 token——成本与 cache 命中率双刃剑，需实测（§7）。
 
----
-
 ## 7. 待验证项（本简报未闭合，供工程主责派单或后续轮验证）
 
 1. **agentOptions 覆盖的模型面精度**：tool-subagent 提示词/工件中配置 exact 字段名与作用域（agent-level vs run-level），确认 dsh-codepunk 三席分模型的可达性。
@@ -226,8 +210,6 @@ deepseek-v4-flash-vision-exp // text+image，Vision 实验版
 5. **off-peak 错峰收益实测**：同工单在 peak/off-peak 双跑的成本差核对（官方声明 2×，需实际账单验证）。
 6. **npm 安装态核对**：`npm i @deepseek-ai/dsh-llm-deepseek@next` 的 license/版本落点（npm latest 与源码漂移的收敛方向）。
 7. **vision-exp 在流程内的可用场景**：若 dsh-codepunk 需要 UI/图表验收，验证 Files API 上传路径 + 图像 token 折算在真实会话中的表现。
-
----
 
 ## 附：方法与边界声明
 

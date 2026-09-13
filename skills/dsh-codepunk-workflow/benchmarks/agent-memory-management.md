@@ -7,8 +7,6 @@
 > 检索窗口：2026-08-30（UTC+7）
 > 检索方式：**curl 直连 GitHub REST API**（`search/repositories` 按 stars 排序抓元数据 + `repos/{owner}/{repo}` 抓仓库详情 + `repos/{owner}/{repo}/readme` 抓官方 README），一手来源，无第三方转引。每条结论标注【事实】（README/API 可核对）或【推断】（基于可靠知识的推导）。star 数取 GitHub API 实况值。
 
----
-
 ## 0. 检索渠道与过滤逻辑
 
 - 关键词：`agent memory` / `llm memory` / `agent knowledge base` / `RAG agent skill` / `mem0 agent memory` / `LLM memory layer`（`search/repositories?q=...&sort=stars&order=desc`）。
@@ -26,8 +24,6 @@
 | SAG | https://github.com/Zleap-AI/SAG | 2,435 | 新 SOTA RAG 架构（替代 RAG+GraphRAG） | chunk→event（完整语义单元）+ 多 entity 索引 + 查询期动态超边（SQL join 扩展），增量写入天然友好 |
 
 *star 来源：GitHub REST API `repos/{owner}/{repo}`，retrieved_at=2026-08-30。【事实】*
-
----
 
 ## 1. Mem0 — `mem0ai/mem0`（64,318★，Apache-2.0）【最相关】
 
@@ -48,8 +44,6 @@
 3. **多信号融合**：检索 `lessons/` 时不只靠关键词，可按"语义 + 关键词 + 已关联 evidence 数"融合排序，命中带证据多的经验优先。
 4. **⚠️ 适配注意**：Mem0 是**服务/向量库形态**（需 LLM + embedding + 数据库），与 dsh-codepunk"纯 Markdown/YAML 文件事实、无 LLM 参与评分"的架构冲突——只借鉴机制思想，不引入外部记忆服务。
 
----
-
 ## 2. OpenViking — `volcengine/OpenViking`（34,282★，AGPL-3.0）【记忆分层与目录检索最对口】
 
 **定位【事实】**（README，retrieved_at=2026-08-30）：开源 Context Database for AI Agents，统一存记忆（memories）/ 资源（resources）/ 技能（skills），以 `viking://` 虚拟文件系统呈现，agent 用 `ls`/`tree`/`find` 浏览而非黑盒向量查询。
@@ -66,8 +60,6 @@
 2. **目录递归检索** → `knowledge/` 现有 hr/research/handoffs/prompts/lessons 目录本身就是层次结构：检索可"先定位目录，再下钻到文件"，避免跨目录海量 hit。
 3. **会话提交异步抽经验** → dsh-codepunk 已有「run 内运营 memory brief → 收官归档入 knowledge/」；可增强为**提交即异步触发经验抽取模板**（触发条件→坑→解法，D070 同源），不阻塞收官。
 4. **⚠️ 适配注意**：OpenViking 是独立服务（需 Python 服务端 + 模型配置），引入成本高；dsh-codepunk 只借鉴其"目录分层 + 异步沉淀 + 可观测检索"的**组织思想**，不动用其运行时。
-
----
 
 ## 3. OpenHuman — `tinyhumansai/openhuman`（38,841★，GPL-3.0）【local-first 知识压缩 + 双脑分工】
 
@@ -87,8 +79,6 @@
 3. **持续 auto-fetch** → dsh-codepunk 跨 run 复用：可借鉴"自动把上轮 handoffs/lessons 沉淀喂进下一轮简报 must_read_refs"（已有雏形，知识.md 再规划步骤 3），不必每轮人工点名。
 4. **⚠️ 适配注意**：OpenHuman 是桌面应用 + 订阅（GPL-3.0 传染性），不引入其运行时；只借鉴"压缩为可编辑 Markdown 树 + 常驻喂脑"的组织模型。
 
----
-
 ## 4. Letta（MemGPT）— `letta-ai/letta`（24,485★，Apache-2.0）【self-editing 记忆架构参考】
 
 **定位【事实】**（README，retrieved_at=2026-08-30）："Build stateful agents with memory that can learn and improve over time"；当前源码在 `letta-ai/letta-code`，本仓库为 landing page + 历史 V1 server（archive 分支）。
@@ -102,8 +92,6 @@
 1. **memory pressure 触发改写** → dsh-codepunk `runs/<run_id>/docs/memory/` 简报可在"上下文预算超阈值"时触发 L0/L1 压缩（已有 D074/D076 雏形），可显式化为"压力阈值 → 触发降载"规则。
 2. **inner monologue / heartbeat** → 与 dsh-codepunk 的 goal 自动续行、子代理回报递送同思路：定期自我核对进度并回报，而非静默。
 3. **⚠️ 适配注意**：Letta 是完整 agent runtime，dsh-codepunk 不引入；只借鉴"记忆按压力主动改写 + 状态持久化"的理念。
-
----
 
 ## 5. Agent_Memory_Techniques — `NirDiamant/Agent_Memory_Techniques`（940★，Apache-2.0）【记忆技术全景教学，最佳机制字典】
 
@@ -124,8 +112,6 @@
 2. **Forgetting & Decay 明文化**：dsh-codepunk 现无显式知识过期策略（research/ 有 TTL 字段但未强制）；可借鉴"访问计数 + 时间衰减 + 相关剪枝"设计三态：长期保留（lessons）/ TTL 过期（research）/ 主动废弃（skill-governance §3.3 已具雏形）。
 3. **⚠️ 适配注意**：多为教学 notebook（Python/向量库形态），不直接搬代码；用于校准 dsh-codepunk 已有机制的命名与归类。
 
----
-
 ## 6. 补充参考（低相关但可借鉴单项机制）
 
 ### 6.1 Basic Memory — `basicmachines-co/basic-memory`（3,801★，AGPL-3.0）
@@ -135,8 +121,6 @@
 ### 6.2 SAG — `Zleap-AI/SAG`（2,435★，MIT）
 **定位【事实】**：原创新 RAG 架构，chunk→event（完整语义单元）+ 多 entity 索引 + **查询期动态超边**（SQL join 扩展，不预建不全局维护），替代 RAG+GraphRAG 双系统；增量写入自然（新 chunk 只加自身 event/entities 不重算全局图）；HotpotQA/2WikiMultiHopQA/MuSiQue Recall@5 平均 90.07%，F1 72.96%。
 **可借鉴【推断】**：**增量写入免重算**原则——dsh-codepunk 每轮新增 lessons/handoffs 时不需要重建全局索引，新条目自包含（触发条件+坑+解法+关联 evidence），检索按需 join；不引入其 SQL/向量运行时。
-
----
 
 ## 7. 机制横向对比（dsh-codepunk 视角）
 
@@ -152,8 +136,6 @@
 | 多智能体共享 | 按 agent_id 隔离 | viking://peers | A2A 加密编排 | 多通道 | 工作房隔离 + 共享 lessons/handoffs 读取 |
 | License | Apache-2.0 | AGPL-3.0 | GPL-3.0 | Apache-2.0 | 只借鉴机制（无代码拷贝，License 风险低） |
 
----
-
 ## 8. TOP 落地建议（dsh-codepunk，按性价比排序）
 
 > 均为【推断】适配方案，需 run-lead 审定后由文档小组落细则（D083 铁律：无简报不应用、无细则不引用、无溯源不登记）。
@@ -166,8 +148,6 @@
 6. **机制字典挂靠（借鉴 Agent_Memory_Techniques）**：run-lead/文档小组审定时查其 30 技术表 + docs/comparison.md 做归类比对；可把其 taxonomy 映射表附入 learned-skills 溯源。
 
 **不建议引入**：Mem0/OpenViking/OpenHuman/Letta 运行时（外部服务、向量库、订阅、AGPL/GPL 传染性）均与 dsh-codepunk"纯文件事实、无 LLM 参与评分、自托管预设"架构冲突——全部按**机制思想**吸收，零代码/零依赖拷贝。
-
----
 
 ## 9. License 汇总
 

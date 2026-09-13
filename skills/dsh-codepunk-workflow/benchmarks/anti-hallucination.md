@@ -9,16 +9,12 @@
 > 证据标注：【事实】= 来源页可直接核对；【推断】= 基于事实对 dsh-codepunk 的映射/推导。
 > ⚠️ 边界声明：以下为机制/纪律借鉴，不代码抄袭；具体落地须经 run-lead 审定后由文档小组写入正式规范，ind-res 不代替决策。
 
----
-
 ## 0. 一页速览
 
 - **幻觉不是单一故障**：成因分四类——知识缺陷、上下文误用/冲突、解码采样、验证缺失；业界共识是「token 生成瞬间无法根治，只能靠架构与流程在输出前后拦截修复」【事实】（SoloDawn 明言，见 §1）。
 - **官方防幻觉三件套**（Anthropic 文档）：允许说「我不知道」、事实断言用直接引文接地、用引文验证并**找不到引文就撤回主张**【事实】。
 - **最强可落地纪律**：Claude Code 官方「**给 agent 一个能运行的检查**」（tests/build/screenshot），让「完成」变成可执行验证而不仅是观感【事实】。
 - **多智能体场景**：独立子代理交叉核对（debate/交叉验证）+ 全程证据链 + 不可变审计日志，是目前防幻觉工程化的主要方向【事实/推断】。
-
----
 
 ## 1. 幻觉成因清单
 
@@ -32,8 +28,6 @@
 
 > RAGTruth arXiv:2401.00396 实测量级：**接了 RAG 仍会产生与检索内容矛盾/无支撑的表述**——证明「有检索 ≠ 无幻觉」，接地必须显式化【事实】。
 > 最新综合综述「LLMs Hallucination: A Comprehensive Survey」arXiv:2510.06265（2025-10，仅核验元数据未深读正文，供延伸）。
-
----
 
 ## 2. 防幻觉技术清单
 
@@ -99,8 +93,6 @@
 | **证据门控交付**：证据不合格自动打回 | SoloDawn（90 分评分护栏，低于 90 自动返工）；perfectify（evidence-gated completion）与 odai（evidence-gated delivery），转引自 VoltAgent 目录【事实】 | 评分公式、交接验收 | 【推断】dsh-codepunk 已有「evidence pass ≠ 可解散」，可补「交接包缺证据索引=整包打回」的硬规则；评分公式加证据完整度权项 |
 | 合流后验证生产健康（CI 绿 ≠ 上生产没问题） | garrytan/land-and-deploy（merge 后 verify production health），转引自 VoltAgent 目录【事实】 | 再规划/迭代 | 【推断】「完成」另加一层运行态验证（build/smoke 真跑），与 Claude Code 官方「check = tests/build/screenshot」一致 |
 
----
-
 ## 3. TOP 落地清单（按 dsh-codepunk 价值排序，10 条）
 
 1. **完成断言 = 新鲜验证证据**（价值：最高，堵住最大幻觉出口）：全流程采用 verification-before-completion 的 Iron Law——「本消息内未运行验证命令，不得声称通过」，把「应该/大概/看起来完成」列为红旗词；与 sdet evidence.yaml 合并为统一完成门。【事实：vbc；推断：映射】
@@ -114,8 +106,6 @@
 9. **受控记忆与事实分离**：知识库写入需证据背书或双人确认（candidate-first），未经确认的推断不得固化为规则；复盘失败经验显式入库防复发。【事实：Linghun；推断：映射】
 10. **护栏评估指标化**：对高价值结论启用独立「护栏评审」（第二个模型 + 可量化指标清单），并建小 eval 集持续度量拦截精度（precision/recall），防护栏自己失效。【事实：OpenAI cookbook】
 
----
-
 ## 4. 已知限制
 
 1. **无完全消除**：Anthropic 官方明言这些技术「significantly reduce, not eliminate」幻觉【事实】；SoloDawn 明言「模型 token 生成瞬间无法阻止幻觉，只能在流程内拦截修复」【事实】。dsh-codepunk 目标应为「可拦截、可追溯、可返工」，而非「零幻觉」。
@@ -124,8 +114,6 @@
 4. **上下文长度劣化检索精度**：长上下文下模型事实检索/长程推理精度下降（Anthropic context engineering）【事实】——反面支持 D074/D075 的剪裁纪律，但意味着「上下文太长」本身是幻觉诱因，需持续压缩。
 5. **来源缺口（已注明）**：Anthropic engineering 旧文《reducing-hallucinations*》已下线 404、OpenAI planning-for-ai-agents 403、Codex 官方 best-practices 页 404——本简报未转述其内容，明确列入检索失败；如需可后续用其它通道补查。
 6. **本简报为外部机制调研**：具体规则文案、门闩阈值、评分权重均须 run-lead 审定后由文档小组落地，ind-res 不代替决策。
-
----
 
 ## 5. 来源清单（全部 retrieved_at = 2026-08-26；后附标注）
 

@@ -6,8 +6,6 @@
 > 检索时间：2026-08-28T22:52:27Z（UTC）｜通道：curl 直连 GitHub REST API + raw.githubusercontent.com（web 通道对 API/raw 高频抓取不高效，故直连；全程透明）
 > 前置关联：`agent-skills-open-source-benchmark.md`（高 star 生态）已列为 agent-skills 样板；本简报为**产出/建筑纪律**维度拆解，与既有的 `caveman-analysis.md`（D076 来源，**表述层** token 经济）形成**表述/产出**姊妹对，供工程主责审核后下发。
 
----
-
 ## 0. 抓取与元数据
 
 | 项 | 值 |
@@ -21,8 +19,6 @@
 | topics | agent-skills, ai-agents, claude, claude-code, cursor-rules, llm, prompt-engineering, **yagni** |
 | 抓取量 | 文件树 212 节点（truncated=false）；正文本体抓取 19 个文件全部 200（0 失败）：README.md、AGENTS.md、`.agents/rules/ponytail.md`、`.cursor/rules/ponytail.mdc`、6 个 `skills/*/SKILL.md`、`docs/agent-portability.md`、`docs/platform-native.md`、`benchmarks/README.md`、`examples/README.md`、`ponytail-mcp/README.md`、`hooks/{ponytail-runtime,subagent,activate}.js`、`examples/email-validation.md`（后者未抓取，见引用留痕） |
 | 404/私有/空 | 无。仓库公开、单轨 MIT、全路径可读；无 BSL 等 source-available 限制 |
-
----
 
 ## 1. 仓库定位（一句话 + 核心机制）
 
@@ -49,8 +45,6 @@
 7. **强度分级**：lite（命名更懒替代，用户选）/ full（默认，梯子强制）/ ultra（YAGNI 极端，删除优先）；默认 full，持久直到显式关闭或会话结束。
 
 **实测口径（诚实数字，明显区别于营销）**：README 用**agentic** 基准（真实 Claude Code 会话改真实 FastAPI+React 仓，按 git diff 计分，12 个 feature ticket、Haiku 4.5、n=4）给出 LOC **−54%**（平均）/ 最高 −94%（date-picker 场景）、token −22%、cost −20%、time −27%、**safety 100%**；对照臂 caveman（terse-prose 控制）LOC −20% 但 token/cost/time 反而**升**；"YAGNI + one-liners"裸提示 −33% 但 safety 掉到 **95%**。README **明言**："The rule was never 'fewest tokens'. It is write only what the task needs, and never cut validation/error handling/security/accessibility." 并**诚实纠正**早期单发基准的 80–94% 夸大（issue #126——裸模型基线凑散文充数），给出 3 个**第三方独立基准**链接（注明"数字归他们、可能漂移、是佐证非官方"）。
-
----
 
 ## 2. 文件逐条归纳 + 关键原文摘录
 
@@ -89,8 +83,6 @@
 - `.openclaw/skills/*/SKILL.md`、`.opencode/command/*.md`、`commands/*.toml`：由 `skills/` 生成的同步副本（`scripts/build-openclaw-skills.js`，测试断言不陈旧）。
 - `package.json`、`scripts/{check-rule-copies,check-versions,uninstall}.js`：单源对齐校验（`node scripts/check-rule-copies.js` 让多份规则文本保持一致）、版本校验、卸载清理。
 - `benchmarks/` 完整 agentic 基准（`tasks.py`/`run.py`/`judge.py`/`correctness.js`）+ `examples/*.md` 原始模型 before/after 对照（email 75→3 LOC、debounce 116→10、React countdown 267→9）。
-
----
 
 ## 3. 对 dsh-codepunk 的适配点
 
@@ -152,8 +144,6 @@
 - **对 dsh-codepunk**：【事实】规则文本（各 SKILL.md、AGENTS.md、docs）与机制思想均 MIT，可直接借鉴/改写为 dsh 纪律，**须保留来源与版权声明**（MIT 要求 copies/substantial portions 附带许可声明——可在 references/learned-skills.md 溯源表加一行来源 URL + license 注记）；【事实】无 BSL 引擎代码可复制之虞，与 dsh 既有"机制思想借鉴、不涉及代码抄袭"基准（P07 note）一致；【推断】若未来直接引用其 SKILL.md 原文若干行做内置规则，把来源 URL + license 写入 comments 与 learned-skills.md。
 - **商标**：ponytail 为项目名/意象（懒高级工程师），非注册商标强约束；dsh 借用其**规则思想**（YAGNI 阶梯/根因/留痕/检查）不构成商标使用，但**不得**在产品/预设名中冒充 ponytail 官方。
 
----
-
 ## 4. 引用留痕（全部 retrieved_at = 2026-08-28T22:52:27Z，除非另注）
 
 - 仓库元数据：https://api.github.com/repos/dietrichgebert/ponytail
@@ -165,8 +155,6 @@
   - hooks/{ponytail-runtime,ponytail-subagent,ponytail-activate}.js
 - 未抓取（元数据可见/非正文）：`examples/email-validation.md` 及 `benchmarks/agentic/tasks.py` 等（仅树内可见，未下载正文；示例 before/after LOC 已由 `examples/README.md` 表给出）、https://ponytail.dev/、https://star-history.com/#dietrichgebert/ponytail&Date
 - 交叉引用（既有调研）：../benchmarks/caveman-analysis.md（D076 来源，表述层 token 经济）、../benchmarks/prompt-context-compression.md（D074）、../benchmarks/adhd-workflow-analysis.md（D075）、../benchmarks/file-hygiene-skill.md（D079 相关）
-
----
 
 ## 5. 结论摘要
 

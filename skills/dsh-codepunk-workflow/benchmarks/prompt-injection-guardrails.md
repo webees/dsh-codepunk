@@ -8,8 +8,6 @@
 > 关键词：「prompt injection」(exact) / 「prompt injection protection」/ 「llm guardrails」/ 「promptguard」+「rebuff」+「llm-guard」
 > 目标：为 dsh-codepunk 多智能体开发流程提炼可落地的 prompt injection 防护内容
 
----
-
 ## 一、仓库对比表
 
 | # | 仓库 | Stars | 定位 | 核心机制 | 防护层级 | License |
@@ -26,8 +24,6 @@
 | 10 | [StackOneHQ/defender](https://github.com/StackOneHQ/defender) | 119 | Agent tool call 间接注入防护 | 3 层检测：T1 正则 → T2 MiniLM 分类器 → T3 可选 LLM，句子级清洗 | **工具调用输出**（MCP/function calling） | Apache-2.0 |
 | 11 | [superagent-ai/superagent](https://github.com/superagent-ai/superagent) | 6,721 | AI 应用综合安全 | 注入检测 + 数据泄露防护 + 有害输出过滤 | 输入 / 输出 | MIT |
 | 12 | [BerriAI/litellm](https://github.com/BerriAI/litellm) | 57,547 | AI Gateway（含护栏） | 代理层内容审核、护栏编排、成本追踪、100+ 模型路由 | 网关层 | 多 License |
-
----
 
 ## 二、核心机制详解
 
@@ -74,8 +70,6 @@
 | Guardrails / Overseers | 专用监控模型审计输入输出 | ★★★★☆ 代理监督层 |
 | Input Pre-processing | 重述/重分词的输入变换 | ★★★☆☆ 辅助防御 |
 
----
-
 ## 三、对 dsh-codepunk 多智能体场景的适配分析
 
 ### 适配点 1：子代理间注入传播（Inter-Agent Message Passing）
@@ -118,8 +112,6 @@
 | 【推断】 | 在 dsh-codepunk 的 skill 注册/加载流程中集成 SkillSpector 作为前置检查门闩 |
 | 【推断】 | 可使用 SkillSpector 的 SARIF/JSON 输出对接 dsh-codepunk 的巡检阶段 |
 
----
-
 ## 四、TOP 落地建议（按优先级排序）
 
 ### 🥇 1. 集成 defender 到 Tool Call 输出管道
@@ -149,8 +141,6 @@ Agent A 调用 tool → tool 返回原始结果 → defender.defendToolResult() 
 
 **理由：** tool call 鉴权 + PII 脱敏，但需要 Arcjet 云服务，对 dsh-codepunk 离线场景有依赖考量。
 
----
-
 ## 五、License 一览
 
 | 项目 | License | 商用兼容 | 备注 |
@@ -167,8 +157,6 @@ Agent A 调用 tool → tool 返回原始结果 → defender.defendToolResult() 
 | superagent-ai/superagent | MIT | ✅ | 宽松 |
 | tldrsec/prompt-injection-defenses | — | ✅ | 仅汇总清单，无代码 |
 
----
-
 ## 六、检索说明
 
 | 项目 | 值 |
@@ -178,7 +166,5 @@ Agent A 调用 tool → tool 返回原始结果 → defender.defendToolResult() 
 | 搜索策略 | 4 组关键词交叉搜索确保覆盖：`prompt injection`(exact) → `prompt injection protection` → `llm guardrails` → `promptguard OR rebuff OR llm-guard` |
 | 排序依据 | GitHub stars（降序），取每组前 5-12，去重后按 stars 排列 |
 | 数据状态 | 截至检索时间点的最新数据；llm-guard 因已归档排除在推荐之外 |
-
----
 
 *简报由 ind-res（调研小组）产出，内容为外部调研事实与推断，未经工程主责审核不应直接用于实现决策。*

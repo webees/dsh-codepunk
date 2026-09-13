@@ -102,7 +102,7 @@ triad:
 
 | 文件 | 主责 | 要点 |
 |---|---|---|
-| summary.md | squad-lead | 做了什么、怎么验证、遗留事项 |
+| summary.md | squad-lead | 什么、怎么验证、遗留事项 |
 | artifact_index.md | engineer | 交付物清单（文件→用途） |
 | known_issues.md | 三人 | 已知问题与后续建议 |
 | diff_scope.md | lead/编排 | diff ⊆ write_paths 的说明 |

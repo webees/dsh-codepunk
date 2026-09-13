@@ -7,8 +7,6 @@
 > 检索窗口：2026-08-19（UTC+7）
 > 检索方式说明：本次检索中 `web_search`/`web_fetch` 通道不可用（API key 失效 / 无可用 provider），已改用 **curl 直连 GitHub API**（一手仓库元数据）与 **raw.githubusercontent 官方 README**（一手机制说明）核实。所有 URL 均为真实官方地址；star 数取 GitHub API 实况值，非第三方转引。每条结论标注【事实】（来源可核对）或【推断】（基于可靠知识的推导）。
 
----
-
 ## 0. 项目对比表
 
 | 项目 | 仓库 URL | star(约) | 定位 | 核心机制一句话 |
@@ -29,8 +27,6 @@
 
 *star 数据来源：GitHub REST API `repos/{owner}/{repo}`，retrieved_at=2026-08-19。【事实】*
 
----
-
 ## 1. Microsoft AutoGen — `microsoft/autogen`（60,507★）
 
 **定位/核心机制【事实】**（README，retrieved_at=2026-08-19）：
@@ -44,8 +40,6 @@
 1. 给每个 task/小组设**显式终止与预算条件**（如最大轮次/最大消息数），自治对话到点收敛，防止"聊飞"费 token —— 对应 dsh-codepunk 会话调度加护栏。
 2. **分层抽象**：把 dsh-codepunk 拆成公文层/语义层/执行层，职责解耦。
 - 适配注意：GroupChat 自由对话成本高且易发散，dsh-codepunk 已用结构化公文规避；只借鉴仲裁器与终止条件，不引入自由聊天。
-
----
 
 ## 2. langchain-ai/langgraph — `langchain-ai/langgraph`（40,001★，最高相关度）
 
@@ -64,8 +58,6 @@
 3. **interrupt-and-resume 式 HITL**：把双门闩/审查门升级为"可查看并微调中间状态后再从该点继续"，而非简单放行/打回。
 - 适配注意：LangGraph 是编程框架（写图代码）；dsh-codepunk 是公文驱动的编排层，只借鉴"状态建模/持久化/可观测"三理念，勿照搬 API。supervisor 模式需 run-lead 审定后选型印证。
 
----
-
 ## 3. crewAI — `crewAIInc/crewAI`（57,301★）
 
 **定位/核心机制【事实】**（README，retrieved_at=2026-08-19）：
@@ -79,8 +71,6 @@
 1. **把六阶段显式建模为带状态的 Flow/状态机**：阶段流转、分支、门禁（双门闩/审查门/合并门）作为显式节点与路由条件，而把"小组内协作"留给自主模式——Crew 自主、Flow 控流程的分工范式。
 2. **manager 的"委托 + 结果验证"闭环**：工程主责派活后不止巡检，要用明确验证标准（acceptance evidence）核对结果质量再放行（现 sdet 证据门即雏形，可强化为 manager 显式验证步骤）。
 - 适配注意：Crews 无固定流的鲁棒性靠提示词兜底，易不可控；dsh-codepunk 应"显式流程为主、自主协作为辅"，避免全面自治。
-
----
 
 ## 4. MetaGPT — `FoundationAgents/MetaGPT`（69,892★）
 
@@ -96,8 +86,6 @@
 2. **SOP 显式化为可配置阶段序列**：把六阶段编成可回放、可裁剪的编排（对应 ChatDev 的 Chain 配置化），方便不同规模(repo)复用与再规划。
 - 适配注意：MetaGPT 是单线瀑布流（串行、前后角色），dsh-codepunk 是并行小组+串行合并门；借鉴"产物 schema 化 + SOP 显式化"，勿照搬串行拓扑。
 
----
-
 ## 5. OpenBMB/ChatDev — `OpenBMB/ChatDev`（34,034★）
 
 **定位/核心机制【事实】**（README，retrieved_at=2026-08-19）：
@@ -112,8 +100,6 @@
 1. **经验共学习落地到知识库**：把高分小组的"回修教训/捷径经验"沉淀为**结构化经验模板**（触发条件→常见坑→标准解法），供再规划与后续小组检索，直接降低重复缺陷（对应 ~/.dsh-codepunk/projects/<id>/knowledge/ 强化）。
 2. **Human-Reviewer 介入点**：代码审查门可设计为"审查者以建议注入、不直接改码"的人际交互形态（现审查记录 reviews/ 已是雏形）。
 - 适配注意：ChatDev 单线程串行；dsh-codepunk 并行小组需靠 depends_on 拓扑维持，借鉴"经验积累 + 审查介入 + 流程配置化"而非流水线形状。MacNet DAG 思路可作为多并行 chunk 的拓扑参考【事实→理念，推断】。
-
----
 
 ## 6. openai/swarm（21,910★，教育性已退役）/ openai/openai-agents-python（28,761★）
 
@@ -133,8 +119,6 @@
 2. **Sessions/历史自动管理**：为每个工作房维护一段自动管理的运行上下文（类似 session），供续行与回滚。
 - 适配注意：Swarm 无状态轻量（几千行）只适合学习；生产借 Agents SDK 思路。dsh-codepunk 借鉴"handoff 契约 + 双侧 guardrail"，勿学其无状态（dsh-codepunk 需要持久化）。
 
----
-
 ## 7. Google ADK — `google/adk-python`（21,186★）
 
 **定位/核心机制【事实】**（README，retrieved_at=2026-08-19）：
@@ -150,8 +134,6 @@
 3. **fan-out/fan-in 显式化**：多 chunk 并行派发→收敛合并的进程显式建模（贴合并行小组+串行合并门）。
 - 适配注意：ADK 重工程化、面向部署；dsh-codepunk 借鉴委托契约与门控语义，不引入其 runtime。
 
----
-
 ## 8. CAMEL — `camel-ai/camel`（17,606★）
 
 **定位/核心机制【事实】**（README，retrieved_at=2026-08-19）：
@@ -162,8 +144,6 @@
 **对 dsh-codepunk 的可借鉴**【推断】：
 1. **可验证信号驱动再规划**：用 acceptance evidence 的通过率/缺陷密度作为显式反馈信号，注入评分与下一轮分块/招聘标准（呼应收官和再规划，把"验收结果"当强信号而非印象分）。
 - 适配注意：CAMEL 面向仿真/研究；dsh-codepunk 借鉴"可验证信号→演化"闭环，取其思想不取仿真架构。
-
----
 
 ## 9. graphiti — `getzep/graphiti`（30,080★，记忆层参考）
 
@@ -177,8 +157,6 @@
 2. **增量沉淀**：交接/评分后**增量**写入 knowledge（而非重写),降低维护与 token 成本。
 - 适配注意：dsh-codepunk 是公文驱动，用"时间窗+溯源"结构化字段即可，无谓引入图数据库层。
 
----
-
 ## 10. 补充：smolagents / outlines / agno
 
 **smolagents**（28,875★）【事实】：CodeAgent 用**代码**表达 agent 动作（code-as-action），非 JSON tool call——中间表示更紧凑、省 token、更精确；核心逻辑 ~1000 行（极简抽象）；执行走沙箱（E2B/Modal/Docker）。→ 借鉴【推断】：dsh-codepunk 可通过"代码作为 agent 中间语言/产出"来压 token 与提升产出执行精度；极简抽象提醒控制编排层复杂度。适配注意：单 agent 库，多 agent 编排需自建。
@@ -186,8 +164,6 @@
 **outlines / dottxt-ai**（15,647★）【事实】：在**生成期**用 JSON schema / regex / grammar / Pydantic **保证**结构化输出，而非生成后解析修复。→ 借鉴【推断】：全部产出/证据文件（brief/evidence/handoff）以 schema 在生成期强约束，减少 parse 失败与无效重试，直接降成本、提验收通过率。
 
 **agno**（41,776★）【事实】：自托管 agent 平台，session/memory/~/.dsh-codepunk/projects/<id>/knowledge/traces 全存自有数据库，JWT-RBAC 安全，learning loop（simulations + usage data）。→ 借鉴【推断】：工程落地上坚持自托管与数据掌控；traces/usage data 反向驱动优化。
-
----
 
 ## 11. 综合建议 TOP 清单（按对 dsh-codepunk 价值排序）
 
@@ -224,8 +200,6 @@
 8. **成本护栏：任务级 turn/run 上限 + 收敛条件**【理念源自 AutoGen 终止条件 / Swarm max_turns，推断】
    - 为每个 task 设 run/turn 预算，自治协作到点收敛；产物结构(schema)本身减少空转与冗余 token。goal maxGoalRounds 已在 Ⓐ 起到同类护栏，可下沉到 task 级。
    - 适配注意：护栏阈值需据实测(观测项 7)校准，防误伤长任务。
-
----
 
 ## 12. 事实与推断划分小结
 
