@@ -78,14 +78,24 @@ if [ "$MODE" = "install" ]; then
   mkdir -p "$HOOK_DIR"
   SELF="$ROOT/plans/dsh-codepunk-leak-guard.sh"
   [ -f "$SELF" ] || SELF="$0"
+  SELF_ABS="$(cd "$(dirname "$SELF")" && pwd)/$(basename "$SELF")"
+  # pre-commit：扫索引（含提交信息草稿无法覆盖，但能拦下将入库的内容）
+  cat > "$HOOK_DIR/pre-commit" <<HOOK
+#!/usr/bin/env bash
+# dsh-codepunk 泄露防护门（D091）——由 --install-hook 生成
+exec bash "$SELF_ABS" --staged
+HOOK
+  # pre-push：扫近 20 提交（含提交信息体——实证：曾把本机凭据路径写进提交信息）
   cat > "$HOOK_DIR/pre-push" <<HOOK
 #!/usr/bin/env bash
 # dsh-codepunk 泄露防护门（D091）——由 --install-hook 生成
-exec bash "$(cd "$(dirname "$SELF")" && pwd)/$(basename "$SELF")" --history
+exec bash "$SELF_ABS" --history
 HOOK
-  chmod +x "$HOOK_DIR/pre-push"
-  echo "✓ 已安装 pre-push 钩子: $HOOK_DIR/pre-push"
-  echo "  绕过（不建议）: git push --no-verify"
+  chmod +x "$HOOK_DIR/pre-commit" "$HOOK_DIR/pre-push"
+  echo "✓ 已安装钩子:"
+  echo "    $HOOK_DIR/pre-commit  （--staged：拦截将入库内容）"
+  echo "    $HOOK_DIR/pre-push    （--history：拦截含提交信息体的近 20 提交）"
+  echo "  绕过（不建议）: --no-verify"
   exit 0
 fi
 
