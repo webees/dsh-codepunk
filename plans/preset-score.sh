@@ -174,7 +174,7 @@ PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
 if [ -f "$PV" ] && command -v node >/dev/null 2>&1; then
   node "$PV" plans/windows/*.ps1 >/dev/null 2>&1 || ded B8 25 "PowerShell 语法校验失败"
 else
-  : # 无校验器 → 不扣分（与 ruby/node 跳过同策略）
+  echo "  ℹ PowerShell 语法校验跳过：无校验器（\$PV）。启用：见 README「PowerShell 校验」" >&2
 fi
 bash plans/preset-audit.sh >/dev/null 2>&1 || ded B8 25 "preset-audit.sh 自跑未满分"
 

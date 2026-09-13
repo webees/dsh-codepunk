@@ -120,6 +120,32 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 
 换行策略见 `.gitattributes`：仓库内统一 LF，`.ps1` 检出为 CRLF。
 
+## 质量工具（可复跑）
+
+| 命令 | 作用 | 退出码 |
+|---|---|---|
+| `bash plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=全满分 |
+| `bash plans/preset-audit.sh` | 6 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标 |
+| `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+脚本语法+DSH 兼容+E2E），9 项一次跑完 | 0=全通过 |
+| `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push） | 0=通过 |
+| `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（编号/约束词/阈值/路径/工具名/代码标识），改后逐项比对 | 0=零丢失 |
+
+`verify-battery.sh` 的参数：`bash plans/verify-battery.sh [预设根]`（默认取脚本上级目录）。
+
+## PowerShell 校验（可选）
+
+`preset-score.sh` 与 `verify-battery.sh` 的 PS 语法项需校验器，缺失时**跳过并明确提示**（不判失败）。
+启用方式（约 17MB，仅本机工具目录，不随仓库分发）：
+
+```bash
+mkdir -p ~/.dsh-codepunk/tools && cd ~/.dsh-codepunk/tools
+npm init -y && npm i tree-sitter tree-sitter-powershell
+# 校验器本体：plans/fidelity-gate.py 同目录另附 ps-validate.mjs（或用 PWSH_VALIDATOR 指向自备实现）
+node ps-validate.mjs <预设根>/plans/windows/*.ps1
+```
+
+亦可用环境变量指向自备校验器：`PWSH_VALIDATOR=/path/to/validate.mjs`。
+
 ## 目录结构
 
 ```text
@@ -136,6 +162,8 @@ plans/                              # 工具脚本源副本（运行期正式位
   preset-audit.sh                   # 预设质量审计（6 组 rubric，100 分制）
   dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
   preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
+  verify-battery.sh                 # 完整验证电池（9 项独立验证，单命令复跑）
+  fidelity-gate.py                  # 语义保护闸（压缩前快照 / 压缩后比对，防语义丢失）
   windows/                          # Windows 原生（PowerShell）等价实现
     dsh-codepunk-home.ps1           # 共享路径常量（点源载入）
     dsh-codepunk-init.ps1           # 总库骨架（-Check 只断言）
