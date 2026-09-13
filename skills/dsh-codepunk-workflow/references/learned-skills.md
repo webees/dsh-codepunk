@@ -62,7 +62,6 @@
 
 | 简报 | 内容 |
 |---|---|
-| `benchmarks/multi-agent-open-source-benchmark.md` | 13 个多智能体编排框架对比（MetaGPT/AutoGen/LangGraph/crewAI…） |
 | `benchmarks/agent-skills-open-source-benchmark.md` | agent-skills 生态：agentskills 规范 / superpowers / VoltAgent 质量门 |
 | `benchmarks/prompt-context-compression.md` | 提示词压缩/上下文优化（14 个一手来源） |
 | `benchmarks/adhd-workflow-analysis.md` | ayghri/i-have-adhd 输出纪律分析 |
@@ -70,14 +69,11 @@
 | `benchmarks/deepseek-harness-study.md` | DeepSeek Harness 官方机制调研（§0.0 对齐表来源） |
 | `benchmarks/anti-hallucination.md` | 防幻觉技术调研（D077 来源） |
 | `benchmarks/dsh-deepseek-analysis.md` | dsh-llm-deepseek 适配器分析（模型路由/成本/thinking 规划输入） |
-| `benchmarks/dsh-deepseek-realrun-projection.md` | 错峰节支/1M 承载/并发 429 离线实测算 |
 | `benchmarks/ponytail-analysis.md` | YAGNI 产出纪律分析（D081 来源） |
 | `benchmarks/diagram-design-analysis.md` | 文档配图技能分析（D082 来源） |
 | `benchmarks/prompt-injection-guardrails.md` | 注入防护调研（D084 来源） |
 | `benchmarks/file-hygiene-skill.md` | 文件卫生技能调研（D079 来源） |
 | `benchmarks/preset-tool-fixes.md` | 预设工具缺陷台账（F-001~F-004，D090 双要件实证来源，非决策号调研） |
-| `benchmarks/prompt-compression-methods.md` | 提示词精简方法论（D074 延伸应用） |
-| `benchmarks/prompt-compression-methods-v2.md` | 精简技巧收敛调研 v2（D074 延伸应用） |
 | `benchmarks/agent-memory-management.md` | agent 记忆管理调研（D085 来源） |
 
 ## 应用原则（铁律）
@@ -85,3 +81,11 @@
 2. **承重留正文、示例进 references**：SKILL.md ≤32 KiB（现约 29），新内容优先进按需文件。
 3. **净负即关**：技巧若在某场景净增负担则退回（借鉴 caveman 诚实数字立场）。
 4. **豁免先于精简**：安全/不可逆/持久化产物场景完整行文优先（Auto-Clarity）。
+
+## 已精简档案（2026-09-13）
+
+删除 3 份零主动引用的研究档案（39,964B）；结论落位如下，溯源仍可追：
+- dsh-deepseek-realrun-projection → D078 细则 model-routing.md（错峰/429/1M/cache）
+- prompt-compression-methods-v2 → D074 细则 output-discipline.md §表达技巧 17 条
+- multi-agent-open-source-benchmark → SKILL §7 + standard.md D067-D070 行
+- prompt-compression-methods → D074 细则 output-discipline.md §六（有损精简负清单，含「子代理不加载 references」约束）
