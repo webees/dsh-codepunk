@@ -25,6 +25,11 @@ plans/                              # 工具脚本（源副本；运行期正式
   evidence-verify.sh                # 证据机械校验器（防假通过门）
   preset-audit.sh                   # 预设质量审计（100 分制）
   dsh-codepunk-leak-guard.sh        # 泄露防护门（推送前守卫，禁词留本地；--install-hook 装钩子）
+  windows/                          # Windows 原生（PowerShell）等价脚本
+    dsh-codepunk-home.ps1           # 共享路径常量（点源载入）
+    dsh-codepunk-init.ps1           # 总库骨架（-Check 只断言）
+    dsh-codepunk-link.ps1           # 关联解析（resolve/index/register）
+    dsh-codepunk-leak-guard.ps1     # 泄露防护门（-Tree/-History/-InstallHook/-List）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
   SKILL.md                          # 流程唯一权威正文（六阶段 + 硬规则 R1–R14 + D 决策号）
   references/roles.md               # 岗位人设与派遣模板
@@ -44,6 +49,8 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
 2. **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点 `&role-allow`；调研岗是唯一例外，内联追加 `web_search, web_fetch`。allow 是「全关只放行」列表，未列入的工具一律不可见；**只能列当前 DSH 实例已挂载的全局工具名**（未挂载会让 spawn 时 `tools.restrict()` 直接 throw）；`report` 是延续子代理注册在自身层的汇报工具，**切勿列入 allow**。
 3. **编号可解析**：`Pxx` / `D0xx` 一律以 `references/standard.md` 为唯一释义；禁止引入该文件之外的任何外部编号引用。变更涉及编号时，先改 `standard.md` 登记，再引用。
 4. **文件归宿（R13/R14）**：关于预设本身的调研 / 基准 / 优化资料写本预设 `skills/dsh-codepunk-workflow/benchmarks/`，**绝不写进任何工程目录**；接收子代理产出时核对「内容归属域 vs 实际落位」一致，错位立即移出并 grep 核销引用。
+
+**平台对等（MUST）**：`plans/*.sh`（POSIX）与 `plans/windows/*.ps1`（Windows）是同一套工具的两份实现。改动任一侧必须同步另一侧的同等语义——命令名、参数、退出码、输出格式一致——且两份都要过语法校验（`bash -n plans/*.sh`；PowerShell 侧本仓以 tree-sitter-powershell 解析，或在 Windows 上跑一次 `pwsh -NoProfile -File <脚本> -List` 冒烟）。
 
 ## 提 PR 的门槛
 

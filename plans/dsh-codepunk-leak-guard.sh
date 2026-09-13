@@ -34,7 +34,7 @@ for a in "$@"; do
     --install-hook) MODE="install" ;;
     --list)         MODE="list" ;;
     -h|--help)      sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) echo "未知参数: $a（--help 查看用法）" >&2; exit 2 ;;
+    *) echo "未知参数: ${a}（--help 查看用法）" >&2; exit 2 ;;
   esac
 done
 

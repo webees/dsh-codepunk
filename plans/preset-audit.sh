@@ -41,7 +41,7 @@ PYEOF
 # A5 品牌卫生：如本仓库有改名历史，用 OLD_NAME 环境变量注入旧名做回归检查（默认跳过，不在仓库内硬编码旧名）
 if [ -n "${OLD_NAME:-}" ]; then
   n=$(grep -ic -- "$OLD_NAME" agent.cordis.yml 2>/dev/null || echo 0)
-  [ "$n" -eq 0 ] && report "$PASS" "A5 零旧名（OLD_NAME=$OLD_NAME）" || report "$FAIL" "A5 旧名残留 $n 处"
+  [ "$n" -eq 0 ] && report "$PASS" "A5 零旧名（OLD_NAME=${OLD_NAME}）" || report "$FAIL" "A5 旧名残留 $n 处"
 else
   report "$PASS" "A5 品牌卫生（未设 OLD_NAME，跳过）"
 fi
@@ -66,7 +66,10 @@ EC=$(grep -c "^## " README.md)
 [ "$EC" -ge 7 ] && report "$PASS" "E2 README ${EC} 节 ≥7" || report "$FAIL" "E2 README ${EC} 节 <7"
 
 echo "[组F 工具层 10]"
-FSYNC=$(for f in dsh-codepunk-link dsh-codepunk-migrate dsh-codepunk-init verify-worktree evidence-verify; do [ -f "plans/$f.sh" ] && diff -q "$HOME/.dsh-codepunk/scripts/$f.sh" "plans/$f.sh" >/dev/null 2>&1 || echo "$f"; done)
+FSYNC=$(for p in plans/*.sh; do f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "${f%.sh}"; done)
+# Windows 侧（plans/windows/*.ps1）与总库 scripts/ 同源对照
+WSYNC=$(for p in plans/windows/*.ps1; do [ -f "$p" ] || continue; f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "${f%.ps1}"; done)
+FSYNC="$(printf '%s %s' "$FSYNC" "$WSYNC" | tr -s ' ' ' ' | sed 's/^ *//; s/ *$//')"
 [ -z "$FSYNC" ] && report "$PASS" "F2 plans↔scripts 同步" || report "$FAIL" "F2 不同步: $FSYNC"
 
 echo

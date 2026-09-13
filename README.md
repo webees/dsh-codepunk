@@ -96,6 +96,30 @@ cp -R agent.cordis.yml preset.yml skills "$DST/"
 
 ---
 
+## 平台支持（macOS / Linux / Windows）
+
+| 平台 | Agent shell | 工具脚本 | 说明 |
+|---|---|---|---|
+| macOS | bash | `plans/*.sh` | 开箱可用（bash 3.2+ / BSD 工具链） |
+| Linux | bash | `plans/*.sh` | 可用（GNU 工具链；脚本内已做 BSD/GNU 自适应） |
+| Windows | pwsh | `plans/windows/*.ps1` | 预设在该平台禁用 bash 工具、启用 pwsh 工具（与官方预设同款门控） |
+
+Windows 上建议把 `plans/windows/*.ps1` 复制到 `%USERPROFILE%\.dsh-codepunk\scripts\`，以 pwsh 调用：
+
+```powershell
+. "$HOME\.dsh-codepunk\dsh-codepunk-home.ps1"        # 装载路径常量
+pwsh -File dsh-codepunk-init.ps1                     # 建总库骨架
+pwsh -File dsh-codepunk-link.ps1 resolve <工程根>     # 关联项目
+pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
+```
+
+两套实现语义等价（resolve 三态路由、INDEX 字段约定、退出码一致）。Windows 版当前覆盖
+**home / init / link / leak-guard** 四个核心脚本；`migrate`、`preset-audit`、`evidence-verify`、
+`verify-worktree` 仍为 POSIX 版，Windows 上经 Git Bash 或 WSL 调用（属一次性迁移与运维场景，
+非日常流程必需）。
+
+换行策略见 `.gitattributes`：仓库内统一 LF，`.ps1` 检出为 CRLF。
+
 ## 目录结构
 
 ```text

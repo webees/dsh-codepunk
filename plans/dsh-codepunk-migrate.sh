@@ -18,7 +18,7 @@
 #                                  --restore 额外把总库内容复制回工程根）
 #   - 复用 dsh-codepunk-home.sh 常量（存在则 source，否则内置默认）
 #
-# 环境：bash 3.2+（macOS 自带），仅依赖 rsync（可选，无则 cp 兜底）+ shasum
+# 环境：bash 3.2+（macOS 自带）· Linux/GNU · Git Bash；依赖 rsync（可选，无则 cp 兜底）+ sha256（shasum/sha256sum 自动探测）
 # =============================================================================
 set -u
 
@@ -49,8 +49,6 @@ STATE_DIR="${STATE_DIR:-$PROJECTS_DIR/.migrate-state}"  # 状态目录跟随 pro
 #   环境变量 SCAN_ROOTS 显式提供（逗号分隔），避免把部署方的私有项目路径写进预设。
 SCAN_DEFAULT_ROOTS=(
   "$HOME/.dsh-codepunk"                 # 总库根（仅标记，不迁移）
-  "$HOME/Desktop/__TEST__"
-  "$HOME/Desktop/Downloads"
 )
 
 # 素材默认排除的项目名（示例占位：部署方按自己的素材重项目改名，或留空）
@@ -99,6 +97,29 @@ EOF
 
 version() { printf '%s %s\n' "$SCRIPT_NAME" "$SCHEMA"; }
 
+# ── 可移植垫层（macOS/BSD · Linux/GNU · Git Bash 通用，bash 3.2 兼容） ──
+# 就地编辑：BSD 需 `sed -i ''`，GNU 需 `sed -i`；统一走临时文件，消除分叉
+sed_i() {
+  local expr="$1" file="$2" tmp rc=0
+  tmp=$(mktemp 2>/dev/null) || return 1
+  if sed "$expr" "$file" > "$tmp" 2>/dev/null; then mv "$tmp" "$file"; else rm -f "$tmp"; rc=1; fi
+  return $rc
+}
+# 文件字节数：BSD/macOS `stat -f%z`，GNU/Linux `stat -c%s`
+stat_size() {
+  stat -f%z "$1" 2>/dev/null || stat -c%s "$1" 2>/dev/null || echo 0
+}
+# SHA-256：macOS `shasum -a 256`，Linux `sha256sum`
+sha256_of() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" 2>/dev/null | awk '{print $1}'
+  else
+    printf ''
+  fi
+}
+
 # 人类可读大小（K/M/G）
 human_size() {
   local b=$1
@@ -121,7 +142,7 @@ asset_stats() {
   local d=$1
   find "$d" -type f \( -iname "*.ipsw" -o -iname "*.dmg.aea" -o -iname "*.dmg" -o -iname "*.app" -o -size +100M \) 2>/dev/null \
   | while IFS= read -r f; do
-      st=$(stat -f%z "$f" 2>/dev/null || echo 0)
+      st=$(stat_size "$f")
       printf '%s\t%s\n' "$f" "$st"
     done
 }
@@ -130,8 +151,8 @@ asset_stats() {
 sha_check() {
   [ -f "$2" ] || return 2
   local s d
-  s=$(shasum -a 256 "$1" 2>/dev/null | awk '{print $1}')
-  d=$(shasum -a 256 "$2" 2>/dev/null | awk '{print $1}')
+  s=$(sha256_of "$1")
+  d=$(sha256_of "$2")
   [ -n "$s" ] && [ "$s" = "$d" ]
 }
 
@@ -308,7 +329,7 @@ cmd_migrate() {
     local st_src
     st_src=$(sed -n 's/^dsh-codepunk_abs=//p' "$STATE_FILE")
     if [ -n "$st_src" ] && [ "$st_src" != "$SRC_DSH_CODEPUNK" ]; then
-      die "project_id <${project_id}> 已绑定源 $st_src，拒绝换源（$SRC_DSH_CODEPUNK）"
+      die "project_id <${project_id}> 已绑定源 ${st_src}，拒绝换源（${SRC_DSH_CODEPUNK}）"
     fi
   fi
 
@@ -340,7 +361,7 @@ cmd_migrate() {
     list_skip=$(find "$SRC_DSH_CODEPUNK" -type f \( -iname '*.ipsw' -o -iname '*.dmg.aea' -o -iname '*.dmg' -o -iname '*.app' -o -size +100M \) 2>/dev/null)
     while IFS= read -r f; do
       [ -n "$f" ] || continue
-      sz=$(stat -f%z "$f" 2>/dev/null || echo 0)
+      sz=$(stat_size "$f")
       reason=""
       case "$f" in
         *.ipsw)    reason="ipsw" ;;
@@ -396,7 +417,7 @@ cmd_migrate() {
         case "$f" in
           *.ipsw|*.dmg.aea|*.dmg|*.app) continue ;;
         esac
-        [ "$(stat -f%z "$f" 2>/dev/null || echo 0)" -gt "$ASSET_MIN_SIZE_BYTES" ] && continue
+        [ "$(stat_size "$f")" -gt "$ASSET_MIN_SIZE_BYTES" ] && continue
       fi
       rel=${f#"$SRC_DSH_CODEPUNK"/}
       mkdir -p "$dest/$(dirname "$rel")"
@@ -581,7 +602,7 @@ cmd_rollback() {
   done
   [ -n "$project_id" ] || die "缺少 <project_id>"
   local st="$STATE_DIR/$project_id.state"
-  if [ ! -f "$st" ]; then die "无迁移状态: $project_id（state=$st）"; fi
+  if [ ! -f "$st" ]; then die "无迁移状态: ${project_id}（state=${st}）"; fi
   local root dsh-codepunk pre
   root=$(sed -n 's/^src_arg_abs=//p' "$st")
   dsh-codepunk=$(sed -n 's/^dsh-codepunk_abs=//p' "$st")
@@ -589,7 +610,7 @@ cmd_rollback() {
   if [ -z "$root" ] || [ -z "$dsh-codepunk" ]; then die "state 损坏: $st"; fi
   if [ ! -d "$pre" ]; then
     if [ -f "$st" ]; then
-      if grep -q '^phase=' "$st"; then sed -i '' 's/^phase=.*/phase=rolled_back/' "$st"
+      if grep -q '^phase=' "$st"; then sed_i 's/^phase=.*/phase=rolled_back/' "$st"
       else printf 'phase=rolled_back\n' >> "$st"; fi
       info "保留窗不存在，按已回滚处理（state 标记 rolled_back）: $pre"
     else
@@ -615,7 +636,7 @@ cmd_rollback() {
     mv "$pre" "$dsh-codepunk" || die "回滚改名失败"
     # 回滚后标记 state，避免下次 --migrate 以 done 幂等短路误判
     if [ -f "$st" ]; then
-      if grep -q '^phase=' "$st"; then sed -i '' 's/^phase=.*/phase=rolled_back/' "$st"
+      if grep -q '^phase=' "$st"; then sed_i 's/^phase=.*/phase=rolled_back/' "$st"
       else printf 'phase=rolled_back\n' >> "$st"; fi
     fi
     info "已还原: $dsh-codepunk（state 标记 rolled_back）"
