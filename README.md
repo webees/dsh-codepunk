@@ -174,7 +174,7 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
   references/artifacts.md           # 产物文件模板（goal/chunks/brief/…）
   references/knowledge.md           # 知识库布局 + 评分公式 + 聚合格式
   references/standard.md            # 编号（P01–P17 / D0xx）唯一权威释义
-  benchmarks/                       # 外部基准调研 ×13（D066-D090 溯源，清单见 references/learned-skills.md）
+  benchmarks/                       # 外部基准调研 ×15 篇（D066-D090 溯源；13 篇决策号来源 + 2 篇 D074 延伸，清单见 references/learned-skills.md）
 ```
 
 用户级总库 `~/.dsh-codepunk/`：`INDEX.yaml`（项目注册表）、`dsh-codepunk-home.sh`（路径常量）、`projects/<id>/`（各项目全部 run 记忆与知识库）。

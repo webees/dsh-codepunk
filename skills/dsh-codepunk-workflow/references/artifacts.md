@@ -236,3 +236,35 @@ persona_scores:                      # 人设分 = 公共项 + seat 项（clamp 
 ## 记忆简报（P11，文档小组 → 你）
 
 `docs/memory/`：L0 各方产出 → 技术写作 L1 → 你批准后 L2；每 N 个 task closed（默认 3）给你一份 L2 增量；goal 完成前给完整 Memory Brief。
+
+## 运行根结构（SKILL §1.2 下沉）
+
+> 本节是 SKILL.md §1.2 的完整展开（L1 按需层）：总库运行根目录树、文件隔离硬要求、项目记忆关联。SKILL 正文只留速记与指针（D074 预算纪律）。**本节约束与 SKILL 正文同等效力**。
+
+### 1.2 运行根结构（位于 `~/.dsh-codepunk/projects/<project_id>/` 下）
+
+```text
+projects/<project_id>/          # 项目总库根，= 运行根 DSH_CODEPUNK_PROJECTS/<id>/
+  README.md  goal.yaml  chunks.yaml  plan_draft.md
+  change_orders/<id>.yaml       # 变更单 D038
+  approvals/merge.yaml          # 合并门批准 ⑤
+  runs/<run_id>/                # 每轮独立目录
+    briefs/  research/briefs/<topic>.md  docs/memory/
+    reviews/<task_id>.md        # 审查记录 Reviewed-by + pass|needs-work
+    errors/YYYY-MM-DD.md        # 错误日志 collected→…→closed
+    rooms/squad-<task_id>/      # S 规模工作房（工程根内，非总库）
+    tasks/<task_id>/
+      brief/     WORK_BRIEF.md + brief.yaml
+      staffing/  request.yaml + personas/*.md + staffing.yaml + scores.yaml
+      handoff/   summary/artifact_index/known_issues/diff_scope.md + evidence/acceptance.yaml
+      progress/  progress.md
+knowledge/                      # 知识库（跨 run 沉淀）
+  hr/personas/<codename>.yaml  hr/teams/<team_name>.yaml
+  lessons/<topic>.yaml          # 结构化经验 D070
+  research/<topic>.md  handoffs/<task_id>.md  prompts/roles/<role_id>.md
+```
+
+> **文件隔离硬要求**：git 仓库且并行小组 ≥2（M/L）**MUST** 每组建 **worktree**。前置：主仓库先归位工程根（禁留桌面根/下载等散落位），再依其**父目录**建：`git -C <主仓库> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>` → `git -C <主仓库> worktree list` 复核落点。**禁止在非工程根目录建 worktree**。S 规模用 `rooms/squad-<task_id>/`（工程根内，**须确保工程 `.gitignore` 忽略 `rooms/`**，file-hygiene §一.6）。越界兜底 R8 审查门（`git diff ⊆ write_paths`）。
+
+> **工程域例外（不属于总库）**：worktree 建在**工程父目录**（`../room-<task_id>`）、S 规模 `rooms/squad-<task_id>/` 在**工程根内**，两者均不进总库；总库只存本 run 状态（goal/chunks/plan/tasks/handoff）。
+> **项目记忆关联**：主通道 = 工程根 `README.md` 顶部 YAML frontmatter `dsh-codepunk: <project_id>`（无 frontmatter 可用 `<!-- dsh-codepunk: <id> -->`）；兜底 = `~/.dsh-codepunk/INDEX.yaml` 注册表（5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source）。工具 `dsh-codepunk-link resolve <项目路径>` 三态路由「README 标记 → INDEX 回退 → 未注册报错」；`index` 校验无空悬；`register` 追加（不覆盖、需确认）。**冲突以 INDEX 为准**；不批量改写项目 README。正式位 `~/.dsh-codepunk/scripts/`（`plans/` 仅源副本）。

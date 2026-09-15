@@ -1,6 +1,6 @@
 # 官方机制对齐表（references/harness-alignment.md）
 
-> 本文为 SKILL.md §0.0 的按需展开；SKILL 正文只留一句指引（D074 预算纪律）。
+> 本文为 SKILL.md §0（原 §0.0 官方机制对齐 + §0.1 goal 续行）的按需展开；SKILL 正文只留速记与指针（D074 预算纪律）。
 
 > dsh-codepunk 不发明私有机制：每个流程概念都映射到 DeepSeek Harness 官方 seam。调研溯源：`benchmarks/deepseek-harness-study.md`（40+ 官方来源，2026-08-26）。升级 harness 或排障时先对照本表。
 
@@ -47,3 +47,21 @@
 - `dsh-tool-present`：交付物声明工具
 - `dsh-tool-subagent` 新增 `modelSelectionSettings`（子代理模型选择 UI）——**未启用**：它要求 Host 提供 `dsh-tool-subagent/model-selection-settings` 服务，缺失会导致挂载报错；公开预设不宜引入该类硬依赖，部署方按需自开。
 - `dsh-persona` 新增 `suffix`/`complete`/`includeRuntimeContext`（均为可选）
+
+## §0.1 展开：goal 自动续行 / 子代理回报自动递送（MUST 理解）
+
+> 本节是 SKILL.md §0.1 的完整详述（L1 按需层）：官方依据、机制逐步说明、依赖组件装配与决策号。SKILL 正文只留速记加指针（D074 预算纪律）。**本节约束与 SKILL 正文同等效力**；开工前或续行排障时按需读取。
+
+> **官方依据**：`dsh-goal`+`dsh-tool-goal`+`dsh-goal-round-driver`（词汇 Goal→Round→Turn→Step；armed 进程本地；resume 须人类消息；默认 256 轮；自动轮不得改人类目标，写状态走工作区文件）。调研见 `benchmarks/deepseek-harness-study.md` §2.3。
+
+> 子代理完成后**结算通知/report 进你的 inbox**；无 active goal 时回报**堆积成排队消息，须 sponsor 手动点「立即」才递送**（工程即卡住）。正确做法：
+
+1. 每工程目标用 `create_goal` 建会话级 goal 并保持 active（create 默认 active 且启用续行 armed）。
+2. **臂上后每次 idle 自动唤醒**：host `goal-round-driver` 空闲时预留下一轮 `<goal_round>`，把 inbox 排队的子代理回报一次领起 →「子代理完成 → 主管自动消化 → 实时规划」无需人工点击。`maxGoalRounds` 设上限（默认 256）作预算护栏。
+3. **会话恢复（resume/fork）后 disarm**：phase 与轮次持久化，续行启用状态是**进程本地**的；恢复后 MUST 先 `update_goal resume` 重新武装，否则退回手动递送。开工第一步：`get_goal` 查 phase 与激活态，非 active+armed 即 `resume`。
+4. **状态判定**：不把 goal phase 当唯一信号——`goal blocked`/`completed` 是权威，但各轮次与子代理状态以运行根（`~/.dsh-codepunk/projects/<id>/`）文件实况为准（见 §2 ④）。
+5. **收尾**：完成前 `get_goal` 收集证据（全部 task 验收齐：evidence/acceptance 签收 + 总索引 + merge 留痕）再 `update_goal complete`；受阻置 `blocked`——该态 MUST NOT 新 spawn。
+6. `maxGoalRounds` 是轮次预算不是资源预算（token/时间/费用不受约）；耗尽后需 sponsor 授权 `resume`。
+
+> 依赖组件（goal 服务 / goal-round-driver / `/goal` 命令 / `tool-goal`）均在 host 装配（dsh-base 默认携带），预设只挂 `tool-goal` 即得模型端工具。
+> 决策号 **D066**（释义 `references/standard.md`）；R10（goal 续行）与 R12（结算通知辨识）为承重项。
