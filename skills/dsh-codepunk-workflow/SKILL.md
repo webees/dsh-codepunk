@@ -137,6 +137,7 @@ metadata:
 | R9 | 合并门：串行、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；合并即回收 worktree（D073） |
 | R10 | 每工程目标用 goal 工具跟踪并续行；resume/fork 后 MUST 先 `update_goal resume` 再开工；goal `blocked`/halt 时 MUST NOT 新 spawn |
 | R11 | 语言纪律：内部思考/推理/草稿/评审/汇报一律中文；对外按用户主导语言；简洁。D074/D075/D076 全员适用；**输出卫生**与**任务收口**（思考层禁复述执行意图、100 轮上限、大目标拆分）见 `references/output-discipline.md` |
+| R15 | 子代理任务边界（MUST）：子代理 MUST NOT 承载循环型目标（收敛到连续 N 轮 / 反复迭代直到达标）；此类目标由主会话按轮驱动，每轮只派单次可收敛任务（实测：循环目标被反复分派产生 47 个异常大会话） |
 | R12 | 结算通知辨识：通知是事件提醒，可滞后实况（历史失败/空目录 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence 落盘时刻、git 实况复核（父日志只记 spawn 的 tool/call 与 tool/result；见 benchmarks/deepseek-harness-study.md §2.7） |
 | R13 | 文件归宿：预设/流程 meta 资料 MUST 写 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写进工程目录；工程 `research/briefs/`、`docs/` 只放业务内容；误写 MUST 移出并 grep 核销 |
 | R14 | 产出归位：收子代理产出/简报 MUST 核对归属域 vs 实际落位；错位即移出并 grep 核销，不得跨 run 漂移 |

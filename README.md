@@ -169,7 +169,7 @@ plans/                              # 工具脚本源副本（运行期正式位
     dsh-codepunk-link.ps1           # 关联解析（resolve / index / register）
     dsh-codepunk-leak-guard.ps1     # 泄露防护门（-Tree / -History / -InstallHook / -List）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
-  SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R14 + D 决策号）
+  SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R15 + D 决策号）
   references/roles.md               # 岗位人设与派遣模板
   references/artifacts.md           # 产物文件模板（goal/chunks/brief/…）
   references/knowledge.md           # 知识库布局 + 评分公式 + 聚合格式
