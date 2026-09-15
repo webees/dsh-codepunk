@@ -133,6 +133,7 @@
 | product/research/people/docs/proc-audit/sys-arch/code-review/release-eng | **单轮受控输出** | 固定结构产物（schema 见 artifacts.md） | 结构校验 + 内容达标；不合格回退重做 |
 | sdet | **单轮受控输出** | evidence.yaml（固定 schema，D069） | 机器校验 + 交付基线（R12） |
 | engineer（实现） | **多轮任务** | 工作房内代码 + artifact_index | sdet evidence 门 + 审查门 |
+| （时序约束） | **三角同时派发不等于同时验收** | — | sdet 验收前 MUST 确认 engineer 已交付（工作房 `artifact_index.md`/`evidence.yaml` 落盘 或 `git diff` 非空）；未交付**不得打回**，回报「未就绪」或等 squad-lead 通知（实测 2026-09-15：并行派发下 sdet 在 engineer 尚未交付时即开始验收，依拒绝线打回——打回本身正确，缺的是「何时该验收」的时序定义） |
 | squad-lead | **受控交接摘要** | handoff/summary + 组织签收 | 交接包齐全 + 接收方签收 |
 
 > 双侧 guardrail（D068）：派发时输入侧校验简报 schema，回收时输出侧校验产物 schema；契约歧义 MUST 在派遣 prompt 显式声明，禁止用自由对话补语义。
