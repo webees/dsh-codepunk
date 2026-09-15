@@ -183,7 +183,7 @@ knowledge/                      # 知识库（跨 run 沉淀）
 | R8 | 审查门：交接/合并前 diff ⊆ write_paths + CHECKLIST + `reviews/` 记录；L/高风险强制独立 code-review |
 | R9 | 合并门：串行、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；合并即回收该 chunk 的 worktree（D073） |
 | R10 | 每工程目标用 goal 工具跟踪并保持续行（create 即 armed）；resume/fork 后 MUST 先 `update_goal resume` 再开工，否则自动递送失效；goal `blocked`/halt 时 MUST NOT 新 spawn |
-| R11 | 语言纪律：内部思考/推理/草稿/评审/汇报一律中文；对外按用户主导语言；简洁。D074 上下文 / D075 消息 / D076 token 经济全员适用（细则 `references/output-discipline.md`） |
+| R11 | 语言纪律：内部思考/推理/草稿/评审/汇报一律中文；对外按用户主导语言；简洁。D074 上下文 / D075 消息 / D076 token 经济全员适用；**输出卫生**（加粗配对/禁 emoji 装饰/禁符号箭头/禁伪标题）见细则 `references/output-discipline.md` |
 | R12 | 结算通知辨识：通知是「事件提醒」，可滞后于实况（历史失败/空目录 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence 落盘时刻、git 实况重确认（机理：in-process 子代理子步骤不写入父日志，父日志只记 spawn 的 tool/call 与 tool/result，见 benchmarks/deepseek-harness-study.md §2.7） |
 | R13 | 文件归宿：预设/流程自身 meta 资料（开源基准、流程改进、运营观察）MUST 写 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写进工程目录；工程 run 的 `research/briefs/`、`docs/` 只放该工程业务内容。误写即污染，MUST 立即移出并 grep 核销引用 |
 | R14 | 产出归位复核：run-lead 收任何子代理产出/简报时 MUST 核对内容归属域 vs 实际落位；错位即移出并 grep 核销，不得留漂移文件跨 run 传播 |
