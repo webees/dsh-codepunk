@@ -126,20 +126,20 @@ metadata:
 
 | # | 规则 |
 |---|---|
-| R1 | 双门闩：brief 批准 ∧ staffing 批准；缺一不得 spawn 实现三角 |
-| R2 | 仅调研岗可联网；主会话、实现组/文档/人事/审计/审查/发布禁止 web |
+| R1 | 双门闩：brief、staffing 均批准；缺一不得 spawn 实现三角 |
+| R2 | 仅调研岗可联网；主会话/实现组/文档/人事/审计/审查/发布禁止 web |
 | R3 | 小组限工作房与写集内；主会话只写运行根（`~/.dsh-codepunk/projects/<id>/`）状态与 knowledge/，不写业务码；git 操作（worktree add/remove、登记表）限主仓库与工程父目录 |
-| R4 | 未签收不得解散；交接材料由文档小组归档 |
+| R4 | 未签收不得解散；交接材料文档小组归档 |
 | R5 | 评分不阻断；解散即评分 |
-| R6 | 需求变更单通道：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed）→ 受影响 task；禁止小组直接听用户改需求；goal draft 超时不自动推进 |
-| R7 | 禁静默丢脏改动：强制解散前 auto-commit/stash 并记 backup_ref |
+| R6 | 需求变更单通道：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed）→ 受影响 task；禁止小组直听用户改需求；goal draft 超时不自动推进 |
+| R7 | 禁静默丢脏改动：强制解散前 auto-commit/stash 记 backup_ref |
 | R8 | 审查门：交接/合并前 diff ⊆ write_paths + CHECKLIST + `reviews/` 记录；L/高风险强制独立 code-review |
 | R9 | 合并门：串行、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；合并即回收 worktree（D073） |
-| R10 | 每工程目标用 goal 工具跟踪并保持续行（create 即 armed）；resume/fork 后 MUST 先 `update_goal resume` 再开工；goal `blocked`/halt 时 MUST NOT 新 spawn |
+| R10 | 每工程目标用 goal 工具跟踪并续行；resume/fork 后 MUST 先 `update_goal resume` 再开工；goal `blocked`/halt 时 MUST NOT 新 spawn |
 | R11 | 语言纪律：内部思考/推理/草稿/评审/汇报一律中文；对外按用户主导语言；简洁。D074/D075/D076 全员适用；**输出卫生**见 `references/output-discipline.md` |
-| R12 | 结算通知辨识：通知是「事件提醒」，可滞后实况（历史失败/空目录 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence 落盘时刻、git 实况重确认（子步骤不入父日志，只记 spawn 的 tool/call 与 tool/result；见 benchmarks/deepseek-harness-study.md §2.7） |
+| R12 | 结算通知辨识：通知是事件提醒，可滞后实况（历史失败/空目录 ≠ 当前状态）；巡检/交接前 MUST 以交付目录 mtime、evidence 落盘时刻、git 实况复核（父日志只记 spawn 的 tool/call 与 tool/result；见 benchmarks/deepseek-harness-study.md §2.7） |
 | R13 | 文件归宿：预设/流程 meta 资料 MUST 写 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写进工程目录；工程 `research/briefs/`、`docs/` 只放业务内容；误写 MUST 移出并 grep 核销 |
-| R14 | 产出归位：收子代理产出/简报时 MUST 核对归属域 vs 实际落位；错位即移出并 grep 核销，不得跨 run 漂移 |
+| R14 | 产出归位：收子代理产出/简报 MUST 核对归属域 vs 实际落位；错位即移出并 grep 核销，不得跨 run 漂移 |
 
 ## 4. 工具映射速查
 
@@ -153,13 +153,13 @@ metadata:
 
 ## 5. 失败处理
 
-- 失败/超时：小队主责先组织回修；必要时 P14 强制解散（WIP 存 `backup_ref`）；失败 task 可重建走 ②。
-- 流程偏离：`subagent_proc_audit` 红灯 → 你纠偏；涉已交接内容 → 文档小组更新记忆。
-- 跨组沟通：开临时会议（你主持、双方参与、TTL 内 resolve），纪要进 docs。
+- 失败/超时：小队主责先回修；必要时 P14 强制解散（WIP 存 `backup_ref`）；失败 task 重建走 ②。
+- 流程偏离：`subagent_proc_audit` 红灯即你纠偏；涉已交接内容则文档小组更新记忆。
+- 跨组沟通：临时会议（你主持、双方参与、TTL 内 resolve），纪要进 docs。
 
 ## 6. 参考文件（按需读取）
 
-按需 L1 层：`references/roles.md` · `references/stages.md` · `references/artifacts.md`（产物模板 goal/chunks/brief/staffing/handoff/evidence/acceptance/scores + 运行根结构）· `references/knowledge.md` · `references/standard.md` · `references/output-discipline.md`（D074/D075/D076/D077）· `references/harness-alignment.md`（官方机制对齐）· `references/anti-hallucination-rules.md`（D077）· `references/model-routing.md`（D078）· `references/rate-limit-adaptation.md`（D086）· `references/file-hygiene.md`（D079）· `references/anti-overengineering.md`（D081/YAGNI）· `references/diagram-guide.md`（D082）· `references/skill-governance.md`（D083）· `references/prompt-injection-rules.md`（D084）· `references/model-fallback.md`（D089/D090）· `references/memory-enhancement.md`（D085）· `references/learned-skills.md`。
+`references/roles.md` `references/stages.md` `references/artifacts.md`（产物模板 goal/chunks/brief/staffing/handoff/evidence/acceptance/scores）`references/knowledge.md` `references/standard.md` `references/output-discipline.md`（D074/D075/D076/D077）`references/harness-alignment.md` `references/anti-hallucination-rules.md`（D077）`references/model-routing.md`（D078）`references/rate-limit-adaptation.md`（D086）`references/file-hygiene.md`（D079）`references/anti-overengineering.md`（D081/YAGNI）`references/diagram-guide.md`（D082）`references/skill-governance.md`（D083）`references/prompt-injection-rules.md`（D084）`references/model-fallback.md`（D089/D090）`references/memory-enhancement.md`（D085）`references/learned-skills.md`。
 
 ## 7. 开源基准借鉴（benchmark note）
 
