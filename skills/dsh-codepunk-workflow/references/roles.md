@@ -2,6 +2,50 @@
 
 岗位目录见下「岗位表」，人设维度见下「人设必须覆盖的维度」。岗位子代理工具已内置角色 persona，本文件是**完整维度版**，用于：招聘时给 `subagent_people` 做人设、派遣前裁剪 prompt、文档小组优化提示词。（流程内部编号 Pxx/Dxx 的释义见 `references/standard.md`。）
 
+## 命名与标识规范（MUST）
+
+### 岗位图标（统一标识）
+
+岗位一律以「图标 + 中文名 + ID」标识；图标取自上方岗位表，不得自造。图标使用边界：
+
+| 位置 | 用图标 | 说明 |
+|---|---|---|
+| README、roles.md、run 记录、汇报表格 | 是 | 人类可读处，提升定位效率 |
+| persona 正文、SKILL 正文、prompt 正文 | 否 | AI 读取处；且 D092 禁装饰性符号，省常驻 token |
+
+### codename（人设名）
+
+| 规则 | 内容 |
+|---|---|
+| 格式 | 2 个汉字，表意（与岗位职责相关） |
+| 唯一性 | 同一 run 内全席唯一，不得重复 |
+| 生成者 | `subagent_people` 招聘时生成，写入 `personas/<seat>.md` |
+| 引用格式 | `<codename>（<seat>@<task_id>）`，如「衡策（squad-lead@chunk-a）」 |
+| 禁用 | 英文名、单字、无意义字串、emoji |
+
+### team_name（团队名）
+
+| 规则 | 内容 |
+|---|---|
+| 格式 | 2 个汉字，表意（团队特性或任务域） |
+| 唯一性 | 同一 run 内唯一 |
+| 生成者 | `subagent_people` 招聘时生成，与三角席位一并登记 |
+| 引用格式 | `team_name`，用于评分聚合（`knowledge/hr/teams/<team_name>.yaml`） |
+| 禁用 | 英文名、与 codename 冲突、与既有团队重名 |
+
+### ID 与门户简称
+
+| 场景 | 写法 | 示例 |
+|---|---|---|
+| 工具名、登记表、评分聚合 | 规范 ID | `ind-res`、`people-lead`、`docs-lead`、`sys-arch` |
+| README 等门户表述 | 简称 | `research`、`people`、`docs`、`sys-arch` |
+
+两处图标一致；同一文档内不得混用（规范 ID 与简称择一）。
+
+### 登记格式（run README）
+
+`| task_id | 席位 | codename | subagent_id | status |`，席位取 `squad-lead` / `engineer` / `sdet`。
+
 ## 人设必须覆盖的维度（MUST）
 
 | 维 | 字段建议 | 说明 |
@@ -20,21 +64,23 @@
 
 ## 岗位表（本流程启用）
 
-| 中文 | ID | 层 | 派遣工具 | 何时派遣 |
-|---|---|---|---|---|
-| 产品策划 | pm | L3 | subagent_product | ①需求确认 |
-| 行业分析 | ind-res | L3 | subagent_research | ①需求确认、方案前、资料申请（🌐 唯一联网岗） |
-| 代码勘察 | scout | L3 | subagent_sys_arch | ②规划（勘察分块） |
-| 软件架构 | sys-arch | L3 | subagent_sys_arch | ②规划（本仓方案） |
-| 人才主责 | people-lead | L2 | subagent_people | ②招聘、⑤评分 |
-| 招聘专员 / 编制合规 | recruiter / people-qa | L3 | （并入 subagent_people） | — |
-| 文档主责 | docs-lead | L2 | subagent_docs | ②简报、④归档、⑥提示词 |
-| 技术写作 / 文档质检 | tech-writer / docs-qa | L3 | （并入 subagent_docs） | — |
-| 小队主责 | squad-lead | L4 | subagent_squad_lead | ③每 task 招聘 |
-| 软件开发 | engineer | L4 | subagent_engineer | ③每 task 招聘 |
-| 测试验证 | sdet | L4 | subagent_sdet | ③每 task 招聘 |
-| 代码审查 | code-review | L5 | subagent_code_review | ④审查门（L/高风险强制） |
-| 发布执行 | release-eng | L5 | subagent_release_eng | ⑤合并门（串行） |
+| 图标 | 中文 | ID | 层 | 派遣工具 | 何时派遣 |
+|---|---|---|---|---|---|
+| 💡 | 产品策划 | pm | L3 | subagent_product | ①需求确认 |
+| 🔍 | 行业分析 | ind-res | L3 | subagent_research | ①需求确认、方案前、资料申请（唯一联网岗） |
+| 🔎 | 代码勘察 | scout | L3 | subagent_sys_arch | ②规划（勘察分块） |
+| 🏗 | 软件架构 | sys-arch | L3 | subagent_sys_arch | ②规划（本仓方案） |
+| 👥 | 人才主责 | people-lead | L2 | subagent_people | ②招聘、⑤评分 |
+| 👥 | 招聘专员 / 编制合规 | recruiter / people-qa | L3 | （并入 subagent_people） | — |
+| 📚 | 文档主责 | docs-lead | L2 | subagent_docs | ②简报、④归档、⑥提示词 |
+| 📚 | 技术写作 / 文档质检 | tech-writer / docs-qa | L3 | （并入 subagent_docs） | — |
+| 🚦 | 流程审计 | proc-audit | L2 | subagent_proc_audit | 持续红灯检查 |
+| 🎯 | 小队主责 | squad-lead | L4 | subagent_squad_lead | ③每 task 招聘 |
+| 🛠 | 软件开发 | engineer | L4 | subagent_engineer | ③每 task 招聘 |
+| 🧪 | 测试验证 | sdet | L4 | subagent_sdet | ③每 task 招聘 |
+| 🧐 | 代码审查 | code-review | L5 | subagent_code_review | ④审查门（L/高风险强制） |
+| 🚀 | 发布执行 | release-eng | L5 | subagent_release_eng | ⑤合并门（串行） |
+| 🗄 | 知识库 | knowledge | — | （跨组沉淀，无独立派遣） | 各阶段沉淀 |
 | 流程审计 | proc-audit | L3 | subagent_proc_audit | 巡检/门禁前 |
 | 业务赞助 | sponsor | L0 | （人类，非 LLM） | ask_user_question |
 | 会话调度 | sess-mgr | L2 | （主会话兼） | — |
