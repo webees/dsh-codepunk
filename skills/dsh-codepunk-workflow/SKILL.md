@@ -100,7 +100,7 @@ metadata:
 2. **输出纪律**（D074/D075/D076/D077）：只回 `command+exit_code+log_ref`；汇报 ≤1500 token；首行=结论、编号 ≤5、禁寒暄（`references/output-discipline.md`）。
 3. **审查门**：diff ⊆ write_paths + `reviews/CHECKLIST.md` + `reviews/<task_id>.md`；L/高风险派 `subagent_code_review`；`needs-work` 回修再审；门禁为显式节点 + 双侧 guardrail（D068），不得绕门。
 4. **交接包** `handoff/`：`summary.md`/`artifact_index.md`/`known_issues.md`/`diff_scope.md` + 证据索引 + 残留自查（D079，MUST，缺则打回；`references/file-hygiene.md`）。
-5. **签收**：`acceptance.yaml`（`accepted_by[]`；无下游 → 文档主责或技术统筹）；`git diff --name-only base...HEAD` ⊆ write_paths；归档入 `knowledge/handoffs/`（R14）。
+5. **签收**：子代理结算正文以「结束」二字收尾（状态闭环标识）；`acceptance.yaml`（`accepted_by[]`；无下游 → 文档主责或技术统筹）；`git diff --name-only base...HEAD` ⊆ write_paths；归档入 `knowledge/handoffs/`（R14）。
 
 ### ⑤ 解散与评分（P07 尾 + P16 人事）
 

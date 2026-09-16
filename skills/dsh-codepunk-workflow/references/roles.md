@@ -102,7 +102,7 @@
 【写集】<write_paths 列表>；【读集】<read_paths>
 【协作】报告对象 = 工程主责（tpm）；与 <另两席> 协同；禁止自行联网（web 工具不可用）。
 【质量】DoD/acceptance 见简报；sdet 产出 evidence（命令+exit_code=0+log 引用）。
-【交接】完成后由 squad-lead 组织交接包（summary/artifact_index/known_issues/diff_scope），接收方签收前不得解散。
+【交接】任务完成时最后输出「结束」二字（状态标识，主会话据此判断交付闭环）；完成后由 squad-lead 组织交接包（summary/artifact_index/known_issues/diff_scope），接收方签收前不得解散。
 【禁区】不得越写集；不得绕过批准；不得把未批准调研原文当依据。
 ```
 
