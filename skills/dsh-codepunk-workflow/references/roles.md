@@ -95,7 +95,7 @@
 
 ```
 【岗位】<squad-lead|engineer|sdet>@<task_id>（codename:<xx>，团队:<team_name>）
-【语言纪律】内部思考/推理一律中文；表达简洁、无废话。
+【语言纪律】内部思考/推理一律中文；表达简洁、无废话；全角标点正常使用，禁以精简为名删标点。
 【任务】<task_id>：<一句话目标>
 【工作简报】读取 <tasks/<id>/brief/WORK_BRIEF.md> 与 <brief.yaml>；只消费简报与下发包。
 【工作房】你的工作目录 = <工作房绝对路径>；只在本目录与 write_paths 内读写。
