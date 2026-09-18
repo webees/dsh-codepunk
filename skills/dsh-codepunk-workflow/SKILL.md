@@ -46,13 +46,18 @@ metadata:
 
 > **总库语义（D072）**：运行根**不再建在工程目录内**（防污染项目），统一存 `~/.dsh-codepunk/`：`~/.dsh-codepunk/projects/<project_id>/`。工程目录保持纯净（无 `.dsh-codepunk/`）。
 
-### 1.1 开工三件事（MUST，每次新 run/新会话都做）
+### 1.1 开工四件事（MUST，每次新 run/新会话都做）
 
 > POSIX 命令；Windows 用 `plans/windows/*.ps1` 等价脚本。
 
 1. **关联项目**：`dsh-codepunk-link resolve <工程根路径>`→ `project_id` 与 `dsh_codepunk_path`（**总库托管路径**，绝不等价于工程根；见 benchmarks/preset-tool-fixes.md）。README 有 `dsh-codepunk: <id>` frontmatter → 主通道命中；无 → INDEX 兜底；都无 → 未注册（`dsh-codepunk-link register <工程根> <id>`）。
 2. **装载路径常量**：`source ~/.dsh-codepunk/dsh-codepunk-home.sh`（导出 `DSH_CODEPUNK_HOME`/`DSH_CODEPUNK_PROJECTS`/`DSH_CODEPUNK_INDEX`）。
 3. **建运行根**：`mkdir -p ~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/`——本 run 全部状态（goal/chunks/plan/tasks/handoff）写该目录，**绝不写入工程目录**。
+4. **启动自检与子代理恢复（MUST，D094）**：客户端意外关闭会中断子代理，恢复靠以下三步——
+   - **a. 查**：`list_agents(scope=descendants)` 列出全部子代理与其状态（`running`/`idle`/`ready`）。
+   - **b. 比**：与 `runs/<run_id>/README.md` 的 spawn 登记表（`task_id | seat | subagent_id | status`）逐行对照，找出「登记为 active 但已非 running」的中断席。
+   - **c. 续**：读该席工作房 `progress/`、`handoff/`、`evidence.yaml` 定位断点 → `send_message` 精确续行（附断点摘要与待办），不重跑整轮、不重复 spawn。
+   - 前置条件：子代理 MUST 为 `backgroundMode: continuable`（一次性子代理中断后不可恢复，见 D088）；登记表 MUST 每 spawn 即写（stages.md §③ 第 5 条），否则无从比对。
 
 ### 1.2 运行根结构（速记）
 

@@ -97,6 +97,7 @@
 | D088 | 子代理可恢复性（continuable） | 实战 | agent.cordis.yml / preset-tool-fixes F-003 | v1.0 |
 | D089 | 模型统一与回退 | 实战经验 | model-fallback.md / settings | v1.0 |
 | D090 | 子代理路由双要件（agentOptions + continuable） | 实战经验 | agent.cordis.yml / model-routing.md | v1.0 |
+| D094 | 启动自检与子代理恢复 | 实战需求 | SKILL §1.1 第 4 条 / stages.md §③ / agent.cordis.yml | v1.0 |
 
 ## 六、文档小组职责（技能治理执行者）
 

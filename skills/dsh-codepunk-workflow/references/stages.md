@@ -35,6 +35,7 @@
 5. **登记 subagent id（MUST）**：每 spawn 后把 `task → seat → subagent id` 记入 `runs/<run_id>/README.md`（列 `task_id | seat | subagent_id | status`，一行一 spawn；seat ∈ squad-lead/engineer/sdet，id 取返回值）。巡检/追问/解散靠此表，勿凭记忆。
 6. 小组独立开发互不干扰；你经 `list_agents`/结算通知/`send_message` 巡检。S 规模默认三帽折叠（run-lead 兼三席，产物换帽留痕 `seat=`，见 roles.md）；M/L 全席上阵。
 7. **checkpoint 断点续行（D067）**：`progress/`+`handoff/`+`evidence.yaml`+工作房 = 可重放状态（每阶段产出即一个 checkpoint）；中断后 `list_agents` 定位闲置 + 读 `progress/` 找断点 → `send_message` 精确续行，不整轮重来。
+   - **客户端重启后恢复（D094）**：见 SKILL §1.1 第 4 条「启动自检」——`list_agents(scope=descendants)` 查 → 对照 spawn 登记表比 → 读断点续；子代理 MUST continuable（一次性不可恢复）。
 8. 连续 2 次无实质进展 → `at_risk`，催办或介入；超时 → 延长/失败/强制解散（P14）。
 9. 缺资料 → 成员申请 → 你 approve/redact/deny → `subagent_docs` 打包下发；**禁止小组自行联网**。
 
