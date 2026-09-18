@@ -58,6 +58,10 @@ metadata:
    - **b. 比**：与 `runs/<run_id>/README.md` 的 spawn 登记表（`task_id | seat | subagent_id | status`）逐行对照，找出「登记为 active 但已非 running」的中断席。
    - **c. 续**：读该席工作房 `progress/`、`handoff/`、`evidence.yaml` 定位断点 → `send_message` 精确续行（附断点摘要与待办），不重跑整轮、不重复 spawn。
    - 前置条件：子代理 MUST 为 `backgroundMode: continuable`（一次性子代理中断后不可恢复，见 D088）；登记表 MUST 每 spawn 即写（stages.md §③ 第 5 条），否则无从比对。
+5. **定时巡检与状态清单（MUST，D095）**：仅靠启动自检不够——新开对话、长任务中途都要周期性巡检，防止中断席长期失联。
+   - **清单**：`runs/<run_id>/agents.yaml` 为独立 YAML 状态清单（模板见 `references/artifacts.md`「子代理状态清单」），与 README 登记表双写一致；每次巡检后刷新 `updated_at`。
+   - **节奏**：启动执行一次；运行中每 `patrol_every_n_rounds`（默认 5 轮）执行一次；收到失败/中断结算通知时加跑一次。
+   - **动作**：每次巡检执行「查→比→续→写」闭环：`list_agents` 查实测态 → 对照清单找 `expected: active` 但非 running 的中断席 → 读断点 `send_message` 续行 → **写回** `agents.yaml`（`status`/`last_seen`/`last_checkpoint_at`/`note`）。`status: done` 的席跳过。
 
 ### 1.2 运行根结构（速记）
 

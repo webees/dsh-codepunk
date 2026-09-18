@@ -268,3 +268,28 @@ knowledge/                      # 知识库（跨 run 沉淀）
 
 > **工程域例外（不属于总库）**：worktree 建在**工程父目录**（`../room-<task_id>`）、S 规模 `rooms/squad-<task_id>/` 在**工程根内**，两者均不进总库；总库只存本 run 状态（goal/chunks/plan/tasks/handoff）。
 > **项目记忆关联**：主通道 = 工程根 `README.md` 顶部 YAML frontmatter `dsh-codepunk: <project_id>`（无 frontmatter 可用 `<!-- dsh-codepunk: <id> -->`）；兜底 = `~/.dsh-codepunk/INDEX.yaml` 注册表（5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source）。工具 `dsh-codepunk-link resolve <项目路径>` 三态路由「README 标记 → INDEX 回退 → 未注册报错」；`index` 校验无空悬；`register` 追加（不覆盖、需确认）。**冲突以 INDEX 为准**；不批量改写项目 README。正式位 `~/.dsh-codepunk/scripts/`（`plans/` 仅源副本）。
+
+## 子代理状态清单（D095：启动自检 + 定时巡检用）
+
+> 独立 YAML 状态清单（区别于 `runs/<run_id>/README.md` 里的人读登记表）。主进程每次启动 + 每 N 轮定时执行「查 → 比 → 续 → 写」闭环，并在每次巡检后更新本文件。文件名 `runs/<run_id>/agents.yaml`（与同目录 README 登记表双写一致）。
+
+```yaml
+# 子代理状态清单 agents.yaml（机器可读，状态唯一真源以运行中 list_agents 为准）
+run_id: run-2026-0001
+updated_at: "2026-09-18T00:00:00Z"   # 每次巡检后刷新
+patrol_every_n_rounds: 5             # 定时巡检间隔（默认 5 轮，可按 run 规模调）
+seats:
+  - task_id: chunk-a
+    seat: squad-lead                 # squad-lead | engineer | sdet
+    codename: 衡策                   # staffing.yaml 一致
+    subagent_id: 6420f25a-0000-4000-8000-000000000000
+    label: 衡枢-主责(配置层优化)      # 派单 description 原样
+    status: active                   # active | done | interrupted | recovered | failed
+    last_seen: running               # 最近一次 list_agents 状态：running | idle | ready | 未在册
+    expected: active                 # 期望：active（有未完成交付）| done（已签收，可不清）
+    progress_ref: tasks/chunk-a/progress/progress.md
+    last_checkpoint_at: "2026-09-18T00:00:00Z"
+    note: ""                         # 中断原因 / 续行记录
+```
+
+**字段语义**：`status` 为主进程维护的目标态，`last_seen` 为最近巡检的实测态；二者不一致（active 但 running 之外）即中断席。`expected: done` 的席跳过恢复。
