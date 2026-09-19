@@ -65,6 +65,16 @@
   name: '@deepseek-ai/dsh-tool-bash'
   disabled: !!js process.platform === 'win32'
 
+# 持久 shell（工程主责长命令执行）：与 tool-bash 同名，会话级状态持久、
+# exec 超时默认 5 分钟（timeoutMs 可配）、单次输出上限 16k 字符。
+# 接法照抄官方 minimal 预设：**不替换** tool-bash，白名单的 `bash` 由宿主按挂载顺序解析，
+# run-lead 执行长命令（git 批量操作、审计脚本全跑、压测）优先显式发给持久会话。
+- id: tool-bash-persistent
+  name: '@deepseek-ai/dsh-tool-bash-persistent'
+  disabled: !!js process.platform === 'win32'
+  config:
+    timeoutMs: 300000
+
 - id: tool-pwsh
   name: '@deepseek-ai/dsh-tool-pwsh'
   disabled: !!js process.platform !== 'win32'

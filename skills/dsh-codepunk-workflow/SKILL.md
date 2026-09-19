@@ -159,6 +159,7 @@ metadata:
 | 巡检 / 追问 | `list_agents`（scope=children/descendants）、结算通知、`send_message`、`interrupt_agent` |
 | 通用委派 / 目标 / 确认 | `subagent` / `subagent_fork`、`create_goal` / `get_goal` / `update_goal`、`ask_user_question` |
 | 文件/git | `bash`（mkdir/git/worktree/diff）、`write`/`edit`/`read`、`glob`/`grep` |
+| 长命令执行 | 持久 `bash`（D096：会话级状态持久、默认 5 分钟超时、单次 16k 字符上限）——批量 git、审计全跑、压测优先用它 |
 | 大并发编排 / 规划（可选） | `workflow`、plan mode + `exit_plan_mode` |
 
 ## 5. 失败处理
