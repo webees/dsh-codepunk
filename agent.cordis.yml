@@ -59,25 +59,48 @@
 # `shell-env` 留在宿主组合：`apps/cli/src/web.ts` 注入它以发布
 # `DSH_WEB_URL`/`DSH_WEB_MODE`；凡注入服务的宿主行即归宿主平面所有——
 # 注入在任何会话存在之前解析，故无可归属的智能体。置于预设隔离域后，
-# 这些变量根本到不了模型的 shell。两 shell 工具均从此处消费宿主注册表；
+# 这些变量根本到不了模型的 shell。持久 shell 工具从此处消费宿主注册表；
 # 其执行器（`bash-sandbox`/`pwsh-sandbox`）同属宿主平面。
-- id: tool-bash
-  name: '@deepseek-ai/dsh-tool-bash'
-  disabled: !!js process.platform === 'win32'
-
-# 持久 shell（工程主责长命令执行）：与 tool-bash 同名，会话级状态持久、
-# exec 超时默认 5 分钟（timeoutMs 可配）、单次输出上限 16k 字符。
-# 接法照抄官方 minimal 预设：**不替换** tool-bash，白名单的 `bash` 由宿主按挂载顺序解析，
-# run-lead 执行长命令（git 批量操作、审计脚本全跑、压测）优先显式发给持久会话。
-- id: tool-bash-persistent
-  name: '@deepseek-ai/dsh-tool-bash-persistent'
-  disabled: !!js process.platform === 'win32'
+#
+# 持久 shell（工程主责长命令执行）：PTY 注册表是智能体自有服务，
+# MUST 与后端和工具同域挂载；只挂工具会让 `terminals` 永远等待，
+# 整个预设随之挂载失败、会话分叉回退失败。持久 `bash`/`pwsh` 与
+# dsh-base 的全局同名工具按 scope 形成遮蔽，属于替换而非共存；
+# 接法照抄官方 minimal 预设。会话级状态持久、超时 5 分钟、
+# 单次输出上限 16k 字符；run-lead 批量 git、全量审计、压测优先用它。
+- id: persistent-shell
+  name: cordis:group
+  group: true
+  isolate:
+    terminals: true
   config:
-    timeoutMs: 300000
+    - id: pty
+      name: '@deepseek-ai/dsh-terminal'
 
-- id: tool-pwsh
-  name: '@deepseek-ai/dsh-tool-pwsh'
-  disabled: !!js process.platform !== 'win32'
+    - id: terminal-bash
+      name: '@deepseek-ai/dsh-terminal-bash'
+      disabled: !!js process.platform === 'win32'
+      config:
+        timeoutMs: 300000
+
+    - id: persistent-bash
+      name: '@deepseek-ai/dsh-tool-bash-persistent'
+      disabled: !!js process.platform === 'win32'
+      config:
+        timeoutMs: 300000
+
+    - id: terminal-pwsh
+      name: '@deepseek-ai/dsh-terminal-bash'
+      disabled: !!js process.platform !== 'win32'
+      config:
+        shellDialect: pwsh
+        timeoutMs: 300000
+
+    - id: persistent-pwsh
+      name: '@deepseek-ai/dsh-tool-pwsh-persistent'
+      disabled: !!js process.platform !== 'win32'
+      config:
+        timeoutMs: 300000
 
 # ── 文件系统 ────────────────────────────────────────────────────────────
 
@@ -94,7 +117,7 @@
 # ── 后台任务 ────────────────────────────────────────────────────────────
 
 # 仅面向模型的操作控件。任务注册表留在宿主平面：
-# 其生产者在本文件任何隔离域之外——上文 `tool-bash` 经 `ctx.get` 解析它，
+# 其生产者在本文件任何隔离域之外——持久 shell 工具经 `ctx.get` 解析它，
 # 此处条目级本地隔离域对兄弟行不可见，故控件若置于目录中，
 # `run_in_background` 会报“后台任务不可用”。注册表本就按键归属智能体，
 # 故宿主单实例服务所有会话。预设能选的只是其智能体能否收停后台任务。

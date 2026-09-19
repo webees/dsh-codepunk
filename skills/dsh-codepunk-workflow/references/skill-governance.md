@@ -99,7 +99,7 @@
 | D090 | 子代理路由双要件（agentOptions + continuable） | 实战经验 | agent.cordis.yml / model-routing.md | v1.0 |
 | D094 | 启动自检与子代理恢复 | 实战需求 | SKILL §1.1 第 4 条 / stages.md §③ / agent.cordis.yml | v1.0 |
 | D095 | 定时巡检与子代理状态清单 | 内部需求 | SKILL §1.1 第 5 条 / artifacts.md | v1.0 |
-| D096 | 持久 shell 与工具调用超时 | DSH 2.0.12 | SKILL §4 / agent.cordis.yml | v1.0 |
+| D096 | 持久 shell 与工具调用超时 | DSH 2.0.12 | SKILL §4 / agent.cordis.yml | v1.1 |
 
 ## 六、文档小组职责（技能治理执行者）
 
