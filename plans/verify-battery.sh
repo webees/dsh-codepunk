@@ -105,7 +105,7 @@ then p "✅" "目录树 ↔ 仓内文件一致"; else p "✗" "README 目录树�
 for f in plans/*.sh; do bash -n "$f" 2>/dev/null || { p "✗" "bash -n: $f"; F=1; }; done
 PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
 [ -f "$PV" ] && { node "$PV" plans/windows/*.ps1 >/dev/null 2>&1 || { p "✗" "PS 语法校验失败"; F=1; }; }
-[ "$F" -eq 0 ] && p "✅" "脚本语法（7 .sh + 4 .ps1）通过"
+[ "$F" -eq 0 ] && p "✅" "脚本语法（$(ls plans/*.sh 2>/dev/null | wc -l | tr -d ' ') .sh + $(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' ') .ps1）通过"
 # 7b) PS 校验器缺失提示（不判失败，但明确告知如何启用）
 if [ ! -f "$PV" ]; then
   p "ℹ" "PS 语法校验跳过（无校验器）：如需启用，见 README「PowerShell 校验」一节"

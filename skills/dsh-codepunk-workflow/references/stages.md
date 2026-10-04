@@ -30,7 +30,7 @@
 1. **建工作房**：先确认主仓库已归位工程根 → 依其父目录建 worktree：`git -C <主仓库路径> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>` → `git -C <主仓库路径> worktree list` 复核落点。**禁止在非工程根目录建 worktree**。S 规模（单组）可改用 `rooms/squad-<task_id>/` + 写集纪律。
 2. **创建即登记（MUST）**：建成/重建/恢复后**立即**登记进 `runs/<run_id>/README.md` 的 worktree 表（列：仓库｜路径｜分支（`dsh-codepunk/<run_id>/<task_id>`）｜run｜用途｜状态；表头首次建表时新建）。状态三态全程登记：`active`→`recovered`→`recycled`（D073 合并回收时标；行不删、分支 refs 留审计）。以 `worktree list` 实况为准，不凭记忆。
 3. **并行派遣**（全部后台 continuable〔D088〕，同一轮消息发出）：`subagent_squad_lead`（简报全量+工作房+汇报节奏）· `subagent_engineer`（技术切片+写集+工作房）· `subagent_sdet`（acceptance+证据格式+允许命令）。prompt 必含：工作房绝对路径、write_paths、read 材料、报告对象（你）、交接要求。
-4. **并行上限**按 scale：S≤1 / M≤3 / L≤6 组（软上限 `max_awake` 8，D024）；双门闩齐即**自动**开工（D031）。
+4. **并行上限**按 scale：S≤1 / M≤3 / L≤6 组（本预设自律上限，D024；DSH 无同名平台字段）；双门闩齐即**自动**开工（D031）。
    - **限流自适应（D086）**：spawn 前查 `knowledge/lessons/rate-limit-history.yaml`；当日 ≥2 次 429 → 降并发（L1 ≤2/批+10s / L2 串行 / L3 暂停并通知 sponsor）。细则见 references/rate-limit-adaptation.md。
 5. **登记 subagent id（MUST）**：每 spawn 后把 `task → seat → subagent id` 记入 `runs/<run_id>/README.md`（列 `task_id | seat | subagent_id | status`，一行一 spawn；seat ∈ squad-lead/engineer/sdet，id 取返回值）。巡检/追问/解散靠此表，勿凭记忆。
 6. 小组独立开发互不干扰；你经 `list_agents`/结算通知/`send_message` 巡检。S 规模默认三帽折叠（run-lead 兼三席，产物换帽留痕 `seat=`，见 roles.md）；M/L 全席上阵。

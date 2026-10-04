@@ -7,7 +7,7 @@
 
 | 决策号 | 学到什么（技能本质） | 来源（仓库/文档，License） | 应用到哪 | 版本 |
 |---|---|---|---|
-| **D024** | 并行软上限：S=1 / M=3 / L=6（max_awake 8） | 流程设计（三档规模） | SKILL §2 ③ | v1.0 |
+| **D024** | 并行软上限：S=1 / M=3 / L=6（本预设自律上限，非平台字段） | 流程设计（三档规模） | SKILL §2 ③ | v1.0 |
 | **D031** | 双门闩齐即自动开工，不必再等人工点头 | 流程设计 | SKILL.md §2 ③ | v1.0 |
 | **D034** | goal active 前 `product_acceptance[]` 必须非空 | 流程设计（验收先决条件） | SKILL.md §2 ① / artifacts.md | v1.0 |
 | **D035** | sponsor 通道与 goal 终裁/确认记时归工程主责（`user_confirmed_at`） | 流程设计（sponsor 通道） | SKILL.md §2 ① / agent.cordis.yml | v1.0 |
@@ -83,7 +83,7 @@
 
 ## 应用原则（铁律）
 1. **机制借鉴不抄码**：只借鉴思想/规则，不复制实现；MIT 来源保留 attribution。
-2. **承重留正文、示例进 references**：SKILL.md ≤32 KiB（现约 29），新内容优先进按需文件。
+2. **承重留正文、示例进 references**：SKILL.md ≤32 KiB（写完请以 `wc -c skills/dsh-codepunk-workflow/SKILL.md` 实测为准，勿在文档里写死体积），新内容优先进按需文件。
 3. **净负即关**：技巧若在某场景净增负担则退回（借鉴 caveman 诚实数字立场）。
 4. **豁免先于精简**：安全/不可逆/持久化产物场景完整行文优先（Auto-Clarity）。
 

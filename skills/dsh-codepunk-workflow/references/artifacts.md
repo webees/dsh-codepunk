@@ -9,7 +9,7 @@ run_id: run-2026-0001
 title: "<目标一句话>"
 kind: delivery          # delivery | self_evolve
 status: active          # 状态机：intake → draft → active ⇄ blocked → completed | cancelled；回边 draft→intake（P01 驳回）、blocked→active（仅 run-lead 在阻塞消除后置回，须记 blocker 与解除依据）、cancelled（仅 sponsor 触发，run-lead 记原因）
-scale: S                # S | M | L（并行上限 S=1 / M=3 / L=6，软限 max_awake 8）
+scale: S                # S | M | L（并行上限 S=1 / M=3 / L=6；本预设自律上限，非平台字段）
 success_criteria:
   - "<可验证的成功标准>"
 non_goals:

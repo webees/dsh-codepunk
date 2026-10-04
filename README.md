@@ -12,7 +12,7 @@
 
 | # | 阶段 | 工作 | 参与 | 关键产物 |
 |---|---|---|---|---|
-| 1️⃣ | **需求确认** | 用户提需求 → 工程主责主持对话，产品策划澄清口径，调研小组实时联网检索 → 与用户逐项确认后 active | 工程主责 · 产品策划 · 调研小组 | `goal.yaml`（用户确认后 active） |
+| 1️⃣ | **需求确认** | 用户提需求 → 工程主责主持对话，产品策划澄清口径，行业分析实时联网检索 → 与用户逐项确认后 active | 工程主责 · 产品策划 · 行业分析 | `goal.yaml`（用户确认后 active） |
 | 2️⃣ | **规划与组队** | 工程主责定研发计划与用人标准 → 文档小组组简报 → 人才主责真招聘三人小组 → 双门闩批准后开工 | 工程主责 · 技术统筹 · 文档小组 · 人才主责 · 软件架构 | `chunks.yaml` · `brief/` · `staffing/` |
 | 3️⃣ | **多小组并行开发** | 每 task 一组三人小组（小队主责+开发+测试），在独立封闭工作房并行推进、互不干扰；并行上限按 scale（S≤1 / M≤3 / L≤6） | 实现三角（每 task 一组） | 各工作房交付 · `progress/` |
 | 4️⃣ | **巡检与交接** | 小队主责巡检本组进度、组织闭环；审查门核验 diff ⊆ 写集；交接包齐全后接收方签收 | 小队主责 · 代码审查 · 接收方 | `handoff/` · `acceptance.yaml` |
@@ -44,7 +44,7 @@
 | 岗位 | 职责 |
 |---|---|
 | 📚 文档小组 docs | 组装/校对/下发简报 · 汇总交接统一口径 · 归档记忆 · 优化角色提示词 |
-| 🔍 调研小组 research | 配合需求对话联网检索 · 协助数据整理 · 资料经工程主责审核后下发（**唯一联网岗**） |
+| 🔍 行业分析 ind-res | 配合需求对话联网检索 · 协助数据整理 · 资料经工程主责审核后下发（**唯一联网岗**） |
 | 🗄 知识库 knowledge | 沉淀评分/交接/调研成果 · 为招聘、规划、提示词优化提供依据 |
 | 💡 产品策划 pm | 需求澄清 · 验收口径 · 质量与优先级把关 |
 | 🏗 软件架构 sys-arch | 勘察分块 · 写集与依赖设计 |
@@ -100,7 +100,7 @@ node plans/preset-declare.mjs check    # 漂移即非零退出并列出差异路
 - 同一份组合存在两处表示：`agent.cordis.yml`（源，权威）与 profile patch 内的 `plugins:` 内联副本（进程实读）。**副本由源生成，勿手改**；两处一致性由 `preset-declare.mjs check` 语义比对保证。
 - 内联副本有一处必要适配：`customSkillDirs` 的 `new URL('skills/', baseUrl)` 在 profile 上下文中 `baseUrl` 指向 profile 目录，须改写为回到预设目录的相对路径——`preset-declare.mjs` 生成时自动处理，`check` 比对时自动归一。
 - 目录结构必须含 `agent.cordis.yml`（组合：persona + 工具 + realm）与 `skills/`（playbook）；`preset.yml` 为可选展示描述。
-- `plans/` 工具脚本为源副本，不随预设复制；运行期装配与正式位见流程手册 `SKILL.md` §1.1。
+- `plans/` 工具脚本为源副本，不随预设复制；运行期装配与正式位（`~/.dsh-codepunk/scripts/`）见流程手册 `SKILL.md` §1.2。
 - 声明在**进程启动时读取**，改动后须重启 DSH Desktop 生效。
 - **解包布局**：DSH 2.0.10 仍为 `app.asar` 打包，2.0.12 起改为解包 `Contents/Resources/app/`（实测：2.0.10 可解析 asar 头部索引，2.0.12 起该文件不存在）。本仓所有依赖 DSH 安装位置的检查一律取环境变量（`DSH_APP_ROOT` 或 `DSH_ASAR`、`DSH_PROFILE_PATCH`），不硬编码任何平台路径，两种布局都支持。
 - 挂载校验：`dsh-agent-presets` 对组合做形状检查（顶层列表 + 每行有 `name` + group 递归），并用 `entryListSchema`（含 `!!js`）解析；格式/语义错误会标记为 broken roster row。
@@ -108,7 +108,7 @@ node plans/preset-declare.mjs check    # 漂移即非零退出并列出差异路
 ### 运行引导（工程主责）
 
 1. 开工前**必须加载 `dsh-codepunk-workflow` skill** 并按 `SKILL.md` 执行。
-2. **开工三件事**（SKILL.md §1.1）：
+2. **开工五件事**（SKILL.md §1.1）：
    ```bash
    dsh-codepunk-link resolve <工程根>            # ① 关联项目（未注册先 register）
    source ~/.dsh-codepunk/dsh-codepunk-home.sh   # ② 装载路径常量
@@ -148,13 +148,13 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 
 | 命令 | 作用 | 退出码 |
 |---|---|---|
-| `bash plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=全满分 |
-| `bash plans/preset-audit.sh` | 6 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标 |
-| `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+脚本语法+DSH 兼容+声明漂移+E2E），10 项一次跑完 | 0=全通过 |
-| `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致 |
-| `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离形态） | 0=兼容 |
-| `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push） | 0=通过 |
-| `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（编号/约束词/阈值/路径/工具名/代码标识），改后逐项比对 | 0=零丢失 |
+| `bash plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=全满分；1=有失分项；2=环境/用法错误 |
+| `bash plans/preset-audit.sh` | 5 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标；1=有失分项 |
+| `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+目录树一致+脚本语法+DSH 兼容+声明漂移+E2E 与总库无污染），12 项一次跑完 | 0=全通过；1=存在失败项；2=无法进入预设根 |
+| `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致；1=漂移；2=环境/参数错误（缺 js-yaml 时降级比对） |
+| `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离与锚点顺序 / allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
+| `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push + commit-msg） | 0=通过；1=命中并阻断；2=用法/环境错误 |
+| `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（编号/约束词/阈值/路径/工具名/代码标识），改后逐项比对 | 0=零丢失；1=检出丢失；2=缺参数/未知模式/无快照 |
 
 `verify-battery.sh` 的参数：`bash plans/verify-battery.sh [预设根]`（默认取脚本上级目录）。
 DSH 相关的可选检查由环境变量开启：`DSH_APP_ROOT`（DSH 解包 app 目录）、`DSH_ASAR`（旧版 asar 路径）、`DSH_PROFILE_PATCH`（profile patch 路径，默认 `~/.dsh/profiles/desktop/cordis.patch.yml`）。
@@ -183,13 +183,13 @@ CONTRIBUTING.md                     # 贡献指南（向贡献者）
 LICENSE                             # MIT
 .gitattributes                      # 换行策略（仓库内 LF；.ps1 检出 CRLF）
 .gitignore                          # 白名单式忽略（运行状态不入仓）
-plans/                              # 工具脚本源副本（运行期正式位见 SKILL.md §1.1）
+plans/                              # 工具脚本源副本（运行期正式位见 SKILL.md §1.2）
   dsh-codepunk-home.sh              # 共享路径常量（source 载入；init 会安装到总库根并前置 PATH）
   dsh-codepunk-link.sh              # 项目↔总库关联解析（resolve / index / register）
   dsh-codepunk-init.sh              # 总库骨架幂等初始化
   verify-worktree.sh                # worktree 落点纪律核验
   evidence-verify.sh                # 证据机械校验器（D069：防假通过门）
-  preset-audit.sh                   # 预设质量审计（6 组 rubric，100 分制）
+  preset-audit.sh                   # 预设质量审计（5 组 rubric，100 分制）
   dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
   preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
   verify-battery.sh                 # 完整验证电池（10 项独立验证，单命令复跑）
@@ -208,7 +208,7 @@ skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
   references/artifacts.md           # 产物文件模板（goal/chunks/brief/…）
   references/knowledge.md           # 知识库布局 + 评分公式 + 聚合格式
   references/standard.md            # 编号（P01–P17 / D0xx）唯一权威释义
-  benchmarks/                       # 外部基准调研 ×16 篇（D066-D090 溯源；13 篇决策号来源 + 2 篇 D074 延伸，清单见 references/learned-skills.md）
+  benchmarks/                       # 基准调研 ×16 篇（决策号来源与实战取证；逐篇清单见 references/learned-skills.md「溯源档案」）
 ```
 
 用户级总库 `~/.dsh-codepunk/`：`INDEX.yaml`（项目注册表）、`dsh-codepunk-home.sh`（路径常量）、`projects/<id>/`（各项目全部 run 记忆与知识库）。

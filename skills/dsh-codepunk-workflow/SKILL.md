@@ -46,7 +46,7 @@ metadata:
 
 > **总库语义（D072）**：运行根**不再建在工程目录内**（防污染项目），统一存 `~/.dsh-codepunk/`：`~/.dsh-codepunk/projects/<project_id>/`。工程目录保持纯净（无 `.dsh-codepunk/`）。
 
-### 1.1 开工四件事（MUST，每次新 run/新会话都做）
+### 1.1 开工五件事（MUST，每次新 run/新会话都做）
 
 > POSIX 命令；Windows 用 `plans/windows/*.ps1` 等价脚本。
 
@@ -97,7 +97,7 @@ metadata:
 
 1. **建工作房**：`git -C <主仓库路径> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>` → `git -C <主仓库路径> worktree list` 复核；**禁止在非工程根目录建 worktree**。
 2. **创建即登记（MUST）**：`runs/<run_id>/README.md` worktree 表 + `task → seat → subagent id`（`task_id | seat | subagent_id | status`；seat ∈ squad-lead/engineer/sdet）+ `active`→`recovered`→`recycled`（D073）；三帽折叠留痕 `seat=`；以 `worktree list` 实况为准。
-3. **并行派遣**（后台 continuable，D088）：`subagent_squad_lead` · `subagent_engineer` · `subagent_sdet`；prompt 必含工作房路径、`write_paths`、read 材料、报告对象、交接要求；并发 S≤1 / M≤3 / L≤6（软限 `max_awake` 8，D024），双门闩齐即**自动**开工（D031）。
+3. **并行派遣**（后台 continuable，D088）：`subagent_squad_lead` · `subagent_engineer` · `subagent_sdet`；prompt 必含工作房路径、`write_paths`、read 材料、报告对象、交接要求；并发 S≤1 / M≤3 / L≤6（**本预设自律上限**，D024；DSH 无同名平台字段，勿当配置项），双门闩齐即**自动**开工（D031）。
 4. **限流/续行**：查 `knowledge/lessons/rate-limit-history.yaml`（当日 ≥2 次 429 → +10s 降并发，D086）；断点续行（D067）靠 `progress/`、`handoff/`、`evidence.yaml`、`list_agents`、`send_message`。
 5. 连续 2 次无进展 → `at_risk`（超时 P14）；缺资料 → 申请 → 你 approve/redact/deny → `subagent_docs` 打包；**禁止小组自行联网**（R2）。
 

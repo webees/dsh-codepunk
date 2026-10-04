@@ -66,7 +66,7 @@
 
 | 决策号 | 技能 | 来源 | 应用位置 | 版本 |
 |---|---|---|---|---|
-| D024 | 并行软上限：S=1 / M=3 / L=6（max_awake 8） | 流程设计 | SKILL §2 ③ | v1.0 |
+| D024 | 并行软上限：S=1 / M=3 / L=6（本预设自律上限，非平台字段） | 流程设计 | SKILL §2 ③ | v1.0 |
 | D031 | 双门闩齐即自动开工 | 流程设计 | SKILL §2 ③ | v1.0 |
 | D034 | goal active 前 product_acceptance[] 非空 | 流程设计 | SKILL §2 ① / artifacts | v1.0 |
 | D035 | sponsor 通道与 goal 终裁归工程主责 | 流程设计 | SKILL §2 ① / agent.cordis.yml | v1.0 |
