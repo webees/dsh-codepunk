@@ -8,7 +8,7 @@ p() { printf '  %s %s\n' "$1" "$2"; }
 
 # 1) 15 指标评分
 bash plans/preset-score.sh >/dev/null 2>&1 && p "✅" "15 指标评分 100/100" || { p "✗" "15 指标评分未满分"; F=1; }
-# 2) 6 组审计
+# 2) 5 组审计（A 配置 / B 手册 / D 调研 / E 文档 / F 工具；无 C 组）
 bash plans/preset-audit.sh >/dev/null 2>&1 && p "✅" "预设审计 100/100" || { p "✗" "预设审计未满分"; F=1; }
 # 3) 泄露防护门三模式
 for m in --staged --tree --history; do
@@ -115,7 +115,8 @@ if [ ! -f "$PV" ]; then
   p "ℹ" "PS 语法校验跳过（无校验器）：如需启用，见 README「PowerShell 校验」一节"
 fi
 
-# 8) DSH 兼容性（插件包存在 / 配置键被接受 / group 隔离形态）
+# 8) DSH 兼容性（7 项：插件包存在 / 配置键被接受 / group 隔离形态 / allow 名单工具名有注册来源 /
+#    锚点顺序 / allow 名单一致性 / agentOptions 覆盖面信息行）
 # DSH 0.1.7 起不再打包 app.asar，改为解包 app/ 目录；两种布局都支持，
 # 位置一律由环境变量给出（不硬编码任何平台路径）。核验细节见 preset-compat.py。
 APPROOT="${DSH_APP_ROOT:-}"
