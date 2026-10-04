@@ -290,7 +290,11 @@
           #       否则 restrict 会把它当作未知全局工具直接 throw（dsh-tools restrictableNames 语义）。
           # 平台门控注意：只列「当前实例已挂载的全局工具」—— pwsh（Windows）与 bash（POSIX）只挂其一，
           # macOS/POSIX 用 bash；Windows 移植时把 bash 换成 pwsh 即可。
-          allow: &role-allow [bash, read, write, edit, read_image, glob, grep, job_list, job_output, job_kill, todo_write, skill]
+          # 平台条件化（MUST）：win32 下不存在名为 `bash` 的全局工具（tool-bash 与持久 bash 均被平台门控
+          # 禁用，持久 pwsh 注册名为 `pwsh`），而 restrict() 对未知名**直接 throw** —— 硬编码单一 shell 名
+          # 会让该平台全部岗位子代理派遣失败。故用 !!js 标量表达式按平台求值（`!!js` 仅支持标量，
+          # 不能写成 `!!js [...]` 数组形式）。其余白名单项两平台一致。
+          allow: &role-allow !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill']"
         persona: |-
           语言：思考与回复一律中文、简洁无废话。**消息（D075）：首行=结论、编号≤5、禁寒暄、首末行双读。**
           你是小队主责：本任务实现三角的领导席（实例 <task_id>；团队名 team_name 见编制表 staffing）。
@@ -387,7 +391,7 @@
         # 唯一保留 web 工具的岗位：allow = 基础工具集 + web_search/web_fetch。
         # 其余岗位（&role-allow）默认无 web。
         toolFilter:
-          allow: [bash, read, write, edit, read_image, glob, grep, job_list, job_output, job_kill, todo_write, skill, web_search, web_fetch]
+          allow: !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill', 'web_search', 'web_fetch']"
         persona: |-
           语言：思考与回复一律中文、简洁无废话。**消息（D075）：首行=结论、编号≤5、禁寒暄、首末行双读。**
           你是行业分析：联网检索外部资料（行业、规范、版本、最佳实践），产出带来源的调研简报。

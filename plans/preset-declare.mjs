@@ -157,6 +157,9 @@ function renderBlock(sourceLines) {
       body.push(line);
     }
   }
+  // 源文件以换行结尾时 split('\n') 会多出一个空尾元素；不清掉它每次 apply 都会
+  // 追加一个尾随空行（实测 +1 行/次，永不收敛）。
+  while (body.length && !body[body.length - 1].trim()) body.pop();
   return [
     ...headerLines(),
     '- insert:',
@@ -175,9 +178,11 @@ function locateBlock(patchLines) {
   const anchor = new RegExp(`^\\s*- id: preset-${ID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`);
   const start = patchLines.findIndex((l) => anchor.test(l));
   if (start < 0) return null;
-  // 起点回溯：连同 `- insert:` 指令行与其上方注释头一起纳入替换区间，
-  // 否则重写后会残留一个悬空的 `- insert:`（YAML 结构被破坏）。
+  // 起点回溯：把「声明头注释 + `- insert:` 指令行」一并纳入替换区间。
+  // 两个坑（实测）：① 只吞 `- insert:` 而不吞其上方注释头 → 每次 apply 重插 8 行，永不收敛；
+  // ② 吞了 `- insert:` 却漏掉注释头 → 残留悬空指令行，YAML 结构被破坏。故须继续上溯吸收注释。
   let head = start;
+  let absorbedInsert = false;
   for (;;) {
     if (head - 1 < 0) break;
     const prev = patchLines[head - 1];
@@ -185,7 +190,11 @@ function locateBlock(patchLines) {
       head--;
       continue;
     }
-    if (/^\s*- insert:\s*$/.test(prev)) head--;
+    if (!absorbedInsert && /^\s*- insert:\s*$/.test(prev)) {
+      head--;
+      absorbedInsert = true;
+      continue;
+    }
     break;
   }
   let end = patchLines.length;
