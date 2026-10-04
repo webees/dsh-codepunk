@@ -98,6 +98,25 @@ echo "[组D 调研层 10]"
 DMISS=$(for f in skills/dsh-codepunk-workflow/benchmarks/*.md; do grep -qcE "支撑决策号|性质" "$f" || echo "$(basename $f)"; done | head -3)
 [ -z "$DMISS" ] && report "$PASS" "D1 全基准标决策号" || report "$FAIL" "D1 缺: $DMISS"
 
+# D3 源码行号引用守护：行号须与符号名同行（行号会随重排漂移，单留行号即成死指针）
+D3=$(python3 - <<'PYEOF'
+import re, subprocess
+files = [f for f in subprocess.run(['git','ls-files'],capture_output=True,text=True).stdout.split()
+         if f.endswith('.md')]
+bad = []
+sym = re.compile(r'`[A-Za-z_][A-Za-z0-9_]*(?:\(\))?`|`[A-Za-z_][A-Za-z0-9_.]*\(`')
+for f in files:
+    for i, ln in enumerate(open(f, encoding='utf-8', errors='ignore'), 1):
+        if not re.search(r'\.js:[0-9]+', ln):
+            continue
+        if not sym.search(ln):
+            bad.append(f'{f}:{i}')
+print(' '.join(bad[:3]))
+PYEOF
+)
+[ -z "$D3" ] && report "$PASS" "D3 行号引用均附符号名（可复核）" \
+             || report "$FAIL" "D3 行号引用缺符号名（行号会漂移）: $D3"
+
 echo "[组E 文档层 10]"
 EC=$(grep -c "^## " README.md)
 [ "$EC" -ge 7 ] && report "$PASS" "E2 README ${EC} 节 ≥7" || report "$FAIL" "E2 README ${EC} 节 <7"

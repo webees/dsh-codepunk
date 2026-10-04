@@ -190,7 +190,7 @@
 
 8. **sandbox/approval 语义（2.10）与 dsh-codepunk「双门闩/审查门」在同一条权利谱系上**：官方 approval 与 user-questions 分离、无 answerer fail-closed、授权不持久——语义与预设「禁止小组自行联网/申请-批准」流程吻合；可在手册中说明「流程内审批 ≠ harness approval」以消歧义。
 
-9. **把 subagent-control/report 与 jobs（2.7/2.11）行为写进巡检 SOP**：官方 `dsh-tool-subagent-report` 结构化回报 + `job_*` 后台收集是「结算通知递送」的对位机制；R12（结算通知滞后辨识）背后是「子步骤不进父日志、父日志只记 result」的官方隔离（2.7）——建议在 references/ 中写入官方依据，增强新用户理解。
+9. **把 subagent-control/report 与 jobs（2.7/2.11）行为写进巡检 SOP**：官方 `dsh-tool-subagent-report` 结构化回报 + `job_*` 后台收集是「结算通知递送」的对位机制【2026-10-05 订正：`dsh-tool-subagent-report` 在当前安装内已不存在，现行父向通道为 `dsh-tool-subagent-control` 的 `send_message`（agent_id 限直接父子）+ 子代理结算消息；本条建议应据现行机制执行】；R12（结算通知滞后辨识）背后是「子步骤不进父日志、父日志只记 result」的官方隔离（2.7）——建议在 references/ 中写入官方依据，增强新用户理解。
 
 10. **跟进已知 Bug 边界：父会话思考模型 + 子代理 400（2.13）**。官方讨论区有「子代理 400 Reasoning is mandatory」实证报告；dsh-codepunk 大量使用子代理 + 可能开启 thinking，建议预设默认提示工程主责验证该组合，并把结论纳入知识库/错误日志模板。[F] [discussions](https://github.com/deepseek-ai/deepseek-harness/discussions)
 

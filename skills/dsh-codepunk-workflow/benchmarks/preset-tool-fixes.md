@@ -74,7 +74,7 @@
 
 - 假设被否证：曾把各岗位 `agentOptions` 全删，假设「子代理继承父模型」。实测否证：
   UI 注入的路由不在 `parent.options` 上，孩子落**产品默认**模型
-  （descriptor 实证；`dsh-subagent/lib/index.js:780-781` 的继承链只在父 options 有值时生效）。
+  （descriptor 实证；继承链见 `dsh-subagent` 的 `parentAgentOptionsForDelegation()` / `resolveChildAgentOptions()`——**以符号定位，勿引行号**：2026-10-05 复核时原引的 `lib/index.js:780-781` 已变成无关注释。另注：D090 的「不继承」前提已在 0.2.0-rc.2 反转，见 references/model-routing.md §五）。
 - 反证样本：能跑通的子代理，其 `request/header` 与显式声明一致——说明「能跑」来自**显式声明**，不来自继承。
 - 修复（D090）：各岗位重新写入 `agentOptions: {provider, model}`，
   与 `backgroundMode: continuable` 并列为**双要件**（YAML 校验通过）。
