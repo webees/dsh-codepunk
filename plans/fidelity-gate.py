@@ -51,9 +51,26 @@ def files():
     return [f for f in r if f.endswith(('.md', '.yml', '.sh', '.ps1'))]
 
 
+def usage():
+    print("用法: fidelity-gate.py <snapshot|verify>")
+    print("  snapshot  压缩/改写前：提取保护区 token 快照（写入 $DSH_CODEPUNK_FIDELITY_SNAP）")
+    print("  verify    改写后：逐项比对快照，报告丢失的编号/约束词/阈值/路径/工具名/代码标识")
+    print("退出码: 0=成功（verify 无丢失）· 1=verify 发现丢失 · 2=用法错误或无快照")
+
+
 def main():
-    mode = sys.argv[1] if len(sys.argv) > 1 else 'snapshot'
+    if len(sys.argv) < 2:
+        print("✗ 缺少模式参数（不再默认 snapshot：静默覆盖基线会让后续 verify 失去基准）")
+        usage()
+        return 2
+    mode = sys.argv[1]
+    if mode not in ('snapshot', 'verify'):
+        print(f"✗ 未知模式: {mode}")
+        usage()
+        return 2
     if mode == 'snapshot':
+        if os.path.exists(SNAP):
+            print(f"  ⚠ 覆盖既有基线快照（原基准将被替换）: {SNAP}")
         snap = {f: extract(f) for f in files()}
         os.makedirs(os.path.dirname(SNAP), exist_ok=True)
         json.dump(snap, open(SNAP, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)

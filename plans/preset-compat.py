@@ -54,6 +54,7 @@ def parse_entries(text: str) -> list[dict]:
                 "keys": [],
                 "group": False,
                 "has_isolate": False,
+                "disabled": False,
             }
             entries.append(cur)
             continue
@@ -70,6 +71,8 @@ def parse_entries(text: str) -> list[dict]:
                 continue
         if re.match(r"^\s*group: true\s*$", line):
             cur["group"] = True
+        if re.match(r"^\s*disabled:\s*true\s*$", line) and ind <= cur["indent"] + 2:
+            cur["disabled"] = True
         if re.match(r"^\s*isolate:\s*$", line) and ind < cur["indent"] + 8:
             cur["has_isolate"] = True
         mcfg = re.match(r"^(\s*)config:\s*$", line)
@@ -160,6 +163,20 @@ def main() -> int:
     if bad_group:
         fails.append("group 缺 isolate：" + ", ".join(bad_group))
     print(f"  {'✅' if not bad_group else '✗'} group 隔离形态（{sum(1 for e in entries if e['group'])} 个组）")
+
+    # 4) 提示（不计失败）：continuable 岗位未声明 agentOptions 时，子代理落产品默认模型
+    #    公开预设默认留空由部署方自配（D090「部署方必配」），故此处只提示不判失败。
+    need_opt = [
+        e["id"]
+        for e in entries
+        if e["name"] == "@deepseek-ai/dsh-tool-subagent"
+        and "agentOptions" not in e["keys"]
+        and "backgroundMode" in e["keys"]
+        and not e.get("disabled")
+    ]
+    if need_opt:
+        print(f"  ℹ {len(need_opt)} 个岗位未声明 agentOptions（子代理将落产品默认模型）——公开预设默认留空，"
+              f"部署方请按条目内注释配置；涉及：{', '.join(sorted(need_opt)[:4])}{' …' if len(need_opt) > 4 else ''}")
 
     print(f"\n  DSH 安装：{app}")
     print(f"  条目 {len(entries)} 行；引用插件 {len(pkgs)} 个")
