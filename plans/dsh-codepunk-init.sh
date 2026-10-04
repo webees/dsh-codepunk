@@ -3,7 +3,8 @@
 # dsh-codepunk-init：幂等建立 dsh-codepunk 统一总库骨架
 # -----------------------------------------------------------------------------
 # 落位：预设 plans/ 下（待评审后移入正式位 scripts/init-hub.sh）。
-# 职责（只增不改）：
+# 职责：
+#   0. 安装路径常量到总库根、发布无扩展名入口、**同步工具脚本到总库正式位**（升级动作）
 #   1. 建 projects/  worktrees/  scripts/ 三目录（mkdir -p，天然幂等）
 #   2. 生成 INDEX.yaml 骨架模板（仅文件缺失时写入；存在则跳过 —— 幂等且
 #      不产生重复条目，注册表条目后续由 dsh-codepunk-link 演进）
@@ -65,7 +66,7 @@ publish_bare_commands() {
     dst="$DSH_CODEPUNK_SCRIPTS/$base"
     [[ -L "$dst" && "$(readlink "$dst")" == "$(basename "$src")" ]] && continue
     if (( CHECK_ONLY )); then
-      [[ -e "$dst" ]] || fail "缺无扩展名入口: $dst（运行本体脚本发布）"
+      [[ -e "$dst" ]] || fail "缺无扩展名入口: ${dst}（运行本体脚本发布）"
       continue
     fi
     ln -sf "$(basename "$src")" "$dst"
@@ -73,6 +74,43 @@ publish_bare_commands() {
   done
 }
 publish_bare_commands
+
+# --- 0c. 同步工具脚本到总库正式位（预设升级路径） --------------------------------
+# 运行期用的是总库副本（~/.dsh-codepunk/scripts/*），故升级预设后 MUST 同步此处；
+# 原先只建骨架、不同步脚本，导致升级后总库长期停留在旧版且无检测。
+# 同步源 = 本脚本所在目录（即仓内 plans/）：**从仓内运行本脚本即为升级动作**。
+install_scripts() {
+  local src_dir="$SCRIPT_DIR" n_new=0 n_upd=0 n_stale=0 f base dst
+  if [[ "$(cd "$src_dir" && pwd)" == "$(cd "$DSH_CODEPUNK_SCRIPTS" 2>/dev/null && pwd)" ]]; then
+    echo "  ℹ 正从总库副本自身运行：更新工具请改用仓内副本（bash <repo>/plans/dsh-codepunk-init.sh）" >&2
+    return 0
+  fi
+  (($(CHECK_ONLY))) || mkdir -p "$DSH_CODEPUNK_SCRIPTS"
+  for f in "$src_dir"/*.sh "$src_dir"/*.py "$src_dir"/*.mjs "$src_dir"/windows/*.ps1; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    dst="$DSH_CODEPUNK_SCRIPTS/$base"
+    if [[ ! -e "$dst" ]]; then
+      n_new=$((n_new + 1))
+      (($(CHECK_ONLY))) || { cp "$f" "$dst"; chmod +x "$dst" 2>/dev/null; }
+    elif ! cmp -s "$f" "$dst"; then
+      n_upd=$((n_upd + 1))
+      (($(CHECK_ONLY))) || { cp "$f" "$dst"; chmod +x "$dst" 2>/dev/null; }
+    fi
+  done
+  if (( CHECK_ONLY )); then
+    n_stale=$((n_new + n_upd))
+    (( n_stale == 0 )) && pass "工具脚本与源一致（$DSH_CODEPUNK_SCRIPTS）" \
+                       || fail "总库工具脚本缺失/过期 $n_stale 个（运行本体脚本同步）"
+  else
+    if (( n_new + n_upd == 0 )); then
+      pass "工具脚本已是最新（无变更）"
+    else
+      pass "工具脚本已同步：新增 $n_new · 更新 $n_upd"
+    fi
+  fi
+}
+install_scripts
 
 # --- 1. 目录骨架（mkdir -p 幂等） -------------------------------------------------
 for d in "$DSH_CODEPUNK_PROJECTS" "$DSH_CODEPUNK_WORKTREES" "$DSH_CODEPUNK_SCRIPTS"; do

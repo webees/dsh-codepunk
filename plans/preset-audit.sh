@@ -83,6 +83,13 @@ PYEOF
 [ -z "$A7" ] && report "$PASS" "A7 配置不变量（可恢复/工具面收口/岗位在位/可派遣）" \
              || report "$FAIL" "A7 配置不变量违规: $A7"
 
+# B1b 全角紧邻陷阱守护：`$VAR` 直接跟全角标点时，bash 会把全角字节并进变量名，
+#     在 set -u 下报 unbound variable 并中止脚本（本会话实测在 init.sh 真实发生）。
+#     规则：shell 脚本内变量引用后若接全角字符，MUST 用 ${VAR} 形式。
+B1B=$(grep -nP '\$[A-Za-z_][A-Za-z0-9_]*[（）：，。；、「」【】]' plans/*.sh 2>/dev/null | head -3 | cut -d: -f1,2 | tr '\n' ' ')
+[ -z "$B1B" ] && report "$PASS" "B1b 无全角紧邻陷阱（变量引用均用 \${VAR}）" \
+             || report "$FAIL" "B1b 全角紧邻陷阱（set -u 下会崩栈）: $B1B"
+
 echo "[组B 手册层 25]"
 SIZE=$(wc -c < skills/dsh-codepunk-workflow/SKILL.md)
 [ "$SIZE" -le 32768 ] && report "$PASS" "B1 SKILL ${SIZE}B ≤32768" || report "$FAIL" "B1 SKILL ${SIZE}B 超限"

@@ -91,6 +91,20 @@ DSH_PROFILE_PATCH="$HOME/.dsh/profiles/<profile>/cordis.patch.yml" \
 node plans/preset-declare.mjs apply
 ```
 
+**②-b 同步工具脚本到总库正式位**（升级预设后 MUST；运行期用的是总库副本）：
+
+```bash
+# 从仓内运行（幂等）：把 plans/*.{sh,py,mjs} 与 plans/windows/*.ps1 同步到 ~/.dsh-codepunk/scripts/
+bash plans/dsh-codepunk-init.sh
+
+# 只检查是否有缺失/过期（不写盘，非零退出即需同步）
+bash plans/dsh-codepunk-init.sh --check
+```
+
+> 说明：总库副本是**运行期实际执行**的脚本（如 `~/.dsh-codepunk/scripts/evidence-verify.sh`），
+> 故每次拉取新版本后都要跑一次上面的同步；从总库自身的副本运行只会提示「请改用仓内副本」，
+> 不会自我复制。
+
 **③ 校验内联副本未漂移**（改源后必须复跑；`verify-battery.sh` 已内置该项）：
 
 ```bash
