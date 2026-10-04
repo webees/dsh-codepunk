@@ -158,9 +158,14 @@ _parse_index_entries() {
   local idx="$1"
   [ -f "$idx" ] || return 1
   awk '
-    function clean(v) {
+    function clean(v,   f, l) {
       gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
-      gsub(/["'"'"']/, "", v)
+      # 只剥首尾**成对**引号：值内的引号是合法字符（如路径 /tmp/p'"'"'q），
+      # 全量删除会把路径读错且不可逆（resolve/index 永久不一致）。
+      if (length(v) >= 2) {
+        f = substr(v, 1, 1); l = substr(v, length(v), 1)
+        if (f == l && f ~ /^["'"'"']$/) v = substr(v, 2, length(v) - 2)
+      }
       return v
     }
     /^[[:space:]]*-/ {
@@ -407,6 +412,12 @@ EOF
     esac
   fi
 
+  # 先确保总库目录存在：失败即中止。此步必须早于备份与任何 INDEX 改写，
+  # 否则失败路径会留下备份残留、且 INDEX 已被半改写（last_updated 已刷新、
+  # `projects: []` 已归一）却无回滚。
+  local hosted="$DSH_CODEPUNK_HOME/projects/$id"
+  mkdir -p "$hosted" || { printf '%s: 总库目录创建失败: %s\n' "$SCRIPT_NAME" "$hosted" >&2; return 1; }
+
   # 写入前备份（人设：INDEX 写入先备份字段结构），追加后校验新条目
   local bak ts
   ts="$(date '+%Y-%m-%dT%H:%M:%S%z')"
@@ -438,8 +449,6 @@ EOF
   #     骨架扩展字段 repo_path/readme_marker/status 由 run-lead 合并时统一修订，register 不写；
   #     dsh_codepunk_path = 总库托管路径（D072）。2026-09-05 修正：原「默认 = project_root」
   #     会让 resolve 把工程目录当总库、把运行状态写进工程造成污染，现改为总库真实路径。
-  local hosted="$DSH_CODEPUNK_HOME/projects/$id"
-  mkdir -p "$hosted" || { printf '%s: 总库目录创建失败: %s\n' "$SCRIPT_NAME" "$hosted" >&2; return 1; }
   line="  - project_id: $id
     project_root: $target
     dsh_codepunk_path: $hosted

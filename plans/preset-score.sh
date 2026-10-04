@@ -67,7 +67,11 @@ BADCMD=0
 for p in $(grep -oE '(plans|scripts)/[a-z0-9._-]+\.(sh|py|mjs)' "$SKILL" 2>/dev/null | sort -u); do
   case "$p" in
     plans/*)   [ -e "./$p" ] || BADCMD=$((BADCMD+1)) ;;
-    scripts/*) [ -e "${DSH_CODEPUNK_HOME:-$HOME/.dsh-codepunk}/$p" ] || BADCMD=$((BADCMD+1)) ;;
+    scripts/*)
+      # 总库正式位优先；缺失时回退仓内源副本（plans/ 同名文件）。
+      # 不回退会因 DSH_CODEPUNK_HOME 指向沙箱/他处而误报（环境依赖型假失败）。
+      _name="${p#scripts/}"
+      [ -e "${DSH_CODEPUNK_HOME:-$HOME/.dsh-codepunk}/$p" ] || [ -e "./plans/$_name" ] || BADCMD=$((BADCMD+1)) ;;
   esac
 done
 [ "$BADCMD" -gt 0 ] && ded A2 15 "SKILL 引用了不存在的脚本 $BADCMD 处"

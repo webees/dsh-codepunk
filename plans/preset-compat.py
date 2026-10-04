@@ -178,6 +178,38 @@ def main() -> int:
         print(f"  ℹ {len(need_opt)} 个岗位未声明 agentOptions（默认**继承父会话实时路由**，非产品默认）——"
               f"公开预设默认留空属预期；仅需偏离父路由时才声明；涉及：{', '.join(sorted(need_opt)[:4])}{' …' if len(need_opt) > 4 else ''}")
 
+    # 5) 锚点顺序：&role-allow 必须早于任何 *role-allow 别名（YAML 要求先定义后用）
+    text_lines = combo.read_text(encoding="utf-8").split("\n")
+    def_idx = next((i for i, l in enumerate(text_lines) if l.strip().startswith("allow: &role-allow")), None)
+    alias_idx = [i for i, l in enumerate(text_lines) if l.strip() == "allow: *role-allow"]
+    if def_idx is None:
+        fails.append("未找到锚点定义 allow: &role-allow")
+        print("  ✗ 锚点定义缺失")
+    elif alias_idx and def_idx > min(alias_idx):
+        fails.append(f"锚点定义（第 {def_idx + 1} 行）晚于首个别名（第 {min(alias_idx) + 1} 行）→ 挂载必失败")
+        print("  ✗ 锚点顺序")
+    else:
+        print(f"  ✅ 锚点顺序（定义第 {def_idx + 1} 行，{len(alias_idx)} 处别名）")
+
+    # 6) allow 名单一致性：研究岗内联 = 角色锚点 + {web_search, web_fetch}
+    import re as _re
+    def names(expr):
+        return [x.strip().strip("'\"") for x in expr.split(",") if x.strip()]
+
+    def_expr = text_lines[def_idx].split('!!js "', 1)[-1].rstrip('"') if def_idx is not None else ""
+    inline = next((l for l in text_lines if "allow: !!js" in l and "web_search" in l), "")
+    inline_expr = inline.split('!!js "', 1)[-1].rstrip('"') if inline else ""
+    if def_expr and inline_expr:
+        base_all = set(names(def_expr)) - {"process.platform === 'win32' ? 'pwsh' : 'bash'"}
+        role_all = base_all | {"bash", "pwsh"}
+        inline_all = set(names(inline_expr)) | {"bash", "pwsh"}
+        extra = inline_all - role_all
+        if extra != {"web_search", "web_fetch"}:
+            fails.append(f"研究岗内联 allow 与角色锚点差集异常: {sorted(extra)}")
+            print("  ✗ allow 名单一致性")
+        else:
+            print("  ✅ allow 名单一致性（内联 = 角色 + web_search/web_fetch）")
+
     print(f"\n  DSH 安装：{app}")
     print(f"  条目 {len(entries)} 行；引用插件 {len(pkgs)} 个")
     if fails:

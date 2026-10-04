@@ -607,6 +607,8 @@
       config:
         provider: codex
         toolName: subagent_codex
+        # 外部后端无 prepareContinuable：显式锁定 one-shot（勿改，改则挂载/创建时报错）
+        backgroundMode: one-shot
         enableRunInBackground: false
         maxDepth: provider-managed
 
@@ -616,6 +618,8 @@
       config:
         provider: claude-code
         toolName: subagent_claude_code
+        # 同上：外部后端不支持 continuable，显式锁定 one-shot
+        backgroundMode: one-shot
         enableRunInBackground: false
         maxDepth: provider-managed
 
