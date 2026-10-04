@@ -26,16 +26,21 @@
 set -uo pipefail
 
 MODE="staged"
-for a in "$@"; do
+MSG_FILE=""
+while [ $# -gt 0 ]; do
+  a="$1"
   case "$a" in
+    --msg)          MODE="msg"; shift; MSG_FILE="${1:-}"; [ -n "$MSG_FILE" ] || { echo "--msg 需要文件参数" >&2; exit 2; } ;;
     --tree)         MODE="tree" ;;
     --history)      MODE="history" ;;
     --staged)       MODE="staged" ;;
     --install-hook) MODE="install" ;;
     --list)         MODE="list" ;;
-    -h|--help)      sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --msg)          MODE="msg"; MSG_FILE="${a:+}" ;;
+    -h|--help)      sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "未知参数: ${a}（--help 查看用法）" >&2; exit 2 ;;
   esac
+  shift
 done
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "不在 git 仓库内" >&2; exit 2; }
@@ -91,10 +96,17 @@ HOOK
 # dsh-codepunk 泄露防护门（D091）——由 --install-hook 生成
 exec bash "$SELF_ABS" --history
 HOOK
-  chmod +x "$HOOK_DIR/pre-commit" "$HOOK_DIR/pre-push"
+  # commit-msg：提交信息即时扫描（信息体不进索引，pre-commit 覆盖不到）
+  cat > "$HOOK_DIR/commit-msg" <<HOOK
+#!/usr/bin/env bash
+# dsh-codepunk 泄露防护门（D091）——由 --install-hook 生成
+exec bash "$SELF_ABS" --msg "\$1"
+HOOK
+  chmod +x "$HOOK_DIR/pre-commit" "$HOOK_DIR/pre-push" "$HOOK_DIR/commit-msg"
   echo "✓ 已安装钩子:"
   echo "    $HOOK_DIR/pre-commit  （--staged：拦截将入库内容）"
   echo "    $HOOK_DIR/pre-push    （--history：拦截含提交信息体的近 20 提交）"
+  echo "    $HOOK_DIR/commit-msg  （--msg：提交信息入库前即时拦截）"
   echo "  绕过（不建议）: --no-verify"
   exit 0
 fi
@@ -136,6 +148,13 @@ scan_stream() { # $1=描述  $2=内容流
 }
 
 case "$MODE" in
+  msg)
+    # commit-msg 钩子：提交信息在入库前即时扫描（不再只靠 pre-push 回溯）
+    [ -f "$MSG_FILE" ] || { echo "提交信息文件不存在: $MSG_FILE" >&2; exit 2; }
+    CONTENT=$(cat "$MSG_FILE")
+    [ -z "$CONTENT" ] && { echo "✓ 提交信息为空（无可扫描内容）"; exit 0; }
+    scan_stream "commit-msg" "$CONTENT"
+    ;;
   staged)
     CONTENT=$(git diff --cached -U0 2>/dev/null | grep '^+' | grep -v '^+++')
     [ -z "$CONTENT" ] && { echo "✓ 索引无新增内容（无可扫描的提交内容）"; exit 0; }
