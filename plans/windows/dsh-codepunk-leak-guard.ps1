@@ -14,7 +14,8 @@
 #   pwsh -File dsh-codepunk-leak-guard.ps1               # 扫索引（pre-commit）
 #   pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 扫工作树全部跟踪文件
 #   pwsh -File dsh-codepunk-leak-guard.ps1 -History      # 扫近 20 提交（pre-push）
-#   pwsh -File dsh-codepunk-leak-guard.ps1 -InstallHook  # 装 pre-push 钩子
+#   pwsh -File dsh-codepunk-leak-guard.ps1 -Msg <file>   # 扫指定提交信息文件（commit-msg）
+#   pwsh -File dsh-codepunk-leak-guard.ps1 -InstallHook  # 装 pre-commit + pre-push + commit-msg 三钩子
 #   pwsh -File dsh-codepunk-leak-guard.ps1 -List         # 脱敏列出载入禁词
 # 退出码：0=通过；1=命中（阻断）；2=用法/环境错误
 # =============================================================================
@@ -24,7 +25,8 @@ param(
   [switch]$History,
   [switch]$Staged,
   [switch]$InstallHook,
-  [switch]$List
+  [switch]$List,
+  [Parameter()][string]$Msg = ''      # 提交信息文件路径（commit-msg 钩子用）
 )
 
 $ErrorActionPreference = 'Stop'
@@ -86,15 +88,24 @@ if ($InstallHook) {
   $hookDir = (git rev-parse --git-path hooks).Trim()
   if (-not (Test-Path $hookDir)) { New-Item -ItemType Directory -Force -Path $hookDir | Out-Null }
   $self = $MyInvocation.MyCommand.Path
-  $hookPath = Join-Path $hookDir 'pre-push'
-  $hookBody = @"
+  # 三个钩子与 POSIX 端口等价：pre-commit（索引）+ pre-push（近 20 提交，含信息体）
+  # + commit-msg（信息体不进索引，前两者覆盖不到——历史事故：凭据路径曾写进提交信息）
+  $hooks = @{
+    'pre-commit' = "-Staged"
+    'pre-push'   = "-History"
+    'commit-msg' = '-Msg "$1"'
+  }
+  foreach ($name in $hooks.Keys) {
+    $hookPath = Join-Path $hookDir $name
+    $hookBody = @"
 #!/usr/bin/env pwsh
 # dsh-codepunk 泄露防护门（D091）——由 -InstallHook 生成
-pwsh -NoProfile -File "$self" -History
+pwsh -NoProfile -File "$self" $($hooks[$name])
 exit `$LASTEXITCODE
 "@
-  [System.IO.File]::WriteAllText($hookPath, $hookBody, (New-Object System.Text.UTF8Encoding($false)))
-  Write-Output "OK 已安装 pre-push 钩子: $hookPath"
+    [System.IO.File]::WriteAllText($hookPath, $hookBody, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Output "OK 已安装 $name 钩子: $hookPath"
+  }
   Write-Output "   绕过（不建议）: git push --no-verify"
   exit 0
 }
@@ -103,7 +114,14 @@ exit `$LASTEXITCODE
 $content = New-Object System.Collections.Generic.List[string]
 $label = ''
 
-if ($Tree) {
+if (-not [string]::IsNullOrEmpty($Msg)) {
+  if (-not (Test-Path -LiteralPath $Msg)) {
+    [Console]::Error.WriteLine("提交信息文件不存在: $Msg")
+    exit 2
+  }
+  $label = 'commit-msg'
+  try { $content.AddRange([System.IO.File]::ReadAllLines($Msg, [System.Text.Encoding]::UTF8)) } catch { }
+} elseif ($Tree) {
   $label = 'tracked-tree'
   foreach ($f in (git ls-files)) {
     $f = $f.Trim()
