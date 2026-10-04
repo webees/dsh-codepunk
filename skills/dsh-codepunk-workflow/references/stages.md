@@ -48,7 +48,7 @@
    - **输出与通信纪律（D074/D075/D076/D077，全员适用）**：细则 `references/output-discipline.md`（D077 另见 `references/anti-hallucination-rules.md`）。速记：证据只回 `command+exit_code+log_ref`；汇报 ≤1500 token；首行=结论、编号 ≤5、禁寒暄；断言须新鲜证据。
 2. **审查门**：diff ⊆ write_paths + CHECKLIST（reviews/CHECKLIST.md）+ 记录 `reviews/<task_id>.md`；L 或高风险派遣 `subagent_code_review`，其余由你或指定审查者执行；`needs-work` → 回修再审。
    - **门禁即显式节点 + 双侧 guardrail（D068，借鉴 crewAI Flow / ADK）**：双门闩/审查门/合并门均为必经显式路由节点；每门入口校验输入（简报 schema / diff ⊆ write_paths / evidence 齐）、出口校验输出（acceptance / 交接包 / merge 门禁文件）；不合格**回退重做**，不得用自由对话绕门。
-3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）、残留自查节（D079，MUST）——**承载位**：`summary.md` 内固定标题 `## 残留自查`（五条硬规则逐项结论 + 例外理由；门禁机械判据 = grep 该标题）；缺该节整包打回（细则 references/file-hygiene.md）。
+3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（**小队主责**；⊆ write_paths，审查门由 run-lead 核对）、证据索引（sdet）、残留自查节（D079，MUST）——**承载位**：`summary.md` 内固定标题 `## 残留自查`（五条硬规则逐项结论 + 例外理由；门禁机械判据 = grep 该标题）；缺该节整包打回（细则 references/file-hygiene.md）。
 4. **签收**：有下游 → 下游小队主责签 `acceptance.yaml`（`accepted_by[]`），并经机械校验器 `scripts/acceptance-verify.sh` 判 PASS（不得自签）；无下游 → 由 `subagent_docs` 的 docs-lead 签收（技术统筹由 run-lead 兼任，自签不构成独立签收；仅 docs-lead 不可用时才由 run-lead 自签并在 `note` 记原因）。
 5. diff 门禁：`git diff --name-only base...HEAD` ⊆ write_paths。
 6. **文档小组**归档交接材料进 run 记忆，评估是否入库 `knowledge/handoffs/`。

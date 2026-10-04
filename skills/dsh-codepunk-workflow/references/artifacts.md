@@ -105,7 +105,7 @@ triad:
 | summary.md | squad-lead | 什么、怎么验证、遗留事项；必含 `retries: <回修次数>` 与固定标题 `## 残留自查`（D079） |
 | artifact_index.md | engineer | 交付物清单（文件→用途） |
 | known_issues.md | 三人 | 已知问题与后续建议 |
-| diff_scope.md | lead/编排 | diff ⊆ write_paths 的说明 |
+| diff_scope.md | squad-lead | diff ⊆ write_paths 的说明（审查门由 run-lead 核对） |
 | evidence.yaml | sdet | 证据索引 |
 
 `evidence.yaml`（sdet 产出；验收前 MUST 先确认交付目录 mtime 为最新，字段见下）：
