@@ -46,6 +46,43 @@ else
   report "$PASS" "A5 品牌卫生（未设 OLD_NAME，跳过）"
 fi
 
+# A7 配置不变量（机械守护核心契约：可恢复 / 工具面收口 / 岗位在位 / 可派遣）
+A7=$(python3 - <<'PYEOF'
+import re, sys
+s = open('agent.cordis.yml', encoding='utf-8').read()
+# 岗位条目：tool-subagent-* 且非外部后端（codex/claude-code 为一次性、不套本契约）
+entries = re.findall(r'    - id: (tool-subagent[a-z0-9-]*)\n(.*?)(?=\n    - id:|\Z)', s, re.S)
+bad = []
+n_role = 0
+for name, body in entries:
+    # 只审「派遣条目」：控制面单元（tool-subagent-control / -list-agents 等）本就不带
+    # persona/toolFilter/backgroundMode，纳入会误报。
+    if "name: '@deepseek-ai/dsh-tool-subagent'" not in body:
+        continue
+    if name in ('tool-subagent-codex', 'tool-subagent-claude-code'):
+        continue
+    n_role += 1
+    if re.search(r'^      disabled:\s*true', body, re.M):
+        bad.append(f'{name} 被 disabled')
+    if 'persona:' not in body:
+        bad.append(f'{name} 缺 persona')
+    if name == 'tool-subagent-fork' or name == 'tool-subagent':
+        pass                      # 通用委派两席同样要求过滤与可恢复（下方一视同仁）
+    if 'backgroundMode: continuable' not in body:
+        bad.append(f'{name} 非 continuable（破坏可恢复/可追问）')
+    if 'toolFilter:' not in body:
+        bad.append(f'{name} 缺 toolFilter（孩子将回到完整工具面）')
+    m = re.search(r'^        maxDepth:\s*(\d+)', body, re.M)
+    if m and int(m.group(1)) < 1:
+        bad.append(f'{name} maxDepth={m.group(1)}（无法再派遣）')
+if n_role < 13:
+    bad.append(f'岗位条目仅 {n_role} 个（应 ≥13：11 岗位 + 通用委派 2 席）')
+print(' | '.join(bad))
+PYEOF
+)
+[ -z "$A7" ] && report "$PASS" "A7 配置不变量（可恢复/工具面收口/岗位在位/可派遣）" \
+             || report "$FAIL" "A7 配置不变量违规: $A7"
+
 echo "[组B 手册层 25]"
 SIZE=$(wc -c < skills/dsh-codepunk-workflow/SKILL.md)
 [ "$SIZE" -le 32768 ] && report "$PASS" "B1 SKILL ${SIZE}B ≤32768" || report "$FAIL" "B1 SKILL ${SIZE}B 超限"
