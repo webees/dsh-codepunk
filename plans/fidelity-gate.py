@@ -5,7 +5,8 @@
   python3 fidelity-gate.py snapshot   # 压缩前：提取保护区 token 快照
   python3 fidelity-gate.py verify     # 压缩后：逐项比对，缺失即失败
 
-快照位置：$DSH_CODEPUNK_FIDELITY_SNAP（默认 $TMPDIR/dsh-codepunk-fidelity.json）
+快照位置：$DSH_CODEPUNK_FIDELITY_SNAP（默认 ${DSH_CODEPUNK_HOME:-~/.dsh-codepunk}/.fidelity/<repo 短哈希>.json —— 按仓库隔离，
+          同仓跨进程稳定、异仓互不覆盖；写入不跟随符号链接）
 主动删除文件属预期变更时，删除后重跑 snapshot 刷新基线（勿在未刷新时 verify）。
 
 保护区（绝不压缩）——与 D076「保护清单」一致：
@@ -16,9 +17,57 @@
 """
 import re, sys, json, subprocess, os
 
+import hashlib as _hashlib
 import os as _os
-SNAP = _os.environ.get('DSH_CODEPUNK_FIDELITY_SNAP') \
-    or _os.path.join(_os.environ.get('TMPDIR', '/tmp'), 'dsh-codepunk-fidelity.json')
+
+
+def _repo_ident():
+    """仓库身份：git 顶层目录，退化到当前工作目录（保证同仓跨进程稳定、异仓互不覆盖）。"""
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--show-toplevel'],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    except Exception:
+        pass
+    return _os.getcwd()
+
+
+def _default_snap():
+    """默认基线路径：总库下 .fidelity/<repo 短哈希>.json。
+
+    原先默认 $TMPDIR/dsh-codepunk-fidelity.json 有两个真实问题：
+    ① 固定名 → 多项目/多 run 并发互相覆盖基线，verify 会拿错基准（假 PASS/假 FAIL）；
+    ② 位于世界可写目录 → 可预测名可被符号链接劫持（CWE-377）。
+    改后同仓跨进程仍稳定（snapshot→verify 两段式不受影响），异仓彼此隔离。
+    """
+    hub = _os.environ.get('DSH_CODEPUNK_HOME') or _os.path.join(_os.path.expanduser('~'), '.dsh-codepunk')
+    h = _hashlib.sha256(_repo_ident().encode('utf-8')).hexdigest()[:12]
+    return _os.path.join(hub, '.fidelity', f'{h}.json')
+
+
+SNAP = _os.environ.get('DSH_CODEPUNK_FIDELITY_SNAP') or _default_snap()
+
+
+def _write_snap(obj):
+    """写基线：目录 0700、文件 O_NOFOLLOW（不跟随符号链接），避免被劫持改写他处文件。
+
+    返回 None 表示成功；否则返回错误说明（调用方打印并退出 3）。
+    """
+    d = _os.path.dirname(SNAP)
+    try:
+        if d:
+            _os.makedirs(d, mode=0o700, exist_ok=True)
+            # makedirs 的 mode 只在新建时生效且受 umask 影响；已存在时显式收紧
+            if (_os.stat(d).st_mode & 0o777) != 0o700:
+                _os.chmod(d, 0o700)
+        fd = _os.open(SNAP, _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC | getattr(_os, 'O_NOFOLLOW', 0), 0o600)
+        with _os.fdopen(fd, 'w', encoding='utf-8') as fh:
+            json.dump(obj, fh, ensure_ascii=False, indent=1)
+    except OSError as e:
+        hint = '（目标疑似符号链接，已按安全策略拒写；请删除该链接后重跑）' if e.errno == 62 else ''
+        return f'{e.strerror or e}{hint}'
+    return None
 
 PATTERNS = {
     'D编号':  r'\bD0[0-9]{2}\b',
@@ -76,7 +125,10 @@ def main():
         _d = os.path.dirname(SNAP)
         if _d:
             os.makedirs(_d, exist_ok=True)
-        json.dump(snap, open(SNAP, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+        err = _write_snap(snap)
+        if err:
+            print(f"✗ 快照写入失败: {SNAP}\n  {err}")
+            return 3
         tot = sum(len(v) for d in snap.values() for v in d.values())
         print(f"✓ 快照已存：{len(snap)} 文件，{tot:,} 个受保护 token")
         print(f"  {SNAP}")
