@@ -548,7 +548,8 @@
     # 经 `workflow` 工具的 agent() 派出的孩子、以及调用时显式传 run_in_background: false 的孩子，
     # 一律是「一次性子代理」——宿主在 dsh-subagent 的 start() 里写死 mode: "one-shot"，预设改不动。
     # 要可追问的评审员/工人：用岗位工具后台派遣并登记 subagent_id，不要用 workflow 编排它们。
-    # 生效条件：改本文件必须重启 DSH Desktop（新开对话不重读插件配置，实测否证）。
+    # 生效条件：改本文件必须重启 DSH Desktop。（实测否证的是「新开对话即热加载插件配置」这一假设——
+    # 新开对话并不重读配置，故不重启则改动不生效。）
     - id: tool-subagent-code-review
       name: '@deepseek-ai/dsh-tool-subagent'
       config:
