@@ -116,15 +116,28 @@ if [ -f "$PP" ]; then
     p "ℹ" "声明漂移检查跳过（无 js-yaml）"
   fi
 fi
-# 9) E2E 沙箱
+# 9) E2E 沙箱（MUST 密闭）
+# 陷阱：`dsh-codepunk-home.sh` 会导出 DSH_CODEPUNK_INDEX/PROJECTS/SCRIPTS/WORKTREES，
+# 而 SKILL §1.1 恰恰要求先 source 它再开工——若此处只覆盖 HOME，被测脚本会写进
+# **真实总库 INDEX**（数据污染）并让随后的临时文件断言必然失败。故须先清空全部
+# 同名变量，再只导出沙箱 HOME；并加「真实 INDEX 未被改动」的回归断言。
+REAL_INDEX="${DSH_CODEPUNK_INDEX:-$HOME/.dsh-codepunk/INDEX.yaml}"
 T=$(mktemp -d)
-( export DSH_CODEPUNK_HOME="$T/hub"
+IDX_BEFORE=$( [ -f "$REAL_INDEX" ] && { cksum "$REAL_INDEX" 2>/dev/null | awk '{print $1"-"$2}'; } || echo "absent" )
+( unset DSH_CODEPUNK_INDEX DSH_CODEPUNK_PROJECTS DSH_CODEPUNK_SCRIPTS DSH_CODEPUNK_WORKTREES DSH_CODEPUNK_TOOLS
+  export DSH_CODEPUNK_HOME="$T/hub"
   bash plans/dsh-codepunk-init.sh >/dev/null 2>&1
   mkdir -p "$T/p" && printf -- '---\ndsh-codepunk: e2e\n---\n' > "$T/p/README.md"
   bash plans/dsh-codepunk-link.sh register -y "$T/p" e2e >/dev/null 2>&1
   bash plans/dsh-codepunk-link.sh resolve "$T/p" >/dev/null 2>&1
   ruby -ryaml -e "d=YAML.load_file('$T/hub/INDEX.yaml'); exit(d['projects'].is_a?(Array) && d['projects'].size==1 ? 0 : 1)" 2>/dev/null
-) && p "✅" "E2E（init→register→resolve，YAML 合法）" || { p "✗" "E2E 失败"; F=1; }
+) && p "✅" "E2E（init→register→resolve，YAML 合法；沙箱密闭）" || { p "✗" "E2E 失败"; F=1; }
+IDX_AFTER=$( [ -f "$REAL_INDEX" ] && { cksum "$REAL_INDEX" 2>/dev/null | awk '{print $1"-"$2}'; } || echo "absent" )
+if [ "$IDX_BEFORE" = "$IDX_AFTER" ]; then
+  p "✅" "E2E 未污染真实总库（INDEX 校验和不变）"
+else
+  p "✗" "E2E 改动了真实 INDEX：$REAL_INDEX"; F=1
+fi
 rm -rf "$T"
 
 echo
