@@ -103,17 +103,17 @@ metadata:
 
 ### ④ 巡检与交接（P07）
 
-> 顺序 MUST：sdet 证据 pass → 审查门 → 交接包齐全 → 接收方签收 → 解散。
+> 顺序 MUST：sdet 证据 pass → 审查门 → 交接包齐全 → 接收方签收 → **run-lead 置 `status: done`** → 解散（未置 `done` 不得进入合并门）。
 
 1. **证据**：`evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`；**基线（R12）** MUST 确认交付目录 mtime 最新（`ls -la docs/<module>/`）+ `validated_at`，空跑/旧快照打回。
 2. **输出纪律**（D074/D075/D076/D077）：只回 `command+exit_code+log_ref`；汇报 ≤1500 token；首行=结论、编号 ≤5、禁寒暄（`references/output-discipline.md`）。
 3. **审查门**：diff ⊆ write_paths + `reviews/CHECKLIST.md` + `reviews/<task_id>.md`；L/高风险派 `subagent_code_review`；`needs-work` 回修再审；门禁为显式节点 + 双侧 guardrail（D068），不得绕门。
 4. **交接包** `handoff/`：`summary.md`/`artifact_index.md`/`known_issues.md`/`diff_scope.md` + 证据索引 + 残留自查（D079，MUST，缺则打回；`references/file-hygiene.md`）。
-5. **签收**：子代理结算正文以「结束」二字收尾（状态闭环标识）；`acceptance.yaml`（`accepted_by[]`；无下游 → 文档主责或技术统筹）；`git diff --name-only base...HEAD` ⊆ write_paths；归档入 `knowledge/handoffs/`（R14）。
+5. **签收**：子代理结算正文以「结束」二字收尾（状态闭环标识）；`acceptance.yaml`（`accepted_by[]`；有下游 → 下游小队主责独立签收；无下游 → 文档主责签收；**技术统筹由 run-lead 兼任，自签不构成独立签收**——仅文档主责不可用时才由 run-lead 自签并在 `note` 记原因，且须过 `scripts/acceptance-verify.sh`）；`git diff --name-only base...HEAD` ⊆ write_paths；归档入 `knowledge/handoffs/`（R14）。
 
 ### ⑤ 解散与评分（P07 尾 + P16 人事）
 
-1. 签收后三席 `interrupt_agent` 就地解散（转 idle/ready 可恢复态，不再派新任务）。
+1. 签收且 run-lead 置 `status: done` 后，三席 `interrupt_agent` 就地解散（转 idle/ready 可恢复态，不再派新任务；未置 `done` 不得解散、不得进入合并门）。
 2. `subagent_people` 按 evidence / status / handoff 完整度 / ack / retries 打 0–100（base 50，见 `references/knowledge.md`）；评分不阻断。
 3. 沉淀 `tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`。
 
