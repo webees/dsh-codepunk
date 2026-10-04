@@ -107,9 +107,28 @@ PY
 then p "✅" "目录树 ↔ 仓内文件一致"; else p "✗" "README 目录树与仓内文件不一致（死条目或漏列）"; F=1; fi
 # 7) 脚本语法与健壮性
 for f in plans/*.sh; do bash -n "$f" 2>/dev/null || { p "✗" "bash -n: $f"; F=1; }; done
+# py：用 ast.parse（不生成 __pycache__，避免污染工作树被杂散检查判失败）
+if command -v python3 >/dev/null 2>&1; then
+  for f in plans/*.py; do
+    [ -e "$f" ] || continue
+    python3 -c 'import ast,sys; ast.parse(open(sys.argv[1],encoding="utf-8").read())' "$f" 2>/dev/null \
+      || { p "✗" "py 语法: $f"; F=1; }
+  done
+else
+  p "ℹ" "python3 缺失：跳过 plans/*.py 语法校验"
+fi
+# mjs：node --check（缺 node 时提示，不判失败）
+if command -v node >/dev/null 2>&1; then
+  for f in plans/*.mjs; do
+    [ -e "$f" ] || continue
+    node --check "$f" >/dev/null 2>&1 || { p "✗" "mjs 语法: $f"; F=1; }
+  done
+else
+  p "ℹ" "node 缺失：跳过 plans/*.mjs 语法校验"
+fi
 PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
 [ -f "$PV" ] && { node "$PV" plans/windows/*.ps1 >/dev/null 2>&1 || { p "✗" "PS 语法校验失败"; F=1; }; }
-[ "$F" -eq 0 ] && p "✅" "脚本语法（$(ls plans/*.sh 2>/dev/null | wc -l | tr -d ' ') .sh + $(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' ') .ps1）通过"
+[ "$F" -eq 0 ] && p "✅" "脚本语法（$(ls plans/*.sh 2>/dev/null | wc -l | tr -d ' ') .sh + $(ls plans/*.py 2>/dev/null | wc -l | tr -d ' ') .py + $(ls plans/*.mjs 2>/dev/null | wc -l | tr -d ' ') .mjs + $(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' ') .ps1）通过"
 # 7b) PS 校验器缺失提示（不判失败，但明确告知如何启用）
 if [ ! -f "$PV" ]; then
   p "ℹ" "PS 语法校验跳过（无校验器）：如需启用，见 README「PowerShell 校验」一节"

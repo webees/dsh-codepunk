@@ -208,7 +208,7 @@ plans/                              # 工具脚本源副本（运行期正式位
   preset-audit.sh                   # 预设质量审计（5 组 rubric，100 分制）
   dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
   preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
-  verify-battery.sh                 # 完整验证电池（10 项独立验证，单命令复跑）
+  verify-battery.sh                 # 完整验证电池（12 项独立验证，单命令复跑）
   preset-declare.mjs                # preset 声明块生成/校验（emit / check / apply；DSH ≥0.1.7 注册模型）
   preset-compat.py                  # 组合↔DSH 安装兼容核验（插件包 / 配置键 / 隔离形态）
   fidelity-gate.py                  # 语义保护闸（压缩前快照 / 压缩后比对，防语义丢失）
