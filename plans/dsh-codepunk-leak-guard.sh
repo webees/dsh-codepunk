@@ -36,7 +36,8 @@ while [ $# -gt 0 ]; do
     --staged)       MODE="staged" ;;
     --install-hook) MODE="install" ;;
     --list)         MODE="list" ;;
-    --msg)          MODE="msg"; MSG_FILE="${a:+}" ;;
+    # 注：此处曾有重复的 `--msg)` 分支（未 shift 且 MSG_FILE 取错值）。bash 的 case 只取
+    # 首个匹配，故它恒不可达；一旦上方分支重排即会静默读错文件——已删除，勿再补。
     -h|--help)      sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "未知参数: ${a}（--help 查看用法）" >&2; exit 2 ;;
   esac
