@@ -63,6 +63,8 @@
 
 ## 溯源档案（benchmarks/）
 
+> **覆盖边界（2026-10-05 实测）**：下表为**已建档**的调研简报（15 篇，文件均存在）。另有若干来源仅出现在机制溯源列而未单独建档——如 LangGraph / crewAI / ADK / CAMEL / ChatDev （`grep -ril` 于 `benchmarks/` 内 0 命中）；引用它们时按「机制层引用」对待，不得声称已有调研档案。
+
 | 简报 | 内容 |
 |---|---|
 | `benchmarks/agent-skills-open-source-benchmark.md` | agent-skills 生态：agentskills 规范 / superpowers / VoltAgent 质量门 |

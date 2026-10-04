@@ -174,6 +174,6 @@ metadata:
 
 ## 7. 开源基准借鉴（benchmark note）
 
-> D067-D070 借鉴高 star 项目**机制思想**（LangGraph/crewAI/ADK/CAMEL），无代码抄袭；调研见 `benchmarks/`，溯源见 `references/learned-skills.md`。
+> D067-D070 借鉴高 star 项目**机制思想**（LangGraph/crewAI/ADK/CAMEL/ChatDev），无代码抄袭。**覆盖边界（2026-10-05 实测）**：其中 outlines/agentskills、graphify 等有专门基准档案（见 `benchmarks/`）；而 LangGraph/crewAI/ADK/CAMEL/ChatDev 目前**仅机制层引用、未单独建档**——如需据此做升级决策，应先补调研简报。逐条溯源见 `references/learned-skills.md`。
 > **正文预算（D074）**：≤32 KiB，新增一律进 `references/` 按需文件。
 > 落地原则：公文驱动、轻量增量，不引入重 runtime/图数据库。
