@@ -178,6 +178,38 @@ def main() -> int:
         print(f"  ℹ {len(need_opt)} 个岗位未声明 agentOptions（默认**继承父会话实时路由**，非产品默认）——"
               f"公开预设默认留空属预期；仅需偏离父路由时才声明；涉及：{', '.join(sorted(need_opt)[:4])}{' …' if len(need_opt) > 4 else ''}")
 
+    # 7) allow 名单的每个名字必须在安装内有注册来源（F021 类缺陷的机械防线：
+    #    写了当前平台不存在的全局工具名 → restrict() 直接抛错、该岗全部派遣失败）
+    import re as _re2
+    _lines7 = combo.read_text(encoding="utf-8").splitlines()
+    allow_names = set()
+    for l in _lines7:
+        if 'allow:' in l and '!!js' in l:
+            body = l.split('!!js "', 1)[-1].rstrip('"')
+            for elem in body.split(','):
+                # 平台三元里 `?` 之前是判据（如 'win32'），不是工具名，只取 `?` 之后的分支
+                part = elem.split('?', 1)[1] if '?' in elem else elem
+                allow_names |= set(_re2.findall(r"'([a-z_][a-z0-9_]*)'", part))
+    reg = set()
+    _nm = os.path.join(app, "node_modules", SCOPE)
+    for pkg in os.listdir(_nm) if os.path.isdir(_nm) else []:
+        libd = os.path.join(_nm, pkg, 'lib')
+        if not os.path.isdir(libd):
+            continue
+        for fn in os.listdir(libd):
+            if fn.endswith('.js'):
+                try:
+                    reg |= set(_re2.findall(r'name:\s*"([a-z][a-z0-9_]{1,40})"',
+                                           open(os.path.join(libd, fn), encoding='utf-8', errors='ignore').read()))
+                except OSError:
+                    pass
+    unknown = sorted(n for n in allow_names if n not in reg)
+    if unknown:
+        fails.append(f"allow 名单含安装内无注册来源的工具名: {unknown}（restrict 会直接抛错）")
+        print(f"  ✗ allow 名单工具名（无注册来源: {', '.join(unknown)}）")
+    else:
+        print(f"  ✅ allow 名单工具名（{len(allow_names)} 个均有注册来源）")
+
     # 5) 锚点顺序：&role-allow 必须早于任何 *role-allow 别名（YAML 要求先定义后用）
     text_lines = combo.read_text(encoding="utf-8").split("\n")
     def_idx = next((i for i, l in enumerate(text_lines) if l.strip().startswith("allow: &role-allow")), None)
