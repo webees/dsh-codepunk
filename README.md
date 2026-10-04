@@ -163,7 +163,7 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 | 命令 | 作用 | 退出码 |
 |---|---|---|
 | `bash plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=全满分；1=有失分项；2=环境/用法错误 |
-| `bash plans/preset-audit.sh` | 5 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标；1=有失分项 |
+| `bash plans/preset-audit.sh` | 5 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标；1=有失分项；2=预设根不存在 |
 | `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+目录树一致+脚本语法+DSH 兼容+声明漂移+E2E 与总库无污染），12 项一次跑完 | 0=全通过；1=存在失败项；2=无法进入预设根 |
 | `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致；1=漂移；2=环境/参数错误（缺 js-yaml 时降级比对） |
 | `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离与锚点顺序 / allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
