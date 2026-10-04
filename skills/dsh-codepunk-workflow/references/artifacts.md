@@ -165,7 +165,7 @@ comments:
   - "<打回/放行意见>"
 ```
 
-## 合并门（⑤，P10）
+## 合并门（⑤ 后段，P10）
 
 `approvals/merge.yaml`：
 
@@ -247,7 +247,7 @@ persona_scores:                      # 人设分 = 公共项 + seat 项（clamp 
 projects/<project_id>/          # 项目总库根，= 运行根 DSH_CODEPUNK_PROJECTS/<id>/
   README.md  goal.yaml  chunks.yaml  plan_draft.md
   change_orders/<id>.yaml       # 变更单 D038
-  approvals/merge.yaml          # 合并门批准 ⑤
+  approvals/merge.yaml          # 合并门批准（阶段 ⑤ 后段）
   runs/<run_id>/                # 每轮独立目录
     briefs/  research/briefs/<topic>.md  docs/memory/
     reviews/<task_id>.md        # 审查记录 Reviewed-by + pass|needs-work

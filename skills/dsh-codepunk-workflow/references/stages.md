@@ -1,6 +1,6 @@
 # 阶段详解（references/stages.md）
 
-> 本文是 SKILL.md §2 的完整步骤展开（L1 按需层）：六阶段闭环 + 合并门的逐步动作、派遣对象、产物与门禁细节。SKILL 正文只留每阶段 3 至 5 条速记与指针（D074 预算纪律）。
+> 本文是 SKILL.md §2 的完整步骤展开（L1 按需层）：**六阶段闭环**（① 需求确认 ② 规划与组队 ③ 多小组并行开发 ④ 巡检与交接 ⑤ 解散与评分 ⑥ 再规划），其中**合并门是阶段 ⑤ 的后段**（非第 7 个阶段），下含逐步动作、派遣对象、产物与门禁细节。SKILL 正文只留每阶段 3 至 5 条速记与指针（D074 预算纪律）。
 > 读法：开工前读本文件对应阶段；编号（P01–P17）释义见 `references/standard.md`，产物字段见 `references/artifacts.md`，岗位人设见 `references/roles.md`。
 > **约束强度与 SKILL 正文一致**：本文件内的 MUST / MUST NOT / 禁止 / 绝不 / 不得 与 SKILL 正文同等效力，不因下沉而降级。
 
@@ -63,7 +63,7 @@
 4. **记忆简报（P11）**：每关闭 N 个 task（默认 3）由 `subagent_docs` 产增量 L2 记忆简报报你；goal 完成前给完整 Memory Brief（模板 references/artifacts.md「记忆简报」）。
 5. **需求变更（R6）**：运行中收到变更 → 落 `change_orders/<id>.yaml`（proposed→applied→closed）→ 只通知受影响 task 的小组；小组 MUST NOT 直听用户改需求（模板 references/artifacts.md）。
 
-## ⑤ 合并门（P10 · 串行）
+## ⑤ 后段·合并门（P10 · 串行）
 
 1. 派遣 `subagent_release_eng`（或你按同规则执行）：按 `depends_on` 拓扑排序 done 且门禁通过的 chunk，**每次只合一个**。
 2. 合并前校验：evidence 过机械校验器（`scripts/evidence-verify.sh`，verdict=PASS 才有效，见 artifacts D069）+ diff ⊆ write_paths + 门禁文件齐（L/高风险含 review 与 security）→ 写 `approvals/merge.yaml`（`approved_by/approved_at`）。

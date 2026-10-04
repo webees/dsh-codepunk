@@ -12,7 +12,7 @@
 | P05–P06 | ③ 多小组并行开发 | SKILL.md §2 ③ |
 | P06（复用） | ⑥ 再规划入口（♻️） | SKILL.md §2 ⑥ |
 | P07 | ④ 巡检与交接（并覆盖 ⑤ 解散的开头） | SKILL.md §2 ④ / §2 ⑤ |
-| P10 | ⑤ 合并门（串行） | SKILL.md §2 ⑤ |
+| P10 | ⑤ 后段·合并门（串行） | SKILL.md §2 ⑤ |
 | P11 | 记忆简报（文档小组 → 工程主责） | references/artifacts.md「记忆简报」 |
 | P14 | 强制解散（外因超时 / 失败，先保存 WIP） | SKILL.md §5 失败处理 |
 | P16 | ⑤ 解散与评分（人事） | SKILL.md §2 ⑤ / references/knowledge.md 评分公式 |

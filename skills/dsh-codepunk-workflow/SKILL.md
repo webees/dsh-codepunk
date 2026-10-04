@@ -26,7 +26,7 @@ metadata:
 | ③ 并行开发 | 工作房代码、`progress/` |
 | ④ 巡检与交接 | `reviews/`、`handoff/`、`acceptance.yaml` |
 | ⑤ 解散与评分 | `scores.yaml`、`knowledge/hr/` |
-| ⑤ 合并门 | `approvals/merge.yaml` |
+| ⑤ 后段·合并门 | `approvals/merge.yaml` |
 | ⑥ 再规划 | 新一轮 `chunks.yaml` |
 
 逐步动作见 `references/stages.md`。辅助编制：`subagent_docs` · `subagent_research`（唯一联网）· `subagent_proc_audit`（红灯）· `subagent_code_review` · `subagent_release_eng`。
@@ -117,7 +117,7 @@ metadata:
 2. `subagent_people` 按 evidence / status / handoff 完整度 / ack / retries 打 0–100（base 50，见 `references/knowledge.md`）；评分不阻断。
 3. 沉淀 `tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`。
 
-### ⑤ 合并门（P10 · 串行）
+### ⑤ 后段·合并门（P10 · 串行）
 
 1. `subagent_release_eng` 按 `depends_on` 拓扑合 done 且门禁通过的 chunk，**每次只合一个**。
 2. 前置：evidence 过 `scripts/evidence-verify.sh`（verdict=PASS，D069）+ diff ⊆ write_paths + 门禁文件齐 → `approvals/merge.yaml`（`approved_by/approved_at`；preconditions：evidence/diff_within_write_paths/review/merge_ack，见 `references/artifacts.md`）。

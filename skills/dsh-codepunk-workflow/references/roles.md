@@ -79,7 +79,7 @@
 | 🛠 | 软件开发 | engineer | 实现 | subagent_engineer | ③每 task 招聘 |
 | 🧪 | 测试验证 | sdet | 实现 | subagent_sdet | ③每 task 招聘 |
 | 🧐 | 代码审查 | code-review | 门禁 | subagent_code_review | ④审查门（L/高风险强制） |
-| 🚀 | 发布执行 | release-eng | 门禁 | subagent_release_eng | ⑤合并门（串行） |
+| 🚀 | 发布执行 | release-eng | 门禁 | subagent_release_eng | ⑤后段·合并门（串行） |
 | 🗄 | 知识库 | knowledge | 跨组 | （跨组沉淀，无独立派遣） | 各阶段沉淀 |
 | 🤝 | 业务赞助 | sponsor | 人类 | （人类，非 LLM） | ask_user_question |
 | 🎛 | 会话调度 | sess-mgr | 主会话 | （主会话兼） | 唤醒/解散子代理 |
