@@ -8,6 +8,7 @@
 # 对 sdet 产出的 evidence.yaml 做四条机械断言（任一 FAIL 即打回）：
 #   ① command 可执行性：非 N/A 命令须以真实可执行前缀开头，且不得含描述性文本
 #   ② log_ref 文件真实存在（相对路径以交付目录为基）
+#   ① task_id 必填、evidence id 唯一（D069 结构强约束）
 #   ③ exit_code 必须为 0（非 0 即判 FAIL：证据门定义是「成功命令 + exit_code=0 + log 引用」）
 #   ④ validated_at 晚于交付目录 mtime（R12 数值断言，替代 LLM 目测）
 #   ⑤ 输出 verdict 供合并门/评分门机械采信（PASS 且全部断言真）
@@ -38,6 +39,17 @@ warnings = []
 # 提取元字段
 m_validated = re.search(r'validated_at:\s*"?([^"\n]+)"?', src)
 validated_at = m_validated.group(1).strip() if m_validated else None
+
+# D069 结构强约束：task_id 必填（证据须能对回具体 task，否则交接/评分/合并门无法定责）
+m_task = re.search(r'^task_id:\s*(\S+)', src, re.M)
+if not m_task:
+    problems.append("① 缺 task_id（D069 必填：证据须能对回具体 task）")
+
+# D069 结构强约束：evidence id 必须唯一（重复 id 使评审/审计无法唯一定位条目）
+_ids = re.findall(r'^\s*- id:\s*(\S+)', src, re.M)
+_dup = sorted({i for i in _ids if _ids.count(i) > 1})
+if _dup:
+    problems.append(f"② evidence id 重复: {', '.join(_dup)}（每条 id 必须唯一）")
 
 # 交付目录 mtime（R12 ④）
 # 未提供或目录不存在时必须显式记为「未检」，否则结论会宣称已做时间序断言（假保证）。
