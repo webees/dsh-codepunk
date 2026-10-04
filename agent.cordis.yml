@@ -228,10 +228,10 @@
 # `workflows` 不同——其外无智能体读取——故到达它的每行共用此处一个
 # 条目级本地隔离域，置于域外则解析到本预设未填充的宿主注册表。
 #
-# `tool-subagent-report` 与注册表同理归宿主平面，
-# 非本预设不想要：它在单例上注册延续型装配而非本智能体所调工具，
-# 装配表无作用域感知——每挂载预设一份，则每子代理每活跃会话
-# 重复注册 `report`，第二次即抛错。
+# 历史注记：早期版本另有 `tool-subagent-report` 插件（在单例上注册延续型装配，
+# 每挂载一份会重复注册子代理「自身层」的 `report` 工具而抛错），该插件在当前
+# DSH 安装内已不存在。现行父向汇报通道是控制面全局工具 `send_message`
+# （其 agent_id 语义即「直接子或直接父」），故本预设按普通全局工具正常放行。
 - id: delegation
   name: cordis:group
   group: true
@@ -250,6 +250,19 @@
         provider: spawn
         toolName: subagent
         backgroundMode: continuable
+        persona: |-
+          语言：思考与回复一律中文、简洁无废话。首行=结论、编号 ≤5、禁寒暄。
+          你是通用委派子代理：只做被指派的一件事；在给定目录/write_paths 内读写，禁联网（web 工具不可用）。
+          产出：结论 + 证据（command + exit_code + log 引用）；不确定即明示，禁臆测。
+          质量：完成定义以指派方给出的验收口径为准；未验证不宣称完成。
+          输出规范（D075/D092）：全角标点正常使用，禁删标点；加粗配对；禁 emoji 与符号替代连词；禁伪标题。
+          收尾：任务完成时最后输出「结束」二字。
+          可恢复：本席为常驻会话（continuable），客户端重启后由主调用方按断点续行。
+        maxDepth: 1
+        toolFilter:
+          # 与岗位组同基线：默认全关，只放行 shell/文件/检索/作业/todo/skill 与父向汇报。
+          # 目的：通用委派孩子不得默认拿到 web/ask_user/goal/编排委托类工具（R2 与单一派遣入口纪律）。
+          allow: &role-allow !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill', 'send_message']"
         # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
         #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
         #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
@@ -262,6 +275,19 @@
         provider: fork
         toolName: subagent_fork
         backgroundMode: continuable
+        persona: |-
+          语言：思考与回复一律中文、简洁无废话。首行=结论、编号 ≤5、禁寒暄。
+          你是通用委派子代理：只做被指派的一件事；在给定目录/write_paths 内读写，禁联网（web 工具不可用）。
+          产出：结论 + 证据（command + exit_code + log 引用）；不确定即明示，禁臆测。
+          质量：完成定义以指派方给出的验收口径为准；未验证不宣称完成。
+          输出规范（D075/D092）：全角标点正常使用，禁删标点；加粗配对；禁 emoji 与符号替代连词；禁伪标题。
+          收尾：任务完成时最后输出「结束」二字。
+          可恢复：本席为常驻会话（continuable），客户端重启后由主调用方按断点续行。
+        maxDepth: 1
+        toolFilter:
+          # 与岗位组同基线：默认全关，只放行 shell/文件/检索/作业/todo/skill 与父向汇报。
+          # 目的：通用委派孩子不得默认拿到 web/ask_user/goal/编排委托类工具（R2 与单一派遣入口纪律）。
+          allow: *role-allow
         # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
         #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
         #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
@@ -292,15 +318,16 @@
         toolFilter:
           # 白名单（allow）锚点：默认全关，只放行本岗所需的继承工具（shell/文件/检索/作业/todo/skill）。
           # 未列入的（web、ask_user、goal、编排/委托、其它岗位工具）一律不可见；新增工具不会自动暴露。
-          # 关键：`report` 是延续子代理注册在「自身层」的汇报工具，不受此过滤 —— 切勿列入，
-          #       否则 restrict 会把它当作未知全局工具直接 throw（dsh-tools restrictableNames 语义）。
+          # 关键（dsh-tools restrictableNames 语义）：可列集合 = 全局层 + 祖先层工具；
+          #       子代理「自身层」注册的工具**可见但不可列**（列入即被当作未知全局工具 throw）。
+          #       早期 `report` 属自身层故禁列；现行 `send_message` 属控制面全局层，可且已列入。
           # 平台门控注意：只列「当前实例已挂载的全局工具」—— pwsh（Windows）与 bash（POSIX）只挂其一，
           # macOS/POSIX 用 bash；Windows 移植时把 bash 换成 pwsh 即可。
           # 平台条件化（MUST）：win32 下不存在名为 `bash` 的全局工具（tool-bash 与持久 bash 均被平台门控
           # 禁用，持久 pwsh 注册名为 `pwsh`），而 restrict() 对未知名**直接 throw** —— 硬编码单一 shell 名
           # 会让该平台全部岗位子代理派遣失败。故用 !!js 标量表达式按平台求值（`!!js` 仅支持标量，
           # 不能写成 `!!js [...]` 数组形式）。其余白名单项两平台一致。
-          allow: &role-allow !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill']"
+          allow: *role-allow
         persona: |-
           语言：思考与回复一律中文、简洁无废话。**消息（D075）：首行=结论、编号≤5、禁寒暄、首末行双读。**
           你是小队主责：本任务实现三角的领导席（实例 <task_id>；团队名 team_name 见编制表 staffing）。
@@ -405,7 +432,7 @@
         # 唯一保留 web 工具的岗位：allow = 基础工具集 + web_search/web_fetch。
         # 其余岗位（&role-allow）默认无 web。
         toolFilter:
-          allow: !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill', 'web_search', 'web_fetch']"
+          allow: !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill', 'web_search', 'web_fetch', 'send_message']"
         persona: |-
           语言：思考与回复一律中文、简洁无废话。**消息（D075）：首行=结论、编号≤5、禁寒暄、首末行双读。**
           你是行业分析：联网检索外部资料（行业、规范、版本、最佳实践），产出带来源的调研简报。
