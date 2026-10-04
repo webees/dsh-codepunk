@@ -76,7 +76,10 @@ PATTERNS = {
     '约束词':  r'\bMUST NOT\b|\bMUST\b|禁止|绝不|不得|必须',
     '阈值数值': r'\b\d+(?:\.\d+)?(?:KB|MB|KiB|MiB|B|%|s|ms|轮|次|处|条|项|个|人|天|小时|分钟)?\b',
     '路径':   r'(?:~|/)[A-Za-z0-9._/\-]+',
-    '工具名':  r'\b(?:subagent_[a-z_]+|job_[a-z]+|[a-z_]+_goal|[a-z_]+_write|create_goal|get_goal|update_goal|ask_user_question|list_agents|send_message|interrupt_agent)\b',
+    # 工具名：只收**有区分度**的形态（带下划线或非常见英文词）。刻意不收 read/write/edit/
+    # glob/grep/skill/bash/present —— 它们是散文常用词，纳入会让「丢失」告警泛滥；
+    # 这些词作术语出现时通常带反引号，已由「代码标识」类覆盖（2026-10-05 逐类实测）。
+    '工具名':  r'\b(?:subagent_[a-z_]+|subagent|job_[a-z]+|[a-z_]+_goal|[a-z_]+_write|web_search|web_fetch|read_image|exit_plan_mode|ask_user_question|list_agents|send_message|interrupt_agent|pwsh|ralph)\b',
     '代码标识': r'`[^`\n]+`',
     '文件名':  r'\b[A-Za-z0-9_\-]+\.(?:md|sh|ps1|yml|yaml|json)\b',
     '全大写常量': r'\b[A-Z][A-Z_]{3,}\b',
