@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """preset-compat —— 核对组合与当前 DSH 安装的兼容性（可复跑，随 DSH 升级执行）。
 
-三项检查（全部基于实测事实，不做版本号猜测）：
+七项检查（全部基于实测事实，不做版本号猜测）：
   1. 引用的插件包存在        —— 组合里每个 `@deepseek-ai/<pkg>` 是否在该 DSH 安装内
   2. 配置键被插件接受        —— 键要么在插件 `Config` schema 内声明，要么被插件源码消费
   3. 组/隔离形态合法        —— 顶层条目均为列表行，`group: true` 的服务行落在 `isolate` 域内
+  4. allow 名单工具名有注册来源 —— 名单里每个名字须在安装内有插件注册（F021 类缺陷防线：
+                                  名字不在当前平台的全局工具集里时，`restrict()` 直接抛错）
+  5. 锚点顺序              —— `&role-allow` 定义须早于任何 `*role-allow` 别名（YAML 硬要求）
+  6. allow 名单一致性       —— 研究岗内联名单 = 角色锚点名单 + {web_search, web_fetch}
+  7. agentOptions 覆盖面（信息行）—— 统计未显式声明路由的岗位数（默认继承父会话路由，非缺陷）
 
 DSH 安装位置由环境变量给出（不硬编码平台路径）：
   DSH_APP_ROOT   解包后的 app 目录（0.1.7 起的布局；插件在 `<root>/node_modules/@deepseek-ai/`）

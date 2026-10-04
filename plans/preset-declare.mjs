@@ -116,7 +116,8 @@ function die(msg, code = 2) {
 }
 
 if (!action || !['emit', 'check', 'apply'].includes(action)) {
-  die('用法：preset-declare.mjs <emit|check|apply> [--patch <profile-patch>] [--id <id>]');
+  die('用法：preset-declare.mjs <emit|check|apply> [--patch <profile-patch>] [--id <id>] '
+      + '[--order N] [--root <dir>] [--append]  （首次安装：apply --append）');
 }
 
 // ── 声明块渲染 ──────────────────────────────────────────────────────────────

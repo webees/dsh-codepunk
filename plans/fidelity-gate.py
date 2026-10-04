@@ -10,10 +10,15 @@
 主动删除文件属预期变更时，删除后重跑 snapshot 刷新基线（勿在未刷新时 verify）。
 
 保护区（绝不压缩）——与 D076「保护清单」一致：
-  D0xx / R## / P## 编号 | MUST / MUST NOT / 禁止 / 绝不 / MUST 级约束词
+  D0xx / R## / P## 编号 | 约束词（MUST / MUST NOT / 禁止 / 绝不 / 不得 / 必须）
   数值与阈值（含小数、百分比、时间、尺寸） | 路径（/ 或 ~ 开头、相对路径）
-  工具名（subagent_* / job_* / *_goal / snake_case 标识）
+  工具名（subagent_* / job_* / *_goal / *_write / web_search / web_fetch / read_image /
+         exit_plan_mode / ask_user_question / list_agents / send_message / interrupt_agent 等；
+         刻意不含 read/write/edit/glob/grep/skill 等散文常用词，避免告警泛滥）
   代码标识（反引号内全部内容） | 全大写常量 | 文件名
+  URL（http/https） | 证据标记（【事实】/【推断】/【未获取到】…） | 日期（YYYY-MM-DD / YYYY-MM）
+  star 数（表格中的 `N stars` / `N★` 形态）
+  —— 以上与实现 `PATTERNS` 的 14 类一一对应。
 """
 import re, sys, json, subprocess, os
 
@@ -106,7 +111,8 @@ def files():
 def usage():
     print("用法: fidelity-gate.py <snapshot|verify>")
     print("  snapshot  压缩/改写前：提取保护区 token 快照（写入 $DSH_CODEPUNK_FIDELITY_SNAP）")
-    print("  verify    改写后：逐项比对快照，报告丢失的编号/约束词/阈值/路径/工具名/代码标识")
+    print("  verify    改写后：逐项比对快照，报告丢失的受保护 token（14 类：编号/约束词/阈值/路径/"
+          "工具名/代码标识/文件名/全大写常量/URL/证据标记/日期/star 数）")
     print("退出码: 0=成功（verify 无丢失）· 1=verify 发现丢失 · 2=用法错误或无快照")
 
 
