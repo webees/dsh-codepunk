@@ -74,6 +74,8 @@
   isolate:
     terminals: true
   config:
+    # 持久 shell 的**必需依赖**（勿删）：dsh-tool-bash-persistent / dsh-tool-pwsh-persistent
+    # 经 `terminal`/`terminals`/`pty` 服务取得会话能力；删掉本条目会使 `bash`/`pwsh` 持久工具失效。
     - id: pty
       name: '@deepseek-ai/dsh-terminal'
 
