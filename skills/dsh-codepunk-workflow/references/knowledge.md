@@ -31,7 +31,7 @@ knowledge/                        # 位于 ~/.dsh-codepunk/projects/<id>/knowled
 | retries | 每次 −5（上限 −10） | — |
 
 团队分 = 公共项之和（clamp 0–100）；人设分 = 公共项 + seat 项（clamp 0–100）。
-信号全部来自文件事实（evidence / task.status / handoff 缺文件数 / acceptance ack 数 / retries），无 LLM 参与。
+信号全部来自文件事实（evidence / task.status / handoff 缺文件数 / acceptance ack 数 / retries），无 LLM 参与。其中 **retries 取自 `handoff/summary.md` 的 `retries:` 计数**（每次回修 +1，squad-lead 维护；缺省视为 0），使评分可复算。
 
 ## 聚合文件格式
 

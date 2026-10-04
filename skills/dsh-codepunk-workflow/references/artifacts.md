@@ -8,7 +8,7 @@
 run_id: run-2026-0001
 title: "<目标一句话>"
 kind: delivery          # delivery | self_evolve
-status: active          # intake | draft | active | blocked | completed | cancelled（状态机见 SKILL.md ①）
+status: active          # 状态机：intake → draft → active ⇄ blocked → completed | cancelled；回边 draft→intake（P01 驳回）、blocked→active（仅 run-lead 在阻塞消除后置回，须记 blocker 与解除依据）、cancelled（仅 sponsor 触发，run-lead 记原因）
 scale: S                # S | M | L（并行上限 S=1 / M=3 / L=6，软限 max_awake 8）
 success_criteria:
   - "<可验证的成功标准>"
@@ -102,7 +102,7 @@ triad:
 
 | 文件 | 主责 | 要点 |
 |---|---|---|
-| summary.md | squad-lead | 什么、怎么验证、遗留事项 |
+| summary.md | squad-lead | 什么、怎么验证、遗留事项；必含 `retries: <回修次数>` 与固定标题 `## 残留自查`（D079） |
 | artifact_index.md | engineer | 交付物清单（文件→用途） |
 | known_issues.md | 三人 | 已知问题与后续建议 |
 | diff_scope.md | lead/编排 | diff ⊆ write_paths 的说明 |
@@ -136,7 +136,7 @@ evidence:
 ```yaml
 task_id: task-chunk-a
 accepted_by:
-  - "squad-lead@task-chunk-b"       # 下游小队主责；无下游 → docs-lead 或 tpm（非 run-lead 默认）
+  - "squad-lead@task-chunk-b"       # 下游小队主责；无下游 → docs-lead（技术统筹由 run-lead 兼任，自签不构成独立签收）
 accepted_at: "…"
 note: ""
 ```

@@ -91,7 +91,9 @@ for e in entries:
     if cmd_s and cmd_s != "N/A":
         tokens = cmd_s.split()
         first = tokens[0].lstrip('./') if tokens else ""
-        EXEC = {"bash", "python3", "python", "node", "git", "ls", "grep", "rg", "find", "cat", "stat", "sed", "awk", "mkdir", "cp", "mv", "rm", "test", "head", "tail", "wc", "diff", "source", "for", "while", "if"}
+        EXEC = {"bash", "sh", "python3", "python", "node", "git", "ls", "grep", "rg", "find", "cat", "stat", "sed", "awk", "mkdir", "cp", "mv", "rm", "test", "head", "tail", "wc", "diff", "source", "for", "while", "if",
+            "npm", "pnpm", "yarn", "npx", "bun", "deno", "pytest", "jest", "vitest", "tsc", "uv", "poetry",
+            "make", "cargo", "go", "swift", "xcodebuild", "gradle", "mvn", "docker", "curl", "ruby", "php"}
         desc_hint = ("：" in cmd_s or ": " in cmd_s or "解析" in cmd_s or "逐项" in cmd_s or "对比" in cmd_s or "手写" in cmd_s or "检查" in cmd_s or "验证" in cmd_s or cmd_s.startswith(("详见", "参见", "参考")))
         exe_ok = first in EXEC or first.endswith(".sh") or ("/" in first)
         if not exe_ok:

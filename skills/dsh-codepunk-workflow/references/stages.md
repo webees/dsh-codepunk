@@ -41,15 +41,15 @@
 
 ## ④ 巡检与交接（P07）
 
-顺序 MUST：sdet 证据 pass → 代码审查门 → 交接包齐全 → 接收方签收 → 解散。
+顺序 MUST：sdet 证据 pass → 代码审查门 → 交接包齐全（含残留自查节）→ 接收方签收 → run-lead 置 `status: done` → 解散。**未置 `done` 不得进入合并门**；`done` 只能由 run-lead 置位（执行席自置即红灯）。
 
 1. **证据**：sdet 产 `evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`。
    - **交付基线（R12）**：验收前 MUST 确认交付目录 mtime 最新（`ls -la docs/<module>/`）；evidence 须带 `validated_at` 与所对基线；疑似空跑/旧快照 → 打回重跑，禁止放行。
    - **输出与通信纪律（D074/D075/D076/D077，全员适用）**：细则 `references/output-discipline.md`（D077 另见 `references/anti-hallucination-rules.md`）。速记：证据只回 `command+exit_code+log_ref`；汇报 ≤1500 token；首行=结论、编号 ≤5、禁寒暄；断言须新鲜证据。
 2. **审查门**：diff ⊆ write_paths + CHECKLIST（reviews/CHECKLIST.md）+ 记录 `reviews/<task_id>.md`；L 或高风险派遣 `subagent_code_review`，其余由你或指定审查者执行；`needs-work` → 回修再审。
    - **门禁即显式节点 + 双侧 guardrail（D068，借鉴 crewAI Flow / ADK）**：双门闩/审查门/合并门均为必经显式路由节点；每门入口校验输入（简报 schema / diff ⊆ write_paths / evidence 齐）、出口校验输出（acceptance / 交接包 / merge 门禁文件）；不合格**回退重做**，不得用自由对话绕门。
-3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）、残留自查节（D079，MUST）——缺自查整包打回（细则 references/file-hygiene.md）。
-4. **签收**：有下游 → 下游小队主责签 `acceptance.yaml`（`accepted_by[]`）；无下游 → 文档主责或技术统筹签收（非 run-lead 默认）。
+3. **交接包** `handoff/`：`summary.md`（小队主责）、`artifact_index.md`（engineer）、`known_issues.md`（三人）、`diff_scope.md`（⊆ write_paths）、证据索引（sdet）、残留自查节（D079，MUST）——**承载位**：`summary.md` 内固定标题 `## 残留自查`（五条硬规则逐项结论 + 例外理由；门禁机械判据 = grep 该标题）；缺该节整包打回（细则 references/file-hygiene.md）。
+4. **签收**：有下游 → 下游小队主责签 `acceptance.yaml`（`accepted_by[]`）；无下游 → 由 `subagent_docs` 的 docs-lead 签收（技术统筹由 run-lead 兼任，自签不构成独立签收；仅 docs-lead 不可用时才由 run-lead 自签并在 `note` 记原因）。
 5. diff 门禁：`git diff --name-only base...HEAD` ⊆ write_paths。
 6. **文档小组**归档交接材料进 run 记忆，评估是否入库 `knowledge/handoffs/`。
 7. 产出归位复核见 R14。
@@ -57,14 +57,17 @@
 ## ⑤ 解散与评分（P07 尾 + P16 人事）
 
 1. 签收后小组就地解散：对三席 `interrupt_agent`（停当前轮）+ 停止追问；continuable 孩子会转入 idle/ready **可恢复态**（没有 dispose 工具，属正常），但不再派新任务。
+   - **回修授权（合并门失败路径）**：解散席位仍可恢复，但唤醒 MUST 经 run-lead 授权（`send_message` 附断点摘要，登记 `recovered`）；无授权唤醒属红灯。
 2. 派遣 `subagent_people` 评分：按信号（evidence / status / handoff 完整度 / ack / retries）对**团队**与**每个个人**打 0–100（base 50，公式见 references/knowledge.md）。
 3. 沉淀：`tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`（按人设名/团队名聚合，跨轮优化依据）。评分不阻断流程。
+4. **记忆简报（P11）**：每关闭 N 个 task（默认 3）由 `subagent_docs` 产增量 L2 记忆简报报你；goal 完成前给完整 Memory Brief（模板 references/artifacts.md「记忆简报」）。
+5. **需求变更（R6）**：运行中收到变更 → 落 `change_orders/<id>.yaml`（proposed→applied→closed）→ 只通知受影响 task 的小组；小组 MUST NOT 直听用户改需求（模板 references/artifacts.md）。
 
 ## ⑤ 合并门（P10 · 串行）
 
 1. 派遣 `subagent_release_eng`（或你按同规则执行）：按 `depends_on` 拓扑排序 done 且门禁通过的 chunk，**每次只合一个**。
 2. 合并前校验：evidence 过机械校验器（`scripts/evidence-verify.sh`，verdict=PASS 才有效，见 artifacts D069）+ diff ⊆ write_paths + 门禁文件齐（L/高风险含 review 与 security）→ 写 `approvals/merge.yaml`（`approved_by/approved_at`）。
-3. 失败 → abort/revert，task 回修再排队；**禁止并行合并**；实现三角 MUST NOT 自己合主干；未 done 的 chunk MUST NOT merge。
+3. 失败 → abort/revert；回修按 §⑤ 解散「回修授权」唤醒原席（或按 ② 重建）；**禁止并行合并**；实现三角 MUST NOT 自己合主干；未 done 的 chunk MUST NOT merge。
 4. **文档型交付**（如 docs/ 归档类 run）：同一门禁；「diff ⊆ write_paths」判据为**改动仅限 docs/ 与运行根（总库项目目录）状态文件、无业务代码越界**；合并动作可能只是纳入版本库/标记完成，仍需 `approvals/merge.yaml` 留痕（preconditions 四字段 evidence/diff_within_write_paths/review/merge_ack 逐项对齐模板，见 artifacts.md）。
 5. **worktree 回收（D073，MUST）**：每 chunk 合并完成即 `git -C <主仓库> worktree remove --force ../room-<task_id>`（先确认该分支已并入 main、无未提交独有改动）→ `git worktree prune`；**分支 refs 保留**（`dsh-codepunk/<run>/<task>` 留审计）。未回收会随合并持续残留（机制不自动销毁），故合并门 MUST 显式销毁。
 

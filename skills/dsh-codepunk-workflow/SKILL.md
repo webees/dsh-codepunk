@@ -68,10 +68,10 @@ metadata:
 > 完整树、隔离硬要求与记忆关联见 `references/artifacts.md`「运行根结构」。
 
 - 项目根 `~/.dsh-codepunk/projects/<project_id>/`：`README.md`、`goal.yaml`、`chunks.yaml`、`plan_draft.md`、`change_orders/<id>.yaml`（变更单 D038）、`approvals/merge.yaml`。
-- `runs/<run_id>/`：`briefs/`、`research/briefs/<topic>.md`、`docs/memory/`、`reviews/<task_id>.md`、`errors/YYYY-MM-DD.md`、`rooms/squad-<task_id>/`（S 规模）、`tasks/<task_id>/`（`brief/`、`staffing/`、`handoff/` 含 `summary/artifact_index/known_issues/diff_scope.md` + `evidence/acceptance.yaml`、`progress/` 与 progress.md）。
+- `runs/<run_id>/`：`briefs/`、`research/briefs/<topic>.md`、`docs/memory/`、`reviews/<task_id>.md`、`errors/YYYY-MM-DD.md`、`tasks/<task_id>/`（`brief/`、`staffing/`、`handoff/` 含 `summary/artifact_index/known_issues/diff_scope.md` + `evidence/acceptance.yaml`、`progress/` 与 progress.md）。
 - `knowledge/`（跨 run）：`hr/personas/<codename>.yaml`、`hr/teams/<team_name>.yaml`、`lessons/<topic>.yaml`、`research/<topic>.md`、`handoffs/<task_id>.md`、`prompts/roles/<role_id>.md`。
 
-> **文件隔离（MUST）**：git 仓库且并行小组 ≥2（M/L）MUST 每组建 **worktree**：依主仓库**父目录**建 `git -C <主仓库> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>`（分支 `dsh-codepunk/<run_id>/<task_id>`）→ `git -C <主仓库> worktree list` 复核。**禁止在非工程根目录建 worktree**；S 规模用 `rooms/squad-<task_id>/`（`.gitignore` 须忽略 `rooms/`）；越界兜底 R8（`git diff ⊆ write_paths`）。
+> **文件隔离（MUST）**：git 仓库且并行小组 ≥2（M/L）MUST 每组建 **worktree**：依主仓库**父目录**建 `git -C <主仓库> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>`（分支 `dsh-codepunk/<run_id>/<task_id>`）→ `git -C <主仓库> worktree list` 复核。**禁止在非工程根目录建 worktree**；S 规模用**工程根内** `rooms/squad-<task_id>/`（非总库；工程 `.gitignore` 须忽略 `rooms/`）；越界兜底 R8（`git diff ⊆ write_paths`）。
 > **项目记忆关联**：主通道 = `README.md` 顶部 YAML frontmatter `dsh-codepunk: <project_id>`（兜底 `<!-- dsh-codepunk: <id> -->`）；`dsh-codepunk-link resolve <项目路径>` 三态路由（`INDEX.yaml` 回退 → 未注册报错），`register` 追加不覆盖、`index` 校验无空悬；**冲突以 `~/.dsh-codepunk/INDEX.yaml` 为准**；正式位 `~/.dsh-codepunk/scripts/`（`plans/` 仅源副本）。
 
 ## 2. 阶段详解（速记）

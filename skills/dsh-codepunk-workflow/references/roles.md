@@ -64,28 +64,30 @@
 
 ## 岗位表（本流程启用）
 
-| 图标 | 中文 | ID | 层 | 派遣工具 | 何时派遣 |
+| 图标 | 中文 | ID | 席层 | 派遣工具 | 何时派遣 |
 |---|---|---|---|---|---|
-| 💡 | 产品策划 | pm | L3 | subagent_product | ①需求确认 |
-| 🔍 | 行业分析 | ind-res | L3 | subagent_research | ①需求确认、方案前、资料申请（唯一联网岗） |
-| 🔎 | 代码勘察 | scout | L3 | subagent_sys_arch | ②规划（勘察分块） |
-| 🏗 | 软件架构 | sys-arch | L3 | subagent_sys_arch | ②规划（本仓方案） |
-| 👥 | 人才主责 | people-lead | L2 | subagent_people | ②招聘、⑤评分 |
-| 👥 | 招聘专员 / 编制合规 | recruiter / people-qa | L3 | （并入 subagent_people） | — |
-| 📚 | 文档主责 | docs-lead | L2 | subagent_docs | ②简报、④归档、⑥提示词 |
-| 📚 | 技术写作 / 文档质检 | tech-writer / docs-qa | L3 | （并入 subagent_docs） | — |
-| 🚦 | 流程审计 | proc-audit | L2 | subagent_proc_audit | 持续红灯检查 |
-| 🎯 | 小队主责 | squad-lead | L4 | subagent_squad_lead | ③每 task 招聘 |
-| 🛠 | 软件开发 | engineer | L4 | subagent_engineer | ③每 task 招聘 |
-| 🧪 | 测试验证 | sdet | L4 | subagent_sdet | ③每 task 招聘 |
-| 🧐 | 代码审查 | code-review | L5 | subagent_code_review | ④审查门（L/高风险强制） |
-| 🚀 | 发布执行 | release-eng | L5 | subagent_release_eng | ⑤合并门（串行） |
-| 🗄 | 知识库 | knowledge | — | （跨组沉淀，无独立派遣） | 各阶段沉淀 |
-| 流程审计 | proc-audit | L3 | subagent_proc_audit | 巡检/门禁前 |
-| 业务赞助 | sponsor | L0 | （人类，非 LLM） | ask_user_question |
-| 会话调度 | sess-mgr | L2 | （主会话兼） | — |
-| 工程主责 | run-lead | L2 | （主会话） | — |
-| 技术统筹 | tpm | L3 | （主会话兼） | — |
+| 💡 | 产品策划 | pm | 专员 | subagent_product | ①需求确认 |
+| 🔍 | 行业分析 | ind-res | 专员 | subagent_research | ①需求确认、方案前、资料申请（唯一联网岗） |
+| 🔎 | 代码勘察 | scout | 专员 | subagent_sys_arch | ②规划（勘察分块） |
+| 🏗 | 软件架构 | sys-arch | 专员 | subagent_sys_arch | ②规划（本仓方案） |
+| 👥 | 人才主责 | people-lead | 主责 | subagent_people | ②招聘、⑤评分 |
+| 👥 | 招聘专员 / 编制合规 | recruiter / people-qa | 专员 | （并入 subagent_people） | — |
+| 📚 | 文档主责 | docs-lead | 主责 | subagent_docs | ②简报、④归档、⑥提示词 |
+| 📚 | 技术写作 / 文档质检 | tech-writer / docs-qa | 专员 | （并入 subagent_docs） | — |
+| 🚦 | 流程审计 | proc-audit | 主责 | subagent_proc_audit | 持续红灯检查 |
+| 🎯 | 小队主责 | squad-lead | 实现 | subagent_squad_lead | ③每 task 招聘 |
+| 🛠 | 软件开发 | engineer | 实现 | subagent_engineer | ③每 task 招聘 |
+| 🧪 | 测试验证 | sdet | 实现 | subagent_sdet | ③每 task 招聘 |
+| 🧐 | 代码审查 | code-review | 门禁 | subagent_code_review | ④审查门（L/高风险强制） |
+| 🚀 | 发布执行 | release-eng | 门禁 | subagent_release_eng | ⑤合并门（串行） |
+| 🗄 | 知识库 | knowledge | 跨组 | （跨组沉淀，无独立派遣） | 各阶段沉淀 |
+| 🤝 | 业务赞助 | sponsor | 人类 | （人类，非 LLM） | ask_user_question |
+| 🎛 | 会话调度 | sess-mgr | 主会话 | （主会话兼） | 唤醒/解散子代理 |
+| 🧭 | 工程主责 | run-lead | 主会话 | （主会话本体） | 全流程编排 |
+| 📊 | 技术统筹 | tpm | 主会话 | （主会话兼） | 进度与依赖 |
+
+> **席层**取值：`主会话`（本体承担）· `人类`（sponsor）· `主责`（主会话派出的职能主责席）· `专员`（主责下的专业席）· `实现`（每 task 实现三角）· `门禁`（审查/合并席）· `跨组`（沉淀席）。
+> 不用 `L0`–`L5` 记号：本仓另有四套同名分层（加载常驻/按需、限流降级、注入防护、知识库三级），复用会造成歧义。
 
 ## 派遣 prompt 模板
 
@@ -187,5 +189,5 @@
 ## 三三制（MUST）
 
 - 每个被启用的工作环节 MUST 有 Lead/Doer/Check 三席；缺一席不得宣称完成。
-- 同一交付物上监督不得兼任执行（除非 scale 折叠且换帽留痕 seat=）。
+- 同一交付物上监督不得兼任执行；仅 S 规模折叠例外，且 MUST 在 `reviews/<task_id>.md` 与 `agents.yaml` 留 `seat=` 换帽痕迹——无痕即视为绕过门闩（红灯）。
 - 只有 run-lead（你）对 goal active 与合并拥有终裁签名权。
