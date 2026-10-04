@@ -69,7 +69,7 @@
 2. 合并前校验：evidence 过机械校验器（`scripts/evidence-verify.sh`，verdict=PASS 才有效，见 artifacts D069）+ diff ⊆ write_paths + 门禁文件齐（L/高风险含 review 与 security）→ 写 `approvals/merge.yaml`（`approved_by/approved_at`）。
 3. 失败 → abort/revert；回修按 §⑤ 解散「回修授权」唤醒原席（或按 ② 重建）；**禁止并行合并**；实现三角 MUST NOT 自己合主干；未 done 的 chunk MUST NOT merge。
 4. **文档型交付**（如 docs/ 归档类 run）：同一门禁；「diff ⊆ write_paths」判据为**改动仅限 docs/ 与运行根（总库项目目录）状态文件、无业务代码越界**；合并动作可能只是纳入版本库/标记完成，仍需 `approvals/merge.yaml` 留痕（preconditions 四字段 evidence/diff_within_write_paths/review/merge_ack 逐项对齐模板，见 artifacts.md）。
-5. **worktree 回收（D073，MUST）**：每 chunk 合并完成即 `git -C <主仓库> worktree remove --force ../room-<task_id>`（先确认该分支已并入 main、无未提交独有改动）→ `git worktree prune`；**分支 refs 保留**（`dsh-codepunk/<run>/<task>` 留审计）。未回收会随合并持续残留（机制不自动销毁），故合并门 MUST 显式销毁。
+5. **worktree 回收（D073，MUST，**release-eng** 执行）**：每 chunk 合并完成即 `git -C <主仓库> worktree remove --force ../room-<task_id>`（先确认该分支已并入 main、无未提交独有改动）→ `git worktree prune`；**分支 refs 保留**（`dsh-codepunk/<run>/<task>` 留审计）。未回收会随合并持续残留（机制不自动销毁），故合并门 MUST 显式销毁。
 
 ## ⑥ 再规划（P06 → ♻️）
 

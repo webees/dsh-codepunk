@@ -161,6 +161,7 @@
 【岗位】release-eng@run-<run_id>
 【合并】按 depends_on 拓扑串行合并 done 且门禁通过的 chunk，一次一个；失败 abort/revert 回修。
 【前置】evidence 通过 + diff ⊆ write_paths + 门禁齐 → approvals/merge.yaml（approved_by/approved_at）。
+【回收】每 chunk 合并后执行 worktree 回收（D073）：先确认该分支已并入 main 且无未提交独有改动，再 `worktree remove --force ../room-<task_id>` → `worktree prune`（分支 refs 保留审计）。
 【禁区】不并行合并；不合并未 done chunk；实现三角不得自己合主干。
 ```
 

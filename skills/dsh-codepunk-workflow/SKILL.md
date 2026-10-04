@@ -123,7 +123,7 @@ metadata:
 2. 前置：evidence 过 `scripts/evidence-verify.sh`（verdict=PASS，D069）+ diff ⊆ write_paths + 门禁文件齐 → `approvals/merge.yaml`（`approved_by/approved_at`；preconditions：evidence/diff_within_write_paths/review/merge_ack，见 `references/artifacts.md`）。
 3. 失败 → abort/revert 回修；**禁止并行合并**；实现三角 MUST NOT 自己合主干；未 done MUST NOT merge。
 4. **文档型交付**同门禁：改动仅限 `docs/` 与运行根状态文件；仍需 `approvals/merge.yaml` 留痕。
-5. **worktree 回收（D073，MUST）**：每 chunk 合并完成后，**先确认该分支已并入 main 且无未提交独有改动**，再 `git -C <主仓库> worktree remove --force ../room-<task_id>` → `git worktree prune`；分支 refs（`dsh-codepunk/<run>/<task>`）保留审计（**破坏性操作，前置未满足即不得强删**）。
+5. **worktree 回收（D073，MUST，**release-eng** 执行；run-lead 在 goal complete 前核验终态）**：每 chunk 合并完成后，**先确认该分支已并入 main 且无未提交独有改动**，再 `git -C <主仓库> worktree remove --force ../room-<task_id>` → `git worktree prune`；分支 refs（`dsh-codepunk/<run>/<task>`）保留审计（**破坏性操作，前置未满足即不得强删**）。
 
 ### ⑥ 再规划（P06 → ♻️）
 
