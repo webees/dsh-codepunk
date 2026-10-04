@@ -180,6 +180,9 @@ agent.cordis.yml                    # 组合：persona + 工具 + realm（AGENT-
 preset.yml                          # 预设描述（roster 展示）
 README.md                           # 本说明（向使用者）
 CONTRIBUTING.md                     # 贡献指南（向贡献者）
+LICENSE                             # MIT
+.gitattributes                      # 换行策略（仓库内 LF；.ps1 检出 CRLF）
+.gitignore                          # 白名单式忽略（运行状态不入仓）
 plans/                              # 工具脚本源副本（运行期正式位见 SKILL.md §1.1）
   dsh-codepunk-link.sh              # 项目↔总库关联解析（resolve / index / register）
   dsh-codepunk-init.sh              # 总库骨架幂等初始化
@@ -192,6 +195,7 @@ plans/                              # 工具脚本源副本（运行期正式位
   preset-declare.mjs                # preset 声明块生成/校验（emit / check / apply；DSH ≥0.1.7 注册模型）
   preset-compat.py                  # 组合↔DSH 安装兼容核验（插件包 / 配置键 / 隔离形态）
   fidelity-gate.py                  # 语义保护闸（压缩前快照 / 压缩后比对，防语义丢失）
+  ps-validate.mjs                   # PowerShell 语法校验器（可选；依赖 tree-sitter，见「PowerShell 校验」节）
   windows/                          # Windows 原生（PowerShell）等价实现
     dsh-codepunk-home.ps1           # 共享路径常量（点源载入）
     dsh-codepunk-init.ps1           # 总库骨架（-Check 只断言）

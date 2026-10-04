@@ -73,6 +73,34 @@ for r in sorted(refs):
     if not os.path.isfile('skills/dsh-codepunk-workflow/' + r): sys.exit(1)
 PY
 then p "✅" "结构（围栏/标题/引用目标）通过"; else p "✗" "结构检查失败"; F=1; fi
+
+# 6b) README 目录树 ↔ 仓内文件一致（防清单漂移）
+if python3 - <<'PY' >/dev/null 2>&1
+import re, os, subprocess, sys
+md = open('README.md', encoding='utf-8').read()
+m = re.search(r'## 目录结构.*?```text\n(.*?)```', md, re.S)
+if m is None: sys.exit(1)          # 目录结构节缺失即失败（README 承诺该节）
+stack, resolved = [], []
+for line in m.group(1).split('\n'):
+    if not line.strip() or line.strip().startswith('#'): continue
+    indent = len(line) - len(line.lstrip())
+    name = line.strip().split('#')[0].strip()
+    if not name: continue
+    while stack and stack[-1][0] >= indent: stack.pop()
+    parent = stack[-1][1] if stack else ''
+    path = os.path.join(parent, name.rstrip('/')) if parent else name.rstrip('/')
+    if name.endswith('/'): stack.append((indent, path)); resolved.append(('dir', path))
+    else: resolved.append(('file', path))
+for kind, path in resolved:
+    if kind == 'file' and not os.path.exists(path): sys.exit(1)
+    if kind == 'dir' and not os.path.isdir(path): sys.exit(1)
+listed = {p for k, p in resolved if k == 'file'}
+files = subprocess.run(['git', 'ls-files'], capture_output=True, text=True).stdout.split()
+# references/benchmarks 为按需层，不在目录树逐项列出（README 另有说明）
+skip = ('skills/dsh-codepunk-workflow/benchmarks/', 'skills/dsh-codepunk-workflow/references/')
+if any(f not in listed and not f.startswith(skip) for f in files): sys.exit(1)
+PY
+then p "✅" "目录树 ↔ 仓内文件一致"; else p "✗" "README 目录树与仓内文件不一致（死条目或漏列）"; F=1; fi
 # 7) 脚本语法与健壮性
 for f in plans/*.sh; do bash -n "$f" 2>/dev/null || { p "✗" "bash -n: $f"; F=1; }; done
 PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
