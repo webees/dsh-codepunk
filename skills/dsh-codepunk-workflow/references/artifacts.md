@@ -256,7 +256,9 @@ projects/<project_id>/          # 项目总库根，= 运行根 DSH_CODEPUNK_PRO
     tasks/<task_id>/
       brief/     WORK_BRIEF.md + brief.yaml
       staffing/  request.yaml + personas/*.md + staffing.yaml + scores.yaml
-      handoff/   summary/artifact_index/known_issues/diff_scope.md + evidence/acceptance.yaml
+      handoff/   summary.md + artifact_index.md + known_issues.md + diff_scope.md \
+                 + evidence.yaml（sdet 证据索引）+ acceptance.yaml（接收方签收）
+                 # 四个 md 与两个 yaml 均**直接位于 handoff/**（勿再套一层 evidence/）
       progress/  progress.md
 knowledge/                      # 知识库（跨 run 沉淀）
   hr/personas/<codename>.yaml  hr/teams/<team_name>.yaml
