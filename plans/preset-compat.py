@@ -175,8 +175,8 @@ def main() -> int:
         and not e.get("disabled")
     ]
     if need_opt:
-        print(f"  ℹ {len(need_opt)} 个岗位未声明 agentOptions（子代理将落产品默认模型）——公开预设默认留空，"
-              f"部署方请按条目内注释配置；涉及：{', '.join(sorted(need_opt)[:4])}{' …' if len(need_opt) > 4 else ''}")
+        print(f"  ℹ {len(need_opt)} 个岗位未声明 agentOptions（默认**继承父会话实时路由**，非产品默认）——"
+              f"公开预设默认留空属预期；仅需偏离父路由时才声明；涉及：{', '.join(sorted(need_opt)[:4])}{' …' if len(need_opt) > 4 else ''}")
 
     print(f"\n  DSH 安装：{app}")
     print(f"  条目 {len(entries)} 行；引用插件 {len(pkgs)} 个")

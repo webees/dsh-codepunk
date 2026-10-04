@@ -1,31 +1,36 @@
 # 角色分模型路由选型表（references/model-routing.md）
 
 > dsh-deepseek（官方 `dsh-llm-deepseek` 适配器）能力落地方案。
-> **现行决策（D090，2026-09-06，双要件）**：13 岗位**必须同时**显式
-> `agentOptions: {provider: <PRIMARY_PROVIDER>, model: <MODEL>}` + `backgroundMode: continuable`。
-> 依据实测：**删除 agentOptions 后子代理不继承主会话模型**，落产品默认 `deepseek-v4-flash`（上游 region_limited 必挂）；
-> one-shot 被 429 打断即整轮报废。D087「继承主进程」主张已被 D090 反驳作废。
+> **现行事实（DSH 0.2.0-rc.2 实测，2026-10-05）**：子代理**默认继承父会话的实时路由**——
+> `resolveChildAgentOptions(parent, requested)` 以 `parentAgentOptionsForDelegation(parent)`
+> 为基底（读父请求头 `config` 的 provider/model/reasoningEffort/maxTokens），再用 `requested` 覆盖。
+> 故**不强制**声明 `agentOptions`：留空即随父路由；仅在需**偏离**父路由（如给某岗降档/换型号）时才显式声明，
+> 且显式声明会**覆盖**父 `reasoningEffort`。
+> `backgroundMode: continuable` 仍为**必需**（D088，与路由无关）：one-shot 被 429 打断即整轮报废，
+> 且无法按断点续行。
 > 回退链「主 provider → 备 1 → 本地兜底」，同一路由连续失败 ≥3 次由 run-lead 切换（细则见 model-fallback.md）。
 > 取代 D080（2026-08-26「全岗位只允许 deepseek-v4-flash，禁 pro」）——D080 的档位纪律（**只用 flash 档，禁 pro/max**）继续有效，
 > 换的是 provider 与型号名。沿革与判据见本文 §五。
-> **接入方式已源码实证**：`dsh-tool-subagent` Config schema 支持 `agentOptions: { provider, model, maxTokens }`（每岗可配）；
-> ⚠ 实测反驳：删 agentOptions 后子代理**不继承**父会话模型、落产品默认（`dsh-subagent/lib/index.js:780-781`）——故 MUST 显式声明。
+> **接入方式已源码实证**：`dsh-tool-subagent` Config schema 支持 `agentOptions: { provider, model, maxTokens }`（每岗可配）。
+> ⚠ **D090 的前提已反转**：其「删 agentOptions 后子代理不继承父模型」是 2026-09-05/06 在**旧构建**上的实测；
+> 现行 0.2.0-rc.2 源码为「父路由为基底、requested 覆盖」，故该前提不再成立（见 §五）。
 > 溯源：`benchmarks/dsh-deepseek-analysis.md`（10 一手来源）+ 本地源码核对（2026-08-26）+ 一次实跑故障取证（2026-09-05）。
 
 ## 一、岗位 × 模型路由表
 
-| 岗位 | 模型路由（D090 双要件） | thinking effort | 理由（成本/质量杠杆） |
+| 岗位 | 路由来源 | thinking effort | 理由（成本/质量杠杆） |
 |---|---|---|---|
-| **sdet（验收）** | 显式主 provider 路由（D090） | 默认 | 统一 flash 档（档位纪律承自 D080） |
-| **squad-lead（调度）** | 显式主 provider 路由（D090） | low | 巡检/汇报是信息整理，低档足够；省 token |
-| **engineer（实现）** | 显式主 provider 路由（D090） | low | 写集实现以执行验证为准（D077 Iron Law），thinking 非主杠杆 |
-| **proc-audit（审计）** | 显式主 provider 路由（D090） | 默认 | 统一 flash 档 |
-| **subagent / subagent_fork（通用）** | 显式主 provider 路由（D090） | 默认 | 显式声明，避免继承路径不确定 |
-| **docs / research / people / product / sys-arch / code-review / release-eng** | 显式主 provider 路由（D090） | 默认 | 职能岗以流程与文件为核心，flash 足够；深挖场景临时覆盖 |
+| **sdet（验收）** | 继承父会话（默认） | 默认 | 统一 flash 档（档位纪律承自 D080） |
+| **squad-lead（调度）** | 继承父会话（默认） | low | 巡检/汇报是信息整理，低档足够；省 token |
+| **engineer（实现）** | 继承父会话（默认） | low | 写集实现以执行验证为准（D077 Iron Law），thinking 非主杠杆 |
+| **proc-audit（审计）** | 继承父会话（默认） | 默认 | 统一 flash 档 |
+| **subagent / subagent_fork（通用）** | 继承父会话（默认） | 默认 | 显式声明，避免继承路径不确定 |
+| **docs / research / people / product / sys-arch / code-review / release-eng** | 继承父会话（默认） | 默认 | 职能岗以流程与文件为核心，flash 足够；深挖场景临时覆盖 |
 | **vision 岗（若引入）** | 主 provider 的视觉档模型 | 默认 | 需图像输入时单独接线（尚未启用） |
 
-> 实施姿态（D090）：**13 岗位全部显式 agentOptions + continuable**（防双轨漂移）。
-> 而本次故障恰恰是"写死的路由失效 + 进程不热加载"叠加所致。换模型只需改主会话一处。
+> 实施姿态（现行）：**全部岗位 `backgroundMode: continuable` + 路由默认继承父会话**
+> （0.2.0-rc.2 实测；本仓不再硬编码 provider/model，公开预设不宜内置私有取值）。
+> 历史姿态 D090「13 岗位全部显式 agentOptions」的前提已反转，仅作沿革保留。
 > 例外：`subagent_codex` / `subagent_claude_code` 是外部后端（`provider: codex` / `claude-code`，`maxDepth: provider-managed`），
 > 不套本表，也不得被改成主 provider 路由。
 
@@ -62,7 +67,8 @@
 |---|---|---|---|
 | D080 | 2026-08-26 | 全岗位 `deepseek-official / deepseek-v4-flash`，禁 pro | **已被 D087 取代**（档位纪律"只用 flash、禁 pro/max"仍有效） |
 | D087 | 2026-09-05 | 全岗位统一外部 provider，13 个岗位显式接线 → 二次修订删 agentOptions「继承主进程」 | ⚠ 继承主张已被 D090 实测反驳 |
-| D090 | 2026-09-06 | 13 岗位**必须同时**显式 agentOptions（部署方自配 provider/model）+ continuable | **现行**（双要件） |
+| D090 | 2026-09-06 | 13 岗位**必须同时**显式 agentOptions（部署方自配 provider/model）+ continuable | ⚠ **前提已反转**（当时构建下孩子落产品默认；0.2.0-rc.2 起默认继承父路由），仅 continuable 部分仍必需（D088） |
+| **反转实测** | 2026-10-05 | `dsh-subagent/lib/index.js`：`resolveChildAgentOptions` 以 `parentAgentOptionsForDelegation(parent)` 为基底，注释明写「继承父 provider/model/reasoningEffort/maxTokens，除非请求覆盖」 | **现行**：agentOptions 改为「按需偏离」而非必配；13 处配置注释与本文同步改写 |
 
 **D087 触发事实**（一次实跑取证，非推测）：
 

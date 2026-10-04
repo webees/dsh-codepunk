@@ -34,7 +34,7 @@
 | **D085** | 知识库记忆增强：knowledge/ 三级化（L0/L1/L2）+ 过期三态 + 自包含互链 + 多信号检索 + 异步抽经验 | Mem0/OpenViking/Letta/OpenHuman（仅机制思想） | references/memory-enhancement.md / knowledge/ | v1.0 |
 | **D086** | 限流自适应：自动发现 429 + 三档降级（L1 降并发 L2 串行 L3 暂停）+ 错峰标记 + 限流历史自学习 | 实战经验（第三方网关实测） | references/rate-limit-adaptation.md / SKILL §③ | v1.0 |
 | **D089** | ⚠继承主张已被 D090 反驳·模型回退链：三级回退「主→备 1→本地兜底」（此部分仍有效） | 实战经验（模型分裂修复） | references/model-fallback.md / settings | v1.0 |
-| **D090** | 子代理路由双要件：显式 agentOptions（部署方自配 provider/model）+ continuable 必须同时（13 岗）；实测孩子不继承主模型 | 实战经验（2026-09-06 实测反驳 D089） | agent.cordis.yml / model-routing.md §五 | v1.0 |
+| **D090** | 子代理路由双要件：显式 agentOptions（部署方自配 provider/model）+ continuable 必须同时（13 岗）；实测孩子不继承主模型 | 实战经验（2026-09-06 实测反驳 D089） | agent.cordis.yml / model-routing.md §五 | v1.0 | —— ⚠前提已反转
 | **D094** | 启动自检与子代理恢复：客户端异常关闭后，主进程每次启动 MUST 查（`list_agents(scope=descendants)`）→ 比（spawn 登记表找中断席）→ 续（读断点 `send_message` 精确续行）；前置 continuable（D088）与每 spawn 即登记 | 实战需求（重启致中断） | SKILL §1.1 第 4 条 / references/stages.md §③ / 13 岗位 persona「可恢复」说明 | v1.0 |
 | **D095** | 定时巡检与子代理状态清单：独立 YAML（agents.yaml，与 README 双写），启动一次 + 每 5 轮一次 + 失败加跑；查→比→续→写闭环；done 跳过 | 内部需求（仅启动自检覆盖不足） | SKILL §1.1 第 5 条 / artifacts.md「子代理状态清单」 | v1.0 |
 | **D096** | 持久 shell 与工具调用超时：`persistent-shell` 隔离域同挂 PTY 服务、后端与持久 `bash`（Windows 为 pwsh），scope 遮蔽全局同名工具（状态持久/5 分钟超时/16k 输出上限）+ 全局超时策略（TOOL_TIMEOUT 由调用方判重试或拆任务）；官方 minimal 同款接法 | DSH 2.0.12 新增能力（dsh-terminal + dsh-tool-bash-persistent + dsh-tool-call-timeout-policy）；只挂工具曾致预挂载失败 | SKILL §4 / agent.cordis.yml | v1.1 |

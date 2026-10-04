@@ -250,9 +250,11 @@
         provider: spawn
         toolName: subagent
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
 
     - id: tool-subagent-fork
       name: '@deepseek-ai/dsh-tool-subagent'
@@ -260,9 +262,11 @@
         provider: fork
         toolName: subagent_fork
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
 
     # ── 多智能体开发流程 · 岗位子代理 ─────────────────────────────────────────
     # 每个岗位为一个独立命名的子代理工具实例：创建型提供者（spawn）加固定角色人设
@@ -279,9 +283,11 @@
         provider: spawn
         toolName: subagent_squad_lead
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           # 白名单（allow）锚点：默认全关，只放行本岗所需的继承工具（shell/文件/检索/作业/todo/skill）。
@@ -313,9 +319,11 @@
         provider: spawn
         toolName: subagent_engineer
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -336,9 +344,11 @@
         provider: spawn
         toolName: subagent_sdet
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -362,9 +372,11 @@
         provider: spawn
         toolName: subagent_product
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -384,9 +396,11 @@
         provider: spawn
         toolName: subagent_research
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         # 唯一保留 web 工具的岗位：allow = 基础工具集 + web_search/web_fetch。
         # 其余岗位（&role-allow）默认无 web。
@@ -408,9 +422,11 @@
         provider: spawn
         toolName: subagent_people
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -431,9 +447,11 @@
         provider: spawn
         toolName: subagent_docs
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -453,9 +471,11 @@
         provider: spawn
         toolName: subagent_proc_audit
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -476,9 +496,11 @@
         provider: spawn
         toolName: subagent_sys_arch
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -504,9 +526,11 @@
         provider: spawn
         toolName: subagent_code_review
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -527,9 +551,11 @@
         provider: spawn
         toolName: subagent_release_eng
         backgroundMode: continuable
-        # agentOptions（部署方必配）：按自己的 provider 显式声明子代理路由——
-        #   agentOptions: { provider: <PROVIDER>, model: <MODEL> }
-        # 未声明时孩子落产品默认模型（不继承父会话）；双要件机制见 references/model-routing.md
+        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
+        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
+        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
+        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
+        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
         maxDepth: 1
         toolFilter:
           allow: *role-allow
