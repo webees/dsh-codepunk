@@ -42,12 +42,23 @@ U=$(git status --short 2>/dev/null | grep -c '^??' || true)
 if python3 - <<'PY' >/dev/null 2>&1
 import subprocess, re, sys, os
 files = subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
+
+def unfence(txt):
+    """去掉围栏代码块内容：块内 `# 注释` 不是 Markdown 标题，误判会造成假阳性。"""
+    out, infence = [], False
+    for ln in txt.split('\n'):
+        if ln.startswith('```'):
+            infence = not infence
+            continue
+        out.append('' if infence else ln)
+    return '\n'.join(out)
+
 for f in files:
     if not f.endswith('.md'): continue
     txt = open(f, encoding='utf-8', errors='replace').read()
     if len(re.findall(r'^```', txt, re.M)) % 2: sys.exit(1)
     prev = 0
-    for m in re.finditer(r'^(#{1,6}) ', txt, re.M):
+    for m in re.finditer(r'^(#{1,6}) ', unfence(txt), re.M):
         lvl = len(m.group(1))
         if prev and lvl > prev + 1: sys.exit(1)
         prev = lvl
@@ -72,17 +83,45 @@ if [ ! -f "$PV" ]; then
   p "ℹ" "PS 语法校验跳过（无校验器）：如需启用，见 README「PowerShell 校验」一节"
 fi
 
-# 8) DSH 兼容性
-# DSH 兼容检查所需的 app.asar 位置：由 DSH_ASAR 指定（不硬编码任何平台路径）
+# 8) DSH 兼容性（插件包存在性）
+# DSH 0.1.7 起不再打包 app.asar，改为解包 app/ 目录；两种布局都支持，
+# 位置一律由环境变量给出（不硬编码任何平台路径）。
+APPROOT="${DSH_APP_ROOT:-}"
 ASAR="${DSH_ASAR:-}"
-if [ -n "$ASAR" ] && [ -f "$ASAR" ]; then
+if [ -n "$APPROOT" ] && [ -d "$APPROOT/node_modules/@deepseek-ai" ]; then
+  M=0; N=0
+  for pkg in $(grep -oE "@deepseek-ai/(dsh-[a-z-]+)" agent.cordis.yml | sort -u); do
+    N=$((N+1))
+    [ -d "$APPROOT/node_modules/$pkg" ] || { p "✗" "缺包：$pkg"; M=$((M+1)); }
+  done
+  [ "$M" -eq 0 ] && p "✅" "DSH 兼容（$N 个插件包全在）" || { p "✗" "缺 $M 个包"; F=1; }
+elif [ -n "$ASAR" ] && [ -f "$ASAR" ]; then
   M=0
   for pkg in $(grep -oE "@deepseek-ai/(dsh-[a-z-]+)" agent.cordis.yml | sort -u); do
     grep -qaF "$pkg" "$ASAR" 2>/dev/null || M=$((M+1))
   done
-  [ "$M" -eq 0 ] && p "✅" "DSH 兼容（24 包全在）" || { p "✗" "缺 ${M} 个包"; F=1; }
+  [ "$M" -eq 0 ] && p "✅" "DSH 兼容（asar 内全在）" || { p "✗" "缺 ${M} 个包"; F=1; }
 else
-  p "ℹ" "DSH 兼容检查跳过（未设 DSH_ASAR；如需启用：DSH_ASAR=<app.asar 路径> bash plans/verify-battery.sh）"
+  p "ℹ" "DSH 兼容检查跳过（未设 DSH_APP_ROOT / DSH_ASAR）"
+fi
+
+# 8b) preset 声明副本漂移（源 agent.cordis.yml ↔ profile patch 内联块）
+# 仅在 js-yaml 可解析时执行（语义比对）；否则跳过，避免折行导致误报。
+PP="${DSH_PROFILE_PATCH:-$HOME/.dsh/profiles/desktop/cordis.patch.yml}"
+if [ -f "$PP" ]; then
+  YAML_OK=0
+  for cand in "${DSH_CODEPUNK_TOOLS:-}" "$HOME/.dsh-codepunk/tools" "$APPROOT"; do
+    [ -n "$cand" ] && [ -d "$cand/node_modules/js-yaml" ] && { YAML_OK=1; break; }
+  done
+  if [ "$YAML_OK" -eq 1 ]; then
+    if node plans/preset-declare.mjs check --patch "$PP" >/dev/null 2>&1; then
+      p "✅" "preset 声明副本与源一致"
+    else
+      p "✗" "preset 声明副本漂移（跑 node plans/preset-declare.mjs apply）"; F=1
+    fi
+  else
+    p "ℹ" "声明漂移检查跳过（无 js-yaml）"
+  fi
 fi
 # 9) E2E 沙箱
 T=$(mktemp -d)

@@ -68,9 +68,11 @@
 
 ## 快速开始
 
-### 安装 / 挂载
+### 安装 / 挂载（DSH ≥ 0.1.7）
 
-放入任一部署根即成为本地作者预设，目录名即 preset id：
+`dsh-agent-preset-registry` 自 DSH 0.1.7 起**不再扫描** `~/.dsh/.agent-presets/<id>/`：注册表既不扫描目录，也不接受 preset 路径。自定义预设必须以 `@deepseek-ai/dsh-agent-preset` 声明行的形式注入 profile，否则引用该预设的会话恢复时报 `Unknown agent preset: dsh-codepunk`。
+
+**① 落位源文件（唯一权威）**：
 
 ```bash
 DST="$HOME/.dsh/.agent-presets/dsh-codepunk"
@@ -78,9 +80,30 @@ mkdir -p "$DST"
 cp -R agent.cordis.yml preset.yml skills "$DST/"
 ```
 
+**② 生成声明块并注入 profile patch**（`<profile>` 通常为 `desktop`）：
+
+```bash
+# 首次安装：把声明块追加进 profile patch（自动备份）
+DSH_PROFILE_PATCH="$HOME/.dsh/profiles/<profile>/cordis.patch.yml" \
+  node plans/preset-declare.mjs apply --append
+
+# 已安装过：源改动后用源重写内联副本（自动备份）
+node plans/preset-declare.mjs apply
+```
+
+**③ 校验内联副本未漂移**（改源后必须复跑；`verify-battery.sh` 已内置该项）：
+
+```bash
+node plans/preset-declare.mjs check    # 漂移即非零退出并列出差异路径
+```
+
+- 同一份组合存在两处表示：`agent.cordis.yml`（源，权威）与 profile patch 内的 `plugins:` 内联副本（进程实读）。**副本由源生成，勿手改**；两处一致性由 `preset-declare.mjs check` 语义比对保证。
+- 内联副本有一处必要适配：`customSkillDirs` 的 `new URL('skills/', baseUrl)` 在 profile 上下文中 `baseUrl` 指向 profile 目录，须改写为回到预设目录的相对路径——`preset-declare.mjs` 生成时自动处理，`check` 比对时自动归一。
 - 目录结构必须含 `agent.cordis.yml`（组合：persona + 工具 + realm）与 `skills/`（playbook）；`preset.yml` 为可选展示描述。
 - `plans/` 工具脚本为源副本，不随预设复制；运行期装配与正式位见流程手册 `SKILL.md` §1.1。
-- Discovery 每次重读根目录，进程内修改即见；会话/组合按 preset 名引用即挂载。挂载校验：`dsh-agent-presets` 对组合做形状检查（顶层列表 + 每行有 `name` + group 递归），并用 `entryListSchema`（含 `!!js`）解析；格式/语义错误会标记为 broken roster row。
+- 声明在**进程启动时读取**，改动后须重启 DSH Desktop 生效。
+- **DSH 0.1.7 起不再打包 `app.asar`**，改为解包 `app/` 目录；本仓所有依赖 DSH 安装位置的检查一律取环境变量（`DSH_APP_ROOT` 或 `DSH_ASAR`、`DSH_PROFILE_PATCH`），不硬编码任何平台路径。
+- 挂载校验：`dsh-agent-presets` 对组合做形状检查（顶层列表 + 每行有 `name` + group 递归），并用 `entryListSchema`（含 `!!js`）解析；格式/语义错误会标记为 broken roster row。
 
 ### 运行引导（工程主责）
 
@@ -127,11 +150,13 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 |---|---|---|
 | `bash plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=全满分 |
 | `bash plans/preset-audit.sh` | 6 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标 |
-| `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+脚本语法+DSH 兼容+E2E），9 项一次跑完 | 0=全通过 |
+| `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+脚本语法+DSH 兼容+声明漂移+E2E），10 项一次跑完 | 0=全通过 |
+| `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致 |
 | `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push） | 0=通过 |
 | `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（编号/约束词/阈值/路径/工具名/代码标识），改后逐项比对 | 0=零丢失 |
 
 `verify-battery.sh` 的参数：`bash plans/verify-battery.sh [预设根]`（默认取脚本上级目录）。
+DSH 相关的可选检查由环境变量开启：`DSH_APP_ROOT`（DSH 解包 app 目录）、`DSH_ASAR`（旧版 asar 路径）、`DSH_PROFILE_PATCH`（profile patch 路径，默认 `~/.dsh/profiles/desktop/cordis.patch.yml`）。
 
 ## PowerShell 校验（可选）
 
@@ -162,7 +187,8 @@ plans/                              # 工具脚本源副本（运行期正式位
   preset-audit.sh                   # 预设质量审计（6 组 rubric，100 分制）
   dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
   preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
-  verify-battery.sh                 # 完整验证电池（9 项独立验证，单命令复跑）
+  verify-battery.sh                 # 完整验证电池（10 项独立验证，单命令复跑）
+  preset-declare.mjs                # preset 声明块生成/校验（emit / check / apply；DSH ≥0.1.7 注册模型）
   fidelity-gate.py                  # 语义保护闸（压缩前快照 / 压缩后比对，防语义丢失）
   windows/                          # Windows 原生（PowerShell）等价实现
     dsh-codepunk-home.ps1           # 共享路径常量（点源载入）

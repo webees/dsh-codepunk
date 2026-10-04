@@ -448,16 +448,46 @@ EOF
   if ! python3 - "$DSH_CODEPUNK_INDEX" "$line" <<'PYEOF'
 import sys, re
 f, line = sys.argv[1], sys.argv[2]
-s = open(f, encoding='utf-8').read()
-if not s.endswith('\n'): s += '\n'
-s = re.sub(r'^(last_updated:.*)$', lambda m: line.rstrip('\n') + '\n' + m.group(1), s, count=1, flags=re.M)
-open(f, 'w', encoding='utf-8').write(s)
+lines = open(f, encoding='utf-8').read().split('\n')
+# 结构守卫：projects 键之后只允许出现「缩进的条目行」或 last_updated——
+# 其它顶层键若夹在列表中，先前的「就地插在 last_updated 之前」写法会把条目
+# 落到列表之外，产出非法 YAML（实测事故：INDEX 曾因此损坏，真实解析器拒读）。
+lu = [l for l in lines if re.match(r'^last_updated:', l)]
+stray = [
+    l for l in lines
+    if l.strip() and not l.startswith((' ', '\t', '#'))
+    and not re.match(r'^(schema_version|projects|last_updated):', l)
+]
+if stray:
+    sys.stderr.write('INDEX 含未知顶层键：' + ', '.join(stray) + '\n')
+    sys.exit(1)
+body = [l for l in lines if not re.match(r'^last_updated:', l)]
+while body and not body[-1].strip():
+    body.pop()
+# 条目追加到 projects 列表末尾（即正文末尾），last_updated 恒置文件尾
+body.extend(line.rstrip('\n').split('\n'))
+if lu:
+    body.append(lu[-1])
+open(f, 'w', encoding='utf-8').write('\n'.join(body) + '\n')
 PYEOF
     then
     printf '%s: 写入失败，已回滚（备份 %s）\n' "$SCRIPT_NAME" "$bak" >&2
     cp "$bak" "$DSH_CODEPUNK_INDEX"
     rm -f "$DSH_CODEPUNK_INDEX.bak"
     return 1
+  fi
+  # 写入后校验：真实 YAML 解析器必须能读（防「行级解析自洽但 YAML 非法」长期潜伏）
+  if command -v ruby >/dev/null 2>&1; then
+    if ! ruby -ryaml -e '
+d = YAML.load_file(ARGV[0])
+raise "顶层非映射" unless d.is_a?(Hash)
+raise "projects 非数组" unless d["projects"].is_a?(Array)
+' "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1; then
+      printf '%s: 写入后校验失败（INDEX 非法 YAML），已回滚（备份 %s）\n' "$SCRIPT_NAME" "$bak" >&2
+      cp "$bak" "$DSH_CODEPUNK_INDEX"
+      rm -f "$DSH_CODEPUNK_INDEX.bak"
+      return 1
+    fi
   fi
   rm -f "$DSH_CODEPUNK_INDEX.bak" "$bak"
   printf '%s: 已注册 %s ← %s\n' "$SCRIPT_NAME" "$id" "$target"
