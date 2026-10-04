@@ -350,6 +350,20 @@ cmd_index() {
 }
 
 # ---------- register：追加注册条目（不覆盖，需确认） ----------
+# 回滚助手：回滚成功才清理备份；回滚失败必须显式报出并保留备份供人工恢复
+# （原实现无论 cp 成败都打印「已回滚」，且 rm 漏掉时间戳备份 → 假保证 + 残留）
+_rollback() { # $1=备份路径  $2=失败原因
+  local bak="$1" why="$2"
+  if cp "$bak" "$DSH_CODEPUNK_INDEX" 2>/dev/null; then
+    printf '%s: %s，已回滚到写入前状态\n' "$SCRIPT_NAME" "$why" >&2
+    rm -f "$DSH_CODEPUNK_INDEX.bak" "$bak"
+  else
+    printf '%s: %s，且**回滚失败**\n' "$SCRIPT_NAME" "$why" >&2
+    printf '%s: 请手工恢复——备份保留在 %s\n' "$SCRIPT_NAME" "$bak" >&2
+    rm -f "$DSH_CODEPUNK_INDEX.bak"
+  fi
+}
+
 cmd_register() {
   local yes=0
   while [ $# -gt 0 ]; do
@@ -454,7 +468,10 @@ EOF
     dsh_codepunk_path: $hosted
     migrated_at: null
     source: register"
-  if ! python3 - "$DSH_CODEPUNK_INDEX" "$line" <<'PYEOF'
+  # 失败时只回显异常末行（错误类型 + errno），避免整段 traceback 淹没真正的失败原因；
+  # 需要完整回溯时设 DSH_CODEPUNK_DEBUG=1。
+  PYERR="$(mktemp)"
+  if ! python3 - "$DSH_CODEPUNK_INDEX" "$line" 2>"$PYERR" <<'PYEOF'
 import sys, re
 f, line = sys.argv[1], sys.argv[2]
 lines = open(f, encoding='utf-8').read().split('\n')
@@ -480,9 +497,14 @@ if lu:
 open(f, 'w', encoding='utf-8').write('\n'.join(body) + '\n')
 PYEOF
     then
-    printf '%s: 写入失败，已回滚（备份 %s）\n' "$SCRIPT_NAME" "$bak" >&2
-    cp "$bak" "$DSH_CODEPUNK_INDEX"
-    rm -f "$DSH_CODEPUNK_INDEX.bak"
+    _reason="$(tail -1 "$PYERR" 2>/dev/null)"
+    [ -n "${_reason:-}" ] || _reason="未知错误"
+    if [ "${DSH_CODEPUNK_DEBUG:-0}" = "1" ]; then
+      printf '%s: INDEX 写入失败（完整回溯）:\n' "$SCRIPT_NAME" >&2
+      cat "$PYERR" >&2
+    fi
+    rm -f "$PYERR"
+    _rollback "$bak" "写入失败：${_reason}"
     return 1
   fi
   # 写入后校验：真实 YAML 解析器必须能读（防「行级解析自洽但 YAML 非法」长期潜伏）
@@ -492,13 +514,11 @@ d = YAML.load_file(ARGV[0])
 raise "顶层非映射" unless d.is_a?(Hash)
 raise "projects 非数组" unless d["projects"].is_a?(Array)
 ' "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1; then
-      printf '%s: 写入后校验失败（INDEX 非法 YAML），已回滚（备份 %s）\n' "$SCRIPT_NAME" "$bak" >&2
-      cp "$bak" "$DSH_CODEPUNK_INDEX"
-      rm -f "$DSH_CODEPUNK_INDEX.bak"
+      _rollback "$bak" "写入后校验失败（INDEX 非法 YAML）"
       return 1
     fi
   fi
-  rm -f "$DSH_CODEPUNK_INDEX.bak" "$bak"
+  rm -f "$PYERR" "$DSH_CODEPUNK_INDEX.bak" "$bak"
   printf '%s: 已注册 %s ← %s\n' "$SCRIPT_NAME" "$id" "$target"
   return 0
 }
