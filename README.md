@@ -142,7 +142,7 @@ node plans/preset-declare.mjs check    # 漂移即非零退出并列出差异路
 | Linux | bash | `plans/*.sh` | 可用（GNU 工具链；脚本内已做 BSD/GNU 自适应） |
 | Windows | pwsh | `plans/windows/*.ps1` | 预设在该平台禁用 bash 工具、启用 pwsh 工具（与官方预设同款门控） |
 
-Windows 上建议把 `plans/windows/*.ps1` 复制到 `%USERPROFILE%\.dsh-codepunk\scripts\`，以 pwsh 调用：
+Windows 上从仓内运行一次 `pwsh -File plans/windows/dsh-codepunk-init.ps1` 即把 `.ps1` 同步到 `%USERPROFILE%\.dsh-codepunk\scripts\`（幂等；`-Check` 只报缺失/过期），随后以 pwsh 调用：
 
 ```powershell
 . "$HOME\.dsh-codepunk\dsh-codepunk-home.ps1"        # 装载路径常量

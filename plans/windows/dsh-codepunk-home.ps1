@@ -28,3 +28,10 @@ $DSH_CODEPUNK_PROJECTS   = $env:DSH_CODEPUNK_PROJECTS
 $DSH_CODEPUNK_INDEX      = $env:DSH_CODEPUNK_INDEX
 $DSH_CODEPUNK_WORKTREES  = $env:DSH_CODEPUNK_WORKTREES
 $DSH_CODEPUNK_SCRIPTS    = $env:DSH_CODEPUNK_SCRIPTS
+
+# 把总库 scripts/ 前置进 PATH（幂等）：使文档中的裸命令形态在点源本文件后可用
+# （与 POSIX 版 dsh-codepunk-home.sh 的 PATH 前置等价；Windows 侧脚本以 .ps1 结尾，
+#  调用形如 `pwsh -File dsh-codepunk-link.ps1`，故此处只保证目录可被解析）
+if ($env:PATH -notlike "*$env:DSH_CODEPUNK_SCRIPTS*") {
+  $env:PATH = "$env:DSH_CODEPUNK_SCRIPTS;$env:PATH"
+}
