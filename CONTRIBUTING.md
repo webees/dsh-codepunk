@@ -34,7 +34,7 @@ dsh-codepunk 是一份**多智能体开发流程预设**：基于 DeepSeek Harne
 1. **无说明即不改 README.md 之外**：除 `README.md` 外，仓库不存在「顺手改一下、无需说明」的文件——任何非 README 改动都必须在 PR 描述 / commit message 中说明目的、影响面与验证方式；README 自身改动也不得破坏其与仓库实况的一致性（命令、路径、目录结构、编号引用逐一对齐）
 2. **品牌卫生（核心发布内容）**：README、plans 脚本、组合配置、skill 文档不得残留历史旧名及其目录名 / 变量名 / 路径变体。若本仓库有改名历史，用 `OLD_NAME=<旧名> bash plans/preset-audit.sh` 做回归自检（须 0 命中）；`git grep` 只扫跟踪文件，自然排除本地运行工件与未跟踪文件
 3. **agent.cordis.yml 必须过 entryListSchema 校验**：组合须通过形状检查（顶层为列表、每行有 `name`、group 递归）+ `entryListSchema`（含 `!!js` 表达式）解析；格式 / 语义错误会标记为 broken roster row，必须修复后才能合入
-4. **skill 文档须过结构检查**：`SKILL.md` 六阶段闭环与硬规则编号须与 `references/standard.md` 一致；`references/`（roles/artifacts/knowledge/standard）四件齐、结构完整，代码块 / 表格闭合，新增引用有对应释义
+4. **skill 文档须过结构检查**：`SKILL.md` 六阶段闭环与硬规则编号须与 `references/standard.md` 一致；`references/` 全部按需文件结构完整（核心四篇 roles/artifacts/knowledge/standard + 其余阶段/纪律/兼容类，逐篇见 SKILL §6），代码块 / 表格闭合，新增引用有对应释义
 
 ## 提交前检查清单
 

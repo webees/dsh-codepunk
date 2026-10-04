@@ -204,10 +204,7 @@ plans/                              # 工具脚本源副本（运行期正式位
     dsh-codepunk-leak-guard.ps1     # 泄露防护门（-Tree / -History / -InstallHook / -List）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
   SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R15 + D 决策号）
-  references/roles.md               # 岗位人设与派遣模板
-  references/artifacts.md           # 产物文件模板（goal/chunks/brief/…）
-  references/knowledge.md           # 知识库布局 + 评分公式 + 聚合格式
-  references/standard.md            # 编号（P01–P17 / D0xx）唯一权威释义
+  references/                       # 按需参考 ×18 篇（核心：roles/artifacts/knowledge/standard；逐篇见 SKILL §6）
   benchmarks/                       # 基准调研 ×16 篇（决策号来源与实战取证；逐篇清单见 references/learned-skills.md「溯源档案」）
 ```
 

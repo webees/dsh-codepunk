@@ -631,8 +631,12 @@
     - id: tool-workflow
       name: '@deepseek-ai/dsh-tool-workflow'
 
+    # ralph 自行创建 fresh 子代理（不经本预设的 toolFilter / 人设），与本预设
+    # 「唯一能创建工人子代理的是你」的单一派遣入口纪律冲突；官方 standard 预设亦 `disabled: true`。
+    # 如需 fresh-agent 迭代，请显式开启并自行承担「孩子无过滤」的后果。
     - id: tool-ralph
       name: '@deepseek-ai/dsh-tool-ralph'
+      disabled: true
       config:
         subagentProvider: spawn
         maxRounds: 64

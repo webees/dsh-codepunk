@@ -97,7 +97,9 @@ PYEOF2
 
 # ── A3 准确性 ───────────────────────────────────────────────────────────────
 NB=$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')
-DOCB=$(grep -oE '×[0-9]+' README.md 2>/dev/null | head -1 | tr -d '×')
+# 只在 README 的 benchmarks/ 行上取计数：原文取「首个 ×N」，任何更早出现的 ×N
+# （如目录树里其它条目带计数）都会让本项误判为不准确。
+DOCB=$(grep -E '^\s+benchmarks/' README.md 2>/dev/null | grep -oE '×[0-9]+' | head -1 | tr -d '×')
 [ -n "$DOCB" ] && [ "$DOCB" != "$NB" ] && ded A3 20 "README 声称基准 ×${DOCB}，实测 ${NB}"
 NS=$(ls plans/*.sh 2>/dev/null | wc -l | tr -d ' ')
 DOCS=$(grep -cE '^\s+\S+\.sh\s+#' README.md 2>/dev/null)
