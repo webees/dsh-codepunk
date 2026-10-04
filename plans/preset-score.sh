@@ -64,7 +64,10 @@ TODO=$(git grep -nE "TODO|FIXME|XXX(?!X)|待补|待填|WIP" -- '*.md' '*.yml' 2>
 # 命令示例可执行性：SKILL 引用的脚本必须真实存在
 # （原实现只声明 BADCMD 却从不累加 —— 死分支，恒不扣分，属假满分口径）
 BADCMD=0
-for p in $(grep -oE '(plans|scripts)/[a-z0-9._-]+\.(sh|py|mjs)' "$SKILL" 2>/dev/null | sort -u); do
+# 扫描源：SKILL.md + references/*.md（benchmarks 属调研档案，含历史路径，排除）；
+# 带 ~ 的正式位写法（~/.dsh-codepunk/scripts/x.sh）先归一到 scripts/x.sh 再判定。
+SKILLREFS="$(ls "$SKILL" "$REF"/*.md 2>/dev/null | grep -v '/benchmarks/')"
+for p in $(grep -hoE '(~\.dsh-codepunk/)?(plans|scripts)/[a-z0-9._-]+\.(sh|py|mjs)' $SKILLREFS 2>/dev/null | sed 's#^~/\.dsh-codepunk/##' | sort -u); do
   case "$p" in
     plans/*)   [ -e "./$p" ] || BADCMD=$((BADCMD+1)) ;;
     scripts/*)
@@ -74,7 +77,7 @@ for p in $(grep -oE '(plans|scripts)/[a-z0-9._-]+\.(sh|py|mjs)' "$SKILL" 2>/dev/
       [ -e "${DSH_CODEPUNK_HOME:-$HOME/.dsh-codepunk}/$p" ] || [ -e "./plans/$_name" ] || BADCMD=$((BADCMD+1)) ;;
   esac
 done
-[ "$BADCMD" -gt 0 ] && ded A2 15 "SKILL 引用了不存在的脚本 $BADCMD 处"
+[ "$BADCMD" -gt 0 ] && ded A2 15 "SKILL/references 引用了不存在的脚本 $BADCMD 处"
 # 占位符标注检查（模板示例须标注）
 UNLABELED=$(grep -rnE "<[A-Z_]{3,}>" "$SKILL" 2>/dev/null | grep -vcE "占位|示例|模板|<project_id>|<run_id>|<task_id>|<PROVIDER>|<MODEL>" || true)
 [ "${UNLABELED:-0}" -gt 3 ] && ded A2 10 "未标注的占位符 ${UNLABELED} 处"
