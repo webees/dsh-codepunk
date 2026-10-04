@@ -25,7 +25,7 @@
 
 | # | 检查项 | 命令/做法 |
 |---|---|---|
-| 1 | 工作区状态 | `git status` —— 无意外 untracked/modified |
+| 1 | git 工作区（工作树）状态 | `git status` —— 无意外 untracked/modified |
 | 2 | 未跟踪文件 | `git status --porcelain` untracked 清单核对（产出物 vs 残留） |
 | 3 | 临时目录 | `ls $TMPDIR/dsh-codepunk/<task-id>/` 应空或已删 |
 | 4 | 怪异目录/文件 | 工作房内散落 `.log`/`.bak`/`~` 后缀/编号副本 |
