@@ -152,6 +152,7 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 | `bash plans/preset-audit.sh` | 6 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标 |
 | `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+脚本语法+DSH 兼容+声明漂移+E2E），10 项一次跑完 | 0=全通过 |
 | `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致 |
+| `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离形态） | 0=兼容 |
 | `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push） | 0=通过 |
 | `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（编号/约束词/阈值/路径/工具名/代码标识），改后逐项比对 | 0=零丢失 |
 
@@ -189,6 +190,7 @@ plans/                              # 工具脚本源副本（运行期正式位
   preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
   verify-battery.sh                 # 完整验证电池（10 项独立验证，单命令复跑）
   preset-declare.mjs                # preset 声明块生成/校验（emit / check / apply；DSH ≥0.1.7 注册模型）
+  preset-compat.py                  # 组合↔DSH 安装兼容核验（插件包 / 配置键 / 隔离形态）
   fidelity-gate.py                  # 语义保护闸（压缩前快照 / 压缩后比对，防语义丢失）
   windows/                          # Windows 原生（PowerShell）等价实现
     dsh-codepunk-home.ps1           # 共享路径常量（点源载入）

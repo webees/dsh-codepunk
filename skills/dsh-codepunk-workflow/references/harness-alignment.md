@@ -36,6 +36,7 @@
 ```bash
 node plans/preset-declare.mjs check     # 语义比对：漂移即 exit 1 并列出差异路径
 node plans/preset-declare.mjs apply     # 用源重写副本（自动备份；首次安装加 --append）
+python3 plans/preset-compat.py          # 组合↔DSH 安装兼容核验（需 DSH_APP_ROOT / DSH_ASAR）
 ```
 
 ## DSH 兼容核验（2.0.9，2026-09）

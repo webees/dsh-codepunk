@@ -83,24 +83,17 @@ if [ ! -f "$PV" ]; then
   p "ℹ" "PS 语法校验跳过（无校验器）：如需启用，见 README「PowerShell 校验」一节"
 fi
 
-# 8) DSH 兼容性（插件包存在性）
+# 8) DSH 兼容性（插件包存在 / 配置键被接受 / group 隔离形态）
 # DSH 0.1.7 起不再打包 app.asar，改为解包 app/ 目录；两种布局都支持，
-# 位置一律由环境变量给出（不硬编码任何平台路径）。
+# 位置一律由环境变量给出（不硬编码任何平台路径）。核验细节见 preset-compat.py。
 APPROOT="${DSH_APP_ROOT:-}"
 ASAR="${DSH_ASAR:-}"
-if [ -n "$APPROOT" ] && [ -d "$APPROOT/node_modules/@deepseek-ai" ]; then
-  M=0; N=0
-  for pkg in $(grep -oE "@deepseek-ai/(dsh-[a-z-]+)" agent.cordis.yml | sort -u); do
-    N=$((N+1))
-    [ -d "$APPROOT/node_modules/$pkg" ] || { p "✗" "缺包：$pkg"; M=$((M+1)); }
-  done
-  [ "$M" -eq 0 ] && p "✅" "DSH 兼容（$N 个插件包全在）" || { p "✗" "缺 $M 个包"; F=1; }
-elif [ -n "$ASAR" ] && [ -f "$ASAR" ]; then
-  M=0
-  for pkg in $(grep -oE "@deepseek-ai/(dsh-[a-z-]+)" agent.cordis.yml | sort -u); do
-    grep -qaF "$pkg" "$ASAR" 2>/dev/null || M=$((M+1))
-  done
-  [ "$M" -eq 0 ] && p "✅" "DSH 兼容（asar 内全在）" || { p "✗" "缺 ${M} 个包"; F=1; }
+if [ -n "$APPROOT" ] || [ -n "$ASAR" ]; then
+  if python3 plans/preset-compat.py >/dev/null 2>&1; then
+    p "✅" "DSH 兼容（插件包 / 配置键 / 隔离形态）"
+  else
+    p "✗" "DSH 兼容检查未通过（跑 python3 plans/preset-compat.py 看详情）"; F=1
+  fi
 else
   p "ℹ" "DSH 兼容检查跳过（未设 DSH_APP_ROOT / DSH_ASAR）"
 fi
