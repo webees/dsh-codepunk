@@ -305,7 +305,8 @@ if (action === 'apply') {
     console.log(`  ✅ 无需改动，副本已与源一致：${ID}`);
     process.exit(0);
   }
-  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+  // ISO 串含 '.'（毫秒前），只去 [-:T] 会让备份名以尾随点结尾；一并去掉 '.' 并截到秒。
+  const stamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
   const backup = `${PATCH}.bak-${stamp}`;
   copyFileSync(PATCH, backup);
   writeFileSync(PATCH, mergedText, 'utf8');

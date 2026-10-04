@@ -176,7 +176,14 @@ DN=$(grep -oE 'D0[0-9]{2}' "$SKILL" | sort -u | while read -r d; do grep -q "| $
 for f in plans/*.sh; do bash -n "$f" 2>/dev/null || ded B8 25 "bash -n 失败: $f"; done
 PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
 if [ -f "$PV" ] && command -v node >/dev/null 2>&1; then
-  node "$PV" plans/windows/*.ps1 >/dev/null 2>&1 || ded B8 25 "PowerShell 语法校验失败"
+  # ps-validate 退出码语义：0=通过 · 1=语法错误 · 2=依赖缺失（校验器不可用）。
+  # 把 2 与 1 混为一谈会错误归因为「语法失败」，故分列。
+  node "$PV" plans/windows/*.ps1 >/dev/null 2>&1; PV_RC=$?
+  case "$PV_RC" in
+    0) ;;
+    2) echo "  ℹ PowerShell 校验器依赖缺失（退出码 2），本次跳过；启用见 README「PowerShell 校验」" >&2 ;;
+    *) ded B8 25 "PowerShell 语法校验失败（退出码 $PV_RC）" ;;
+  esac
 else
   echo "  ℹ PowerShell 语法校验跳过：无校验器（\$PV）。启用：见 README「PowerShell 校验」" >&2
 fi

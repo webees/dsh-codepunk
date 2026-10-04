@@ -72,7 +72,10 @@ def main():
         if os.path.exists(SNAP):
             print(f"  ⚠ 覆盖既有基线快照（原基准将被替换）: {SNAP}")
         snap = {f: extract(f) for f in files()}
-        os.makedirs(os.path.dirname(SNAP), exist_ok=True)
+        # SNAP 取相对文件名（无目录部分）时 dirname 为空串，makedirs('') 会抛异常
+        _d = os.path.dirname(SNAP)
+        if _d:
+            os.makedirs(_d, exist_ok=True)
         json.dump(snap, open(SNAP, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
         tot = sum(len(v) for d in snap.values() for v in d.values())
         print(f"✓ 快照已存：{len(snap)} 文件，{tot:,} 个受保护 token")

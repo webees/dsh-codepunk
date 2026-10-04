@@ -40,7 +40,13 @@ m_validated = re.search(r'validated_at:\s*"?([^"\n]+)"?', src)
 validated_at = m_validated.group(1).strip() if m_validated else None
 
 # 交付目录 mtime（R12 ④）
+# 未提供或目录不存在时必须显式记为「未检」，否则结论会宣称已做时间序断言（假保证）。
+TIME_CHECKED = False
 if delivery and os.path.isdir(delivery):
+    TIME_CHECKED = True
+else:
+    warnings.append("⑤ 时间序未检（未提供交付目录或目录不存在）—— R12 基线断言本次未执行")
+if TIME_CHECKED:
     mtime = datetime.datetime.fromtimestamp(os.path.getmtime(delivery))
     if validated_at:
         try:
@@ -136,7 +142,7 @@ if problems:
     for p in problems:
         print("  ❌ " + p)
 else:
-    print("PASS: 全部断言通过（command 可执行 / log_ref 存在 / 时间序成立）")
+    print("PASS: 断言通过（command 可执行 / log_ref 存在" + (" / exit_code=0 / 时间序成立" if TIME_CHECKED else " / exit_code=0；时间序未检，见 WARN") + "）")
 if warnings:
     print("WARN:")
     for w in warnings:
