@@ -33,6 +33,7 @@
 > 历史姿态 D090「13 岗位全部显式 agentOptions」的前提已反转，仅作沿革保留。
 > 例外：`subagent_codex` / `subagent_claude_code` 是外部后端（`provider: codex` / `claude-code`，`maxDepth: provider-managed`），
 > 不套本表，也不得被改成主 provider 路由。
+> **本预设中这两个条目 `disabled: true`**（需本地安装对应 CLI 才能用）：如需启用，把 `agent.cordis.yml` 中对应条目的 `disabled` 去掉，并确认 CLI 在 PATH 内；其子代理为一次性（外部后端无 `prepareContinuable`，见 harness-alignment），不受岗位白名单约束。
 
 ## 二、成本杠杆纪律（D078，基于 dsh-deepseek 定价）
 
