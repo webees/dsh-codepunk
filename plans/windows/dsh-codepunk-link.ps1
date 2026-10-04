@@ -226,6 +226,19 @@ function Invoke-Register([string]$targetIn, [string]$id) {
     if ($root -and (Normalize-Path $root) -eq $target) { Write-Err "已存在，不覆盖: project_root=$target 已在 INDEX.yaml（追加语义）"; $script:rc = 1; return }
   }
 
+  # 确认（与 POSIX 版等价：非 TTY 且无 -y 时拒绝，防自动化误写）
+  if (-not $Yes) {
+    if ([Console]::IsInputRedirected) {
+      Write-Err 'stdin 非 TTY 无法交互确认；确认后请加 -y 跳过确认'
+      $script:rc = 1; return
+    }
+    $ans = Read-Host "确认注册 $id ← $target 到 $DSH_CODEPUNK_INDEX？[y/N]"
+    if ($ans -notmatch '^(?i)y(es)?$') {
+      Write-Err '已取消，未写入 INDEX.yaml'
+      $script:rc = 1; return
+    }
+  }
+
   # 归一空内联列表：init 骨架写 `projects: []`，其后不能再追加列表项
   #   （否则产出非法 YAML）。先改为 `projects:` 再追加。
   $idxText = [System.IO.File]::ReadAllText($DSH_CODEPUNK_INDEX, [System.Text.Encoding]::UTF8)
