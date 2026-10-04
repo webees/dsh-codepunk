@@ -102,26 +102,37 @@ fi
 # ── 扫描 ──────────────────────────────────────────────────────────────────
 HITS=0
 scan_stream() { # $1=描述  $2=内容流
-  local label="$1" content="$2" pat="$GENERIC" line
+  local label="$1" content="$2" pat="$GENERIC" line term tmp c m
+  # 内容落临时文件后按文件检索。
+  # 关键：不得用 `printf … | grep -q`——命中时 grep 提前退出会让上游 printf 收
+  # SIGPIPE(141)，在本脚本的 `set -o pipefail` 下整条管道判为失败，命中反被吞掉
+  # （内容超过管道缓冲区 64KB 时必现，实测 tree 模式聚合 444KB → 全部命中漏检）。
+  tmp="$(mktemp)" || return 0
+  printf '%s\n' "$content" > "$tmp"
+
   # 通用模式
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    if printf '%s\n' "$content" | grep -nE -- "$line" | grep -qvE 'noreply\.github\.com'; then
-      printf '%s\n' "$content" | grep -nE -- "$line" | grep -vE 'noreply\.github\.com' | head -3 | while IFS= read -r m; do
-        printf '  [通用] %s :: %s\n' "$label" "$(printf '%.160s' "$m")"
-      done
+    m="$(grep -nE -- "$line" "$tmp" 2>/dev/null | grep -vE 'noreply\.github\.com' | head -3)"
+    if [ -n "$m" ]; then
+      while IFS= read -r x; do
+        printf '  [通用] %s :: %s\n' "$label" "$(printf '%.160s' "$x")"
+      done <<< "$m"
       HITS=$((HITS+1))
     fi
   done <<< "$pat"
-  # 禁词
+
+  # 禁词（-c 不加 -q：计数即判定，避免提前退出）
   while IFS= read -r term; do
     [ -z "$term" ] && continue
-    if printf '%s\n' "$content" | grep -nFiq -- "$term"; then
-      c=$(printf '%s\n' "$content" | grep -ncFi -- "$term")
+    c="$(grep -cFi -- "$term" "$tmp" 2>/dev/null || true)"
+    if [ "${c:-0}" -gt 0 ]; then
       printf '  [禁词] %s :: 命中 %s 次（词已脱敏）\n' "$label" "$c"
       HITS=$((HITS+1))
     fi
   done <<< "$DENY"
+
+  rm -f "$tmp"
 }
 
 case "$MODE" in
