@@ -34,10 +34,14 @@ print(bad)
 PY
 )
 [ "${H:-0}" -eq 0 ] && p "✅" "格式/换行/空白 全清" || { p "✗" "格式卫生 ${H} 处"; F=1; }
-# 5) 物理杂散
+# 5) 物理杂散（含被 .gitignore 忽略的游离物——本仓是白名单式 ignore，
+#    故任何被忽略文件都是意外产物；原检查只看 .DS_Store 与未跟踪会漏检 .bak 等）
 S=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
 U=$(git status --short 2>/dev/null | grep -c '^??' || true)
-[ "$S" -eq 0 ] && [ "${U:-0}" -eq 0 ] && p "✅" "无杂散（.DS_Store/未跟踪）" || { p "✗" "杂散: DS=${S} untracked=${U}"; F=1; }
+I=$(git status --ignored --short 2>/dev/null | grep '^!!' | grep -v '/\.DS_Store$' | grep -vc '^\.DS_Store$' || true)
+[ "$S" -eq 0 ] && [ "${U:-0}" -eq 0 ] && [ "${I:-0}" -eq 0 ] \
+  && p "✅" "无杂散（.DS_Store/未跟踪/被忽略游离物）" \
+  || { p "✗" "杂散: DS=${S} untracked=${U} ignored=${I}"; F=1; }
 # 6) 结构（围栏/标题/引用）
 if python3 - <<'PY' >/dev/null 2>&1
 import subprocess, re, sys, os
