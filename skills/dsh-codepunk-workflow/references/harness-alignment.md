@@ -21,7 +21,12 @@
 | 目标命令（人类通道） | `dsh-command-goal`（`/goal` 设置或查看长任务目标） | 与 `dsh-tool-goal`（模型通道）配对；两者注入同一个 `goals` 服务 |
 | 交付物声明 | `dsh-tool-present`（`present` 工具：把产出文件标记为最终交付） | 注入 `tools`/`fs`/`sessionProjections`；主会话用它汇总交付 |
 
-## DSH 兼容核验（2.0.17，2026-10）
+## DSH 兼容核验（应用 2.0.17 / CLI 包 0.2.0-rc.2，2026-10）
+
+> **两套版本号（勿混用）**：DSH 桌面**应用版本**与 **CLI/包版本**是两个独立系列，实测取值——
+> 应用版本：`plutil -extract CFBundleShortVersionString raw "<DSH 应用包>/Contents/Info.plist"`（本次实测 `2.0.17`；应用包路径按本机安装位置取，勿写死）；
+> CLI/包版本：`dsh --version`（本次 `0.2.0-rc.2`）。
+> 本文按**事实来源**分别标注：应用布局/包名变更（如 asar 解包、`dsh-workflow-worker-thread` 并入）引应用版本；插件源码行为（如子代理路由）引包版本。核验前先各自取值，勿以一个数推断另一个。
 
 **2.0.17 三项破坏性变更**（均已适配并实测）：
 
