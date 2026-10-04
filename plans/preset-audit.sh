@@ -128,6 +128,37 @@ echo "[组E 文档层 10]"
 EC=$(grep -c "^## " README.md)
 [ "$EC" -ge 7 ] && report "$PASS" "E2 README ${EC} 节 ≥7" || report "$FAIL" "E2 README ${EC} 节 <7"
 
+# E3 仓内相对链接可达性（死链 = 读者可见缺陷；实测原三检查器全漏）
+E3=$(python3 - <<'PYEOF'
+import os, re, subprocess
+files = [f for f in subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
+         if f.endswith('.md')]
+bad = []
+for f in files:
+    txt = open(f, encoding='utf-8', errors='ignore').read()
+    out, infence = [], False
+    for ln in txt.split('\n'):
+        if ln.startswith('```'):
+            infence = not infence
+            continue
+        out.append('' if infence else ln)
+    body = '\n'.join(out)
+    for m in re.finditer(r'\]\(([^)\s]+)\)', body):
+        t = m.group(1).strip().strip('<>')
+        if t.startswith(('http://', 'https://', 'mailto:', 'tel:', '#')):
+            continue
+        t = t.split('#')[0]
+        if not t:
+            continue
+        if os.path.exists(t) or os.path.exists(os.path.join(os.path.dirname(f), t)):
+            continue
+        bad.append(f'{f} → {t}')
+print(' '.join(bad[:3]))
+PYEOF
+)
+[ -z "$E3" ] && report "$PASS" "E3 仓内相对链接均可达" \
+             || report "$FAIL" "E3 死链: $E3"
+
 echo "[组F 工具层 10]"
 FSYNC=$(for p in plans/*.sh; do f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "${f%.sh}"; done)
 # Windows 侧（plans/windows/*.ps1）与总库 scripts/ 同源对照
