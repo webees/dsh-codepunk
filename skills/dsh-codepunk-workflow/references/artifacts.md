@@ -249,7 +249,8 @@ projects/<project_id>/          # 项目总库根，= 运行根 DSH_CODEPUNK_PRO
   change_orders/<id>.yaml       # 变更单 D038
   approvals/merge.yaml          # 合并门批准（阶段 ⑤ 后段）
   runs/<run_id>/                # 每轮独立目录
-    briefs/  research/briefs/<topic>.md  docs/memory/
+    research/briefs/<topic>.md   # 调研简报（任务简报在 tasks/<task_id>/brief/，勿混）
+    docs/memory/
     reviews/<task_id>.md        # 审查记录 Reviewed-by + pass|needs-work
     errors/YYYY-MM-DD.md        # 错误日志 collected→…→closed
     rooms/squad-<task_id>/      # S 规模工作房（工程根内，非总库）
