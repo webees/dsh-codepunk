@@ -184,6 +184,7 @@ LICENSE                             # MIT
 .gitattributes                      # 换行策略（仓库内 LF；.ps1 检出 CRLF）
 .gitignore                          # 白名单式忽略（运行状态不入仓）
 plans/                              # 工具脚本源副本（运行期正式位见 SKILL.md §1.1）
+  dsh-codepunk-home.sh              # 共享路径常量（source 载入；init 会安装到总库根并前置 PATH）
   dsh-codepunk-link.sh              # 项目↔总库关联解析（resolve / index / register）
   dsh-codepunk-init.sh              # 总库骨架幂等初始化
   verify-worktree.sh                # worktree 落点纪律核验

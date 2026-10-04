@@ -14,10 +14,22 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/dsh-codepunk-home.sh" ]]; then
-  source "$SCRIPT_DIR/dsh-codepunk-home.sh"
+
+# 常量来源三态（fresh 机器必须能跑通：仓内副本 → 总库已装副本 → 内联兜底）：
+# 早期实现只 source 前两者，仓内缺副本时 fresh 机器直接失败（set -e 令 init 退出），
+# 而 README/SKILL 的第二步正是 source 该文件——属首次部署阻断缺陷。
+HOME_SH_SRC="$SCRIPT_DIR/dsh-codepunk-home.sh"
+HOME_SH_DST="$HOME/.dsh-codepunk/dsh-codepunk-home.sh"
+if [[ -f "$HOME_SH_SRC" ]]; then
+  source "$HOME_SH_SRC"
+elif [[ -f "$HOME_SH_DST" ]]; then
+  source "$HOME_SH_DST"
 else
-  source "$HOME/.dsh-codepunk/dsh-codepunk-home.sh"
+  export DSH_CODEPUNK_HOME="${DSH_CODEPUNK_HOME:-$HOME/.dsh-codepunk}"
+  export DSH_CODEPUNK_PROJECTS="$DSH_CODEPUNK_HOME/projects"
+  export DSH_CODEPUNK_INDEX="$DSH_CODEPUNK_HOME/INDEX.yaml"
+  export DSH_CODEPUNK_WORKTREES="$DSH_CODEPUNK_HOME/worktrees"
+  export DSH_CODEPUNK_SCRIPTS="$DSH_CODEPUNK_HOME/scripts"
 fi
 
 CHECK_ONLY=0
@@ -25,6 +37,42 @@ CHECK_ONLY=0
 
 fail() { echo "✗ $*" >&2; exit 1; }
 pass() { echo "✓ $*"; }
+
+# --- 0. 安装路径常量文件到总库根（README/SKILL 承诺的 source 路径） ---------------
+install_home_sh() {
+  [[ -f "$HOME_SH_SRC" ]] || return 0          # 无源副本（内联兜底路径）时不安装
+  mkdir -p "$DSH_CODEPUNK_HOME"
+  if [[ -f "$HOME_SH_DST" ]] && cmp -s "$HOME_SH_SRC" "$HOME_SH_DST"; then
+    return 0
+  fi
+  if (( CHECK_ONLY )); then
+    fail "路径常量文件缺失或过期: $HOME_SH_DST（运行本体脚本安装）"
+  fi
+  cp "$HOME_SH_SRC" "$HOME_SH_DST"
+  chmod +x "$HOME_SH_DST"
+  pass "已安装路径常量: $HOME_SH_DST"
+}
+install_home_sh
+
+# --- 0b. 发布无扩展名入口（README/SKILL 用的是裸命令形态，如 dsh-codepunk-link） ---
+# 源脚本名带 .sh；文档写 `dsh-codepunk-link resolve …`。补符号链接使 PATH 生效后
+# 文档命令可用（幂等：已存在且指向正确即跳过）。
+publish_bare_commands() {
+  local src base dst
+  for src in "$DSH_CODEPUNK_SCRIPTS"/dsh-codepunk-*.sh; do
+    [[ -f "$src" ]] || continue
+    base="$(basename "$src" .sh)"
+    dst="$DSH_CODEPUNK_SCRIPTS/$base"
+    [[ -L "$dst" && "$(readlink "$dst")" == "$(basename "$src")" ]] && continue
+    if (( CHECK_ONLY )); then
+      [[ -e "$dst" ]] || fail "缺无扩展名入口: $dst（运行本体脚本发布）"
+      continue
+    fi
+    ln -sf "$(basename "$src")" "$dst"
+    pass "已发布入口: $base"
+  done
+}
+publish_bare_commands
 
 # --- 1. 目录骨架（mkdir -p 幂等） -------------------------------------------------
 for d in "$DSH_CODEPUNK_PROJECTS" "$DSH_CODEPUNK_WORKTREES" "$DSH_CODEPUNK_SCRIPTS"; do

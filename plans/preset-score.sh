@@ -61,12 +61,16 @@ done
 # ── A2 质量 ─────────────────────────────────────────────────────────────────
 TODO=$(git grep -nE "TODO|FIXME|XXX(?!X)|待补|待填|WIP" -- '*.md' '*.yml' 2>/dev/null | grep -viE "todo_write|allowParallel|todo\b" | head -3)
 [ -n "$TODO" ] && ded A2 20 "占位残留: $(echo "$TODO" | head -1 | cut -c1-70)"
-# 命令示例可执行性：SKILL 内 bash 代码块
+# 命令示例可执行性：SKILL 引用的脚本必须真实存在
+# （原实现只声明 BADCMD 却从不累加 —— 死分支，恒不扣分，属假满分口径）
 BADCMD=0
-for c in $(grep -oE '^\s*(dsh-codepunk-[a-z-]+|bash plans/[a-z-]+\.sh)[^|]*' "$SKILL" 2>/dev/null | head -20); do
-  case "$c" in *"<"*) continue;; esac   # 跳过含占位符的示例
+for p in $(grep -oE '(plans|scripts)/[a-z0-9._-]+\.(sh|py|mjs)' "$SKILL" 2>/dev/null | sort -u); do
+  case "$p" in
+    plans/*)   [ -e "./$p" ] || BADCMD=$((BADCMD+1)) ;;
+    scripts/*) [ -e "${DSH_CODEPUNK_HOME:-$HOME/.dsh-codepunk}/$p" ] || BADCMD=$((BADCMD+1)) ;;
+  esac
 done
-[ "$BADCMD" -gt 0 ] && ded A2 15 "不可执行的命令示例 $BADCMD 处"
+[ "$BADCMD" -gt 0 ] && ded A2 15 "SKILL 引用了不存在的脚本 $BADCMD 处"
 # 占位符标注检查（模板示例须标注）
 UNLABELED=$(grep -rnE "<[A-Z_]{3,}>" "$SKILL" 2>/dev/null | grep -vcE "占位|示例|模板|<project_id>|<run_id>|<task_id>|<PROVIDER>|<MODEL>" || true)
 [ "${UNLABELED:-0}" -gt 3 ] && ded A2 10 "未标注的占位符 ${UNLABELED} 处"

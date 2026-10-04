@@ -8,7 +8,7 @@
 # 对 sdet 产出的 evidence.yaml 做四条机械断言（任一 FAIL 即打回）：
 #   ① command 可执行性：非 N/A 命令须以真实可执行前缀开头，且不得含描述性文本
 #   ② log_ref 文件真实存在（相对路径以交付目录为基）
-#   ③ exit_code 声明为常见值
+#   ③ exit_code 必须为 0（非 0 即判 FAIL：证据门定义是「成功命令 + exit_code=0 + log 引用」）
 #   ④ validated_at 晚于交付目录 mtime（R12 数值断言，替代 LLM 目测）
 #   ⑤ 输出 verdict 供合并门/评分门机械采信（PASS 且全部断言真）
 #
@@ -23,7 +23,11 @@ DELIVERY_DIR="${2:-}"
 [ -f "$EVID" ] || { echo "❌ [fetch] evidence 文件不存在: $EVID"; exit 1; }
 
 # --- 用 python3 做结构化断言（无 pyyaml 时手解析，健壮优先） ---
-python3 - "$EVID" "$DELIVERY_DIR" <<'PYEOF' > /tmp/ev_verify.out 2>&1
+# 输出落进程私有临时文件：固定路径（历史实现为 /tmp 下固定名）可被符号链接劫持（覆盖任意文件），
+# 且并发调用会互相顶替 verdict（实测 80 对并发中 33 次退出码与输入不符）。
+EV_OUT="$(mktemp "${TMPDIR:-/tmp}/ev_verify.XXXXXX")" || { echo "❌ 无法创建临时文件"; exit 2; }
+trap 'rm -f "$EV_OUT"' EXIT
+python3 - "$EVID" "$DELIVERY_DIR" <<'PYEOF' > "$EV_OUT" 2>&1
 import re, os, sys, datetime
 
 f, delivery = sys.argv[1], sys.argv[2] or ""
@@ -115,9 +119,13 @@ for e in entries:
             cands.insert(0, os.path.join(delivery, "evidence", "logs", base_log.lstrip("logs/")))
         if not any(os.path.exists(c) for c in cands):
             problems.append(f"[{evid}] log_ref 文件不存在: {log_s}")
-    # ③ exit_code 声明合理性
-    if rc_s and rc_s not in ("0", "1", "2", "127", "128"):
-        warnings.append(f"[{evid}] exit_code 非常见值: {rc_s}")
+    # ③ exit_code 必须为 0（D074「command + exit_code=0 + log_ref」是证据门的定义；
+    #    非 0 表示命令未成功，不得作为通过性证据。原先仅对「非常见值」告警、不判失败，
+    #    使失败命令也能拿到 verdict=PASS → 合并门前置失效。）
+    if rc_s == "":
+        problems.append(f"[{evid}] 缺 exit_code（证据须含 command + exit_code + log_ref）")
+    elif rc_s.strip() != "0":
+        problems.append(f"[{evid}] exit_code={rc_s} ≠ 0 —— 非成功命令不得作为通过性证据（需重跑并附 exit_code=0 的日志）")
 
 print("=" * 52)
 print(f"evidence: {f}")
@@ -135,5 +143,5 @@ if warnings:
         print("  ⚠ " + w)
 print(f"verdict={'FAIL' if problems else 'PASS'}")
 PYEOF
-cat /tmp/ev_verify.out
-grep -q "verdict=PASS" /tmp/ev_verify.out && exit 0 || exit 1
+cat "$EV_OUT"
+grep -q "verdict=PASS" "$EV_OUT" && exit 0 || exit 1
