@@ -270,6 +270,21 @@ function Invoke-Register([string]$targetIn, [string]$id) {
   while ($body.Count -gt 0 -and $body[$body.Count - 1].Trim() -eq '') {
     if ($body.Count -eq 1) { $body = @() } else { $body = @($body[0..($body.Count - 2)]) }
   }
+  # 结构守卫（与 POSIX 端口等价）：INDEX 顶层键只允许 schema_version / projects / last_updated。
+  # 其它顶层键夹在列表中会让追加的条目落到列表之外，产出非法 YAML（历史事故，真实解析器拒读）。
+  $stray = @()
+  foreach ($l in [System.IO.File]::ReadAllLines($DSH_CODEPUNK_INDEX, [System.Text.Encoding]::UTF8)) {
+    if ($l.Trim() -eq '' -or $l.StartsWith(' ') -or $l.StartsWith("`t") -or $l.StartsWith('#')) { continue }
+    if ($l -notmatch '^(schema_version|projects|last_updated):') { $stray += $l.Trim() }
+  }
+  if ($stray.Count -gt 0) {
+    Copy-Item -LiteralPath $bak -Destination $DSH_CODEPUNK_INDEX -Force -ErrorAction SilentlyContinue | Out-Null
+    Remove-Item -LiteralPath $bak -Force -ErrorAction SilentlyContinue
+    Write-Err ("INDEX 含未知顶层键：" + ($stray -join ', '))
+    $script:rc = 1
+    return
+  }
+
   $out = @($body) + $entry + @("last_updated: $ts")
   [System.IO.File]::WriteAllText($DSH_CODEPUNK_INDEX, (($out -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
@@ -277,9 +292,15 @@ function Invoke-Register([string]$targetIn, [string]$id) {
   $verify = [System.IO.File]::ReadAllLines($DSH_CODEPUNK_INDEX, [System.Text.Encoding]::UTF8)
   $lastNonEmpty = ($verify | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 1)
   if ($lastNonEmpty -notmatch '^last_updated:') {
-    Copy-Item -LiteralPath $bak -Destination $DSH_CODEPUNK_INDEX -Force
-    Remove-Item -LiteralPath $bak -Force
-    Write-Err "写入后校验失败（last_updated 非末行），已回滚: $DSH_CODEPUNK_INDEX"
+    # 回滚成功才清理备份并报「已回滚」；回滚自身失败必须显式报出并保留备份（勿假称已回滚）
+    try {
+      Copy-Item -LiteralPath $bak -Destination $DSH_CODEPUNK_INDEX -Force -ErrorAction Stop
+      Remove-Item -LiteralPath $bak -Force -ErrorAction SilentlyContinue
+      Write-Err "写入后校验失败（last_updated 非末行），已回滚到写入前状态: $DSH_CODEPUNK_INDEX"
+    } catch {
+      Write-Err "写入后校验失败，且**回滚失败**：$($_.Exception.Message)"
+      Write-Err "请手工恢复——备份保留在 $bak"
+    }
     $script:rc = 1
     return
   }
