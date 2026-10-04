@@ -102,7 +102,7 @@ node plans/preset-declare.mjs check    # 漂移即非零退出并列出差异路
 - 目录结构必须含 `agent.cordis.yml`（组合：persona + 工具 + realm）与 `skills/`（playbook）；`preset.yml` 为可选展示描述。
 - `plans/` 工具脚本为源副本，不随预设复制；运行期装配与正式位见流程手册 `SKILL.md` §1.1。
 - 声明在**进程启动时读取**，改动后须重启 DSH Desktop 生效。
-- **DSH 0.1.7 起不再打包 `app.asar`**，改为解包 `app/` 目录；本仓所有依赖 DSH 安装位置的检查一律取环境变量（`DSH_APP_ROOT` 或 `DSH_ASAR`、`DSH_PROFILE_PATCH`），不硬编码任何平台路径。
+- **解包布局**：DSH 2.0.10 仍为 `app.asar` 打包，2.0.12 起改为解包 `Contents/Resources/app/`（实测：2.0.10 可解析 asar 头部索引，2.0.12 起该文件不存在）。本仓所有依赖 DSH 安装位置的检查一律取环境变量（`DSH_APP_ROOT` 或 `DSH_ASAR`、`DSH_PROFILE_PATCH`），不硬编码任何平台路径，两种布局都支持。
 - 挂载校验：`dsh-agent-presets` 对组合做形状检查（顶层列表 + 每行有 `name` + group 递归），并用 `entryListSchema`（含 `!!js`）解析；格式/语义错误会标记为 broken roster row。
 
 ### 运行引导（工程主责）

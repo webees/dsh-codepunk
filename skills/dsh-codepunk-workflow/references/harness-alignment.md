@@ -28,7 +28,7 @@
 | 变更 | 实测结论 | 本仓适配 |
 |---|---|---|
 | 注册表不再扫描预设目录 | `dsh-agent-preset-registry` 的 `definitions` 只由声明方插件 `register()` 填充；`~/.dsh/.agent-presets/<id>/` 既不被扫描，也不接受 preset 路径。旧式目录预设的会话恢复报 `Unknown agent preset: <id>` | 以 `@deepseek-ai/dsh-agent-preset` 声明行注入 profile patch；生成与漂移校验见 `plans/preset-declare.mjs`（`emit`/`check`/`apply`） |
-| 不再打包 `app.asar` | 应用改为解包目录 `Contents/Resources/app/`，插件在 `app/node_modules/@deepseek-ai/`；凡指向 `app.asar/...` 的路径失效 | 所有依赖安装位置的检查改取环境变量：`DSH_APP_ROOT`（解包目录）/ `DSH_ASAR`（旧布局）/ `DSH_PROFILE_PATCH`；`verify-battery.sh` 两种布局都支持 |
+| `app.asar` → 解包 `app/` | 应用改为解包目录 `Contents/Resources/app/`，插件在 `app/node_modules/@deepseek-ai/`；凡指向 `app.asar/...` 的路径失效（实测：2.0.10 仍为 asar，2.0.12 起解包） | 所有依赖安装位置的检查改取环境变量：`DSH_APP_ROOT`（解包目录）/ `DSH_ASAR`（旧布局）/ `DSH_PROFILE_PATCH`；`verify-battery.sh` 两种布局都支持 |
 | `dsh-workflow-worker-thread` 并入 | 该包名在 2.0.17 已不存在，保留旧名会让 preset 挂载失败 | 改用 `@deepseek-ai/dsh-workflow-ptc`（`id: workflow-ptc`） |
 
 **组合双表示与漂移风险**：同一份组合存在于两处——`agent.cordis.yml`（源，权威）与 profile patch 内的 `plugins:` 内联副本（进程实读）。副本必须由源生成；唯一必要适配是 `customSkillDirs` 的 `baseUrl` 基准变化（内联后指向 profile 目录，须改写为回到预设目录的相对路径），`preset-declare.mjs` 生成时自动加、`check` 比对时自动归一。

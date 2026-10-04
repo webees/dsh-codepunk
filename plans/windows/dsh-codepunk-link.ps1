@@ -234,20 +234,43 @@ function Invoke-Register([string]$targetIn, [string]$id) {
 
   $dcp = Join-Path $DSH_CODEPUNK_HOME "projects/$id"
   $ts  = (Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')
-  $block = @"
+  $entry = @(
+    "  - project_id: $id",
+    "    project_root: $target",
+    "    dsh_codepunk_path: $dcp",
+    "    migrated_at: null",
+    "    source: register"
+  )
 
-  - project_id: $id
-    project_root: $target
-    dsh_codepunk_path: $dcp
-    migrated_at: null
-    source: register
-"@
-  # 追加到 projects: 列表末尾（文件末尾追加，缩进与 init 骨架一致）
-  $content = [System.IO.File]::ReadAllText($DSH_CODEPUNK_INDEX, [System.Text.Encoding]::UTF8)
-  $content = $content.TrimEnd("`r", "`n") + "`n" + $block.TrimStart("`n")
-  # 刷新 last_updated
-  $content = [regex]::Replace($content, '(?m)^last_updated:.*$', "last_updated: $ts")
-  [System.IO.File]::WriteAllText($DSH_CODEPUNK_INDEX, $content, (New-Object System.Text.UTF8Encoding($false)))
+  # 写入前备份（与 POSIX 版一致）
+  $bak = "$DSH_CODEPUNK_INDEX.bak-" + (Get-Date).ToString('yyyyMMddHHmmss')
+  Copy-Item -LiteralPath $DSH_CODEPUNK_INDEX -Destination $bak -Force
+
+  # 条目并入 projects 列表末尾，last_updated 恒置文件末行。
+  # 旧实现先追加到文件末尾、再就地刷新 last_updated，会让条目落在 last_updated 之后，
+  # 产出非法 YAML（真实解析器拒读）——与 POSIX 版同源缺陷，此处按同一不变量重写。
+  $lines = [System.IO.File]::ReadAllLines($DSH_CODEPUNK_INDEX, [System.Text.Encoding]::UTF8)
+  $body = @()
+  foreach ($ln in $lines) {
+    if ($ln -notmatch '^last_updated:') { $body += $ln }
+  }
+  while ($body.Count -gt 0 -and $body[$body.Count - 1].Trim() -eq '') {
+    if ($body.Count -eq 1) { $body = @() } else { $body = @($body[0..($body.Count - 2)]) }
+  }
+  $out = @($body) + $entry + @("last_updated: $ts")
+  [System.IO.File]::WriteAllText($DSH_CODEPUNK_INDEX, (($out -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
+
+  # 写入后校验：last_updated 必须是最后一个非空行，否则回滚（防结构损坏长期潜伏）
+  $verify = [System.IO.File]::ReadAllLines($DSH_CODEPUNK_INDEX, [System.Text.Encoding]::UTF8)
+  $lastNonEmpty = ($verify | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 1)
+  if ($lastNonEmpty -notmatch '^last_updated:') {
+    Copy-Item -LiteralPath $bak -Destination $DSH_CODEPUNK_INDEX -Force
+    Remove-Item -LiteralPath $bak -Force
+    Write-Err "写入后校验失败（last_updated 非末行），已回滚: $DSH_CODEPUNK_INDEX"
+    $script:rc = 1
+    return
+  }
+  Remove-Item -LiteralPath $bak -Force
   Write-Output "OK 已登记: project_id=$id"
   Write-Output "   project_root=$target"
   Write-Output "   dsh-codepunk_path=$dcp"
