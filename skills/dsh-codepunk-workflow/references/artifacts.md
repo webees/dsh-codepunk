@@ -43,6 +43,17 @@ chunks:
     status: planned                # planned → ready → in_progress → testing → handoff → done
 ```
 
+**迁移主体与触发条件（单点权威，`chunks.yaml` 是唯一的进度板）**——除首末两条外，以下三条此前无归属，现明确为 **run-lead 观测到事件后写**（状态文件只由 run-lead 写）：
+
+| 迁移 | 主体 | 触发条件（可观测） |
+| --- | --- | --- |
+| `planned → ready` | run-lead | 依赖已满足（无 `depends_on` 或依赖项均 `done`） |
+| `ready → in_progress` | run-lead | **派发该 chunk 的实现三角时**（双门闩齐、三席已 spawn） |
+| `in_progress → testing` | run-lead | 收到 engineer 交付（工作房 `artifact_index.md`/`evidence.yaml` 落盘、`git diff` 非空）且 sdet 已开工验收 |
+| `testing → handoff` | run-lead | sdet 验收通过并产出交接包（`handoff/` 齐、审查门过） |
+| `handoff → done` | run-lead | 接收方签收后置 done（**两处齐**：`chunks.yaml` chunk 态 + `agents.yaml` 席位态，见 SKILL ⑤） |
+
+
 ## 工作简报（②，你签发）
 
 `tasks/<task_id>/brief/WORK_BRIEF.md`：目标 / 边界 / acceptance / 禁区 / 必读 refs / 席位侧重。

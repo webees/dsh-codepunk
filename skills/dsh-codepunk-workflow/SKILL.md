@@ -37,7 +37,7 @@ metadata:
 
 1. 每工程目标用 `create_goal` 建会话级 goal 并保持 active（create 即 armed）；`maxGoalRounds` 默认 256 为轮次预算。
 2. armed 后每次 idle 由 host `goal-round-driver` 预留 `<goal_round>` 领起 inbox 排队的回报（结算通知/report）；否则堆积、须 sponsor 手动点「立即」递送。
-3. 恢复（resume/fork）后续行状态**进程本地**：MUST 先 `get_goal` 查 phase，非 active+armed 即 `resume`（`update_goal resume`）再开工；`goal blocked`/halt 时 MUST NOT 新 spawn。
+3. 恢复（resume/fork）后续行状态**进程本地**：MUST 先 `get_goal` 查 phase，非 active+armed 即 `resume`（`update_goal resume`）再开工；`goal blocked`/halt 时 MUST NOT 新 spawn；**解除 blocked 只能由人类发起**——平台规定 `edit`/`pause`/`resume` 均须**人类直请**，agent 自行 `update_goal resume` 会被拒（死路，勿试）：报错即停、把阻塞事实（同一条件连续轮次）写进运行根并**向人类上报请求恢复**；另：`blocked` 本身在达到配置的最小轮数前也会被平台拒绝（不可提前标阻塞）。
 4. 收尾：`get_goal` 收齐证据（evidence/acceptance 签收 + 总索引 + merge 留痕）→ `update_goal complete`。
 
 > 详述（`dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`、`/goal` 与 `tool-goal` 装配、`benchmarks/deepseek-harness-study.md` §2.3）见 `references/harness-alignment.md`「§0.1 展开」；D066；承重 R10 / R12。

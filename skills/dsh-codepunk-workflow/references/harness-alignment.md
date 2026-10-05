@@ -6,7 +6,7 @@
 
 | dsh-codepunk 概念 | 官方机制（包/文档） | 备注 |
 |---|---|---|
-| goal 自动续行 / 结算自动递送 | `dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`（§0.1） | 词汇 Goal→Round→Turn→Step；armed 进程本地；resume 需人类消息 |
+| goal 自动续行 / 结算自动递送 | `dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`（§0.1） | 词汇 Goal→Round→Turn→Step；armed 进程本地；resume 需人类消息 |　**动作权限（实测契约）**：`edit`/`pause`/`resume` 须**人类直请**；`complete`/`blocked` 可在自动续行中调用，且 `blocked` 在达最小轮数前被拒。
 | skill playbook 渐进披露 | `dsh-skill` + `dsh-skill-filesystem` + `dsh-tool-skill` | preset 技能经组合 `skill-filesystem` baseUrl 装载（非目录扫描） |
 | subagent 派遣/continuable | `dsh-subagent`（spawn/fork/ACP/codex/claude-code 五后端）+ `dsh-tool-subagent-*` | outputSchema/depthLimit/toolFilter/persona 静态声明 |
 | 委派深度上限 | `dsh-tool-subagent` 的 `maxDepth`（官方 `README.zh.md`） | **绝对委派深度上限**：`0` 禁止委派、正整数即上限层数；`'provider-managed'` 不向进程外提供方发送上限。默认取 Host 设置（`1`）。提供方须具备 `depthLimit` 能力，否则 MUST 用 `provider-managed`（否则挂载即报错）。本预设 11 岗位 + generic 均设 `maxDepth: 1` → 岗位子代理**不能再向下派遣**（只有主会话能组建小组，与双门闩配套）；两个外部后端（codex/claude-code，禁用态）设 `provider-managed` |
