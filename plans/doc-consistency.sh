@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   12. 状态取值合法性（`status:`/`expected:` 取值须落在**任一**已声明状态机集合内；
+#      集合自 `status: <值>  # a | b | c` 模板行自动采集，无需手工维护）
 #   11. benchmarks 支撑决策号语义相符（括注短名 ↔ standard 含义的 2-gram 重叠：
 #      零重叠=✗，仅 1 个重叠=ℹ 待人工确认）
 #   10. 章节级引用可解析（`references/x.md「章节名」` 与限定式 `§N` 须在目标文件中存在）
@@ -319,7 +321,52 @@ PYEOF
   [ -n "$SEM_WEAK" ] && info "短括注（重叠 1，人工确认即可）: ${SEM_WEAK}"
 fi
 
+echo "[12] 状态取值合法性"
+if ! command -v python3 >/dev/null 2>&1; then
+  na "状态取值核验（缺 python3）"
+else
+  ST_ISSUE=$(python3 <<'PYEOF'
+import glob, os, re
+files = (['skills/dsh-codepunk-workflow/SKILL.md', 'README.md', 'agent.cordis.yml', 'preset.yml']
+         + glob.glob('skills/dsh-codepunk-workflow/references/*.md')
+         + [f for f in glob.glob('plans/*.sh') if 'checker-self-test.sh' not in f]   # 排除变异夹具
+         + glob.glob('plans/*.py') + glob.glob('plans/*.mjs'))
+declared = set()
+for f in files:
+    try:
+        t = open(f, encoding='utf-8').read()
+    except OSError:
+        continue
+    for m in re.finditer(r'status:\s*([a-z_]+)\s*#\s*([^\n]{3,80})', t):
+        for tok in re.split(r'[|｜/]', m.group(2)):
+            tok = tok.strip().split()[0] if tok.strip() else ''
+            if tok and re.fullmatch(r'[A-Za-z_\u4e00-\u9fff]{2,10}', tok):
+                declared.add(tok)
+    # 无 `#` 注释但同类列举（如 agents.yaml 的 last_seen 注释已含）
+if not declared:
+    print('无法采集已声明集合（模板已变）')
+else:
+    bad = []
+    for f in files:
+        if f.endswith(('standard.md',)):
+            continue
+        try:
+            t = open(f, encoding='utf-8').read()
+        except OSError:
+            continue
+        for i, ln in enumerate(t.split('\n'), 1):
+            for m in re.finditer(r'\b(status|expected)[:：]\s*([a-z_]{3,20})', ln):
+                if m.group(2) not in declared:
+                    bad.append(f'{os.path.basename(f)}:{i} {m.group(2)}')
+    print('; '.join(bad[:3]))
+PYEOF
+)
+  if [ -z "$ST_ISSUE" ]; then ok "状态取值均在已声明集合内（集合自模板注释采集）"
+  elif printf '%s' "$ST_ISSUE" | grep -q '无法采集'; then bad "状态取值核验失效：${ST_ISSUE}"
+  else bad "状态取值越界 → ${ST_ISSUE}"; fi
+fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（11 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（12 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1
