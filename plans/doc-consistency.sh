@@ -46,6 +46,10 @@
 # 退出码: 0=全部一致；1=存在不一致；2=环境/用法错误
 # =============================================================================
 set -u
+# -h/--help：打印头部用法（与其余脚本一致的通用约定）
+case "${1:-}" in
+  -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$ROOT" || { echo "✗ 预设根不存在: $ROOT" >&2; exit 2; }
 # 仓库标识校验：存在但非本预设仓库的根路径属「用法/环境错误」（exit 2），
@@ -590,8 +594,16 @@ probe_rc 2 "ps-validate 缺文件" "timeout 60 node plans/ps-validate.mjs /nonex
 probe_rc 2 "declare 坏子命令"  "timeout 60 node plans/preset-declare.mjs bogus"
 probe_rc 2 "audit 坏根"       "bash plans/preset-audit.sh /tmp"
 probe_rc 2 "doc-consistency 坏根" "bash plans/doc-consistency.sh /tmp"
-if [ "$RC_N" -ne 9 ]; then bad "退出码探针仅执行 ${RC_N}/9 条（疑似被吞错，无法核验≠通过）"
-elif [ -z "$RC_BAD" ]; then ok "9 条探针：用法/环境错误均返回 2"
+# -h/--help 通用约定：六个脚本均须返回 0（F153）
+probe_rc 0 "audit -h"           "bash plans/preset-audit.sh -h"
+probe_rc 0 "score -h"           "bash plans/preset-score.sh -h"
+probe_rc 0 "doc-consistency -h" "bash plans/doc-consistency.sh -h"
+probe_rc 0 "verify-worktree -h" "bash plans/verify-worktree.sh -h"
+probe_rc 0 "link -h"            "bash plans/dsh-codepunk-link.sh -h"
+probe_rc 0 "leak-guard -h"      "bash plans/dsh-codepunk-leak-guard.sh -h"
+RC_DECL=15   # 声明探针数（9 条用法/环境错 + 6 条 -h）；新增探针须同步此值
+if [ "$RC_N" -ne "$RC_DECL" ]; then bad "退出码探针仅执行 ${RC_N}/${RC_DECL} 条（疑似被吞错，无法核验≠通过）"
+elif [ -z "$RC_BAD" ]; then ok "${RC_DECL} 条探针：用法/环境错误返回 2、-h 返回 0"
 else bad "退出码契约漂移 → ${RC_BAD}"; fi
 
 echo "[21] 岗位数一致性（11 内建 + 2 外部）"
