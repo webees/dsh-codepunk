@@ -417,6 +417,57 @@ cp "$SANDBOX/preset-audit.sh.orig" "$SANDBOX/.dsh-codepunk/scripts/preset-audit.
 score_reason "M29-g B14 LICENSE 未跟踪" \
   "git -C '$work/cur' rm --cached -q LICENSE" \
   "$work/cur/plans/preset-score.sh" 'B14' '未跟踪发布必备文件'
+echo "[M30 评分扣分可达性（第三批：B6/B7/B9/B12/B13/B14/B15）]"
+S="$work/cur/skills/dsh-codepunk-workflow/SKILL.md"
+R="$work/cur/skills/dsh-codepunk-workflow/references"
+SC="$work/cur/plans/preset-score.sh"
+MUT_GONE=1
+score_reason "M30-a B6 SKILL 未说明工具正式位" \
+  "sed -i.bak 's#\\.dsh-codepunk/scripts/#SCRIPTS-DIR#g' \"$S\"" \
+  "$S" '\\.dsh-codepunk/scripts/' 'SKILL 未说明工具正式位'
+score_reason "M30-b B7 缺 standard.md" \
+  "rm -f \"$R/standard.md\"" \
+  "$R/standard.md" 'D0' '缺 references/standard.md'
+score_reason "M30-c B7 缺 learned-skills.md" \
+  "rm -f \"$R/learned-skills.md\"" \
+  "$R/learned-skills.md" 'D0' '缺 references/learned-skills.md'
+score_reason "M30-d B9 缺维护公约" \
+  "sed -i.bak 's/维护公约/维护约定/g' '$work/cur/README.md' '$work/cur/CONTRIBUTING.md'" \
+  "$work/cur/CONTRIBUTING.md" '维护公约' '缺维护公约'
+score_reason "M30-e B9 缺平台对等公约" \
+  "sed -i.bak 's/平台对等/平台对齐/g' '$work/cur/CONTRIBUTING.md'" \
+  "$work/cur/CONTRIBUTING.md" '平台对等' '缺平台对等公约'
+score_reason "M30-f B9 缺 PR 门槛清单" \
+  "sed -i.bak -e 's/提交前检查清单/清单甲/' -e 's/提 PR 的门槛/门槛乙/' '$work/cur/CONTRIBUTING.md'" \
+  "$work/cur/CONTRIBUTING.md" '提交前检查清单' '缺 PR 门槛清单'
+score_reason "M30-g B9 决策表无废弃态标记" \
+  "sed -i.bak -E -e 's/已被[^|]*反驳/标记甲/g' -e 's/⚠废弃/标记乙/g' -e 's/作废/标记丙/g' \"$R/standard.md\"" \
+  "$R/standard.md" '⚠废弃' '无废弃态标记机制'
+MUT_GONE=0
+score_reason "M30-h B13 缺 thresholdRatio 阈值" \
+  "sed -i.bak 's/thresholdRatio: 0.6/thresholdRatio: 0.9/' '$work/cur/agent.cordis.yml'" \
+  "$work/cur/agent.cordis.yml" 'thresholdRatio: 0.9' '缺 thresholdRatio'
+MUT_GONE=0
+score_reason "M30-i B13 约束强度词丢失" \
+  "sed -i.bak -E 's/MUST|绝不|禁止/约束词/g' \"$S\"" \
+  "$S" '约束词' '约束强度词丢失'
+MUT_GONE=0
+score_reason "M30-j B14 工作区未跟踪项" \
+  "printf '#!/bin/sh\\n' > '$work/cur/plans/zzz-probe.sh'" \
+  "$work/cur/plans/zzz-probe.sh" '#!/bin/sh' '未跟踪项'
+MUT_GONE=1
+score_reason "M30-k B15 learned-skills 缺版本列" \
+  "sed -i.bak -E 's/版本|version/VER/g' \"$R/learned-skills.md\"" \
+  "$R/learned-skills.md" '版本|version' 'learned-skills 缺版本列'
+score_reason "M30-l B15 缺 skill 升级/废弃机制" \
+  "sed -i.bak -E 's/升级|废弃/变更/g' \"$R/skill-governance.md\"" \
+  "$R/skill-governance.md" '升级|废弃' 'skill 升级/废弃机制'
+score_reason "M30-m B15 SKILL 未说明知识库布局" \
+  "sed -i.bak 's/knowledge/KB/g' \"$S\"" \
+  "$S" 'knowledge' 'SKILL 未说明知识库布局'
+score_reason "M30-n B15 无决策登记路径" \
+  "sed -i.bak -E 's/D0[0-9][0-9]/DX/g' \"$R/standard.md\"" \
+  "$R/standard.md" 'D0[0-9][0-9]' '无决策登记路径'
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
