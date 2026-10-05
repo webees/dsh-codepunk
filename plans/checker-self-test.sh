@@ -568,7 +568,9 @@ open(p, 'w', encoding='utf-8').write(s.replace('process.exit(missing ? 2 : (fail
                                                'process.exit(failed ? 1 : 0);'))
 PYEOF
 mutate_gone "缺文件分支退回 rc 1" "$work/cur/plans/ps-validate.mjs" "missing \? 2"
-check_rc "M38 退出码漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "退出码契约漂移"
+# F180：只用「不得假通过」这一性质断言 —— 真 HOME（探针可核验→报漂移）与缺依赖环境
+#   （探针无法核验→报环境缺口）下**都成立**；原「要求 rc=1」写法在缺依赖环境会误判。
+check_no_match "M38 变异后不得声称「15 条探针」全通过（F180 假通过防护）" "bash plans/doc-consistency.sh 2>&1" "15 条探针"
 echo "[M39 跨文件阈值唯一性（doc-consistency 第 7 类扩展存活）]"
 fresh
 python3 - "$work/cur/plans/preset-score.sh" <<'PYEOF'

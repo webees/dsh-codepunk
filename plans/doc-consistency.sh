@@ -683,19 +683,26 @@ NS_ISSUE=$(grep -rnoE '\bR[0-9]{3,}\b' skills README.md plans/*.sh plans/*.py pl
   else bad "出现与硬规则同形的 R 三位号引用 → $(printf '%s' "$NS_ISSUE" | head -1 | cut -c1-90)"; fi
 
 echo "[20] 退出码契约实测（用法/环境错误 → 2）"
-RC_BAD=""; RC_N=0
-probe_rc() { # probe_rc <期望码> <标签> <命令>
-  local want="$1" label="$2" cmd="$3" rc=0
-  eval "$cmd" >/dev/null 2>&1 || rc=$?
+RC_BAD=""; RC_N=0; RC_V=0; RC_GAP=""
+probe_rc() { # probe_rc <期望码> <标签> <命令> [缺口标记]
+  local want="$1" label="$2" cmd="$3" gap="${4:-}" rc=0 out=""
+  out=$(eval "$cmd" 2>&1) || rc=$?
   RC_N=$((RC_N + 1))                                  # 探针计数：确保每个探针都真的执行了
+  # F180：若探针因**环境缺口**（如缺 tree-sitter 依赖）而返回期望码，则它并没有真正核验契约，
+  #   不得计入通过（否则「用法错误 2」会被「缺依赖 2」冒充 = 假通过）。
+  if [ -n "$gap" ] && printf '%s' "$out" | grep -q "$gap"; then
+    RC_V=$((RC_V + 1))
+    RC_GAP="${RC_GAP}${label} "
+    return 0
+  fi
   [ "$rc" = "$want" ] || RC_BAD="${RC_BAD}${label}(rc=${rc},want=${want}) "
 }
 probe_rc 2 "compat 坏根"      "timeout 60 python3 plans/preset-compat.py /nonexistent"
 probe_rc 2 "compat 缺 DSH 根" "env -u DSH_APP_ROOT -u DSH_ASAR timeout 60 python3 plans/preset-compat.py /nonexistent"
 probe_rc 2 "fidelity 缺参数"  "timeout 60 python3 plans/fidelity-gate.py"
 probe_rc 2 "fidelity 坏模式"  "timeout 60 python3 plans/fidelity-gate.py bogus"
-probe_rc 2 "ps-validate 缺参数" "timeout 60 node plans/ps-validate.mjs"
-probe_rc 2 "ps-validate 缺文件" "timeout 60 node plans/ps-validate.mjs /nonexistent/x.ps1"
+probe_rc 2 "ps-validate 缺参数" "timeout 60 node plans/ps-validate.mjs" "缺依赖"
+probe_rc 2 "ps-validate 缺文件" "timeout 60 node plans/ps-validate.mjs /nonexistent/x.ps1" "缺依赖"
 probe_rc 2 "declare 坏子命令"  "timeout 60 node plans/preset-declare.mjs bogus"
 probe_rc 2 "audit 坏根"       "bash plans/preset-audit.sh /tmp"
 probe_rc 2 "doc-consistency 坏根" "bash plans/doc-consistency.sh /tmp"
@@ -708,8 +715,9 @@ probe_rc 0 "link -h"            "bash plans/dsh-codepunk-link.sh -h"
 probe_rc 0 "leak-guard -h"      "bash plans/dsh-codepunk-leak-guard.sh -h"
 RC_DECL=15   # 声明探针数（9 条用法/环境错 + 6 条 -h）；新增探针须同步此值
 if [ "$RC_N" -ne "$RC_DECL" ]; then bad "退出码探针仅执行 ${RC_N}/${RC_DECL} 条（疑似被吞错，无法核验≠通过）"
-elif [ -z "$RC_BAD" ]; then ok "${RC_DECL} 条探针：用法/环境错误返回 2、-h 返回 0"
-else bad "退出码契约漂移 → ${RC_BAD}"; fi
+elif [ -n "$RC_BAD" ]; then bad "退出码契约漂移 → ${RC_BAD}"
+elif [ "$RC_V" -gt 0 ]; then info "退出码探针 ${RC_N} 条中 ${RC_V} 条因**环境缺口**无法核验（${RC_GAP}）——无法核验≠通过（F180）"
+else ok "${RC_DECL} 条探针：用法/环境错误返回 2、-h 返回 0"; fi
 
 echo "[21] 岗位数一致性（11 内建 + 2 外部）"
 ROLE_COUNT_ISSUE=$(python3 <<'PYEOF'
