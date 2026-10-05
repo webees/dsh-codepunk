@@ -71,7 +71,7 @@ done
 
 # ── A2 质量 ─────────────────────────────────────────────────────────────────
 if git rev-parse --git-dir >/dev/null 2>&1; then
-TODO=$(git grep -nE "TODO|FIXME|XXX(?!X)|待补|待填|WIP" -- '*.md' '*.yml' 2>/dev/null | grep -viE "todo_write|allowParallel|todo\b" | head -3)
+TODO=$(git grep -nE "TODO|FIXME|XXX([^X]|$)|待补|待填|WIP[:：(]" -- '*.md' '*.yml' ':(exclude)skills/dsh-codepunk-workflow/benchmarks/**' 2>/dev/null | grep -viE "todo_write|allowParallel|todo\b" | head -3)
 [ -n "$TODO" ] && ded A2 20 "占位残留: $(echo "$TODO" | head -1 | cut -c1-70)"
 else
   ded A2 20 "占位残留无法核验（非 git 工作区）——无法核验 ≠ 通过"

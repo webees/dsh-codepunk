@@ -720,6 +720,44 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M68 score A2 占位残留（存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/roles.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + '\n待补：本条说明尚未撰写。\n')
+print('MUTATED')
+PYEOF
+check_rc "M68 注入占位残留 → A2 报占位" "bash plans/preset-score.sh 2>&1" 1 "占位残留"
+
+echo "[M69 score B11 凭据形态（存活，载荷运行时拼接）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/knowledge.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+tok = 'gh' + 'p_' + ('A' * 24)
+open(p, 'w', encoding='utf-8').write(s + '\n示例：' + tok + '\n')
+print('MUTATED')
+PYEOF
+check_rc "M69 注入凭据形态 → B11 报凭据命中" "bash plans/preset-score.sh 2>&1" 1 "凭据形态命中"
+
+echo "[M70 score B13 硬规则缺号（存活；保持最大号 R15 不变）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '| R7 |'
+if old not in s:
+    print('ANCHOR-MISSING')
+else:
+    open(p, 'w', encoding='utf-8').write(s.replace(old, '| R07 |', 1))
+    print('MUTATED')
+PYEOF
+check_rc "M70 R7 编号被改 → B13 报缺硬规则 R7" "bash plans/preset-score.sh 2>&1" 1 "SKILL 缺硬规则 R7"
+
 echo "[M65 score B8 bash 语法错误（存活）]"
 fresh
 python3 - "$work/cur/plans/preset-audit.sh" <<'PYEOF'
