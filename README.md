@@ -163,7 +163,7 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 | 命令 | 作用 | 退出码 |
 |---|---|---|
 | `bash plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=全满分；1=有失分项；2=环境/用法错误 |
-| `bash plans/preset-audit.sh` | 5 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标；1=有失分项；2=预设根不存在 |
+| `bash plans/preset-audit.sh` | 5 组 rubric 审计（配置/手册/调研/文档/工具层；**否决式计分**：零失分即 100/100） | 0=全达标；1=有失分项；2=预设根不存在 |
 | `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+目录树一致+脚本语法+DSH 兼容+声明漂移+E2E 与总库无污染+检查器存活自检+文档声称一致性），14 项一次跑完 | 0=全通过；1=存在失败项；2=无法进入预设根 |
 | `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致；1=确认漂移；2=参数错误，或缺 js-yaml 时「无法判定」（设 `DSH_APP_ROOT` 可启用语义核验）（缺 js-yaml 时降级比对） |
 | `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离与锚点顺序 / allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
@@ -210,7 +210,7 @@ plans/                              # 工具脚本源副本（运行期正式位
   acceptance-verify.sh              # 签收机械校验器（D069：结构 + 签收独立性，S2）
   doc-consistency.sh                # 文档声称↔实现一致性（计数/阶段口径/工具存在性/退出码契约）
   checker-self-test.sh              # 检查器存活自检（变异测试：53 项注入缺陷（M1–M53）须被对应守护捕获）
-  preset-audit.sh                   # 预设质量审计（5 组 rubric，100 分制）
+  preset-audit.sh                   # 预设质量审计（5 组 rubric；否决式：零失分即满分）
   dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
   preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
   verify-battery.sh                 # 完整验证电池（14 项独立验证，单命令复跑）
