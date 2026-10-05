@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   11. benchmarks 支撑决策号语义相符（括注短名 ↔ standard 含义的 2-gram 重叠：
+#      零重叠=✗，仅 1 个重叠=ℹ 待人工确认）
 #   10. 章节级引用可解析（`references/x.md「章节名」` 与限定式 `§N` 须在目标文件中存在）
 #   9. 编号引用可解析（D 号须逐条登记；P 号须落在已声明范围/span 内）
 #   8. 日期形态与未来日期（须 YYYY-MM-DD / YYYY-MM；不得出现未来日期——「实测」不能发生在未来）
@@ -267,7 +269,57 @@ PYEOF
   else bad "章节级引用问题 → ${SEC_ISSUE}"; fi
 fi
 
+echo "[11] benchmarks 支撑决策号语义相符"
+if ! command -v python3 >/dev/null 2>&1; then
+  na "决策号语义核验（缺 python3）"
+else
+  SEM_ISSUE=$(python3 <<'PYEOF'
+import glob, re
+S = 'skills/dsh-codepunk-workflow'
+std = open(f'{S}/references/standard.md', encoding='utf-8').read()
+mean = {int(m.group(1)): m.group(2).strip()
+        for m in re.finditer(r'^\| D(\d{3}) \| ([^|]+?) \|', std, re.M)}
+CJK = re.compile(r'[\u4e00-\u9fffA-Za-z0-9]+')
+def grams(x):
+    out = set()
+    for t in CJK.findall(x):
+        out |= {t[i:i+2] for i in range(max(0, len(t)-1))}
+        out.add(t)
+    return out
+zero, weak = [], []
+for f in sorted(glob.glob(f'{S}/benchmarks/*.md')):
+    t = open(f, encoding='utf-8').read()
+    m = re.search(r'支撑决策号：([^\n]{0,120})', t)
+    if not m:
+        zero.append(f"{f.split('/')[-1]}:无支撑决策号行")
+        continue
+    for d, name in re.findall(r'D(\d{3})（([^）]{1,20})）', m.group(1)):
+        d = int(d)
+        if d not in mean:
+            zero.append(f"{f.split('/')[-1]}:D{d:03d}未登记")
+            continue
+        n = len(grams(name) & grams(mean[d]))
+        if n == 0:
+            zero.append(f"{f.split('/')[-1]}:D{d:03d}「{name}」与登记含义无共同词")
+        elif n == 1:
+            weak.append(f"{f.split('/')[-1]}:D{d:03d}「{name}」")
+out = []
+if zero:
+    out.append('疑似错配: ' + '; '.join(zero[:3]))
+# weak 只作提示，不判失败
+print('; '.join(out))
+if weak:
+    print('WEAK=' + ','.join(weak[:3]))
+PYEOF
+)
+  SEM_HARD=$(printf '%s' "$SEM_ISSUE" | sed -n '1p')
+  SEM_WEAK=$(printf '%s' "$SEM_ISSUE" | sed -n '2p' | sed 's/^WEAK=//')
+  if [ -z "$SEM_HARD" ]; then ok "支撑决策号与登记含义相符（零重叠 0 处）"
+  else bad "决策号语义问题 → ${SEM_HARD}"; fi
+  [ -n "$SEM_WEAK" ] && info "短括注（重叠 1，人工确认即可）: ${SEM_WEAK}"
+fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（10 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（11 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

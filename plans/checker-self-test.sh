@@ -230,6 +230,17 @@ PYEOF
 mutate "章节名全量改名" "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" '备忘摘要'
 check_rc "M19 章节名失效 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "章节名未找到"
 
+echo "[M20 决策号语义相符（doc-consistency 第 11 类存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/benchmarks/adhd-workflow-analysis.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s.replace('D075（消息纪律）', 'D075（量子隧穿）', 1))
+PYEOF
+mutate "括注改无关词" "$work/cur/skills/dsh-codepunk-workflow/benchmarks/adhd-workflow-analysis.md" '量子隧穿'
+check_rc "M20 括注与含义无关 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "疑似错配"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
