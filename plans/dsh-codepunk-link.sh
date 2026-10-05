@@ -331,6 +331,41 @@ cmd_index() {
     printf '%s: 请从备份恢复（register 写入前会留 INDEX.yaml.bak）或按骨架重建\n' "$SCRIPT_NAME" >&2
     return 1
   fi
+  # ③ 语义/类型核验（F129）：结构与解析都通过、但类型非法的文件（如 projects 为标量）此前被当作
+  #    空骨架放行，随后 register 会据错模型覆盖注册表 → 真实登记项丢失。此处按同一解析链核验类型。
+  local sem_rc=0 sem_msg=""
+  if command -v ruby >/dev/null 2>&1; then
+    sem_msg="$(ruby -ryaml -e '
+      d = YAML.load_file(ARGV[0])
+      d = {} if d.nil?
+      fail "顶层须为映射" unless d.is_a?(Hash)
+      fail "schema_version 须为标量" if d.key?("schema_version") && d["schema_version"].is_a?(Hash)
+      proj = d["projects"]
+      fail "projects 须为映射（当前 #{proj.class}）" unless proj.nil? || proj.is_a?(Hash)
+      (proj || {}).each { |k, v| fail "projects[#{k}] 须为映射（当前 #{v.class}）" unless v.nil? || v.is_a?(Hash) }
+      lt = d["last_updated"]
+      fail "last_updated 须为标量" if lt.is_a?(Hash) || lt.is_a?(Array)
+    ' "$DSH_CODEPUNK_INDEX" 2>&1)" || sem_rc=1
+  elif command -v node >/dev/null 2>&1 && node -e 'require("js-yaml")' >/dev/null 2>&1; then
+    sem_msg="$(node -e '
+      const y=require("js-yaml"),fs=require("fs");
+      let d; try { d = y.load(fs.readFileSync(process.argv[1],"utf8")) || {}; } catch(e){ console.log(e.message); process.exit(1); }
+      const bad=(m)=>{console.log(m);process.exit(1);};
+      if (typeof d!=="object"||Array.isArray(d)) bad("顶层须为映射");
+      if (d.schema_version!==undefined && typeof d.schema_version==="object") bad("schema_version 须为标量");
+      if (d.projects!==undefined && (typeof d.projects!=="object"||Array.isArray(d.projects))) bad("projects 须为映射");
+      if (d.projects) for (const k of Object.keys(d.projects)) { const v=d.projects[k]; if (v!==null && (typeof v!=="object"||Array.isArray(v))) bad("projects["+k+"] 须为映射"); }
+      if (d.last_updated!==undefined && typeof d.last_updated==="object") bad("last_updated 须为标量");
+    ' "$DSH_CODEPUNK_INDEX" 2>&1)" || sem_rc=1
+  else
+    printf '%s: ⚠ 未做语义核验（无 ruby/node+js-yaml）\n' "$SCRIPT_NAME" >&2
+  fi
+  if [ "$sem_rc" != 0 ]; then
+    printf '%s: INDEX 语义非法：%s\n' "$SCRIPT_NAME" \
+      "$(printf '%s' "$sem_msg" | head -1 | sed -E "s/.*<main>': //; s/\s*\((RuntimeError|Error)\)$//")" >&2
+    printf '%s: 请勿据其写入（register 会覆盖注册表）；从 INDEX.yaml.bak 恢复或按骨架重建\n' "$SCRIPT_NAME" >&2
+    return 1
+  fi
   local rows n_ok n_fail
   rows="$(_parse_index_entries "$DSH_CODEPUNK_INDEX")"
   if [ -z "$rows" ]; then

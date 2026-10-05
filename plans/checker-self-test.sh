@@ -293,6 +293,15 @@ for script in preset-audit preset-score doc-consistency verify-battery; do
   check_rc "M24 错误根：$script" "bash plans/$script.sh '$work/wrongroot' 2>&1" 2 "不是本预设仓库"
 done
 
+echo "[M25 INDEX 语义/类型核验（link index 存活）]"
+fresh
+mkdir -p "$work/linkhome/.dsh-codepunk"
+printf 'schema_version: 1\nprojects: 5\n' > "$work/linkhome/.dsh-codepunk/INDEX.yaml"
+mutate "INDEX projects 为标量" "$work/linkhome/.dsh-codepunk/INDEX.yaml" 'projects: 5'
+check_rc "M25 类型非法 INDEX → 失败" "HOME='$work/linkhome' bash plans/dsh-codepunk-link.sh index 2>&1" 1 "语义非法"
+printf 'schema_version: 1\nprojects: {}\n' > "$work/linkhome/.dsh-codepunk/INDEX.yaml"
+check_rc "M25 合法骨架 → 通过" "HOME='$work/linkhome' bash plans/dsh-codepunk-link.sh index 2>&1" 0 "校验通过"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
