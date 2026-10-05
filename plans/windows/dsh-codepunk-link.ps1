@@ -6,7 +6,10 @@
 #       ① README frontmatter `dsh-codepunk: <id>` 命中（主通道）
 #       ② 回退 ~/.dsh-codepunk/INDEX.yaml 注册表（project_root 精确匹配）
 #       ③ 都无 → 未注册，退出码 1
-#   dsh-codepunk-link index               校验 INDEX.yaml：条目字段齐 + 路径无空悬
+#   dsh-codepunk-link index               校验 INDEX.yaml：结构（顶层键白名单）→ 解析（保守检测，
+#                                         本端口无 YAML 引擎）→ 语义（schema_version 标量、
+#                                         projects 非内联标量）→ 条目字段齐 + 路径无空悬
+#   ⚠ 解析/语义核验为保守实现；完整核验以 POSIX 端口（ruby/node+js-yaml）为准。
 #   dsh-codepunk-link register [-y] <项目路径> <id>   追加注册（不覆盖）
 #
 # 差异说明：PowerShell 无内置 YAML 解析器，本版用行级解析（等价 POSIX 版
@@ -195,6 +198,50 @@ function Invoke-Resolve([string]$targetIn) {
 # ---------- index：校验无空悬 + 字段齐 ----------
 function Invoke-Index() {
   if (-not (Test-Path $DSH_CODEPUNK_INDEX)) { Write-Err "INDEX 未初始化：$DSH_CODEPUNK_INDEX 不存在"; $script:rc = 1; return }
+  # ---- 前置核验（与 POSIX 端口对齐；F139：此前仅 Register 有结构守卫，index 会静默通过损坏/类型非法文件）----
+  $idxLines = [System.IO.File]::ReadAllLines($DSH_CODEPUNK_INDEX, [System.Text.Encoding]::UTF8)
+  # ① 结构核验：顶层键只允许 schema_version / projects / last_updated（与 Register 同款）
+  $strayKeys = @()
+  foreach ($l in $idxLines) {
+    if ($l.Trim() -eq '' -or $l.StartsWith(' ') -or $l.StartsWith("`t") -or $l.StartsWith('#')) { continue }
+    if ($l -notmatch '^(schema_version|projects|last_updated):') { $strayKeys += $l.Trim() }
+  }
+  if ($strayKeys.Count -gt 0) {
+    Write-Err ("INDEX 结构非法（未知顶层键）：" + ($strayKeys -join ', '))
+    Write-Err "合法顶层键仅 schema_version / projects / last_updated；请修复或从备份恢复"
+    $script:rc = 1; return
+  }
+  # ② 解析核验（保守：未闭合括号／制表符缩进／行内含 NUL 等明显损坏）
+  $broken = @()
+  foreach ($l in $idxLines) {
+    if ($l.Contains("`t")) { $broken += 'TAB(indent)'; continue }
+    $ob = ([regex]::Matches($l, '\[')).Count; $cb = ([regex]::Matches($l, '\]')).Count
+    $oc = ([regex]::Matches($l, '\{')).Count; $cc = ([regex]::Matches($l, '\}')).Count
+    if ($ob -ne $cb -or $oc -ne $cc) { $broken += $l.Trim() }
+  }
+  if ($broken.Count -gt 0) {
+    Write-Err ("INDEX 解析疑似失败（保守检测；本端口无 YAML 引擎，仅拦明显损坏）：" + ($broken -join ' | '))
+    Write-Err "请从备份恢复（register 写入前会留 INDEX.yaml.bak）或按骨架重建"
+    $script:rc = 1; return
+  }
+  # ③ 语义/类型核验（启发式）：schema_version 须标量；projects 须为 `[]`／空／块级
+  $sv = @($idxLines | Where-Object { $_ -match '^schema_version:\s*(.+)' })
+  foreach ($row in $sv) {
+    $v = ($row -replace '^schema_version:\s*', '').Trim()
+    if ($v.StartsWith('{') -or $v.StartsWith('[')) {
+      Write-Err "INDEX 语义非法：schema_version 须为标量"
+      $script:rc = 1; return
+    }
+  }
+  $pv = @($idxLines | Where-Object { $_ -match '^projects:\s*(.*)$' })
+  foreach ($row in $pv) {
+    $v = ($row -replace '^projects:\s*', '').Trim()
+    if ($v -ne '' -and $v -ne '[]' -and -not $v.StartsWith('#')) {
+      Write-Err "INDEX 语义非法：projects 须为映射/列表（当前为内联标量：$v）"
+      Write-Err "请勿据其写入（register 会覆盖注册表）；从 INDEX.yaml.bak 恢复或按骨架重建"
+      $script:rc = 1; return
+    }
+  }
   $entries = Get-IndexEntries $DSH_CODEPUNK_INDEX
   $bad = 0; $n = 0
   foreach ($row in $entries) {

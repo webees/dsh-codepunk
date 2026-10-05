@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   17. 移植对等性（4 对 sh↔ps1：POSIX 侧已修的关键守卫关键词 MUST 在 Windows 端口出现——
+#       防「修了一侧忘另一侧」；F139 实证：link.ps1 曾缺解析/语义核验）
 #   16. 自检期望串特异性（`check_rc` 的期望串 MUST NOT 被被检脚本的**小节标题**包含——
 #       否则断言可能仅凭标题即通过＝假通过；实测由 R131「死状态」误判导出）
 #   15. 阶段引用可解析（全仓阶段引用须在 stages.md 有定义；已定义阶段须至少被引用一次——
@@ -494,7 +496,33 @@ PYEOF
   if [ -z "$SPEC_ISSUE" ]; then ok "自检期望串均未被小节标题包含（无「仅凭标题通过」风险）"
   else bad "自检期望串特异性不足 → ${SPEC_ISSUE}"; fi
 
+echo "[17] 移植对等性（sh ↔ ps1）"
+PARITY_ISSUE=$(python3 <<'PYEOF'
+import os
+pairs = [
+    ('dsh-codepunk-link.sh',       'dsh-codepunk-link.ps1',       ['结构非法', '语义非法', '未初始化']),
+    ('dsh-codepunk-leak-guard.sh', 'dsh-codepunk-leak-guard.ps1', ['禁词', '通用']),
+    ('dsh-codepunk-init.sh',       'dsh-codepunk-init.ps1',       ['总库', '骨架']),
+    ('dsh-codepunk-home.sh',       'dsh-codepunk-home.ps1',       ['路径常量']),
+]
+miss = []
+for sh, ps, keys in pairs:
+    shp, psp = 'plans/' + sh, 'plans/windows/' + ps
+    if not (os.path.isfile(shp) and os.path.isfile(psp)):
+        miss.append(sh + '/缺文件')
+        continue
+    st = open(shp, encoding='utf-8').read()
+    pt = open(psp, encoding='utf-8').read()
+    for k in keys:
+        if k in st and k not in pt:
+            miss.append(ps + '缺「' + k + '」')
+print('; '.join(miss[:4]))
+PYEOF
+)
+  if [ -z "$PARITY_ISSUE" ]; then ok "4 对 sh↔ps1 关键守卫关键词对等"
+  else bad "移植对等性缺口 → ${PARITY_ISSUE}"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（16 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（17 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1
