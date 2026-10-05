@@ -774,6 +774,14 @@ PYEOF
   if [ -z "$BM_ISSUE" ]; then ok "含 URL 的简报均带 retrieved_at（或无检索日时显式标注）"
   else bad "简报缺检索日 → ${BM_ISSUE}"; fi
 
+# class 17 子项（F179）：ps1 工作树行尾须为 CRLF（.gitattributes eol=crlf 的落地校验）
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  EOLBAD=$(git ls-files --eol plans/windows/ 2>/dev/null | awk '$2 != "w/crlf" {print $4}' | tr '\n' ' ')
+  [ -z "$EOLBAD" ] && ok "ps1 工作树行尾均为 CRLF（eol=crlf 落地）" || bad "ps1 工作树行尾非 CRLF: ${EOLBAD}"
+else
+  info "非 git 工作区，跳过 ps1 行尾校验"
+fi
+
 echo
 if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（23 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2

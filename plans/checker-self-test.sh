@@ -720,6 +720,17 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M75 ps1 工作树行尾非 CRLF（doc-consistency class17 子项存活）]"
+fresh
+python3 - "$work/cur/plans/windows/dsh-codepunk-link.ps1" <<'PYEOF'
+import sys
+p = sys.argv[1]
+b = open(p, 'rb').read()
+open(p, 'wb').write(b.replace(b'\r\n', b'\n'))
+print('MUTATED')
+PYEOF
+check_rc "M75 ps1 被改为 LF → 报行尾非 CRLF" "bash plans/doc-consistency.sh 2>&1" 1 "行尾非 CRLF"
+
 echo "[M73 score B14 未跟踪杂散（存活）]"
 fresh
 python3 - "$work/cur/plans/zz-m73-stray.sh" <<'PYEOF'
