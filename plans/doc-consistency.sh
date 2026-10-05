@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   20. 退出码契约实测（探针表：用法/环境错误必须 2——F128/F146 类的契约漂移机械门；
+#       输入不存在、参数非法、坏根等，逐条实跑断言）
 #   19. 硬规则命名空间洁净（`R###`（三位以上）不得出现——`R1–R15` 是硬规则号，轮次引用请写
 #       「轮次 N」，避免同形误读；F144 实证）
 #   18. pwsh 钩子参数语法（Windows 侧生成的钩子体不得用 `$1`/`$2` 位置参数——PowerShell 无该
@@ -548,7 +550,28 @@ NS_ISSUE=$(grep -rnoE '\bR[0-9]{3,}\b' skills README.md plans/*.sh plans/*.py pl
   if [ -z "$NS_ISSUE" ]; then ok "无与硬规则同形的 R 三位号引用（轮次引用一律写作「轮次 N」）"
   else bad "出现与硬规则同形的 R 三位号引用 → $(printf '%s' "$NS_ISSUE" | head -1 | cut -c1-90)"; fi
 
+echo "[20] 退出码契约实测（用法/环境错误 → 2）"
+RC_BAD=""; RC_N=0
+probe_rc() { # probe_rc <期望码> <标签> <命令>
+  local want="$1" label="$2" cmd="$3" rc=0
+  eval "$cmd" >/dev/null 2>&1 || rc=$?
+  RC_N=$((RC_N + 1))                                  # 探针计数：确保每个探针都真的执行了
+  [ "$rc" = "$want" ] || RC_BAD="${RC_BAD}${label}(rc=${rc},want=${want}) "
+}
+probe_rc 2 "compat 坏根"      "timeout 60 python3 plans/preset-compat.py /nonexistent"
+probe_rc 2 "compat 缺 DSH 根" "env -u DSH_APP_ROOT -u DSH_ASAR timeout 60 python3 plans/preset-compat.py /nonexistent"
+probe_rc 2 "fidelity 缺参数"  "timeout 60 python3 plans/fidelity-gate.py"
+probe_rc 2 "fidelity 坏模式"  "timeout 60 python3 plans/fidelity-gate.py bogus"
+probe_rc 2 "ps-validate 缺参数" "timeout 60 node plans/ps-validate.mjs"
+probe_rc 2 "ps-validate 缺文件" "timeout 60 node plans/ps-validate.mjs /nonexistent/x.ps1"
+probe_rc 2 "declare 坏子命令"  "timeout 60 node plans/preset-declare.mjs bogus"
+probe_rc 2 "audit 坏根"       "bash plans/preset-audit.sh /tmp"
+probe_rc 2 "doc-consistency 坏根" "bash plans/doc-consistency.sh /tmp"
+if [ "$RC_N" -ne 9 ]; then bad "退出码探针仅执行 ${RC_N}/9 条（疑似被吞错，无法核验≠通过）"
+elif [ -z "$RC_BAD" ]; then ok "9 条探针：用法/环境错误均返回 2"
+else bad "退出码契约漂移 → ${RC_BAD}"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（19 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（20 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

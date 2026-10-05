@@ -56,10 +56,11 @@ if (files.length === 0) {
 }
 
 let failed = 0;
+let missing = 0;   // 缺文件/不可读 = 环境或用法错误（退出码 2），与全仓契约一致（F146）
 for (const f of files) {
   let src;
   try { src = readFileSync(f, 'utf8'); }
-  catch { console.log(`✗ ${f} — 读取失败`); failed++; continue; }
+  catch { console.log(`✗ ${f} — 读取失败（环境/用法错误，退出码 2）`); missing++; continue; }
   const tree = parser.parse(src);
   const errs = [];
   const walk = (n) => {
@@ -78,4 +79,4 @@ for (const f of files) {
   }
 }
 console.log(failed ? `\n❌ ${failed} 个文件有语法错误` : '\n✅ 全部 PS 脚本语法通过');
-process.exit(failed ? 1 : 0);
+process.exit(missing ? 2 : (failed ? 1 : 0));

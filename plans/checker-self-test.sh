@@ -558,6 +558,17 @@ fresh
 printf '\n> 轮次引用误写为 R999 形式\n' >> "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md"
 mutate "注入 R### 同形引用" "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md" 'R999'
 check_rc "M37 R### 同形引用 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "与硬规则同形"
+echo "[M38 退出码契约实测（doc-consistency 第 20 类存活）]"
+fresh
+python3 - "$work/cur/plans/ps-validate.mjs" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s.replace('process.exit(missing ? 2 : (failed ? 1 : 0));',
+                                               'process.exit(failed ? 1 : 0);'))
+PYEOF
+mutate_gone "缺文件分支退回 rc 1" "$work/cur/plans/ps-validate.mjs" "missing \? 2"
+check_rc "M38 退出码漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "退出码契约漂移"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
