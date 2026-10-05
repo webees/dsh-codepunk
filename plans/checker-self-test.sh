@@ -720,6 +720,30 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M71 score A4 决策号重复（存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/standard.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+dup = [l for l in s.split('\n') if l.startswith('| D075 ')]
+open(p, 'w', encoding='utf-8').write(s + '\n' + (dup[0] if dup else '| D075 | 重复注入 |') + '\n')
+print('MUTATED')
+PYEOF
+check_rc "M71 复制 D075 行 → A4 报决策号重复" "bash plans/preset-score.sh 2>&1" 1 "决策号重复"
+
+echo "[M72 score B6 术语单侧（存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+n = s.count('run-lead')
+open(p, 'w', encoding='utf-8').write(s.replace('run-lead', 'lead'))
+print('MUTATED' if n else 'ANCHOR-MISSING')
+PYEOF
+check_rc "M72 SKILL 去掉 run-lead 术语 → B6 报单侧使用" "bash plans/preset-score.sh 2>&1" 1 "run-lead"
+
 echo "[M68 score A2 占位残留（存活）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/references/roles.md" <<'PYEOF'
