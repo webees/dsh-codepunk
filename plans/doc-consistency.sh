@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   22. 矩阵覆盖（每个检查类 1..N 须在 skill-governance 矩阵中被提及——含「第 a–b 类」范围写法；
+#       防「新增检查类却忘记登记矩阵」，F150 实证）
 #   21. 岗位数一致性（`N 岗位` 声称须与配置实况相符：内建 11 + 外部后端 2；出现「13 岗位」的行
 #       须带历史/例外标记——F149 实证：现在时声称「13 岗位全 continuable」属过度声称）
 #   20. 退出码契约实测（探针表：用法/环境错误必须 2——F128/F146 类的契约漂移机械门；
@@ -609,7 +611,24 @@ PYEOF
   if [ -z "$ROLE_COUNT_ISSUE" ]; then ok "岗位数声称与配置实况一致（11 内建 + 2 外部；13 仅见于历史/例外语境）"
   else bad "岗位数声称问题 → ${ROLE_COUNT_ISSUE}"; fi
 
+echo "[22] 矩阵覆盖（新增检查类须登记矩阵）"
+MTX_ISSUE=$(python3 <<'PYEOF'
+import re
+dc = open('plans/doc-consistency.sh', encoding='utf-8').read()
+classes = sorted({int(m) for m in re.findall(r'^echo "\[(\d+)\]', dc, re.M)})
+g = open('skills/dsh-codepunk-workflow/references/skill-governance.md', encoding='utf-8').read()
+covered = set()
+for m in re.finditer(r'第\s*(\d+)\s*[–\-—~]\s*(\d+)\s*类', g):
+    covered |= set(range(int(m.group(1)), int(m.group(2)) + 1))
+covered |= {int(m.group(1)) for m in re.finditer(r'第\s*(\d+)\s*类', g)}
+missing = [c for c in classes if c not in covered]
+print('; '.join('类 ' + str(c) for c in missing[:4]))
+PYEOF
+)
+  if [ -z "$MTX_ISSUE" ]; then ok "全部检查类均已在治理矩阵登记"
+  else bad "矩阵缺登记 → ${MTX_ISSUE}"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（21 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（22 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

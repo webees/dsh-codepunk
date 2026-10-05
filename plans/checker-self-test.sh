@@ -584,6 +584,11 @@ fresh
 printf '\n> 现行：13 岗位已全 continuable。\n' >> "$work/cur/skills/dsh-codepunk-workflow/references/model-routing.md"
 mutate "注入无标记的 13 岗位现在时声称" "$work/cur/skills/dsh-codepunk-workflow/references/model-routing.md" '13 岗位已全'
 check_rc "M40 岗位数过度声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "岗位数声称问题"
+echo "[M41 矩阵覆盖（doc-consistency 第 22 类存活）]"
+fresh
+sed -i.bak 's/第 21 类/第 二一类/' "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md"
+mutate_gone "抹掉矩阵中的类 21 登记" "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md" '第 21 类'
+check_rc "M41 矩阵缺登记 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "矩阵缺登记"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
