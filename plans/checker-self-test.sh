@@ -720,6 +720,40 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M65 score B8 bash 语法错误（存活）]"
+fresh
+python3 - "$work/cur/plans/preset-audit.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + '\nif [ 1 -eq 1 ]; then echo broken\n')
+print('MUTATED')
+PYEOF
+check_rc "M65 注入未闭合 if → B8 报 bash -n 失败" "bash plans/preset-score.sh 2>&1" 1 "bash -n 失败"
+
+echo "[M66 score B9 缺维护公约（存活）]"
+fresh
+python3 - "$work/cur/README.md" "$work/cur/CONTRIBUTING.md" <<'PYEOF'
+import sys
+for p in sys.argv[1:]:
+    try:
+        s = open(p, encoding='utf-8').read()
+    except FileNotFoundError:
+        continue
+    open(p, 'w', encoding='utf-8').write(s.replace('维护公约', '维护约定'))
+print('MUTATED')
+PYEOF
+check_rc "M66 移除「维护公约」→ B9 报缺维护公约" "bash plans/preset-score.sh 2>&1" 1 "维护公约"
+
+echo "[M67 score B10 缺 .gitattributes（存活）]"
+fresh
+python3 - "$work/cur/.gitattributes" <<'PYEOF'
+import os, sys
+os.remove(sys.argv[1])
+print('MUTATED')
+PYEOF
+check_rc "M67 删 .gitattributes → B10 报缺换行策略" "bash plans/preset-score.sh 2>&1" 1 "缺 .gitattributes"
+
 echo "[M62 score B7 缺 references 文件（存活）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/references/roles.md" <<'PYEOF'
