@@ -210,5 +210,19 @@ else
 fi
 rm -rf "$T"
 
+# 10) 检查器存活自检（变异测试）：在临时副本内注入已知缺陷，断言**对应检查项**必须报错——
+#     专治「守护空转」（F097/F099/F101/F102 一整类：工具不可用/正则不兼容/空值判定致恒判 PASS）。
+if [ "${DSH_CODEPUNK_SKIP_SELFTEST:-0}" = 1 ]; then
+  p "ℹ" "检查器存活自检（已跳过：DSH_CODEPUNK_SKIP_SELFTEST=1——递归防护）"
+elif [ -x plans/checker-self-test.sh ] || [ -f plans/checker-self-test.sh ]; then
+  if bash plans/checker-self-test.sh >/dev/null 2>&1; then
+    p "✅" "检查器存活自检（6 项变异均被对应守护捕获）"
+  else
+    p "✗" "检查器存活自检未通过（疑似守护空转，运行 bash plans/checker-self-test.sh 查看）"; F=1
+  fi
+else
+  unverified "检查器存活自检（缺 plans/checker-self-test.sh）"
+fi
+
 echo
 [ "$F" -eq 0 ] && { echo "  本轮：全部通过（满分）"; exit 0; } || { echo "  本轮：存在失败项"; exit 1; }

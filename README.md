@@ -164,11 +164,12 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 |---|---|---|
 | `bash plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=全满分；1=有失分项；2=环境/用法错误 |
 | `bash plans/preset-audit.sh` | 5 组 100 分制审计（配置/手册/调研/文档/工具层） | 0=全达标；1=有失分项；2=预设根不存在 |
-| `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+目录树一致+脚本语法+DSH 兼容+声明漂移+E2E 与总库无污染），12 项一次跑完 | 0=全通过；1=存在失败项；2=无法进入预设根 |
+| `bash plans/verify-battery.sh` | 完整验证电池（评分+审计+守卫三模式+格式+杂散+结构+目录树一致+脚本语法+DSH 兼容+声明漂移+E2E 与总库无污染+检查器存活自检），13 项一次跑完 | 0=全通过；1=存在失败项；2=无法进入预设根 |
 | `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致；1=漂移；2=环境/参数错误（缺 js-yaml 时降级比对） |
 | `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离与锚点顺序 / allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
 | `bash plans/evidence-verify.sh <evidence.yaml> <task_dir>` | 证据机械校验（D069 防假通过门）：`task_id`/`command`/`exit_code=0`/`log_ref` 齐备 + 证据 `id` 去重 + 时间序（乱序仅告警）；**verdict=PASS 才算过** | 0=通过（verdict=PASS）；1=未过；2=用法/文件缺失 |
 | `bash plans/acceptance-verify.sh <acceptance.yaml> [交付方 task_id]` | 签收文件机械校验（D069）：`task_id`/`accepted_by[]`/`accepted_at` 齐备 + 签收独立性（不得自签；run-lead 自签须在 `note` 记原因） | 0=合规；1=不合规；2=用法/文件缺失 |
+| `bash plans/checker-self-test.sh` | 检查器**存活自检**（变异测试）：临时副本内注入 6 类已知缺陷，断言**对应检查项**必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境/自检问题 |
 | `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push + commit-msg） | 0=通过；1=命中并阻断；2=用法/环境错误 |
 | `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（编号/约束词/阈值/路径/工具名/代码标识），改后逐项比对 | 0=零丢失；1=检出丢失；2=缺参数/未知模式/无快照 |
 
@@ -206,6 +207,7 @@ plans/                              # 工具脚本源副本（运行期正式位
   verify-worktree.sh                # worktree 落点纪律核验
   evidence-verify.sh                # 证据机械校验器（D069：防假通过门 S1）
   acceptance-verify.sh              # 签收机械校验器（D069：结构 + 签收独立性，S2）
+  checker-self-test.sh              # 检查器存活自检（变异测试：6 类注入缺陷须被对应守护捕获）
   preset-audit.sh                   # 预设质量审计（5 组 rubric，100 分制）
   dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
   preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
