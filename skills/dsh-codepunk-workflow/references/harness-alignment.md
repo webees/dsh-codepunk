@@ -9,6 +9,8 @@
 | goal 自动续行 / 结算自动递送 | `dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`（§0.1） | 词汇 Goal→Round→Turn→Step；armed 进程本地；resume 需人类消息 |
 | skill playbook 渐进披露 | `dsh-skill` + `dsh-skill-filesystem` + `dsh-tool-skill` | preset 技能经组合 `skill-filesystem` baseUrl 装载（非目录扫描） |
 | subagent 派遣/continuable | `dsh-subagent`（spawn/fork/ACP/codex/claude-code 五后端）+ `dsh-tool-subagent-*` | outputSchema/depthLimit/toolFilter/persona 静态声明 |
+| 委派深度上限 | `dsh-tool-subagent` 的 `maxDepth`（官方 `README.zh.md`） | **绝对委派深度上限**：`0` 禁止委派、正整数即上限层数；`'provider-managed'` 不向进程外提供方发送上限。默认取 Host 设置（`1`）。提供方须具备 `depthLimit` 能力，否则 MUST 用 `provider-managed`（否则挂载即报错）。本预设 11 岗位 + generic 均设 `maxDepth: 1` → 岗位子代理**不能再向下派遣**（只有主会话能组建小组，与双门闩配套）；两个外部后端（codex/claude-code，禁用态）设 `provider-managed` |
+| 后台调用开关 | `enableRunInBackground`（默认 `true`） | 公开子代理的 `run_in_background` 参数；**设 false 时连强制后台调用也一并拒绝** |
 | 子代理生命周期（可追问 vs 一次性） | `dsh-subagent` 两条 API：`startContinuable()` → `mode: "continuable"`；一次性路径 → **写死** `mode: "one-shot"`（**按符号定位**：`startContinuable` / `runOneShot` 一族；2026-10-05 实测 mode 赋值在 lib/index.js 的 1685/2444/2448/3121 行——**行号会随重排漂移，勿作判据**） | 三条硬事实：① 岗位工具**后台**派遣才可 `send_message` 追问（预设 13 岗位已全 `backgroundMode: continuable`）；② `workflow` 的 `agent()` 与任何 `run_in_background: false` 调用都走 `start()` → 一次性，**预设改不动**；③ mode 在创建时写进 `subagent/descriptor` 事件落盘，**已存在的一次性记录无法追溯改造**。生效须重启 DSH Desktop（新开对话不重读插件配置）。④ `workflow` 的 `agent()` 亦**不接受 `toolFilter`/`persona`**（该路径无此参数），故其孩子**不经岗位白名单过滤**——只能靠编排脚本自身约束其行为（只读/限定目录），不得把明文授权或密钥注入其 prompt |
 | 待迁移候选：team 编排 | `dsh-experimental-agent-team`（持久 mailbox + 任务 DAG blockedBy/writeScopes） | 与三人小组同构；实验性，writeScopes 为建议非锁 |
 | 巡检/交接/合并流程固化 | `dsh-workflow`（JS 编排：agent/parallel/pipeline/phase + outputSchema） | 可选固化方案；worker 非安全边界 |
