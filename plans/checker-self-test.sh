@@ -641,6 +641,17 @@ echo "[M48 退出码集合对等（doc-consistency 第 17 类 F165 修复存活�
 fresh
 sed -i.bak 's/exit 2/exit 1/' "$work/cur/plans/windows/dsh-codepunk-init.ps1"
 check_rc "M48 ps1 缺退出码 2 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "缺退出码 2"
+echo "[M49 用法须列出 param 开关（doc-consistency 第 17 类 F166 修复存活）]"
+fresh
+python3 - "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" <<'PYEOF'
+import sys
+p = sys.argv[1]
+lines = open(p, encoding='utf-8').read().split('\n')
+out = [l for l in lines if '显式指定扫索引' not in l]
+open(p, 'w', encoding='utf-8').write('\n'.join(out))
+PYEOF
+mutate_gone "抹掉用法中的 -Staged 说明行" "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" '显式指定扫索引'
+check_rc "M49 用法未列开关 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "用法未列 -Staged"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

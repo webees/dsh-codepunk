@@ -613,6 +613,44 @@ for sh, ps, keys in pairs:
     only_sh = sorted(sh_codes - ps_codes)
     if only_sh:
         miss.append(ps + ' 缺退出码 ' + ','.join(only_sh))
+    # F166：param 里声明的**命名**开关 MUST 在该文件头部用法注释中出现（防「有开关却不写用法」）。
+    #   位置参数（[Parameter(Position = N)]）与已用别名写法（如 -y 代表 -Yes）不计。
+    head_lines = [ln for ln in pt.split('\n')[:45] if ln.lstrip().startswith('#')]
+    head = '\n'.join(head_lines)
+    _pi = pt.find('param(')
+    if _pi >= 0:
+        _depth = 0
+        _k = _pi + len('param(') - 1
+        while _k < len(pt):
+            if pt[_k] == '(':
+                _depth = _depth + 1
+            elif pt[_k] == ')':
+                _depth = _depth - 1
+                if _depth == 0:
+                    break
+            _k = _k + 1
+        pblock = pt[_pi:_k + 1]
+    else:
+        pblock = ''
+    _segs = pblock.split(',')          # 参数以逗号分隔，逐段判定（避免跨段误取别名）
+    for _seg in _segs:
+        _ii = _seg.find('$')
+        if _ii < 0:
+            continue
+        _j = _ii + 1
+        _nm = ''
+        while _j < len(_seg) and (_seg[_j].isalnum() or _seg[_j] == '_'):
+            _nm = _nm + _seg[_j]
+            _j = _j + 1
+        if not _nm:
+            continue
+        if 'Position' in _seg:
+            continue                    # 位置参数：用法里以 <占位> 形式出现
+        _ai = _seg.find("[Alias('")
+        _alias = _seg[_ai + 8] if _ai >= 0 else None
+        if _nm in head or ('-' + _nm) in head or (_alias and ('-' + _alias) in head):
+            continue
+        miss.append(ps + ' 用法未列 -' + _nm)
 print('PARITY-DONE:' + '; '.join(miss[:4]))
 PYEOF
 )

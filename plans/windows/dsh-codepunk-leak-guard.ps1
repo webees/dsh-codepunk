@@ -12,7 +12,9 @@
 #
 # 用法：
 #   pwsh -File dsh-codepunk-leak-guard.ps1               # 扫索引（pre-commit）
-#   pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 扫工作树全部跟踪文件
+#   pwsh -File dsh-codepunk-leak-guard.ps1 -Tree
+#   pwsh -File dsh-codepunk-leak-guard.ps1 -Staged      # 显式指定扫索引（与默认同）
+         # 扫工作树全部跟踪文件
 #   pwsh -File dsh-codepunk-leak-guard.ps1 -History      # 扫近 20 提交（pre-push）
 #   pwsh -File dsh-codepunk-leak-guard.ps1 -Msg <file>   # 扫指定提交信息文件（commit-msg）
 #   pwsh -File dsh-codepunk-leak-guard.ps1 -InstallHook  # 装 pre-commit + pre-push + commit-msg 三钩子

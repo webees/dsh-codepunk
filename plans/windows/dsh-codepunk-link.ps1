@@ -31,7 +31,7 @@ param(
   [Parameter(Position = 0)][string]$Command,
   [Parameter(Position = 1)][string]$Arg1,
   [Parameter(Position = 2)][string]$Arg2,
-  [switch]$Yes
+  [Alias('y')][switch]$Yes
 )
 
 $ErrorActionPreference = 'Stop'
