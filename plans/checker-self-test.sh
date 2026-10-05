@@ -605,6 +605,17 @@ open(p, 'w', encoding='utf-8').write('\n'.join(out))
 PYEOF
 mutate_gone "抹掉 verify-worktree 的退出码声明" "$work/cur/plans/verify-worktree.sh" '^# 退出码'
 check_rc "M43 运行型脚本缺声明 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "缺退出码声明"
+echo "[M44 功能开关对等（doc-consistency 第 17 类扩展存活）]"
+fresh
+python3 - "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s = s.replace("[Alias('h')][switch]$Help,", '', 1).replace("[switch]$Help,", '', 1)
+open(p, 'w', encoding='utf-8').write(s)
+PYEOF
+mutate_gone "抹掉 leak-guard.ps1 的 Help 开关" "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" '[switch]$Help'
+check_rc "M44 开关不对等 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "移植对等性缺口"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

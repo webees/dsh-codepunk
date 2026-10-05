@@ -534,6 +534,7 @@ PYEOF
 echo "[17] 移植对等性（sh ↔ ps1）"
 PARITY_ISSUE=$(python3 <<'PYEOF'
 import os
+import re
 pairs = [
     ('dsh-codepunk-link.sh',       'dsh-codepunk-link.ps1',       ['结构非法', '语义非法', '未初始化']),
     ('dsh-codepunk-leak-guard.sh', 'dsh-codepunk-leak-guard.ps1', ['禁词', '通用']),
@@ -558,11 +559,42 @@ for sh, ps, keys in pairs:
         for sig in sigs:
             if sig in st and sig not in pt:
                 miss.append(ps + '缺签名 ' + sig)
-print('; '.join(miss[:4]))
+    # 功能开关集合对等（轮次 170：F139/F142/F160 三次「修了 sh 忘 ps1」的共同盲区）
+    #   保守白名单判据，且不使用正则（规避嵌套转义风险）。
+    FLAGS = ['help', 'tree', 'history', 'staged', 'msg', 'list', 'installhook', 'check']
+    sh_flags = {t[2:].replace('-', '').lower() for t in re.findall('--[a-z-]+', st)}
+    ps_flags = set()
+    for key in ('[switch]$', '[string]$'):
+        idx = 0
+        while True:
+            idx = pt.find(key, idx)
+            if idx < 0:
+                break
+            j = idx + len(key)
+            name = ''
+            while j < len(pt) and (pt[j].isalnum() or pt[j] == '_'):
+                name = name + pt[j]
+                j = j + 1
+            if name:
+                ps_flags.add(name.lower())
+            idx = j
+    alias_key = '[Alias(' + chr(39) + 'h' + chr(39) + ')]'
+    if alias_key in pt:
+        ps_flags.add('help')
+    for fl in FLAGS:
+        if fl in sh_flags and fl not in ps_flags:
+            miss.append(ps + ' 缺开关 --' + fl)
+        if fl in ps_flags and fl not in sh_flags:
+            miss.append(sh + ' 缺选项 -' + fl)
+print('PARITY-DONE:' + '; '.join(miss[:4]))
 PYEOF
 )
-  if [ -z "$PARITY_ISSUE" ]; then ok "4 对 sh↔ps1 关键守卫关键词对等"
-  else bad "移植对等性缺口 → ${PARITY_ISSUE}"; fi
+  case "$PARITY_ISSUE" in
+    PARITY-DONE:*) REST="${PARITY_ISSUE#PARITY-DONE:}"
+      if [ -z "$REST" ]; then ok "4 对 sh↔ps1 关键守卫关键词与功能开关对等"
+      else bad "移植对等性缺口 → ${REST}"; fi ;;
+    *) bad "第 17 类未完成（疑似被吞错，无法核验≠通过）：${PARITY_ISSUE:-空输出}" ;;
+  esac
 
 echo "[18] pwsh 钩子参数语法"
 # 排除注释行（说明文字里可能提到 `$1` 作反例）
