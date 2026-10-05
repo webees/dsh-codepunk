@@ -720,6 +720,43 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M62 score B7 缺 references 文件（存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/roles.md" <<'PYEOF'
+import os, sys
+p = sys.argv[1]
+os.remove(p)
+print('MUTATED')
+PYEOF
+check_rc "M62 删 roles.md → B7 报缺文件" "bash plans/preset-score.sh 2>&1" 1 "缺 references/roles.md"
+
+echo "[M63 score B12 README 缺必备节（存活）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '## 定位'
+if old not in s:
+    print('ANCHOR-MISSING')
+else:
+    open(p, 'w', encoding='utf-8').write(s.replace(old, '## 概览', 1))
+    print('MUTATED')
+PYEOF
+check_rc "M63 README 缺「定位」节 → B12 报缺节" "bash plans/preset-score.sh 2>&1" 1 "README 缺节"
+
+echo "[M64 score B15 learned-skills 缺版本列（存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/learned-skills.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s2 = s.replace('版本', '版次').replace('version', 'ver')
+open(p, 'w', encoding='utf-8').write(s2)
+print('MUTATED' if s2 != s else 'ANCHOR-MISSING')
+PYEOF
+check_rc "M64 learned-skills 无版本列 → B15 报缺版本列" "bash plans/preset-score.sh 2>&1" 1 "learned-skills 缺版本列"
+
 echo "[M59 品牌旧名残留（preset-audit B5 存活，需 OLD_NAME 门控）]"
 fresh
 python3 - "$work/cur/README.md" <<'PYEOF'
