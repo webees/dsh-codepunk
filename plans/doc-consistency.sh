@@ -10,6 +10,7 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   9. 编号引用可解析（D 号须逐条登记；P 号须落在已声明范围/span 内）
 #   8. 日期形态与未来日期（须 YYYY-MM-DD / YYYY-MM；不得出现未来日期——「实测」不能发生在未来）
 #   7. 跨文件阈值一致（同一机制在文档/脚本/配置中的数值必须唯一：评分基准与上下限、
 #      retries 扣分与上限、handoff 缺件扣分、巡检周期、收口轮数、证据门退出码）
@@ -172,7 +173,52 @@ PYEOF
   else bad "日期问题 → ${DATE_ISSUE}"; fi
 fi
 
+echo "[9] 编号引用可解析（D 逐条登记 / P 落在声明范围内）"
+if ! command -v python3 >/dev/null 2>&1; then
+  na "编号引用核验（缺 python3）"
+else
+  NUM_ISSUE=$(python3 <<'PYEOF'
+import glob, os, re
+std = open('skills/dsh-codepunk-workflow/references/standard.md', encoding='utf-8').read()
+D = {int(m) for m in re.findall(r'^\| D(\d{3})', std, re.M)}
+P_ind = {int(m) for m in re.findall(r'^\| P(\d{2})(?!\d)', std, re.M)}
+P_rng = set()
+for a, b in re.findall(r'P(\d{2})[–-]P(\d{2})', std):
+    P_rng |= set(range(int(a), int(b) + 1))
+files = ([ 'skills/dsh-codepunk-workflow/SKILL.md', 'README.md', 'CONTRIBUTING.md' ]
+         + glob.glob('skills/dsh-codepunk-workflow/references/*.md')
+         + glob.glob('skills/dsh-codepunk-workflow/benchmarks/*.md')
+         + [f for f in glob.glob('plans/*.sh') if 'checker-self-test.sh' not in f]   # 排除变异夹具
+         + glob.glob('plans/*.mjs') + glob.glob('plans/*.py'))
+bad_d, bad_p = [], []
+for f in files:
+    try:
+        t = open(f, encoding='utf-8').read()
+    except OSError:
+        continue
+    # D：逐条登记；排除 standard.md 自身与其自述样例
+    if not f.endswith('standard.md'):
+        for n in {int(x) for x in re.findall(r'\bD(\d{3})\b', t)}:
+            if n not in D:
+                bad_d.append(f'{os.path.basename(f)}:D{n:03d}')
+    # P：落在 个体 ∪ 范围 内
+    covered = P_ind | P_rng
+    for n in {int(x) for x in re.findall(r'\bP(\d{2})\b', t)}:
+        if covered and n not in covered:
+            bad_p.append(f'{os.path.basename(f)}:P{n:02d}')
+out = []
+if bad_d:
+    out.append('D 未登记: ' + ', '.join(sorted(set(bad_d))[:3]))
+if bad_p:
+    out.append('P 越界: ' + ', '.join(sorted(set(bad_p))[:3]))
+print('; '.join(out))
+PYEOF
+)
+  if [ -z "$NUM_ISSUE" ]; then ok "编号引用均可解析（D 逐条登记 / P 在范围内）"
+  else bad "编号引用问题 → ${NUM_ISSUE}"; fi
+fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（8 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（9 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1
