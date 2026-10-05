@@ -209,7 +209,12 @@ POSREF=$(grep -c "\.dsh-codepunk/scripts/" "$SKILL" 2>/dev/null)
 ROLES=$(grep -oE 'tool-subagent-[a-z-]+' agent.cordis.yml | sort -u | wc -l | tr -d ' ')
 [ "$ROLES" -lt 9 ] && ded B7 20 "岗位人设仅 ${ROLES} 个（应 ≥9）"
 # 决策号在登记表有条目
-DN=$(grep -oE 'D0[0-9]{2}' "$SKILL" | sort -u | while read -r d; do grep -q "| $d " "$REF/standard.md" || echo "$d"; done)
+# F174：standard.md 缺失时跳过本比对（其缺失已由 B7 扣分），否则内层 grep 会向输出抛 raw 报错，
+#   并把**所有** D 号误报为「登记表缺」（误导性扣分）。
+DN=""
+if [ -f "$REF/standard.md" ]; then
+  DN=$(grep -oE 'D0[0-9]{2}' "$SKILL" | sort -u | while read -r d; do grep -q "| $d " "$REF/standard.md" 2>/dev/null || echo "$d"; done)
+fi
 [ -n "$DN" ] && ded B7 20 "SKILL 引用但登记表缺: $(echo "$DN" | tr '\n' ' ')"
 
 # ── B8 可执行性 ─────────────────────────────────────────────────────────────
