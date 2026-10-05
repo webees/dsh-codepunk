@@ -23,7 +23,11 @@
 # =============================================================================
 set -uo pipefail
 
-ACC="${1:?用法: acceptance-verify.sh <acceptance.yaml> [交付方 task_id]}"
+if [ $# -lt 1 ]; then
+  echo "用法: acceptance-verify.sh <acceptance.yaml> [交付方 task_id]" >&2
+  exit 2                       # 与全仓约定一致：用法/文件缺失 = 2
+fi
+ACC="$1"
 DELIVERER="${2:-}"
 
 [ -f "$ACC" ] || { echo "❌ [fetch] acceptance 文件不存在: $ACC"; exit 2; }

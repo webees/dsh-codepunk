@@ -45,14 +45,16 @@ pass() { echo "✓ $*"; }
 # --- 0. 安装路径常量文件到总库根（README/SKILL 承诺的 source 路径） ---------------
 install_home_sh() {
   [[ -f "$HOME_SH_SRC" ]] || return 0          # 无源副本（内联兜底路径）时不安装
-  mkdir -p "$DSH_CODEPUNK_HOME"
+  mkdir -p "$DSH_CODEPUNK_HOME" 2>/dev/null \
+    || fail "无法创建总库根: ${DSH_CODEPUNK_HOME}（检查父目录写权限；或改 DSH_CODEPUNK_HOME 环境变量）"
   if [[ -f "$HOME_SH_DST" ]] && cmp -s "$HOME_SH_SRC" "$HOME_SH_DST"; then
     return 0
   fi
   if (( CHECK_ONLY )); then
-    fail "路径常量文件缺失或过期: $HOME_SH_DST（运行本体脚本安装）"
+    fail "路径常量文件缺失或过期: ${HOME_SH_DST}（运行本体脚本安装）"
   fi
-  cp "$HOME_SH_SRC" "$HOME_SH_DST"
+  cp "$HOME_SH_SRC" "$HOME_SH_DST" 2>/dev/null \
+    || fail "路径常量安装失败: ${HOME_SH_DST}（检查 $DSH_CODEPUNK_HOME 写权限）"
   chmod +x "$HOME_SH_DST"
   pass "已安装路径常量: $HOME_SH_DST"
 }
@@ -88,7 +90,10 @@ install_scripts() {
     echo "  ℹ 正从总库副本自身运行：更新工具请改用仓内副本（bash <repo>/plans/dsh-codepunk-init.sh）" >&2
     return 0
   fi
-  (($(CHECK_ONLY))) || mkdir -p "$DSH_CODEPUNK_SCRIPTS"
+  if (($(CHECK_ONLY))); then :; else
+    mkdir -p "$DSH_CODEPUNK_SCRIPTS" 2>/dev/null \
+      || fail "无法创建总库 scripts 目录: ${DSH_CODEPUNK_SCRIPTS}（检查写权限）"
+  fi
   for f in "$src_dir"/*.sh "$src_dir"/*.py "$src_dir"/*.mjs "$src_dir"/windows/*.ps1; do
     [[ -f "$f" ]] || continue
     base="$(basename "$f")"
@@ -103,7 +108,7 @@ install_scripts() {
   done
   if (( CHECK_ONLY )); then
     n_stale=$((n_new + n_upd))
-    (( n_stale == 0 )) && pass "工具脚本与源一致（$DSH_CODEPUNK_SCRIPTS）" \
+    (( n_stale == 0 )) && pass "工具脚本与源一致（${DSH_CODEPUNK_SCRIPTS}）" \
                        || fail "总库工具脚本缺失/过期 $n_stale 个（运行本体脚本同步）"
   else
     if (( n_new + n_upd == 0 )); then
@@ -120,7 +125,8 @@ for d in "$DSH_CODEPUNK_PROJECTS" "$DSH_CODEPUNK_WORKTREES" "$DSH_CODEPUNK_SCRIP
   if (( CHECK_ONLY )); then
     [[ -d "$d" ]] || fail "目录缺失: $d (运行本体脚本补建)"
   else
-    mkdir -p "$d"
+    mkdir -p "$d" 2>/dev/null \
+      || fail "目录创建失败: ${d}（检查父目录写权限）"
     pass "目录就绪: $d"
   fi
 done

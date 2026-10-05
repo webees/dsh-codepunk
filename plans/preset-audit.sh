@@ -91,9 +91,17 @@ PYEOF
 # B1b 全角紧邻陷阱守护：`$VAR` 直接跟全角标点时，bash 会把全角字节并进变量名，
 #     在 set -u 下报 unbound variable 并中止脚本（本会话实测在 init.sh 真实发生）。
 #     规则：shell 脚本内变量引用后若接全角字符，MUST 用 ${VAR} 形式。
-B1B=$(grep -nP '\$[A-Za-z_][A-Za-z0-9_]*[（）：，。；、「」【】]' plans/*.sh 2>/dev/null | head -3 | cut -d: -f1,2 | tr '\n' ' ')
-[ -z "$B1B" ] && report "$PASS" "B1b 无全角紧邻陷阱（变量引用均用 \${VAR}）" \
-             || report "$FAIL" "B1b 全角紧邻陷阱（set -u 下会崩栈）: $B1B"
+# 注意：MUST 用 `grep -E`（BSD/GNU 皆可）——`grep -P` 在 macOS 自带 grep 上直接报错退出，
+#       会让本项恒判 PASS（本守护曾因此长期空转，F097）。grep 退出码 2 = 自身出错，同样判失败。
+B1B_RAW=$(grep -nE '(^|[^\\])\$[A-Za-z_][A-Za-z0-9_]*[（）：，。；、「」【】]' plans/*.sh 2>/dev/null); B1B_RC=$?
+B1B=$(printf '%s' "$B1B_RAW" | head -3 | cut -d: -f1,2 | tr '\n' ' ' | sed 's/ *$//')   # 裁剪尾部空格：空输出须判空
+if [ "$B1B_RC" = 2 ]; then
+  report "$FAIL" "B1b 检查自身出错（grep 不可用？）——请核对本项"
+elif [ -z "$B1B" ]; then
+  report "$PASS" "B1b 无全角紧邻陷阱（变量引用均用 \${VAR}）"
+else
+  report "$FAIL" "B1b 全角紧邻陷阱（set -u 下会崩栈）: $B1B"
+fi
 
 echo "[组B 手册层 25]"
 SIZE=$(wc -c < skills/dsh-codepunk-workflow/SKILL.md)

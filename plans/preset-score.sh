@@ -191,7 +191,7 @@ if [ -f "$PV" ] && command -v node >/dev/null 2>&1; then
   case "$PV_RC" in
     0) ;;
     2) echo "  ℹ PowerShell 校验器依赖缺失（退出码 2），本次跳过；启用见 README「PowerShell 校验」" >&2 ;;
-    *) ded B8 25 "PowerShell 语法校验失败（退出码 $PV_RC）" ;;
+    *) ded B8 25 "PowerShell 语法校验失败（退出码 ${PV_RC}）" ;;
   esac
 else
   echo "  ℹ PowerShell 语法校验跳过：无校验器（\$PV）。启用：见 README「PowerShell 校验」" >&2
