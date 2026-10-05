@@ -553,6 +553,11 @@ score_reason "M36 删 R15 → 扣分（旧版覆盖不到）" \
   "sed -i.bak '/^| R15 |/d' '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
   "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" '^\| R15 \|' '缺硬规则 R15'
 MUT_GONE=0
+echo "[M37 硬规则命名空间洁净（doc-consistency 第 19 类存活）]"
+fresh
+printf '\n> 轮次引用误写为 R999 形式\n' >> "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md"
+mutate "注入 R### 同形引用" "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md" 'R999'
+check_rc "M37 R### 同形引用 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "与硬规则同形"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

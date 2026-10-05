@@ -10,12 +10,14 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   19. 硬规则命名空间洁净（`R###`（三位以上）不得出现——`R1–R15` 是硬规则号，轮次引用请写
+#       「轮次 N」，避免同形误读；F144 实证）
 #   18. pwsh 钩子参数语法（Windows 侧生成的钩子体不得用 `$1`/`$2` 位置参数——PowerShell 无该
 #       语法，参数恒空致钩子静默退化；F142 实证）
 #   17. 移植对等性（4 对 sh↔ps1：POSIX 侧已修的关键守卫关键词 MUST 在 Windows 端口出现——
 #       防「修了一侧忘另一侧」；F139 实证：link.ps1 曾缺解析/语义核验）
 #   16. 自检期望串特异性（`check_rc` 的期望串 MUST NOT 被被检脚本的**小节标题**包含——
-#       否则断言可能仅凭标题即通过＝假通过；实测由 R131「死状态」误判导出）
+#       否则断言可能仅凭标题即通过＝假通过；实测由轮次 131 的「死状态」误判导出）
 #   15. 阶段引用可解析（全仓阶段引用须在 stages.md 有定义；已定义阶段须至少被引用一次——
 #       「部分流程自洽」的机械判据）
 #   14. 夹具字面量纪律（自检夹具不得含触发本仓守卫的字面量：用户目录绝对路径 / 邮箱形态 /
@@ -539,7 +541,14 @@ HOOK_SYNTAX=$(grep -nE '\$[1-9]' plans/windows/*.ps1 2>/dev/null | grep -vE '^[^
 if [ -z "$HOOK_SYNTAX" ]; then ok "Windows 侧未使用 PS 不支持的位置参数语法（\$1/…）"
 else bad "Windows 侧出现 PS 不支持的位置参数语法 → $(printf '%s' "$HOOK_SYNTAX" | head -1 | cut -c1-96)"; fi
 
+echo "[19] 硬规则命名空间洁净（禁 R### 轮次引用）"
+NS_ISSUE=$(grep -rnoE '\bR[0-9]{3,}\b' skills README.md plans/*.sh plans/*.py plans/*.mjs agent.cordis.yml 2>/dev/null \
+             | grep -v bench | grep -v 'checker-self-test.sh' | head -3)   # 排除变异夹具（其载荷含三位 R 号）
+  # 注意：消息里不得出现反引号（双引号内会被当命令替换）或三位以上 R 样例（会被本类自匹配）
+  if [ -z "$NS_ISSUE" ]; then ok "无与硬规则同形的 R 三位号引用（轮次引用一律写作「轮次 N」）"
+  else bad "出现与硬规则同形的 R 三位号引用 → $(printf '%s' "$NS_ISSUE" | head -1 | cut -c1-90)"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（18 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（19 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1
