@@ -9,7 +9,7 @@
 #   3. 术语咨询（裸用「工作区」列出供人工确认；**咨询不判失败**——矩阵已把术语一致性列为人工项）
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
-#   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）（**仅提示，不计失败**）
 #   23. 简报检索日（含 URL 的 benchmarks MUST 带 `retrieved_at`；若原始检索日不可考，须显式写
 #       「未记录」并注明依据——依赖约定「URL+retrieved_at+事实/推断」；F151 实证）
 #   22. 矩阵覆盖（每个检查类 1..N 须在 skill-governance 矩阵中被提及——含「第 a–b 类」范围写法；
@@ -168,7 +168,7 @@ for f in plans/*.sh; do
 done
 [ -z "$RC_UNDECL" ] && ok "运行型脚本均声明了退出码" || bad "运行型脚本缺退出码声明:${RC_UNDECL}"
 
-echo "[6] 头部自称项数"
+echo "[6] 头部自称项数（仅提示，不计失败——计数口径以实跑输出为准）"
 DOC_CN=$(grep -oE '[一二三四五六七八九十]+项检查' plans/preset-compat.py | head -1)
 REAL_CN=$(grep -cE 'print\(f?"  [✅✗ℹ]' plans/preset-compat.py)
 if [ -z "$DOC_CN" ]; then ok "preset-compat 未在头部声称项数（跳过）"

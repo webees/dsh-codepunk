@@ -720,6 +720,33 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M55 阶段口径不一致（doc-consistency 第 2 类存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/stages.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '## \u2465'
+if old not in s:
+    print('ANCHOR-MISSING')
+else:
+    open(p, 'w', encoding='utf-8').write(s.replace(old, '## \u516d', 1))
+    print('MUTATED')
+PYEOF
+check_rc "M55 阶段号被改 → 第 2 类报口径不一" "bash plans/doc-consistency.sh 2>&1" 1 "阶段口径不一"
+
+echo "[M56 文档提到不存在的脚本（doc-consistency 第 4 类存活）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s = s.replace('## 目录结构', '## 目录结构\n\n`plans/nonexistent-m56.sh`\n', 1) if '## 目录结构' in s else s + '\n`plans/nonexistent-m56.sh`\n'
+open(p, 'w', encoding='utf-8').write(s)
+print('MUTATED')
+PYEOF
+check_rc "M56 引用不存在的 plans 脚本 → 第 4 类报缺脚本" "bash plans/doc-consistency.sh 2>&1" 1 "不存在"
+
 echo "[M54 编号引用可解析（doc-consistency 第 9 类存活）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/benchmarks/anti-hallucination.md" <<'PYEOF'
