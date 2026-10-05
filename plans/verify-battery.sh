@@ -39,7 +39,9 @@ for f in files:
     if b'\r\n' in raw and not f.endswith(('.ps1','.cmd','.bat')): bad += 1
     try: txt = raw.decode('utf-8')
     except UnicodeDecodeError: continue
-    for ln in txt.split('\n'):
+    # F159：先按 splitlines() 断行（同时正确处理 \r\n），避免把 CRLF 的行尾 CR
+    #   误判为「尾随空白」——.gitattributes 明确要求 *.ps1 为 CRLF。
+    for ln in txt.splitlines():
         if ln != ln.rstrip() and ln.strip(): bad += 1
     if '\n\n\n\n' in txt: bad += 1
 print('UNVERIFIED' if not files else bad)
