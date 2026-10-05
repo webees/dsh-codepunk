@@ -323,7 +323,8 @@ const copyLines = copyPluginLines(patchLines, span);
 if (!copyLines) die(`声明块内找不到 plugins: 段：id: preset-${ID}`);
 
 if (!yaml) {
-  const norm = (ls) => ls.map((l) => l.trim()).filter(Boolean);
+  // 降级比对口径与语义比对一致：忽略注释行与空行（apply 会插入适配注释，计为差异即假阳性）
+  const norm = (ls) => ls.map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
   const a = norm(sourceLines);
   const b = norm(copyLines);
   const same = a.length === b.length && a.every((l, i) => l === b[i]);
@@ -331,8 +332,10 @@ if (!yaml) {
     console.log(`  ✅ 声明副本与源一致（行内容比对，${a.length} 行）：${ID}`);
     process.exit(0);
   }
-  console.log(`  ✗ 声明副本与源漂移（行内容比对，js-yaml 不可用）：${ID}`);
-  console.log(`     源 ${a.length} 行 / 副本 ${b.length} 行；修复：node plans/preset-declare.mjs apply`);
+  // 忽略注释后仍有差异：**无法判定**是真实漂移还是环境差异——不冒充「确认漂移」
+  console.log(`  ⚠ 无法判定是否漂移（缺 js-yaml，仅行内容比对；已忽略注释行）：${ID}`);
+  console.log(`     源 ${a.length} 行 / 副本 ${b.length} 行`);
+  console.log('     启用语义核验：设 DSH_APP_ROOT 指向 DSH app 目录，或在 ~/.dsh-codepunk/tools 内 npm i js-yaml');
   const n = Math.max(a.length, b.length);
   let shown = 0;
   for (let i = 0; i < n && shown < 10; i++) {
@@ -342,7 +345,7 @@ if (!yaml) {
       shown++;
     }
   }
-  process.exit(1);
+  process.exit(2);            // 2=环境/无法核验（区别于 1=确认漂移）
 }
 
 const schema = schemaFor(yaml);

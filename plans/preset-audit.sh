@@ -146,10 +146,15 @@ for f in files:
             bad.append(f'{f}:{i}')
 print(' '.join(bad[:3]))
 PYEOF
-)
-if [ "$NOPY" = 0 ]; then
-[ -z "$D3" ] && report "$PASS" "D3 行号引用均附符号名（可复核）" \
-             || report "$FAIL" "D3 行号引用缺符号名（行号会漂移）: $D3"
+); D3_RC=$?
+if [ "$NOPY" = 1 ]; then
+  :                                  # 上方已报「无法核验」，勿重复
+elif [ "${D3_RC:-1}" != 0 ]; then
+  report "$FAIL" "D3 无法核验（python3 执行失败，退出码 ${D3_RC}）——无法核验 ≠ 通过"
+elif [ -z "$D3" ]; then
+  report "$PASS" "D3 行号引用均附符号名（可复核）"
+else
+  report "$FAIL" "D3 行号引用缺符号名（行号会漂移）: $D3"
 fi
 
 echo "[组E 文档层 10]"
@@ -183,10 +188,15 @@ for f in files:
         bad.append(f'{f} → {t}')
 print(' '.join(bad[:3]))
 PYEOF
-)
-if [ "$NOPY" = 0 ]; then
-[ -z "$E3" ] && report "$PASS" "E3 仓内相对链接均可达" \
-             || report "$FAIL" "E3 死链: $E3"
+); E3_RC=$?
+if [ "$NOPY" = 1 ]; then
+  :                                  # 上方已报「无法核验」，勿重复
+elif [ "${E3_RC:-1}" != 0 ]; then
+  report "$FAIL" "E3 无法核验（python3 执行失败，退出码 ${E3_RC}）——无法核验 ≠ 通过"
+elif [ -z "$E3" ]; then
+  report "$PASS" "E3 仓内相对链接均可达"
+else
+  report "$FAIL" "E3 死链: $E3"
 fi
 
 echo "[组F 工具层 10]"
