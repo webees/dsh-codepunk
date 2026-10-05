@@ -149,6 +149,29 @@ fresh; mkdir -p "$work/ro"; chmod 500 "$work/ro"
 check_rc "M13 init 只读 HOME → 非零失败" "HOME=\"$work/ro\" bash plans/dsh-codepunk-init.sh" 1 "无法创建总库根"
 chmod 700 "$work/ro" 2>/dev/null
 
+echo "[M14 声明副本敏感度（双向：未改须一致 / 改适配路径须漂移）]"
+# 语义模式需 js-yaml：由 DSH_APP_ROOT / DSH_ASAR 提供（用户环境契约，与 preset-compat 一致）
+REAL_PATCH="${DSH_PROFILE_PATCH:-$REAL_HOME/.dsh/profiles/desktop/cordis.patch.yml}"
+if [ -z "${DSH_APP_ROOT:-}${DSH_ASAR:-}" ]; then
+  printf '  ℹ M14 跳过（未设 DSH_APP_ROOT/DSH_ASAR，无法进入语义核验模式）\n'
+elif [ ! -f "$REAL_PATCH" ]; then
+  printf '  ℹ M14 跳过（未找到 profile patch：%s）\n' "$REAL_PATCH"
+else
+  fresh; mkdir -p "$HOME/.dsh/profiles/desktop"
+  cp "$REAL_PATCH" "$HOME/.dsh/profiles/desktop/cordis.patch.yml"
+  check_rc "M14a 未篡改 → 一致" "node plans/preset-declare.mjs check" 0 "语义一致"
+  python3 - "$HOME/.dsh/profiles/desktop/cordis.patch.yml" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+n = s.replace('../../.agent-presets/dsh-codepunk/skills/', '/tmp/evil-skills/')
+if n == s:                      # 兜底：按 skills/ 片段做更宽松的替换
+    n = s.replace("new URL('skills/'", "new URL('/tmp/evil-skills/'", 1)
+open(p, 'w', encoding='utf-8').write(n)
+PYEOF
+  check_rc "M14b 改适配路径 → 漂移" "node plans/preset-declare.mjs check" 1 "漂移"
+fi
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi

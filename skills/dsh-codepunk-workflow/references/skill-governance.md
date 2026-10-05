@@ -111,6 +111,32 @@
 | D095 | 定时巡检与子代理状态清单 | 内部需求 | SKILL §1.1 第 5 条 / artifacts.md | v1.0 |
 | D096 | 持久 shell 与工具调用超时 | DSH 2.0.12 | SKILL §4 / agent.cordis.yml | v1.1 |
 
+## 六之前·检查器覆盖矩阵（哪类缺陷由谁负责）
+
+> 目的：明确「机械把关 vs 人工把关」的边界，避免误以为有工具就万无一失。**空档列已如实标注**——
+> 空档类缺陷只能靠人工逐条比对（历次审计中该类占比最高）。
+> 「元检查」= 检查器自身的存活验证（防「守护空转」）。
+
+| 缺陷类别 | 负责检查项 | 方式 |
+|---|---|---|
+| 组合/岗位不变量（缺 persona、非 continuable、disabled、缺 toolFilter） | `preset-audit` A7 | 机械 |
+| YAML 可解析 / 条目形状 | `preset-audit` A1 · `preset-compat` 配置键项 | 机械 |
+| 组合 ↔ DSH 兼容（包存在/键接受/隔离/锚点/allow 名单） | `preset-compat`（7 项） | 机械 |
+| 源 ↔ profile 副本漂移 | `preset-declare check`（语义）+ `verify-battery` 8b | 机械 |
+| 脚本语法（`.sh`/`.ps1`/`.py`/`.mjs` 四类） | `verify-battery` 7 | 机械 |
+| 路径/脚本引用存在性（含 references 内、markdown 死链） | `preset-score` A2 · `preset-audit` E3 | 机械 |
+| 编号一致性（D/P/R 定义与引用、重复号） | `preset-audit` B7/D1/D3 · `preset-score` | 机械 |
+| 已登记的计数声称（15 指标 / 5 组 / 13 项电池 / 岗位数） | `preset-score` A3 · `preset-audit` B1 | 机械 |
+| 泄露与品牌卫生 | `leak-guard`（3 模式 + 三钩子）· `preset-score` B5/B11 | 机械 |
+| 格式/EOL/杂散/全角紧邻陷阱 | `verify-battery` 4/5 · `preset-audit` B1b | 机械 |
+| 失败路径提示与退出码契约 | `checker-self-test` M10–M13 | 机械（变异） |
+| **守护空转**（检查器因工具缺失/正则不兼容/空值判定而恒判 PASS） | **`checker-self-test`（15 断言）** | 元检查 |
+| 脚本注释/文档**声称 ↔ 实现**（例：写「只装 pre-push」实为三钩子） | **无机械检查** | 人工逐条比对 |
+| 跨文件同机制**阈值一致**（证据门/门闩/评分/retries/巡检/收口 等 13 类） | 无 | 人工（可复跑一次性扫描） |
+| **术语一致性**（如「工作房」vs「工作区」） | 无 | 人工 |
+| **日期新鲜度**（文档内实测日期是否已过期） | 无 | 人工 |
+| 需求/流程自洽（阶段归属、汇报链、责任席位是否有人） | 部分（A7/结构检查） | 半人工 |
+
 ## 六、文档小组职责（技能治理执行者）
 
 1. **月度技能复检**：检测外部源变化（§3.1 触发器），写升级评估交 run-lead 审定
