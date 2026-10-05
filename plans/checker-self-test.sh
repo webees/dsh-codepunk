@@ -302,6 +302,33 @@ check_rc "M25 类型非法 INDEX → 失败" "HOME='$work/linkhome' bash plans/d
 printf 'schema_version: 1\nprojects: {}\n' > "$work/linkhome/.dsh-codepunk/INDEX.yaml"
 check_rc "M25 合法骨架 → 通过" "HOME='$work/linkhome' bash plans/dsh-codepunk-link.sh index 2>&1" 0 "校验通过"
 
+echo "[M26 泄露防护门检测存活（leak-guard 命中必阻断）]"
+# 背景：电池只跑通过路径（--staged/--tree/--history 3/3），**从不证明命中会阻断**——
+#   匹配逻辑若坏仍显 3/3（F097「守护恒绿」类）。此处用沙箱 HOME 证明两条匹配链均存活。
+fresh
+mkdir -p "$SANDBOX/.dsh-codepunk"
+: > "$SANDBOX/.dsh-codepunk/denylist.txt"          # 先清空禁词表
+# ① 通用模式链（不依赖本地禁词）：绝对路径
+# 触发串在运行时拼接：自检文件内不得出现字面量，否则本仓守卫（B10 硬编码绝对路径 / B11 泄露门）
+# 会在副本内把自检文件自身判为违规（F131 实测：评分由 15/15 掉至 13 项）。
+printf 'see /%s/%s/private/notes.md\n' 'Users' 'someone' > "$work/leak-generic.txt"
+check_rc "M26-a 通用模式命中 → 阻断" \
+  "bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-generic.txt' 2>&1" 1 "[通用]"
+# ② 邮箱形态
+printf 'contact %s@%s now\n' 'x/y' 'example.com' > "$work/leak-mail.txt"
+check_rc "M26-b 邮箱形态命中 → 阻断" \
+  "bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-mail.txt' 2>&1" 1 "[通用]"
+# ③ 禁词链（本地词表）：命中须阻断
+printf 'acme-topsecret\n' > "$SANDBOX/.dsh-codepunk/denylist.txt"
+printf 'this mentions acme-topsecret inline\n' > "$work/leak-term.txt"
+check_rc "M26-c 禁词命中 → 阻断" \
+  "bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-term.txt' 2>&1" 1 "[禁词]"
+# ④ 干净内容 + 空词表 → 必须通过（防假阳性）
+: > "$SANDBOX/.dsh-codepunk/denylist.txt"
+printf 'clean text with no markers\n' > "$work/leak-clean.txt"
+check_rc "M26-d 干净内容 → 通过" \
+  "bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-clean.txt' 2>&1" 0
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
