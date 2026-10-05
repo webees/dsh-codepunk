@@ -154,11 +154,19 @@ else
   p "ℹ" "node 缺失：跳过 plans/*.mjs 语法校验"
 fi
 PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
-[ -f "$PV" ] && { node "$PV" plans/windows/*.ps1 >/dev/null 2>&1 || { p "✗" "PS 语法校验失败"; F=1; }; }
-[ "$F" -eq 0 ] && p "✅" "脚本语法（$(ls plans/*.sh 2>/dev/null | wc -l | tr -d ' ') .sh + $(ls plans/*.py 2>/dev/null | wc -l | tr -d ' ') .py + $(ls plans/*.mjs 2>/dev/null | wc -l | tr -d ' ') .mjs + $(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' ') .ps1）通过"
+# F181：按**显式核验计数**构建结论行 —— 未实际核验的类型不得计入「通过」，否则会与「跳过」提示并列误导
+SH_CN=$(ls plans/*.sh 2>/dev/null | wc -l | tr -d ' ')
+PY_CN=0; command -v python3 >/dev/null 2>&1 && PY_CN=$(ls plans/*.py 2>/dev/null | wc -l | tr -d ' ')
+MJS_CN=0; command -v node >/dev/null 2>&1 && MJS_CN=$(ls plans/*.mjs 2>/dev/null | wc -l | tr -d ' ')
+PS_CN=0; PS_SUFFIX=""
+if [ -f "$PV" ] && command -v node >/dev/null 2>&1; then
+  node "$PV" plans/windows/*.ps1 >/dev/null 2>&1 && { PS_CN=$(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' '); PS_SUFFIX=" + ${PS_CN} .ps1"; } \
+    || { p "✗" "PS 语法校验失败"; F=1; }
+fi
+[ "$F" -eq 0 ] && p "✅" "脚本语法（${SH_CN} .sh + ${PY_CN} .py + ${MJS_CN} .mjs${PS_SUFFIX}）通过"
 # 7b) PS 校验器缺失提示（不判失败，但明确告知如何启用）
-if [ ! -f "$PV" ]; then
-  p "ℹ" "PS 语法校验跳过（无校验器）：如需启用，见 README「PowerShell 校验」一节"
+if [ "$PS_CN" -eq 0 ]; then
+  p "ℹ" "PS 语法校验未计入（无校验器或校验未通过）：如需启用，见 README「PowerShell 校验」一节"
 fi
 
 # 8) DSH 兼容性（7 项：插件包存在 / 配置键被接受 / group 隔离形态 / allow 名单工具名有注册来源 /

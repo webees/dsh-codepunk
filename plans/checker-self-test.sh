@@ -722,6 +722,12 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M76 无校验器时语法行不得计入 ps1（F181 修复存活）]"
+fresh
+# F181：必须带 `DSH_CODEPUNK_SKIP_SELFTEST=1`（仓库既有递归防护）——否则本变异会在 battery
+#   内再跑自检、自检又跑本变异 → 递归（首版即因此超时，属我的设计错误）。
+check_no_match "M76 无校验器时语法行不得声明 ps1 已通过（F181 修复存活）" "DSH_CODEPUNK_SKIP_SELFTEST=1 PWSH_VALIDATOR=/nonexistent/none.mjs bash plans/verify-battery.sh 2>&1" ".ps1）通过"
+
 echo "[M75 ps1 工作树行尾非 CRLF（doc-consistency class17 子项存活）]"
 fresh
 python3 - "$work/cur/plans/windows/dsh-codepunk-link.ps1" <<'PYEOF'
