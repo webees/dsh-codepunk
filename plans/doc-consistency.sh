@@ -80,8 +80,18 @@ cmp_num "评分指标" "$(grep -cE '^# ── [AB][0-9]+ ' plans/preset-score.sh
         "$(grep -oE '[0-9]+ 指标' README.md | head -1 | grep -oE '[0-9]+')"
 cmp_num "审计分组" "$(grep -cE '^echo "\[组' plans/preset-audit.sh)" \
         "$(grep -oE '[0-9]+ 组' README.md | head -1 | grep -oE '[0-9]+')"
-cmp_num "电池项数" "$(grep -cE '^# [0-9]+[a-c]?\)' plans/verify-battery.sh)" \
-        "$(grep -oE '[0-9]+ 项一次跑完' README.md | head -1 | grep -oE '[0-9]+')"
+BAT_N="$(grep -cE '^# [0-9]+[a-c]?\)' plans/verify-battery.sh)"
+# F162：README 中**每一处**该计数声称都必须唯一且等于实况——原先只取 head -1，
+#   导致README 两处声称（命令表与文件清单）可各自漂移而不被发现。
+BAT_CLAIMS="$(grep -oE '[0-9]+ 项(独立验证|一次跑完)' README.md | grep -oE '[0-9]+' | sort -u | tr '\n' ' ')"
+BAT_UNIQ="$(printf '%s' "$BAT_CLAIMS" | wc -w | tr -d ' ')"
+BAT_BAD=""
+for v in $BAT_CLAIMS; do [ "$v" = "$BAT_N" ] || BAT_BAD="$BAT_BAD $v"; done
+if [ -z "$BAT_CLAIMS" ]; then bad "README 未声明电池项数（计数判据空转风险）"
+elif [ -n "$BAT_UNIQ" ] && [ "$BAT_UNIQ" -gt 1 ] && [ -n "$BAT_BAD" ]; then
+  bad "电池项数 声称不一致（README 内多值: ${BAT_CLAIMS}）"
+elif [ -n "$BAT_BAD" ]; then bad "电池项数 实际 ${BAT_N}，README 声称${BAT_BAD}"
+else ok "电池项数 实际 ${BAT_N} = 声称（README 全部出现处一致）"; fi
 cmp_num "references" "$(ls "$REF"/*.md 2>/dev/null | wc -l | tr -d ' ')" \
         "$(grep -oE '[0-9]+ 篇' README.md | head -1 | grep -oE '[0-9]+')"
 cmp_num "benchmarks" "$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')" \

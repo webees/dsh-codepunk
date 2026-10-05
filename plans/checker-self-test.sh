@@ -616,6 +616,10 @@ open(p, 'w', encoding='utf-8').write(s)
 PYEOF
 mutate_gone "抹掉 leak-guard.ps1 的 Help 开关" "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" '[switch]$Help'
 check_rc "M44 开关不对等 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "移植对等性缺口"
+echo "[M45 电池项数计数声称（doc-consistency 第 1 类 F162 修复存活）]"
+fresh
+sed -i.bak 's/14 项独立验证/99 项独立验证/' "$work/cur/README.md"
+check_rc "M45 电池项数声称漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "电池项数 声称不一致"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
