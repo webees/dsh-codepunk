@@ -61,7 +61,7 @@ metadata:
 5. **定时巡检与状态清单（MUST，D095）**：仅靠启动自检不够——新开对话、长任务中途都要周期性巡检，防止中断席长期失联。
    - **清单**：`runs/<run_id>/agents.yaml` 为独立 YAML 状态清单（模板见 `references/artifacts.md`「子代理状态清单」），与 README 登记表双写一致；每次巡检后刷新 `updated_at`。
    - **节奏**：启动执行一次；运行中每 `patrol_every_n_rounds`（默认 5 轮）执行一次；收到失败/中断结算通知时加跑一次。
-   - **动作**：每次巡检执行「查→比→续→写」闭环：`list_agents` 查实测态 → 对照清单找 `expected: active` 但非 running 的中断席 → 读断点 `send_message` 续行 → **写回** `agents.yaml`（`status`/`last_seen`/`last_checkpoint_at`/`note`）。`status: done` 的席跳过。
+   - **动作**：每次巡检执行「查→比→续→写」闭环：`list_agents` 查实测态 → 对照清单找 `expected: active` 但非 running 的中断席 → 读断点 `send_message` 续行 → **写回** `agents.yaml`（`status`/`last_seen`/`last_checkpoint_at`/`note`；**取值与触发条件见 `references/artifacts.md`「状态迁移主体」表**——如中断席写 `interrupted`、授权唤醒后续行写 `recovered`、不可恢复写 `failed`）。`status: done` 的席跳过。
 
 ### 1.2 运行根结构（速记）
 

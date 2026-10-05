@@ -308,3 +308,13 @@ seats:
 ```
 
 **字段语义**：`status` 为主进程维护的目标态，`last_seen` 为最近巡检的实测态；二者不一致（active 但 running 之外）即中断席。`expected: done` 的席跳过恢复。
+
+**状态迁移主体与触发条件（单点权威；`status` 只由 run-lead 写）**——`interrupted`/`failed` 此前无归属：
+
+| 迁移至 | 主体 | 触发条件（可观测） |
+| --- | --- | --- |
+| `active` | run-lead | 派发该席时（`创建即登记`，`subagent_id` 落盘） |
+| `interrupted` | run-lead | 巡检查得 `expected: active` 而 `last_seen ∈ {inactive, 未在册}`（即中断席）；**同轮写 `last_seen`/`note`（中断原因）** |
+| `recovered` | run-lead | 经授权唤醒（`send_message` 附断点摘要）后续行成功；登记 `note`＝断点与授权 |
+| `done` | run-lead | 接收方签收后（**与 `chunks.yaml` 的 chunk 态同时置**，见 SKILL ⑤） |
+| `failed` | run-lead | 该席不可恢复：连续回修仍不可用、或 `subagent_id` 已不可达而须重建（§5 失败处理）；**记 `note` 与重建去向** |
