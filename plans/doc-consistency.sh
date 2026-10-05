@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   7. 跨文件阈值一致（同一机制在文档/脚本/配置中的数值必须唯一：评分基准与上下限、
+#      retries 扣分与上限、handoff 缺件扣分、巡检周期、收口轮数、证据门退出码）
 #
 # 计数一律**静态**取（不实跑子工具，避免环境依赖与递归）。
 # 用法: doc-consistency.sh [预设根]
@@ -94,7 +96,43 @@ REAL_CN=$(grep -cE 'print\(f?"  [✅✗ℹ]' plans/preset-compat.py)
 if [ -z "$DOC_CN" ]; then ok "preset-compat 未在头部声称项数（跳过）"
 else info "preset-compat 头部称「${DOC_CN}」；源码输出分支 ${REAL_CN} 处（同项含成功/失败双分支，以实跑输出为准）"; fi
 
+echo "[7] 跨文件阈值一致（同一机制取值必须唯一）"
+# 每类：<标签>|<正则（须含一个捕获组）>
+THRESH='评分基准 base|all|base[：: ]*([0-9]+)
+评分下限 clamp|last|clamp[ ]*0[–—-]([0-9]+)
+retries 单次扣分|all|每次[ ]*[−-]([0-9]+)
+retries 上限扣分|all|上限[ ]*[−-]([0-9]+)
+handoff 缺件扣分|last|每缺[ ]*1[ ]*文件[ ]*[−-]([0-9]+)
+巡检周期（轮）|all|每[ ]*([0-9]+)[ ]*轮
+收口轮数|all|([0-9]+)[ ]*轮未交付
+证据门 exit_code|all|exit_code[ ]*[=＝][ ]*([0-9]+)'
+TH_BAD=""
+# 用 here-string 而非管道：管道右侧是子 shell，其中的 NFAIL 自增会丢失（总判定仍 ✔）
+while IFS='|' read -r label mode pat; do
+  [ -n "$label" ] || continue
+  # 排除 checker-self-test.sh：它以**变异载荷**形式故意含有缺陷字面量（例：把证据门退出码
+  # 写成非 0 值以验证本项能失败），属测试夹具而非真实取值（曾致本项假阳性）。本脚本自身亦
+  # 不含真实取值字面量（注释只作描述）。
+  frags=$(grep -rhoE "$pat" "$SKILL" "$REF"/*.md README.md CONTRIBUTING.md agent.cordis.yml \
+          $(ls plans/*.sh | grep -v 'checker-self-test.sh') 2>/dev/null)
+  if [ "$mode" = last ]; then
+    # 变量在匹配片段末尾（模式含常量前导数字，如 clamp 0–100、每缺 1 文件 −5）
+    vals=$(printf '%s\n' "$frags" | while read -r fr; do printf '%s\n' "$fr" | grep -oE '[0-9]+' | tail -1; done \
+           | sort -u | tr '\n' ',')
+  else
+    vals=$(printf '%s\n' "$frags" | grep -oE '[0-9]+' | sort -u | tr '\n' ',')
+  fi
+  n=$(printf '%s' "$vals" | tr ',' '\n' | grep -c .)
+  if [ "$n" = 1 ]; then
+    ok "${label} 全仓唯一取值 $(printf '%s' "$vals" | tr -d ',')"
+  elif [ "$n" = 0 ]; then
+    info "${label} 未匹配到取值（正则或表述已变，需人工确认）"
+  else
+    bad "${label} 取值不一: ${vals}（同一机制必须唯一）"
+  fi
+done <<<"$THRESH"
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（6 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（7 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

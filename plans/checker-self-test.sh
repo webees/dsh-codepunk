@@ -184,6 +184,18 @@ PYEOF
 mutate "README 指标声称改为 99" "$work/cur/README.md" '99 指标'
 check_rc "M15 改计数声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "评分指标"
 
+echo "[M16 跨文件阈值一致（doc-consistency 第 7 类存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+n = s.replace('exit_code=0', 'exit_code=1', 1)
+open(p, 'w', encoding='utf-8').write(n)
+PYEOF
+mutate "证据门退出码改为 1" "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" 'exit_code=1'
+check_rc "M16 阈值不一 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "取值不一"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
