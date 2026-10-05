@@ -722,6 +722,10 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M77 battery 自检项不得硬编码变异数（F182 修复存活）]"
+fresh
+check_no_match "M77 battery 不得再出现硬编码「6 项变异」" "grep -n 存活自检 plans/verify-battery.sh" "6 项变异"
+
 echo "[M76 无校验器时语法行不得计入 ps1（F181 修复存活）]"
 fresh
 # F181：必须带 `DSH_CODEPUNK_SKIP_SELFTEST=1`（仓库既有递归防护）——否则本变异会在 battery

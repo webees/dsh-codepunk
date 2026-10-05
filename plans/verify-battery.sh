@@ -232,8 +232,12 @@ rm -rf "$T"
 if [ "${DSH_CODEPUNK_SKIP_SELFTEST:-0}" = 1 ]; then
   p "ℹ" "检查器存活自检（已跳过：DSH_CODEPUNK_SKIP_SELFTEST=1——递归防护）"
 elif [ -x plans/checker-self-test.sh ] || [ -f plans/checker-self-test.sh ]; then
+  # F182：变异数从自检脚本**派生**（曾硬编码「6 项」，而自检已增至 76 项 → 低报核验范围）
+  # 与 doc-consistency 的「自检变异项」口径**一致**：唯一 M 号数（含断言/注释中的引用）
+  SELFTEST_N=$(grep -oE 'M[0-9]+' plans/checker-self-test.sh 2>/dev/null | sort -u | wc -l | tr -d ' ')
+  SELFTEST_N=${SELFTEST_N:-0}
   if bash plans/checker-self-test.sh >/dev/null 2>&1; then
-    p "✅" "检查器存活自检（6 项变异均被对应守护捕获）"
+    p "✅" "检查器存活自检（${SELFTEST_N} 项变异均被对应守护捕获）"
   else
     p "✗" "检查器存活自检未通过（疑似守护空转，运行 bash plans/checker-self-test.sh 查看）"; F=1
   fi
