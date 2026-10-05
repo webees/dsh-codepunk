@@ -720,6 +720,39 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M59 品牌旧名残留（preset-audit B5 存活，需 OLD_NAME 门控）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + '\nZZProbeName\n')
+print('MUTATED')
+PYEOF
+check_rc "M59 注入旧名 → B5 报旧名残留" "OLD_NAME=ZZProbeName bash plans/preset-audit.sh 2>&1" 1 "旧名残留"
+
+echo "[M60 str_replace 残留（preset-audit A3 存活）]"
+fresh
+python3 - "$work/cur/agent.cordis.yml" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + '\n# str_replace 残留注入\n')
+print('MUTATED')
+PYEOF
+check_rc "M60 注入 str_replace → A3 报残留" "bash plans/preset-audit.sh 2>&1" 1 "A3 str_replace"
+
+echo "[M61 YAML 解析失败（preset-audit A1 存活）]"
+fresh
+python3 - "$work/cur/agent.cordis.yml" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + '\nbad_unclosed: [1, 2\n')
+print('MUTATED')
+PYEOF
+check_rc "M61 破坏 YAML → A1 报解析失败" "bash plans/preset-audit.sh 2>&1" 1 "A1 YAML 解析失败"
+
 echo "[M57 SKILL 体积超限（preset-audit B1 存活）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" <<'PYEOF'
