@@ -71,33 +71,40 @@ info(){ printf '  ℹ %s\n' "$1"; }
 echo "== 文档「声称 ↔ 实现」一致性核对 =="
 
 echo "[1] 计数声称（静态）"
+# F164：同一声称可能在源内出现多处（如 README 两处「N 指标」「N 组」）——只取首处会导致
+#   两处各自漂移而不被发现。本助手要求「全部出现处一致且等于实况」，零声明则报错（防空转）。
+cmp_claims_all() { # 标签 实况 模式 文件
+  local label="$1" actual="$2" pat="$3" file="$4"
+  local vals bad=""
+  vals="$(grep -oE "$pat" "$file" 2>/dev/null | grep -oE '[0-9]+' | tr '\n' ' ')"
+  for v in $vals; do [ "$v" = "$actual" ] || bad="$bad $v"; done
+  if [ -z "$vals" ]; then bad "${label}：源内未找到计数声称（判据空转风险）"
+  elif [ -n "$bad" ]; then bad "${label} 声称不一致（源内多值含:${bad}，实际 ${actual}）"
+  else ok "${label} 实际 ${actual} = 声称（全部出现处一致）"; fi
+}
+
 cmp_num() {
   if [ -z "$3" ]; then bad "$1：README 未声明计数（实际 $2）"
   elif [ "$2" = "$3" ]; then ok "$1 实际 $2 = 声称 $3"
   else bad "$1 实际 $2，README 声称 $3"; fi
 }
-cmp_num "评分指标" "$(grep -cE '^# ── [AB][0-9]+ ' plans/preset-score.sh)" \
-        "$(grep -oE '[0-9]+ 指标' README.md | head -1 | grep -oE '[0-9]+')"
-cmp_num "审计分组" "$(grep -cE '^echo "\[组' plans/preset-audit.sh)" \
-        "$(grep -oE '[0-9]+ 组' README.md | head -1 | grep -oE '[0-9]+')"
+cmp_claims_all "评分指标" "$(grep -cE '^# ── [AB][0-9]+ ' plans/preset-score.sh)" \
+                '[0-9]+ 指标' README.md
+cmp_claims_all "审计分组" "$(grep -cE '^echo "\[组' plans/preset-audit.sh)" \
+                '[0-9]+ 组' README.md
 BAT_N="$(grep -cE '^# [0-9]+[a-c]?\)' plans/verify-battery.sh)"
 # F162：README 中**每一处**该计数声称都必须唯一且等于实况——原先只取 head -1，
 #   导致README 两处声称（命令表与文件清单）可各自漂移而不被发现。
 BAT_CLAIMS="$(grep -oE '[0-9]+ 项(独立验证|一次跑完)' README.md | grep -oE '[0-9]+' | sort -u | tr '\n' ' ')"
 BAT_UNIQ="$(printf '%s' "$BAT_CLAIMS" | wc -w | tr -d ' ')"
-BAT_BAD=""
-for v in $BAT_CLAIMS; do [ "$v" = "$BAT_N" ] || BAT_BAD="$BAT_BAD $v"; done
-if [ -z "$BAT_CLAIMS" ]; then bad "README 未声明电池项数（计数判据空转风险）"
-elif [ -n "$BAT_UNIQ" ] && [ "$BAT_UNIQ" -gt 1 ] && [ -n "$BAT_BAD" ]; then
-  bad "电池项数 声称不一致（README 内多值: ${BAT_CLAIMS}）"
-elif [ -n "$BAT_BAD" ]; then bad "电池项数 实际 ${BAT_N}，README 声称${BAT_BAD}"
-else ok "电池项数 实际 ${BAT_N} = 声称（README 全部出现处一致）"; fi
-# F163：按**标签行**绑定取值（原先按「N 篇」的出现顺序 head -1 / sed -n 2p，README 一变序即取错）
+cmp_claims_all "电池项数" "$BAT_N" '[0-9]+ 项(独立验证|一次跑完)' README.md
+# F163/F164：references 与 benchmarks 的篇数声称按**标签行**绑定取值（对 README 重排免疫），
+#   且复用多值一致助手：标签行作为唯一取值来源，避免「按顺序取首处」的脆弱绑定。
 REF_CLAIM="$(grep -E '^  references/' README.md | grep -oE '[0-9]+ 篇' | grep -oE '[0-9]+')"
 BM_CLAIM="$(grep -E '^  benchmarks/' README.md | grep -oE '[0-9]+ 篇' | grep -oE '[0-9]+')"
-if [ -z "$REF_CLAIM" ]; then bad "README 未在 references/ 标签行声明篇数（计数判据空转风险）"
+if [ -z "$REF_CLAIM" ]; then bad "references：README 标签行未声明篇数（判据空转风险）"
 else cmp_num "references" "$(ls "$REF"/*.md 2>/dev/null | wc -l | tr -d ' ')" "$REF_CLAIM"; fi
-if [ -z "$BM_CLAIM" ]; then bad "README 未在 benchmarks/ 标签行声明篇数（计数判据空转风险）"
+if [ -z "$BM_CLAIM" ]; then bad "benchmarks：README 标签行未声明篇数（判据空转风险）"
 else cmp_num "benchmarks" "$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')" "$BM_CLAIM"; fi
 cmp_num "硬规则上限" "$(grep -oE '^\| R[0-9]+ ' "$SKILL" 2>/dev/null | grep -oE '[0-9]+' | sort -n | tail -1)" \
         "$(grep -oE '硬规则 R1[–-]R[0-9]+' README.md 2>/dev/null | grep -oE '[0-9]+$' | head -1)"

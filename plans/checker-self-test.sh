@@ -624,6 +624,19 @@ echo "[M46 references 计数标签绑定（doc-consistency 第 1 类 F163 修复
 fresh
 sed -i.bak 's/×18 篇/×99 篇/' "$work/cur/README.md"
 check_rc "M46 references 篇数声称漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "references 实际 18"
+echo "[M47 多值声称一致（doc-consistency 第 1 类 F164 修复存活）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+i = s.find('15 指标')
+j = s.find('15 指标', i + 1)
+if j > 0:
+    s = s[:j] + '77 指标' + s[j + len('15 指标'):]
+open(p, 'w', encoding='utf-8').write(s)
+PYEOF
+check_rc "M47 同一声称多值漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "评分指标 声称不一致"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
