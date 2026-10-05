@@ -27,6 +27,7 @@
 # =============================================================================
 [CmdletBinding()]
 param(
+  [Alias('h')][switch]$Help,
   [Parameter(Position = 0)][string]$Command,
   [Parameter(Position = 1)][string]$Arg1,
   [Parameter(Position = 2)][string]$Arg2,
@@ -34,6 +35,13 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# -h/-Help：打印头部用法（与 POSIX 侧 `-h|--help` 对齐；F153/F160）
+if ($Help) {
+  Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 30 |
+    ForEach-Object { $_ -replace '^#\s?', '' }
+  exit 0
+}
 $ScriptName = 'dsh-codepunk-link'
 
 function Write-Err([string]$m) { [Console]::Error.WriteLine("$ScriptName`: $m") }

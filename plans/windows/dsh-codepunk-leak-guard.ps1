@@ -21,6 +21,7 @@
 # =============================================================================
 [CmdletBinding()]
 param(
+  [Alias('h')][switch]$Help,
   [switch]$Tree,
   [switch]$History,
   [switch]$Staged,
@@ -30,6 +31,13 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# -h/-Help：打印头部用法（与 POSIX 侧 `-h|--help` 对齐；F153/F160）
+if ($Help) {
+  Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 30 |
+    ForEach-Object { $_ -replace '^#\s?', '' }
+  exit 0
+}
 
 # 通用模式（形态而非具体值，可公开）
 $GenericPatterns = @(

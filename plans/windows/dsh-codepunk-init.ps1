@@ -13,9 +13,15 @@
 #   注：Windows 上写总库脚本正式位为 .ps1；本文件即正式位的源副本。
 # =============================================================================
 [CmdletBinding()]
-param([switch]$Check)
+param([Alias('h')][switch]$Help, [switch]$Check)
 
 $ErrorActionPreference = 'Stop'
+
+# -h/-Help：打印头部用法（与 POSIX 侧 -h 对齐；F153/F160）
+if ($Help) {
+  Get-Content -LiteralPath $PSCommandPath | Select-Object -Skip 1 -First 30 | ForEach-Object { $_ -replace '^#\s?', '' }
+  exit 0
+}
 
 # 载入路径常量（同目录优先，其次总库根）
 $homeScript = Join-Path $PSScriptRoot 'dsh-codepunk-home.ps1'
