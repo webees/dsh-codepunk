@@ -265,6 +265,27 @@ PYEOF
 mutate "注入 unsupported 状态值" "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" 'draft_zz'
 check_rc "M22 死状态 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "死状态"
 
+echo "[M23 worktree 治理核验（verify-worktree.sh 存活）]"
+fresh
+# 真实夹具：主仓库（含一次提交）+ 独立散落根
+wt_main="$work/wt/main"; wt_scan="$work/wt/scan"
+rm -rf "$work/wt"; mkdir -p "$wt_main" "$wt_scan"
+( cd "$wt_main" && git init -q . && git config user.email t@t && git config user.name t   && : > f.txt && git add f.txt && git commit -qm init ) >/dev/null 2>&1
+# ① 基线：应为通过（散落根干净、列表仅主仓库）
+check_rc "M23-a 基线通过（散落根干净）" \
+  "SCAN_ROOT='$wt_scan' bash plans/verify-worktree.sh '$wt_main' --quiet" 0
+# ② 分支 1：散落根出现 worktree → 必须判 FAIL
+( cd "$wt_main" && git worktree add -q "$wt_scan/stray-room" -b stray >/dev/null 2>&1 )
+check_rc "M23-b 检出散落 worktree → 失败" \
+  "SCAN_ROOT='$wt_scan' bash plans/verify-worktree.sh '$wt_main' 2>&1" 1 "散落"
+# ③ 分支 2：散落根换空目录 → 主仓库列表不干净必须判 FAIL
+mkdir -p "$work/wt/empty"
+check_rc "M23-c 主仓库列表不干净 → 失败" \
+  "SCAN_ROOT='$work/wt/empty' bash plans/verify-worktree.sh '$wt_main' 2>&1" 1 "不干净"
+# ④ 用法错：无参数且无 MAIN_REPO → 退出码 2
+check_rc "M23-d 缺主仓库参数 → 用法错" \
+  "env -u MAIN_REPO bash plans/verify-worktree.sh 2>&1" 2 "用法"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
