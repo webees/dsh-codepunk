@@ -652,6 +652,22 @@ open(p, 'w', encoding='utf-8').write('\n'.join(out))
 PYEOF
 mutate_gone "抹掉用法中的 -Staged 说明行" "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" '显式指定扫索引'
 check_rc "M49 用法未列开关 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "用法未列 -Staged"
+echo "[M50 init 骨架形态可校验（F169：生成器≠校验器的修复存活）]"
+fresh
+mkdir -p "$work/linkhome/.dsh-codepunk"
+printf 'schema_version: 1\nprojects: []\nlast_updated: null\n' > "$work/linkhome/.dsh-codepunk/INDEX.yaml"
+check_rc "M50 空列表骨架 → 通过（修复后）" "HOME='$work/linkhome' bash plans/dsh-codepunk-link.sh index 2>&1" 0 "校验通过"
+python3 - "$work/cur/plans/dsh-codepunk-link.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+s = s.replace("proj.nil? || proj.is_a?(Hash) || proj.is_a?(Array)", "proj.nil? || proj.is_a?(Hash)", 1)
+s = s.replace('(typeof d.projects!=="object"||d.projects===null)',
+              '(typeof d.projects!=="object"||Array.isArray(d.projects)||d.projects===null)', 1)
+open(p, 'w', encoding='utf-8').write(s)
+PYEOF
+mutate_gone "退回 F169 修复（重新拒绝条目序列）" "$work/cur/plans/dsh-codepunk-link.sh" 'proj.is_a?(Array)'
+check_rc "M50 退回修复后 → 空列表骨架被拒" "HOME='$work/linkhome' bash plans/dsh-codepunk-link.sh index 2>&1" 1 "须为映射"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

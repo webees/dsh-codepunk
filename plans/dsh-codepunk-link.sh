@@ -341,8 +341,8 @@ cmd_index() {
       fail "顶层须为映射" unless d.is_a?(Hash)
       fail "schema_version 须为标量" if d.key?("schema_version") && d["schema_version"].is_a?(Hash)
       proj = d["projects"]
-      fail "projects 须为映射（当前 #{proj.class}）" unless proj.nil? || proj.is_a?(Hash)
-      (proj || {}).each { |k, v| fail "projects[#{k}] 须为映射（当前 #{v.class}）" unless v.nil? || v.is_a?(Hash) }
+      fail "projects 须为映射或条目序列（当前 #{proj.class}）" unless proj.nil? || proj.is_a?(Hash) || proj.is_a?(Array)
+      (proj.is_a?(Array) ? proj : (proj || {}).values).each { |v| fail "projects 条目须为映射（当前 #{v.class}）" unless v.nil? || v.is_a?(Hash) }
       lt = d["last_updated"]
       fail "last_updated 须为标量" if lt.is_a?(Hash) || lt.is_a?(Array)
     ' "$DSH_CODEPUNK_INDEX" 2>&1)" || sem_rc=1
@@ -353,7 +353,7 @@ cmd_index() {
       const bad=(m)=>{console.log(m);process.exit(1);};
       if (typeof d!=="object"||Array.isArray(d)) bad("顶层须为映射");
       if (d.schema_version!==undefined && typeof d.schema_version==="object") bad("schema_version 须为标量");
-      if (d.projects!==undefined && (typeof d.projects!=="object"||Array.isArray(d.projects))) bad("projects 须为映射");
+      if (d.projects!==undefined && (typeof d.projects!=="object"||d.projects===null)) bad("projects 须为映射或条目序列");
       if (d.projects) for (const k of Object.keys(d.projects)) { const v=d.projects[k]; if (v!==null && (typeof v!=="object"||Array.isArray(v))) bad("projects["+k+"] 须为映射"); }
       if (d.last_updated!==undefined && typeof d.last_updated==="object") bad("last_updated 须为标量");
     ' "$DSH_CODEPUNK_INDEX" 2>&1)" || sem_rc=1
