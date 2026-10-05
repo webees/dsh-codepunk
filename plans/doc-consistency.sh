@@ -128,6 +128,17 @@ for f in plans/*.sh; do
   [ -z "$missing" ] || rc_bad="$rc_bad $(basename "$f")(缺:$missing)"
 done
 [ -z "$rc_bad" ] && ok "实现用到的退出码均在头部契约内" || bad "退出码契约缺声明:${rc_bad}"
+# 缺声明检测（F152）：**运行型**脚本 MUST 在头部声明退出码；纯 source/库脚本豁免。
+#   旧写法对无声明者 `|| continue` 静默跳过，「缺声明」分支实为空转。
+RC_UNDECL=""
+for f in plans/*.sh; do
+  base=$(basename "$f")
+  case "$base" in dsh-codepunk-home.sh) continue ;; esac        # 纯 source 的路径常量脚本，无退出码
+  grep -qE '^#[[:space:]]*退出码' "$f" 2>/dev/null && continue
+  grep -qE '\bsource\b|^\s*\.\s' "$f" 2>/dev/null && continue  # 库脚本（供 source）豁免
+  RC_UNDECL="$RC_UNDECL $base"
+done
+[ -z "$RC_UNDECL" ] && ok "运行型脚本均声明了退出码" || bad "运行型脚本缺退出码声明:${RC_UNDECL}"
 
 echo "[6] 头部自称项数"
 DOC_CN=$(grep -oE '[一二三四五六七八九十]+项检查' plans/preset-compat.py | head -1)

@@ -9,6 +9,7 @@
 #   2. 生成 INDEX.yaml 骨架模板（仅文件缺失时写入；存在则跳过 —— 幂等且
 #      不产生重复条目，注册表条目后续由 dsh-codepunk-link 演进）
 #   3. 绝不触碰 ~/.dsh-codepunk/config.yaml（配置层与运营层职责分离）
+# 退出码：0=成功（含幂等无事可做）；1=有失败项（缺失/过期/不一致）；2=环境/用法错误（写权限、父目录缺失）
 # 重复执行：幂等且不报错——已是最新则不做任何写入；**内容有差异时按升级语义覆盖总库正式位的**
 #   路径常量（home）与工具脚本，并发布/修正无扩展名入口**（这是设计行为，非副作用）；
 #   不改写 INDEX.yaml 既有内容（仅缺失时生成骨架）、绝不触碰 config.yaml。
@@ -39,14 +40,15 @@ fi
 CHECK_ONLY=0
 [[ "${1:-}" == "--check" ]] && CHECK_ONLY=1
 
-fail() { echo "✗ $*" >&2; exit 1; }
+fail()     { echo "✗ $*" >&2; exit 1; }   # 1 = 有失败项（内容/一致性）
+fail_env() { echo "✗ $*" >&2; exit 2; }   # 2 = 环境/用法错误（写权限、父目录缺失等）
 pass() { echo "✓ $*"; }
 
 # --- 0. 安装路径常量文件到总库根（README/SKILL 承诺的 source 路径） ---------------
 install_home_sh() {
   [[ -f "$HOME_SH_SRC" ]] || return 0          # 无源副本（内联兜底路径）时不安装
   mkdir -p "$DSH_CODEPUNK_HOME" 2>/dev/null \
-    || fail "无法创建总库根: ${DSH_CODEPUNK_HOME}（检查父目录写权限；或改 DSH_CODEPUNK_HOME 环境变量）"
+    || fail_env "无法创建总库根: ${DSH_CODEPUNK_HOME}（检查父目录写权限；或改 DSH_CODEPUNK_HOME 环境变量）"
   if [[ -f "$HOME_SH_DST" ]] && cmp -s "$HOME_SH_SRC" "$HOME_SH_DST"; then
     return 0
   fi
@@ -54,7 +56,7 @@ install_home_sh() {
     fail "路径常量文件缺失或过期: ${HOME_SH_DST}（运行本体脚本安装）"
   fi
   cp "$HOME_SH_SRC" "$HOME_SH_DST" 2>/dev/null \
-    || fail "路径常量安装失败: ${HOME_SH_DST}（检查 $DSH_CODEPUNK_HOME 写权限）"
+    || fail_env "路径常量安装失败: ${HOME_SH_DST}（检查 $DSH_CODEPUNK_HOME 写权限）"
   chmod +x "$HOME_SH_DST"
   pass "已安装路径常量: $HOME_SH_DST"
 }
@@ -92,7 +94,7 @@ install_scripts() {
   fi
   if (($(CHECK_ONLY))); then :; else
     mkdir -p "$DSH_CODEPUNK_SCRIPTS" 2>/dev/null \
-      || fail "无法创建总库 scripts 目录: ${DSH_CODEPUNK_SCRIPTS}（检查写权限）"
+      || fail_env "无法创建总库 scripts 目录: ${DSH_CODEPUNK_SCRIPTS}（检查写权限）"
   fi
   for f in "$src_dir"/*.sh "$src_dir"/*.py "$src_dir"/*.mjs "$src_dir"/windows/*.ps1; do
     [[ -f "$f" ]] || continue
@@ -126,7 +128,7 @@ for d in "$DSH_CODEPUNK_PROJECTS" "$DSH_CODEPUNK_WORKTREES" "$DSH_CODEPUNK_SCRIP
     [[ -d "$d" ]] || fail "目录缺失: $d (运行本体脚本补建)"
   else
     mkdir -p "$d" 2>/dev/null \
-      || fail "目录创建失败: ${d}（检查父目录写权限）"
+      || fail_env "目录创建失败: ${d}（检查父目录写权限）"
     pass "目录就绪: $d"
   fi
 done

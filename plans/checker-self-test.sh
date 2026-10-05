@@ -166,7 +166,7 @@ check_rc "M11 evidence-verify 缺参数 → 2" "bash plans/evidence-verify.sh" 2
 check_rc "M12 acceptance-verify 缺参数 → 2" "bash plans/acceptance-verify.sh" 2 "用法"
 
 fresh; mkdir -p "$work/ro"; chmod 500 "$work/ro"
-check_rc "M13 init 只读 HOME → 非零失败" "HOME=\"$work/ro\" bash plans/dsh-codepunk-init.sh" 1 "无法创建总库根"
+check_rc "M13 init 只读 HOME → 非零失败" "HOME=\"$work/ro\" bash plans/dsh-codepunk-init.sh" 2 "无法创建总库根"
 chmod 700 "$work/ro" 2>/dev/null
 
 echo "[M14 声明副本敏感度（双向：未改须一致 / 改适配路径须漂移）]"
@@ -594,6 +594,17 @@ fresh
 sed -i.bak '/^> retrieved_at/d' "$work/cur/skills/dsh-codepunk-workflow/benchmarks/diagram-design-analysis.md"
 mutate_gone "抹掉简报 retrieved_at" "$work/cur/skills/dsh-codepunk-workflow/benchmarks/diagram-design-analysis.md" '^> retrieved_at'
 check_rc "M42 简报缺检索日 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "简报缺检索日"
+echo "[M43 运行型脚本须声明退出码（doc-consistency 第 5 类扩展存活）]"
+fresh
+python3 - "$work/cur/plans/verify-worktree.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+lines = open(p, encoding='utf-8').read().split('\n')
+out = [l for l in lines if not l.startswith('# 退出码')]
+open(p, 'w', encoding='utf-8').write('\n'.join(out))
+PYEOF
+mutate_gone "抹掉 verify-worktree 的退出码声明" "$work/cur/plans/verify-worktree.sh" '^# 退出码'
+check_rc "M43 运行型脚本缺声明 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "缺退出码声明"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
