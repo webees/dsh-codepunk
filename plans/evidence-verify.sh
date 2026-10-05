@@ -2,6 +2,7 @@
 # =============================================================================
 # evidence-verify.sh —— 证据校验器（D069 实现 · 防假通过机械门 S1）
 # -----------------------------------------------------------------------------
+# 退出码：0=校验通过（verdict=PASS） · 1=校验未过（列出问题） · 2=用法/文件缺失/环境错误
 # 用法：
 #   bash evidence-verify.sh <evidence.yaml> [任务交付目录]
 #
@@ -18,10 +19,14 @@
 # =============================================================================
 set -u
 
-EVID="${1:?用法: evidence-verify.sh <evidence.yaml> [交付目录]}"
+if [ $# -lt 1 ]; then
+  echo "用法: evidence-verify.sh <evidence.yaml> [交付目录]" >&2
+  exit 2                       # 用法错误 = 2（与 acceptance-verify 及全仓约定一致）
+fi
+EVID="$1"
 DELIVERY_DIR="${2:-}"
 
-[ -f "$EVID" ] || { echo "❌ [fetch] evidence 文件不存在: $EVID"; exit 1; }
+[ -f "$EVID" ] || { echo "❌ [fetch] evidence 文件不存在: $EVID"; exit 2; }   # 2=文件缺失
 
 # --- 用 python3 做结构化断言（无 pyyaml 时手解析，健壮优先） ---
 # 输出落进程私有临时文件：固定路径（历史实现为 /tmp 下固定名）可被符号链接劫持（覆盖任意文件），
