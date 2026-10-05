@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   15. 阶段引用可解析（全仓阶段引用须在 stages.md 有定义；已定义阶段须至少被引用一次——
+#       「部分流程自洽」的机械判据）
 #   14. 夹具字面量纪律（自检夹具不得含触发本仓守卫的字面量：用户目录绝对路径 / 邮箱形态 /
 #       私网地址——须运行时拼接，否则副本内评分与泄露门会命中夹具自身）
 #   13. 状态值正文引用（模板声明的每个状态值 MUST 在**正文**被某步骤引用——否则属「死状态」，#       无主体/无触发条件；排除模板注释行）
@@ -429,7 +431,38 @@ else
   else bad "夹具含触发守卫的字面量 → $(printf '%s' "$FIX_HITS" | head -1 | cut -c1-100)；请改为运行时拼接"; fi
 fi
 
+echo "[15] 阶段引用可解析（流程自洽）"
+STAGE_ISSUE=$(python3 <<'PYEOF'
+import glob, os, re
+CIRCLED = '①②③④⑤⑥'
+stages_md = 'skills/dsh-codepunk-workflow/references/stages.md'
+defined = set(re.findall(r'^##\s*([①②③④⑤⑥])', open(stages_md, encoding='utf-8').read(), re.M))
+# 注意（F137）：**定义文件自身不算引用**——否则「孤立阶段」分支结构上永不可达
+#   （stages.md 的 `## <阶段号>` 标题会被当成一次引用）。
+files = (['skills/dsh-codepunk-workflow/SKILL.md', 'preset.yml', 'README.md']
+         + [f for f in glob.glob('skills/dsh-codepunk-workflow/references/*.md') if f != stages_md])
+refs = {}
+for f in files:
+    try:
+        t = open(f, encoding='utf-8').read()
+    except OSError:
+        continue
+    for c in re.findall(r'[①②③④⑤⑥]', t):
+        refs.setdefault(c, set()).add(os.path.basename(f))
+dangling = sorted(set(refs) - defined, key=CIRCLED.index)
+orphan = sorted(defined - set(refs), key=CIRCLED.index)
+out = []
+if dangling:
+    out.append('悬空引用（stages.md 未定义）: ' + ''.join(dangling))
+if orphan:
+    out.append('孤立阶段（零引用）: ' + ''.join(orphan))
+print('; '.join(out))
+PYEOF
+)
+  if [ -z "$STAGE_ISSUE" ]; then ok "六阶段定义与引用自洽（无悬空、无孤立）"
+  else bad "阶段引用不自洽 → ${STAGE_ISSUE}"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（14 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（15 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

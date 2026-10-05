@@ -468,6 +468,39 @@ score_reason "M30-m B15 SKILL 未说明知识库布局" \
 score_reason "M30-n B15 无决策登记路径" \
   "sed -i.bak -E 's/D0[0-9][0-9]/DX/g' \"$R/standard.md\"" \
   "$R/standard.md" 'D0[0-9][0-9]' '无决策登记路径'
+echo "[M31 阶段引用可解析（doc-consistency 第 15 类，双向）]"
+fresh
+E6="⑥"   # ⑥（避免在自检内写死易混淆字符，运行时构造）
+python3 - "$work/cur" <<'PYEOF'
+import glob, os, re, sys
+cur = sys.argv[1]
+mark = chr(0x2465)                      # ⑥
+refs = ['skills/dsh-codepunk-workflow/SKILL.md', 'README.md', 'preset.yml'] + [
+    f for f in glob.glob(os.path.join(cur, 'skills/dsh-codepunk-workflow/references/*.md'))
+    if not f.endswith('stages.md')]
+hits = 0
+for rel in refs:
+    p = rel if os.path.isabs(rel) else os.path.join(cur, rel)
+    if not os.path.isfile(p):
+        continue
+    t = open(p, encoding='utf-8').read()
+    if mark in t:
+        open(p, 'w', encoding='utf-8').write(t.replace(mark, '六'))
+        hits += 1
+print('stripped', hits, 'files')
+PYEOF
+mutate_gone "抹掉 ⑥ 外部引用（造孤立阶段）" "$work/cur/README.md" "⑥"
+check_rc "M31-a 孤立阶段 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "孤立阶段"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/stages.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+mark = chr(0x2465)
+t = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(t.replace('## ' + mark, '## 六'))
+PYEOF
+mutate_gone "删 ⑥ 的定义标题" "$work/cur/skills/dsh-codepunk-workflow/references/stages.md" "^## ⑥"
+check_rc "M31-b 悬空引用 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "悬空引用"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
