@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   21. 岗位数一致性（`N 岗位` 声称须与配置实况相符：内建 11 + 外部后端 2；出现「13 岗位」的行
+#       须带历史/例外标记——F149 实证：现在时声称「13 岗位全 continuable」属过度声称）
 #   20. 退出码契约实测（探针表：用法/环境错误必须 2——F128/F146 类的契约漂移机械门；
 #       输入不存在、参数非法、坏根等，逐条实跑断言）
 #   19. 硬规则命名空间洁净（`R###`（三位以上）不得出现——`R1–R15` 是硬规则号，轮次引用请写
@@ -577,7 +579,37 @@ if [ "$RC_N" -ne 9 ]; then bad "退出码探针仅执行 ${RC_N}/9 条（疑似�
 elif [ -z "$RC_BAD" ]; then ok "9 条探针：用法/环境错误均返回 2"
 else bad "退出码契约漂移 → ${RC_BAD}"; fi
 
+echo "[21] 岗位数一致性（11 内建 + 2 外部）"
+ROLE_COUNT_ISSUE=$(python3 <<'PYEOF'
+import glob, os, re
+# 实况：yml 中 tool-subagent-* 条目 = 11 内建岗位 + 2 外部后端 + 3 控制面
+t = open('agent.cordis.yml', encoding='utf-8').read()
+ids = re.findall(r'id:\s*tool-subagent-([a-z-]+)', t)
+EXT = {'codex', 'claude-code'}
+CTRL = {'control', 'list-agents', 'fork'}
+builtin = [i for i in ids if i not in EXT | CTRL]
+ext = [i for i in ids if i in EXT]
+bad = []
+if len(builtin) != 11 or len(ext) != 2:
+    bad.append('配置实况异常：内建 %d / 外部 %d（期望 11/2）' % (len(builtin), len(ext)))
+files = (['skills/dsh-codepunk-workflow/SKILL.md', 'README.md']
+         + glob.glob('skills/dsh-codepunk-workflow/references/*.md'))
+MARK = ('历史', '当时', '已废弃', '⚠', '外部后端', 'one-shot', '不适用')
+for f in files:
+    try:
+        tt = open(f, encoding='utf-8').read()
+    except OSError:
+        continue
+    for ln in tt.split('\n'):
+        if '13 岗位' in ln and not any(m in ln for m in MARK):
+            bad.append(os.path.basename(f) + ':' + ln.strip()[:60])
+print('; '.join(bad[:3]))
+PYEOF
+)
+  if [ -z "$ROLE_COUNT_ISSUE" ]; then ok "岗位数声称与配置实况一致（11 内建 + 2 外部；13 仅见于历史/例外语境）"
+  else bad "岗位数声称问题 → ${ROLE_COUNT_ISSUE}"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（20 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（21 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

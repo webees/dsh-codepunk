@@ -579,6 +579,11 @@ open(p, 'w', encoding='utf-8').write(s.replace('32768', '32769'))
 PYEOF
 mutate "体积预算改为 32769" "$work/cur/plans/preset-score.sh" '32769'
 check_rc "M39 阈值不一致 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "SKILL 体积上限"
+echo "[M40 岗位数一致性（doc-consistency 第 21 类存活）]"
+fresh
+printf '\n> 现行：13 岗位已全 continuable。\n' >> "$work/cur/skills/dsh-codepunk-workflow/references/model-routing.md"
+mutate "注入无标记的 13 岗位现在时声称" "$work/cur/skills/dsh-codepunk-workflow/references/model-routing.md" '13 岗位已全'
+check_rc "M40 岗位数过度声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "岗位数声称问题"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
