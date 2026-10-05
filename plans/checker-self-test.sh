@@ -720,6 +720,23 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M54 编号引用可解析（doc-consistency 第 9 类存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/benchmarks/anti-hallucination.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '支撑决策号：'
+if old not in s:
+    print('ANCHOR-MISSING')
+else:
+    open(p, 'w', encoding='utf-8').write(s.replace(old, old + 'D045 ', 1))
+    print('MUTATED')
+PYEOF
+# 说明：本条只设**前向**断言——反向（退回修复后不报）在非 ASCII 串上做锚点移除不可靠，
+#   且「D 未登记」字样由第 9 类产出，脆弱反向断言会误判（同类先例：M26 只做存活断言）。
+check_rc "M54 注入未登记决策号 → 第 9 类报错" "bash plans/doc-consistency.sh 2>&1" 1 "D 未登记"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
