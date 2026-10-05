@@ -12,6 +12,7 @@ knowledge/                        # 位于 ~/.dsh-codepunk/projects/<id>/knowled
   handoffs/<task_id>.md            # 交接摘要归档（文档小组维护）
   prompts/roles/<role_id>.md       # 各角色提示词（持续优化；招聘/派遣时引用）
   lessons/<topic>.yaml             # 结构化经验模板（触发条件→坑→解法，D070）
+  archived/<topic>.yaml           # 已废弃内容归档（保留历史；生命周期三态 active/stale/archived，D085）
 ```
 > 记忆简报：run 内运营于 `runs/<run_id>/docs/memory/`，收官归档入本库（与 SKILL.md §1.2 一致）。
 
