@@ -41,7 +41,7 @@
 
 ## ④ 巡检与交接（P07）
 
-顺序 MUST：sdet 证据 pass → 代码审查门 → 交接包齐全（含残留自查节）→ 接收方签收 → run-lead 置 `status: done` → 解散。**未置 `done` 不得进入合并门**；`done` 只能由 run-lead 置位（执行席自置即红灯）。
+顺序 MUST：sdet 证据 pass → 代码审查门 → 交接包齐全（含残留自查节）→ 接收方签收 → run-lead 置 `status: done` → 解散。**未置 `done` 不得进入合并门**；**置位须两处齐**——`chunks.yaml` 的 chunk `status: done`（合并门依据）与 `agents.yaml` 的席位 `status: done`（巡检依据，D095）**；`done` 只能由 run-lead 置位（执行席自置即红灯）。
 
 1. **证据**：sdet 产 `evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`。
    - **交付基线（R12）**：验收前 MUST 确认交付目录 mtime 最新（`ls -la docs/<module>/`）；evidence 须带 `validated_at` 与所对基线；疑似空跑/旧快照 → 打回重跑，禁止放行。

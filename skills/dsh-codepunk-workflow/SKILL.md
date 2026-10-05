@@ -103,7 +103,7 @@ metadata:
 
 ### ④ 巡检与交接（P07）
 
-> 顺序 MUST：sdet 证据 pass → 审查门 → 交接包齐全 → 接收方签收 → **run-lead 置 `status: done`** → 解散（未置 `done` 不得进入合并门）。
+> 顺序 MUST：sdet 证据 pass → 审查门 → 交接包齐全 → 接收方签收 → **run-lead 置 `status: done`** → 解散（未置 `done` 不得进入合并门）。**两处置位（勿混）**：`chunks.yaml` 该 chunk `status: done`（合并门按此判定）+ `agents.yaml` 对应席 `status: done`（巡检按此跳过，D095）。
 
 1. **证据**：`evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`；**基线（R12）** MUST 确认交付目录 mtime 最新（`ls -la docs/<module>/`）+ `validated_at`，空跑/旧快照打回。
 2. **输出纪律**（D074/D075/D076/D077）：只回 `command+exit_code+log_ref`；汇报 ≤1500 token；首行=结论、编号 ≤5、禁寒暄（`references/output-discipline.md`）。
@@ -113,7 +113,7 @@ metadata:
 
 ### ⑤ 解散与评分（P07 尾 + P16 人事）
 
-1. 签收且 run-lead 置 `status: done` 后，三席 `interrupt_agent` 就地解散（**调用即返回、不等待停止**，随后以 `list_agents` 观察转 `inactive`）（转为可再次续聊的**非运行态**——平台内部记 idle/ready，`list_agents` 外显为 `inactive`；不再派新任务；未置 `done` 不得解散、不得进入合并门）。
+1. 签收且 run-lead **置两处 `status: done`**（`chunks.yaml` 的 chunk 态 + `agents.yaml` 的席位态）后，三席 `interrupt_agent` 就地解散（**调用即返回、不等待停止**，随后以 `list_agents` 观察转 `inactive`）（转为可再次续聊的**非运行态**——平台内部记 idle/ready，`list_agents` 外显为 `inactive`；不再派新任务；未置 `done` 不得解散、不得进入合并门）。
 2. `subagent_people` 按 evidence / status / handoff 完整度 / ack / retries 打 0–100（base 50，见 `references/knowledge.md`）；评分不阻断。
 3. 沉淀 `tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`。
 
