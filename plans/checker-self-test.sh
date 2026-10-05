@@ -102,6 +102,18 @@ check_rc() {
   fi
 }
 
+# check_no_match <标签> <命令> <不得出现的模式>：断言命令输出**不含**该模式（防「守卫回显原文」类缺陷）
+check_no_match() {
+  local label="$1" cmd="$2" pat="$3" rc=0 out
+  out="$( cd "$work/cur" && eval "$cmd" 2>&1 )" || rc=$?
+  if printf '%s' "$out" | grep -qF -- "$pat"; then
+    printf '  ✗ %s（输出含不应出现的原文）\n' "$label"
+    FAILED=1
+  else
+    printf '  ✅ %s（退出码 %s，输出未回显原文）\n' "$label" "$rc"
+  fi
+}
+
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
 echo "== 检查器存活自检（变异测试） =="
@@ -517,6 +529,19 @@ fresh
 sed -i.bak 's/xox\[baprs\]-/xoo-[baprs]-/' "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1"
 mutate_gone "抹掉 ps1 侧通用模式签名 xox" "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" 'xox\[baprs\]-'
 check_rc "M33 移植对等性缺口 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "移植对等性缺口"
+echo "[M34 通用模式命中不得回显原文（F141 回归）]"
+fresh
+# 凭据形态在运行时拼接：自检文件与夹具都不得含字面量（否则本仓守卫会命中夹具自身）
+python3 - "$work/leak-token.txt" <<'PYEOF'
+import sys
+tok = 'sk-' + 'A' * 28
+open(sys.argv[1], 'w', encoding='utf-8').write('leaked ' + tok + ' end\n')
+PYEOF
+check_rc "M34-a 通用命中 → 阻断" \
+  "HOME='$SANDBOX' bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-token.txt' 2>&1" 1 "[通用]"
+check_no_match "M34-b 输出不得回显凭据原文" \
+  "HOME='$SANDBOX' bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-token.txt' 2>&1" \
+  "AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

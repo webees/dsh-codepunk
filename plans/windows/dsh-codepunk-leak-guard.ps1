@@ -149,8 +149,9 @@ foreach ($pat in $GenericPatterns) {
   $matched = $content | Where-Object { $_ -match $pat -and $_ -notmatch 'noreply\.github\.com' }
   if ($matched) {
     $hits++
-    Write-Output ("  [通用] {0} :: {1} 处" -f $label, @($matched).Count)
-    @($matched) | Select-Object -First 1 | ForEach-Object { Write-Output ("         " + $_.Substring(0, [Math]::Min(120, $_.Length))) }
+    # 样例 MUST 脱敏：通用模式可能命中凭据/邮箱/私网地址，回显原文＝把秘密写进终端与 CI 日志（F141）
+    $sample = ([string]@($matched)[0]).Substring(0, [Math]::Min(8, ([string]@($matched)[0]).Length))
+    Write-Output ("  [通用] {0} :: 命中 {1} 处（样例已脱敏：{2}）" -f $label, @($matched).Count, (Mask-Term $sample))
   }
 }
 foreach ($term in $Deny) {

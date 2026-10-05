@@ -131,9 +131,11 @@ scan_stream() { # $1=描述  $2=内容流
     [ -z "$line" ] && continue
     m="$(grep -nE -- "$line" "$tmp" 2>/dev/null | grep -vE 'noreply\.github\.com' | head -3)"
     if [ -n "$m" ]; then
-      while IFS= read -r x; do
-        printf '  [通用] %s :: %s\n' "$label" "$(printf '%.160s' "$x")"
-      done <<< "$m"
+      # 命中样例 MUST 脱敏：通用模式可能命中凭据/邮箱/私网地址，回显原文＝把秘密写进终端与 CI 日志
+      #   （F141；与 [禁词] 路径的「词已脱敏」及 Windows 端口口径一致）。
+      _cnt=$(printf '%s\n' "$m" | grep -c . )
+      printf '  [通用] %s :: 命中 %s 处（样例已脱敏：%s）\n' "$label" "$_cnt" "$(mask "$(printf '%s' "$m" | head -1 | cut -c1-8)")"
+
       HITS=$((HITS+1))
     fi
   done <<< "$pat"
