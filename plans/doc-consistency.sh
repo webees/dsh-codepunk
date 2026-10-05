@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   23. 简报检索日（含 URL 的 benchmarks MUST 带 `retrieved_at`；若原始检索日不可考，须显式写
+#       「未记录」并注明依据——依赖约定「URL+retrieved_at+事实/推断」；F151 实证）
 #   22. 矩阵覆盖（每个检查类 1..N 须在 skill-governance 矩阵中被提及——含「第 a–b 类」范围写法；
 #       防「新增检查类却忘记登记矩阵」，F150 实证）
 #   21. 岗位数一致性（`N 岗位` 声称须与配置实况相符：内建 11 + 外部后端 2；出现「13 岗位」的行
@@ -628,7 +630,23 @@ PYEOF
   if [ -z "$MTX_ISSUE" ]; then ok "全部检查类均已在治理矩阵登记"
   else bad "矩阵缺登记 → ${MTX_ISSUE}"; fi
 
+echo "[23] 简报检索日（含 URL 须带 retrieved_at）"
+BM_ISSUE=$(python3 <<'PYEOF'
+import glob, os, re
+bad = []
+for f in sorted(glob.glob('skills/dsh-codepunk-workflow/benchmarks/*.md')):
+    t = open(f, encoding='utf-8').read()
+    if not re.search(r'https?://', t):
+        continue
+    if 'retrieved_at' not in t and '未记录' not in t:
+        bad.append(os.path.basename(f))
+print(', '.join(bad[:3]))
+PYEOF
+)
+  if [ -z "$BM_ISSUE" ]; then ok "含 URL 的简报均带 retrieved_at（或无检索日时显式标注）"
+  else bad "简报缺检索日 → ${BM_ISSUE}"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（22 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（23 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

@@ -589,6 +589,11 @@ fresh
 sed -i.bak 's/第 21 类/第 二一类/' "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md"
 mutate_gone "抹掉矩阵中的类 21 登记" "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md" '第 21 类'
 check_rc "M41 矩阵缺登记 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "矩阵缺登记"
+echo "[M42 简报检索日（doc-consistency 第 23 类存活）]"
+fresh
+sed -i.bak '/^> retrieved_at/d' "$work/cur/skills/dsh-codepunk-workflow/benchmarks/diagram-design-analysis.md"
+mutate_gone "抹掉简报 retrieved_at" "$work/cur/skills/dsh-codepunk-workflow/benchmarks/diagram-design-analysis.md" '^> retrieved_at'
+check_rc "M42 简报缺检索日 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "简报缺检索日"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

@@ -1,6 +1,7 @@
 # Diagram Design（cathrynlavery/diagram-design）深度分析简报
 
 > 支撑决策号：D082（文档配图）
+> retrieved_at：2026-09-13（依据=本文件 git 首次加入日；文内未记录原始检索日）
 
 > 归属域：dsh-codepunk 预设 meta 调研（R13）｜产出：ind-res（调研小组）
 > 检索时间：2026-08-29T17:49:00Z（UTC）｜通道：curl 直连 GitHub REST API + raw.githubusercontent.com（web 通道不可用，直连透明；两次 SSL 抖动重试当场补回）
