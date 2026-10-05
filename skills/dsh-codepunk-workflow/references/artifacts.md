@@ -126,7 +126,7 @@ evidence:
     signed_by: "sdet@task-chunk-a"
 ```
 
-> **交付基线纪律（R12）**：若交付目录 mtime 早于 evidence 生成时刻（空跑/旧快照），或验收时交付尚未落盘，evidence 一律判为无效，打回 sdet 基于最新交付重跑；禁止把「交付前空目录」的 FAIL/NOT_PASS 误当最终结论。
+> **交付基线纪律（R12）**：若交付目录 mtime 早于 evidence 生成时刻（空跑/旧快照），或验收时交付尚未落盘，evidence 一律判为无效，**由工程主责（或证据门）打回 sdet** 基于最新交付重跑（sdet 为直接子会话，消息可直达）；禁止把「交付前空目录」的 FAIL/NOT_PASS 误当最终结论。
 
 > **schema 强约束（D069，借鉴 outlines/agentskills）**：evidence.yaml / acceptance.yaml 的**结构必须在生成期保证可机器校验**——sdet 产出后先过结构校验（必填字段齐、类型对、exit_code∈{0,非0}、accepted_by 为数组），校验不合格直接回退，不经人工放行滑入下一阶段。证据即接口：交接/评分/审计/合并门一律以「结构合法 + 内容达标」双标准读取，杜绝靠自由文风或长上下文记忆判断。
 > **机械校验器（D069 实现 · 防假通过门）**：`plans/evidence-verify.sh`（正式位 `~/.dsh-codepunk/scripts/evidence-verify.sh`）对 evidence.yaml 做机械断言——①`task_id` 必填、evidence `id` 唯一（D069 结构强约束）；②command 首词白名单且非描述性文本（自然语言/「详见」式引用即 FAIL）；③log_ref 文件真实存在（多前缀探测）；④exit_code **必须为 0**（非 0 即判 FAIL——非成功命令不得作为通过性证据）；⑤`validated_at` 晚于交付目录 mtime（R12 数值化；未提供交付目录时显式记为「未检」而非静默跳过）。sdet 产出后、release-eng 合并前 MUST 执行一次（如 run 状态：`bash ~/.dsh-codepunk/scripts/evidence-verify.sh runs/<id>/tasks/<tid>/handoff/evidence.yaml <task_dir>`）；verdict=FAIL 即整包打回。历史实证：能机械抓出「自然语言命令 + exit_code=0 + 照填 PASS」的伪证据。
