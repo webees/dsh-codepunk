@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   16. 自检期望串特异性（`check_rc` 的期望串 MUST NOT 被被检脚本的**小节标题**包含——
+#       否则断言可能仅凭标题即通过＝假通过；实测由 R131「死状态」误判导出）
 #   15. 阶段引用可解析（全仓阶段引用须在 stages.md 有定义；已定义阶段须至少被引用一次——
 #       「部分流程自洽」的机械判据）
 #   14. 夹具字面量纪律（自检夹具不得含触发本仓守卫的字面量：用户目录绝对路径 / 邮箱形态 /
@@ -462,7 +464,37 @@ PYEOF
   if [ -z "$STAGE_ISSUE" ]; then ok "六阶段定义与引用自洽（无悬空、无孤立）"
   else bad "阶段引用不自洽 → ${STAGE_ISSUE}"; fi
 
+echo "[16] 自检期望串特异性（防「仅凭标题即通过」）"
+SPEC_ISSUE=$(python3 <<'PYEOF'
+import os, re
+st = open('plans/checker-self-test.sh', encoding='utf-8').read()
+
+def headers_of(path):
+    try:
+        t = open(path, encoding='utf-8').read()
+    except OSError:
+        return []
+    h = re.findall(r'echo\s+"(\[[^\]]*\][^"]*)"', t)
+    h += re.findall(r"printf\s+'(\[[^']*\][^']*)'", t)
+    return h
+
+bad = []
+for label, cmd, rc, want in re.findall(r'check_rc\s+"([^"]+)"\s+"([^"]+)"\s+(\d+)\s+"([^"]*)"', st):
+    if len(want) < 2:
+        continue
+    # 只看该断言**实际调用的脚本**的标题；自检自身标题不算（否则自伤）
+    for tgt in [m for m in re.findall(r'plans/[A-Za-z0-9_.-]+\.(?:sh|mjs)', cmd)
+                if 'checker-self-test' not in m]:
+        for h in headers_of(tgt):
+            if want in h:
+                bad.append(label + ':「' + want + '」⊂' + os.path.basename(tgt) + '标题「' + h[:22] + '」')
+print('; '.join(bad[:3]))
+PYEOF
+)
+  if [ -z "$SPEC_ISSUE" ]; then ok "自检期望串均未被小节标题包含（无「仅凭标题通过」风险）"
+  else bad "自检期望串特异性不足 → ${SPEC_ISSUE}"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（15 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（16 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

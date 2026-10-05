@@ -213,7 +213,7 @@ s = open(p, encoding='utf-8').read()
 open(p, 'w', encoding='utf-8').write(s + '\n> 注入：实测日期 2099-01-01。\n')
 PYEOF
 mutate "注入未来日期" "$work/cur/README.md" '2099-01-01'
-check_rc "M17 未来日期 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "未来日期"
+check_rc "M17 未来日期 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "未来日期: "
 
 echo "[M18 编号引用可解析（doc-consistency 第 9 类存活）]"
 fresh
@@ -271,7 +271,7 @@ open(p, 'w', encoding='utf-8').write(
         'status: approved                   # draft', 'status: approved                   # draft_zz', 1))
 PYEOF
 mutate "注入 unsupported 状态值" "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" 'draft_zz'
-check_rc "M22 死状态 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "死状态"
+check_rc "M22 死状态 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "仅存在于模板注释"
 
 echo "[M23 worktree 治理核验（verify-worktree.sh 存活）]"
 fresh
@@ -501,6 +501,17 @@ open(p, 'w', encoding='utf-8').write(t.replace('## ' + mark, '## 六'))
 PYEOF
 mutate_gone "删 ⑥ 的定义标题" "$work/cur/skills/dsh-codepunk-workflow/references/stages.md" "^## ⑥"
 check_rc "M31-b 悬空引用 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "悬空引用"
+echo "[M32 自检期望串特异性（doc-consistency 第 16 类存活）]"
+fresh
+python3 - "$work/cur/plans/checker-self-test.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+# 把 M17 的特异性期望改回与小节标题同名（模拟「仅凭标题即通过」的脆弱断言）
+open(p, 'w', encoding='utf-8').write(s.replace('1 "未来日期: "', '1 "未来日期"', 1))
+PYEOF
+mutate "断言期望串回退为标题同名" "$work/cur/plans/checker-self-test.sh" '1 "未来日期"'
+check_rc "M32 期望串与标题同名 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "自检期望串特异性不足"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
