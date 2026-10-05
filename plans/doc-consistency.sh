@@ -114,7 +114,11 @@ cmp_num "自检变异项" "$(grep -oE 'M[0-9]+' plans/checker-self-test.sh | sor
 echo "[2] 阶段口径（六阶段）"
 P_README=$(awk '/^## 流程总览/,/^```/' README.md | grep -cE '^\| [1-6]️⃣')
 P_PRESET=$(grep -oE '[①②③④⑤⑥]' preset.yml | sort -u | wc -l | tr -d ' ')
-P_STAGES=$(grep -oE '^## [①②③④⑤⑥]' "$REF/stages.md" | sort -u | wc -l | tr -d ' ')
+# F175：stages.md 缺失时不抛 raw grep 噪声；置 0 由下方比较给出清晰结论
+P_STAGES=0
+if [ -f "$REF/stages.md" ]; then
+  P_STAGES=$(grep -oE '^## [①②③④⑤⑥]' "$REF/stages.md" | sort -u | wc -l | tr -d ' ')
+fi
 if [ "$P_README" = 6 ] && [ "$P_PRESET" = 6 ] && [ "$P_STAGES" = 6 ]; then
   ok "三处一致：README 表 ${P_README} / preset.yml ${P_PRESET} / stages.md 阶段号 ${P_STAGES}"
 else
@@ -495,7 +499,11 @@ STAGE_ISSUE=$(python3 <<'PYEOF'
 import glob, os, re
 CIRCLED = '①②③④⑤⑥'
 stages_md = 'skills/dsh-codepunk-workflow/references/stages.md'
-defined = set(re.findall(r'^##\s*([①②③④⑤⑥])', open(stages_md, encoding='utf-8').read(), re.M))
+# F175：文件缺失时给出清晰结论而非 FileNotFoundError（与 class 2 的结论一致）
+if os.path.isfile(stages_md):
+    defined = set(re.findall(r'^##\s*([①②③④⑤⑥])', open(stages_md, encoding='utf-8').read(), re.M))
+else:
+    print('stages.md 缺失（阶段定义文件）'); raise SystemExit(1)
 # 注意（F137）：**定义文件自身不算引用**——否则「孤立阶段」分支结构上永不可达
 #   （stages.md 的 `## <阶段号>` 标题会被当成一次引用）。
 files = (['skills/dsh-codepunk-workflow/SKILL.md', 'preset.yml', 'README.md']
