@@ -10,6 +10,8 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   18. pwsh 钩子参数语法（Windows 侧生成的钩子体不得用 `$1`/`$2` 位置参数——PowerShell 无该
+#       语法，参数恒空致钩子静默退化；F142 实证）
 #   17. 移植对等性（4 对 sh↔ps1：POSIX 侧已修的关键守卫关键词 MUST 在 Windows 端口出现——
 #       防「修了一侧忘另一侧」；F139 实证：link.ps1 曾缺解析/语义核验）
 #   16. 自检期望串特异性（`check_rc` 的期望串 MUST NOT 被被检脚本的**小节标题**包含——
@@ -529,7 +531,13 @@ PYEOF
   if [ -z "$PARITY_ISSUE" ]; then ok "4 对 sh↔ps1 关键守卫关键词对等"
   else bad "移植对等性缺口 → ${PARITY_ISSUE}"; fi
 
+echo "[18] pwsh 钩子参数语法"
+# 排除注释行（说明文字里可能提到 `$1` 作反例）
+HOOK_SYNTAX=$(grep -nE '\$[1-9]' plans/windows/*.ps1 2>/dev/null | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | grep -vE '\\\$[1-9]' | head -3)
+if [ -z "$HOOK_SYNTAX" ]; then ok "Windows 侧未使用 PS 不支持的位置参数语法（\$1/…）"
+else bad "Windows 侧出现 PS 不支持的位置参数语法 → $(printf '%s' "$HOOK_SYNTAX" | head -1 | cut -c1-96)"; fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（17 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（18 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

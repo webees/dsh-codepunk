@@ -542,6 +542,11 @@ check_rc "M34-a 通用命中 → 阻断" \
 check_no_match "M34-b 输出不得回显凭据原文" \
   "HOME='$SANDBOX' bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-token.txt' 2>&1" \
   "AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+echo "[M35 pwsh 钩子参数语法（doc-consistency 第 18 类存活）]"
+fresh
+printf 'pwsh -NoProfile -File x.ps1 -Msg "$1"\n' >> "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1"
+mutate "注入 PS 不支持的位置参数语法" "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" '\$1'
+check_rc "M35 PS 位置参数语法 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "位置参数语法"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

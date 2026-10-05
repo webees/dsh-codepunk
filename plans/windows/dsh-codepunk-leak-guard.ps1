@@ -93,7 +93,10 @@ if ($InstallHook) {
   $hooks = @{
     'pre-commit' = "-Staged"
     'pre-push'   = "-History"
-    'commit-msg' = '-Msg "$1"'
+    # 注：钩子体是 **pwsh** 脚本，PowerShell 没有 `$1` 位置参数语法（旧写法 `"$1"` 恒为空，
+    #   会静默退化为「扫索引」而非扫提交信息——F142）。此处用 `$($args[0])`，且因外层是单引号
+    #   字符串，该表达式会在钩子运行时求值、不被生成时展开。
+    'commit-msg' = '-Msg "$($args[0])"'
   }
   foreach ($name in $hooks.Keys) {
     $hookPath = Join-Path $hookDir $name
