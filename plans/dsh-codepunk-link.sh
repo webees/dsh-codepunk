@@ -304,11 +304,38 @@ cmd_index() {
     printf '%s: INDEX 未初始化：%s 不存在\n' "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX" >&2
     return 1
   fi
+  # ① 结构核验（无依赖）：顶层只允许 schema_version / projects / last_updated
+  local stray
+  stray="$(grep -nE '^[^ \t#]' "$DSH_CODEPUNK_INDEX" 2>/dev/null \
+           | grep -vE '^[0-9]+:(schema_version|projects|last_updated):|^[0-9]+:(---|\.\.\.)$' | head -3)"
+  if [ -n "$stray" ]; then
+    printf '%s: INDEX 结构非法（未知顶层键）：%s\n' "$SCRIPT_NAME" "$(printf '%s' "$stray" | tr '\n' ' ')" >&2
+    printf '%s: 合法顶层键仅 schema_version / projects / last_updated；请修复或从备份恢复\n' "$SCRIPT_NAME" >&2
+    return 1
+  fi
+  # ② 解析核验（与 preset-audit 同链：ruby 优先、node+js-yaml 回退）；损坏文件 MUST 报错而非当空表
+  local parse_rc=0 parser=""
+  if command -v ruby >/dev/null 2>&1; then
+    parser="ruby"
+    ruby -ryaml -e 'begin; YAML.load_file(ARGV[0]); rescue => e; warn e.message; exit 1; end' \
+      "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
+  elif command -v node >/dev/null 2>&1 && node -e 'require("js-yaml")' >/dev/null 2>&1; then
+    parser="node"
+    node -e 'const y=require("js-yaml"),fs=require("fs");try{y.load(fs.readFileSync(process.argv[1],"utf8"))}catch(e){console.error(e.message);process.exit(1)}' \
+      "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
+  else
+    printf '%s: ⚠ 未做解析核验（无 ruby/node+js-yaml）——仅完成结构核验\n' "$SCRIPT_NAME" >&2
+  fi
+  if [ "$parse_rc" != 0 ]; then
+    printf '%s: INDEX 解析失败（文件已损坏，非空骨架）：%s\n' "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX" >&2
+    printf '%s: 请从备份恢复（register 写入前会留 INDEX.yaml.bak）或按骨架重建\n' "$SCRIPT_NAME" >&2
+    return 1
+  fi
   local rows n_ok n_fail
   rows="$(_parse_index_entries "$DSH_CODEPUNK_INDEX")"
   if [ -z "$rows" ]; then
-    # 空数组 = 合法骨架态（register 填充前）；仅文件缺失才算未初始化
-    printf '%s: 校验通过：0 条（注册表为空，骨架态）\n' "$SCRIPT_NAME"
+    # 空数组 = 合法骨架态（register 填充前），已过结构与解析核验
+    printf '%s: 校验通过：0 条（注册表为空，骨架态；结构+解析已核验）\n' "$SCRIPT_NAME"
     return 0
   fi
   n_ok=0; n_fail=0
