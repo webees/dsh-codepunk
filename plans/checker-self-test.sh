@@ -720,6 +720,36 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M57 SKILL 体积超限（preset-audit B1 存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + ('\n<!-- pad -->' * 900) + '\n')
+print('MUTATED')
+PYEOF
+check_rc "M57 SKILL 超 32768B → B1 报超限" "bash plans/preset-audit.sh 2>&1" 1 "B1 SKILL"
+
+echo "[M58 README 节数不足（preset-audit E2 存活）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+lines = s.split('\n')
+kept, n = [], 0
+for l in lines:
+    if l.startswith('## '):
+        n += 1
+        if n > 4:
+            l = '# ' + l[3:]
+    kept.append(l)
+open(p, 'w', encoding='utf-8').write('\n'.join(kept))
+print('MUTATED')
+PYEOF
+check_rc "M58 README 仅 4 节 → E2 报 <7" "bash plans/preset-audit.sh 2>&1" 1 "E2 README"
+
 echo "[M55 阶段口径不一致（doc-consistency 第 2 类存活）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/references/stages.md" <<'PYEOF'
