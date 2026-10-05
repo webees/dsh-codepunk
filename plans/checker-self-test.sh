@@ -329,6 +329,13 @@ printf 'clean text with no markers\n' > "$work/leak-clean.txt"
 check_rc "M26-d 干净内容 → 通过" \
   "bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-clean.txt' 2>&1" 0
 
+echo "[M27 夹具字面量纪律（doc-consistency 第 14 类存活）]"
+fresh
+# 字面量同样运行时拼接（否则第 14 类会命中夹具自身——与 F131 同源）
+printf 'see /%s/%s/private/x.txt\n' 'Users' 'zzz' >> "$work/cur/plans/checker-self-test.sh"
+mutate "夹具注入绝对路径字面量" "$work/cur/plans/checker-self-test.sh" '/Users/'
+check_rc "M27 夹具字面量 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "夹具含触发守卫的字面量"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi

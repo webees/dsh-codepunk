@@ -131,6 +131,7 @@
 | benchmarks **支撑决策号语义**（括注短名 ↔ 登记含义的 2-gram 重叠） | `doc-consistency.sh` 第 11 类 | 机械 |
 | **状态机自洽**（`status:`/`expected:` 取值须落在已声明集合内；集合自模板注释自动采集） | `doc-consistency.sh` 第 12 类 | 机械 |
 | **死状态**（模板声明的每个状态值 MUST 在**正文**被步骤引用，否则无主体/无触发条件） | `doc-consistency.sh` 第 13 类 | 机械 |
+| **夹具字面量纪律**（自检夹具不得含触发本仓守卫的字面量：用户目录绝对路径／邮箱形态／私网地址；须运行时拼接，否则副本内评分与泄露门会命中夹具自身） | `doc-consistency.sh` 第 14 类 | 机械 |
 | 已登记的计数声称（15 指标 / 5 组 / 13 项电池 / 岗位数） | `preset-score` A3 · `preset-audit` B1 | 机械 |
 | 泄露与品牌卫生 | `leak-guard`（3 模式 + 三钩子）· `preset-score` B5/B11 | 机械 |
 | 格式/EOL/杂散/全角紧邻陷阱 | `verify-battery` 4/5 · `preset-audit` B1b | 机械 |
