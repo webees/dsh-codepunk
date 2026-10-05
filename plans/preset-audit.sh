@@ -56,7 +56,10 @@ PYEOF
 [ "$(grep -c 'str_replace' agent.cordis.yml)" -eq 0 ] && report "$PASS" "A3 无 str_replace 残留" || report "$FAIL" "A3 str_replace 残留"
 # A5 品牌卫生：如本仓库有改名历史，用 OLD_NAME 环境变量注入旧名做回归检查（默认跳过，不在仓库内硬编码旧名）
 if [ -n "${OLD_NAME:-}" ]; then
-  n=$(grep -ic -- "$OLD_NAME" agent.cordis.yml 2>/dev/null || echo 0)
+  # F172：`grep -c` 零命中时输出 0 且退出 1——写 `|| echo 0` 会得到**两行** "0\n0"，
+  #   使 [ "$n" -eq 0 ] 报错并走 FAIL 分支（健康仓库被误判失分）。用 || true + 默认值。
+  n=$(grep -ic -- "$OLD_NAME" agent.cordis.yml 2>/dev/null || true)
+  n=${n:-0}
   [ "$n" -eq 0 ] && report "$PASS" "A5 零旧名（OLD_NAME=${OLD_NAME}）" || report "$FAIL" "A5 旧名残留 $n 处"
 else
   report "$PASS" "A5 品牌卫生（未设 OLD_NAME，跳过）"

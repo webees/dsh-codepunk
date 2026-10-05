@@ -700,6 +700,23 @@ open(p, "w", encoding="utf-8").write(s.replace(old, new, 1))
 PYEOF
 mutate_gone "退回 F171（流式数组不再豁免）" "$work/cur/plans/acceptance-verify.sh" "(\?!' || true"
 check_rc "M52 退回修复后 → 流式数组被误判为标量" "bash plans/acceptance-verify.sh '$work/acc/flow.yaml' task-b 2>&1" 1 "标量"
+echo "[M53 品牌卫生健康场景不误判（F172：grep -c 两行 的修复存活）]"
+fresh
+check_rc "M53 健康场景 → A5 判为「零旧名」" "OLD_NAME=NoSuchBrandZzz999 bash plans/preset-audit.sh 2>&1" 1 "A5 零旧名"
+python3 - "$work/cur/plans/preset-audit.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = 'agent.cordis.yml 2>/dev/null || true'
+new = 'agent.cordis.yml 2>/dev/null || echo 0'
+if old not in s:
+    print('ANCHOR-MISSING')
+else:
+    open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+    print('MUTATED')
+PYEOF
+mutate "退回 F172（恢复 || echo 0）" "$work/cur/plans/preset-audit.sh" 'echo 0'
+check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "OLD_NAME=NoSuchBrandZzz999 bash plans/preset-audit.sh 2>&1" "A5 零旧名"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
