@@ -115,10 +115,23 @@ else
 fi
 
 echo "[组D 调研层 10]"
+BMDIR=skills/dsh-codepunk-workflow/benchmarks
+D1_UNVERIFIED=0
+if ! ls "$BMDIR"/*.md >/dev/null 2>&1; then
+  report "$FAIL" "D1 无法核验：$BMDIR 下无 .md 简报（目录缺失或被改名）"
+  D1_UNVERIFIED=1
+fi
 DMISS=$(for f in skills/dsh-codepunk-workflow/benchmarks/*.md; do grep -qcE "支撑决策号|性质" "$f" || echo "$(basename $f)"; done | head -3)
-[ -z "$DMISS" ] && report "$PASS" "D1 全基准标决策号" || report "$FAIL" "D1 缺: $DMISS"
+if [ "$D1_UNVERIFIED" = 0 ]; then
+  [ -z "$DMISS" ] && report "$PASS" "D1 全基准标决策号" || report "$FAIL" "D1 缺: $DMISS"
+fi
 
 # D3 源码行号引用守护：行号须与符号名同行（行号会随重排漂移，单留行号即成死指针）
+NOPY=0
+if ! command -v python3 >/dev/null 2>&1; then
+  report "$FAIL" "D3/E3 无法核验：缺 python3（无法核验 ≠ 通过）——装 python3 或手工核对"
+  NOPY=1
+fi
 D3=$(python3 - <<'PYEOF'
 import re, subprocess
 files = [f for f in subprocess.run(['git','ls-files'],capture_output=True,text=True).stdout.split()
@@ -134,8 +147,10 @@ for f in files:
 print(' '.join(bad[:3]))
 PYEOF
 )
+if [ "$NOPY" = 0 ]; then
 [ -z "$D3" ] && report "$PASS" "D3 行号引用均附符号名（可复核）" \
              || report "$FAIL" "D3 行号引用缺符号名（行号会漂移）: $D3"
+fi
 
 echo "[组E 文档层 10]"
 EC=$(grep -c "^## " README.md)
@@ -169,8 +184,10 @@ for f in files:
 print(' '.join(bad[:3]))
 PYEOF
 )
+if [ "$NOPY" = 0 ]; then
 [ -z "$E3" ] && report "$PASS" "E3 仓内相对链接均可达" \
              || report "$FAIL" "E3 死链: $E3"
+fi
 
 echo "[组F 工具层 10]"
 FSYNC=$(for p in plans/*.sh; do f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "${f%.sh}"; done)
