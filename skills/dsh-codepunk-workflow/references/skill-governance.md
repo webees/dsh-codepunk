@@ -127,6 +127,7 @@
 | 路径/脚本引用存在性（含 references 内、markdown 死链） | `preset-score` A2 · `preset-audit` E3 | 机械 |
 | 编号一致性（D/P/R 定义与引用、重复号） | `preset-audit` B7/D1/D3 · `preset-score` | 机械 |
 | 编号引用**可解析**（D 须逐条登记；P 须落在声明范围/span 内） | `doc-consistency.sh` 第 9 类 | 机械 |
+| 章节级引用**可解析**（对 `references/<文件>.md` 的「章节名」引用、限定式 `§N`） | `doc-consistency.sh` 第 10 类 | 机械 |
 | 已登记的计数声称（15 指标 / 5 组 / 13 项电池 / 岗位数） | `preset-score` A3 · `preset-audit` B1 | 机械 |
 | 泄露与品牌卫生 | `leak-guard`（3 模式 + 三钩子）· `preset-score` B5/B11 | 机械 |
 | 格式/EOL/杂散/全角紧邻陷阱 | `verify-battery` 4/5 · `preset-audit` B1b | 机械 |

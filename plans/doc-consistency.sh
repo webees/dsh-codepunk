@@ -10,6 +10,7 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   10. 章节级引用可解析（`references/x.md「章节名」` 与限定式 `§N` 须在目标文件中存在）
 #   9. 编号引用可解析（D 号须逐条登记；P 号须落在已声明范围/span 内）
 #   8. 日期形态与未来日期（须 YYYY-MM-DD / YYYY-MM；不得出现未来日期——「实测」不能发生在未来）
 #   7. 跨文件阈值一致（同一机制在文档/脚本/配置中的数值必须唯一：评分基准与上下限、
@@ -218,7 +219,55 @@ PYEOF
   else bad "编号引用问题 → ${NUM_ISSUE}"; fi
 fi
 
+echo "[10] 章节级引用可解析"
+if ! command -v python3 >/dev/null 2>&1; then
+  na "章节级引用核验（缺 python3）"
+else
+  SEC_ISSUE=$(python3 <<'PYEOF'
+import glob, os, re
+S = 'skills/dsh-codepunk-workflow'
+# benchmarks 不参与：它们分析的是**外部**项目的文档（如 diagram-design 的 SKILL.md §9），
+# 其中的「SKILL.md §N」不是对本仓章节的引用。
+files = [f'{S}/SKILL.md', 'README.md', 'CONTRIBUTING.md'] + glob.glob(f'{S}/references/*.md')
+patA = re.compile(r'references/([a-z0-9-]+)\.md[「『]([^」』]{2,40})[」』]')
+patB = re.compile(r'(?:SKILL\.md|references/([a-z0-9-]+)\.md)[^\n]{0,6}?§([0-9]+(?:\.[0-9]+)?)')
+badA, badB = [], []
+for f in files:
+    try:
+        t = open(f, encoding='utf-8').read()
+    except OSError:
+        continue
+    for m in patA.finditer(t):
+        target, sec = m.group(1), m.group(2).strip()
+        tp = f'{S}/references/{target}.md'
+        if not os.path.isfile(tp):
+            continue
+        body = open(tp, encoding='utf-8', errors='ignore').read()
+        key = sec.split('（')[0].strip()
+        if key and key not in body:
+            badA.append(f'{os.path.basename(f)}→{target}「{sec}」')
+    for m in patB.finditer(t):
+        sub, num = m.group(1), m.group(2)
+        tp = f'{S}/SKILL.md' if sub is None else f'{S}/references/{sub}.md'
+        if not os.path.isfile(tp):
+            continue
+        body = open(tp, encoding='utf-8', errors='ignore').read()
+        # 标题可写作「## 3.1 …」或「## §3.1 …」（实测两种并存）
+        if not re.search(r'^#{2,4} §?' + re.escape(num) + r'(?:\.|\s|$)', body, re.M):
+            badB.append(f'{os.path.basename(f)}→§{num}@{os.path.basename(tp)}')
+out = []
+if badA:
+    out.append('章节名未找到: ' + ', '.join(badA[:3]))
+if badB:
+    out.append('§ 指向不存在: ' + ', '.join(badB[:3]))
+print('; '.join(out))
+PYEOF
+)
+  if [ -z "$SEC_ISSUE" ]; then ok "章节级引用均可解析（章节名 + 限定式 §）"
+  else bad "章节级引用问题 → ${SEC_ISSUE}"; fi
+fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（9 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（10 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

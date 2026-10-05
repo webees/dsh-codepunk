@@ -218,6 +218,18 @@ PYEOF
 mutate "注入未登记 D 号" "$work/cur/README.md" 'D999'
 check_rc "M18 未登记 D 号 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "D 未登记"
 
+echo "[M19 章节级引用可解析（doc-consistency 第 10 类存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+import re
+open(p, 'w', encoding='utf-8').write(re.sub('记忆简报', '备忘摘要', s))
+PYEOF
+mutate "章节名全量改名" "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" '备忘摘要'
+check_rc "M19 章节名失效 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "章节名未找到"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
