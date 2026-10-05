@@ -84,7 +84,7 @@ metadata:
 2. 落位（R13/R14）：业务调研 `${run}/research/briefs/*.md`；meta 调研 `~/.dsh/.agent-presets/dsh-codepunk/skills/dsh-codepunk-workflow/benchmarks/`；简报带 URL + retrieved_at；sponsor 投喂走分诊回执（D065）。
 3. 产 `plan_draft.md` + `goal.yaml`（draft；字段模板见 `references/artifacts.md`；未覆盖标 `assumption` / `open_question`）。
 4. `open_questions` 非空 或 `product_acceptance[]` 空（D034）→ **不得** active：`ask_user_question` 确认 → `user_confirmed_at`（D035）→ `status: active` → `create_goal`（R10）。
-5. 状态机 `intake → draft → active ⇄ blocked → completed | cancelled`；`blocked` 时 MUST NOT 新 spawn。
+5. 状态机 `intake → draft → active ⇄ blocked → completed | cancelled`；`blocked` 时 MUST NOT 新 spawn；**`cancelled` 仅由发起人撤回触发**（run-lead 在 `goal.yaml` 留痕；平台无 `cancel` 动作，见 `references/artifacts.md`）。
 
 ### ② 规划与组队（P02–P04）
 

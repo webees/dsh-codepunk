@@ -28,6 +28,7 @@ created_at: "…"
 
 > goal 状态机：`intake → draft → active ⇄ blocked → completed | cancelled`；
 > `blocked`（外部阻塞/halt）时 MUST NOT 新 spawn。
+> **`cancelled` 的主体与条件**：仅当**发起人撤回/需求作废**时，由 run-lead 在 `goal.yaml` 记 `status: cancelled` + 时刻与缘由；**平台 goal 动作集只有 `edit/pause/resume/complete/blocked`——无 `cancel`**，故取消**不在平台侧置态**，只在本文件留痕并停止续行（与「`blocked` 须人类发起解除」同源：终止权归人类）。
 
 ## chunks.yaml（②）
 

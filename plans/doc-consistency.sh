@@ -340,11 +340,9 @@ for f in files:
         t = open(f, encoding='utf-8').read()
     except OSError:
         continue
-    for m in re.finditer(r'status:\s*([a-z_]+)\s*#\s*([^\n]{3,80})', t):
-        for tok in re.split(r'[|｜/]', m.group(2)):
-            tok = tok.strip().split()[0] if tok.strip() else ''
-            if tok and re.fullmatch(r'[A-Za-z_\u4e00-\u9fff]{2,10}', tok):
-                declared.add(tok)
+    for m in re.finditer(r'status:\s*([a-z_]+)\s*#\s*([^\n]{3,200})', t):
+        for tok in re.findall(r'[a-z_]{3,20}', m.group(2)):
+            declared.add(tok)   # 注释内全部 ASCII 记号（含箭头式机器 a → b ⇄ c | d；粘连中文不影响）
     # 无 `#` 注释但同类列举（如 agents.yaml 的 last_seen 注释已含）
 if not declared:
     print('无法采集已声明集合（模板已变）')
