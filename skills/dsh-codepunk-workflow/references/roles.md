@@ -104,7 +104,7 @@
 【工作简报】读取 <tasks/<id>/brief/WORK_BRIEF.md> 与 <brief.yaml>；只消费简报与下发包。
 【工作房】你的工作目录 = <工作房绝对路径>；只在本目录与 write_paths 内读写。
 【写集】<write_paths 列表>；【读集】<read_paths>
-【协作】汇报链：engineer/sdet → 小队主责（squad-lead）；小队主责 → 工程主责（主会话，run-lead 兼技术统筹 tpm）；与 <另两席> 协同；禁止自行联网（web 工具不可用）。
+【协作】汇报链：engineer/sdet/小队主责 **均直接汇报工程主责（主会话，run-lead 兼技术统筹 tpm）**——三席互为同级兄弟，`send_message` 只允许「直接子 ↔ 直接父」，跨席信息由工程主责转发；跨席协同经工作房文件（`progress/`、`handoff/`）；禁止自行联网（web 工具不可用）。
 【质量】DoD/acceptance 见简报；sdet 产出 evidence（命令+exit_code=0+log 引用）。
 【交接】任务完成时最后输出「结束」二字（状态标识，主会话据此判断交付闭环）；完成后由 squad-lead 组织交接包（summary/artifact_index/known_issues/diff_scope），接收方签收前不得解散。
 【禁区】不得越写集；不得绕过批准；不得把未批准调研原文当依据。
