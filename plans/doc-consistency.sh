@@ -10,6 +10,7 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   8. 日期形态与未来日期（须 YYYY-MM-DD / YYYY-MM；不得出现未来日期——「实测」不能发生在未来）
 #   7. 跨文件阈值一致（同一机制在文档/脚本/配置中的数值必须唯一：评分基准与上下限、
 #      retries 扣分与上限、handoff 缺件扣分、巡检周期、收口轮数、证据门退出码）
 #
@@ -132,7 +133,46 @@ while IFS='|' read -r label mode pat; do
   fi
 done <<<"$THRESH"
 
+echo "[8] 日期形态与未来日期"
+TODAY=$(date +%F)
+if ! command -v python3 >/dev/null 2>&1; then
+  na "日期核验（缺 python3）"
+else
+  DATE_ISSUE=$(python3 - "$TODAY" <<'PYEOF'
+import re, subprocess, sys
+today = sys.argv[1]
+files = subprocess.run(['git', 'ls-files'], capture_output=True, text=True).stdout.split()
+files = [f for f in files if f.endswith(('.md', '.yml')) and '/benchmarks/' not in f]
+bad_form, future = [], []
+for f in files:
+    try:
+        txt = open(f, encoding='utf-8', errors='ignore').read()
+    except OSError:
+        continue
+    for m in re.finditer(r'20\d{2}[-/年]\d{1,2}[-/月]\d{1,2}日?', txt):
+        d = m.group(0)
+        if '-' not in d or '年' in d or '月' in d:
+            bad_form.append(f'{f}:{d}')
+            continue
+        p = d.split('-')
+        if len(p[1]) == 1 or len(p[2]) == 1:
+            bad_form.append(f'{f}:{d}')
+            continue
+        if d > today:
+            future.append(f'{f}:{d}')
+out = []
+if future:
+    out.append('未来日期: ' + ', '.join(future[:3]))
+if bad_form:
+    out.append('非 ISO 形态: ' + ', '.join(bad_form[:3]))
+print('; '.join(out))
+PYEOF
+)
+  if [ -z "$DATE_ISSUE" ]; then ok "日期形态与新鲜度（ISO 形态；无未来日期；今日 ${TODAY}）"
+  else bad "日期问题 → ${DATE_ISSUE}"; fi
+fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（7 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（8 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

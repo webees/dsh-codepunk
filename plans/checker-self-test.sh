@@ -196,6 +196,17 @@ PYEOF
 mutate "证据门退出码改为 1" "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" 'exit_code=1'
 check_rc "M16 阈值不一 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "取值不一"
 
+echo "[M17 日期形态与未来日期（doc-consistency 第 8 类存活）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + '\n> 注入：实测日期 2099-01-01。\n')
+PYEOF
+mutate "注入未来日期" "$work/cur/README.md" '2099-01-01'
+check_rc "M17 未来日期 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "未来日期"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
