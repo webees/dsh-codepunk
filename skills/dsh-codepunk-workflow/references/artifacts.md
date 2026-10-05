@@ -190,7 +190,7 @@ preconditions:
 id: co-001
 run_id: run-2026-0001
 from: sponsor
-status: proposed              # proposed → applied → closed
+status: proposed              # proposed → applied（变更已落地：同步 chunks.yaml 的 new_acceptance）→ closed（受影响 chunk 验收通过后闭单，记 closed_at）；未闭环不得 complete
 affects_chunks: [chunk-b]
 new_acceptance: ["<变更后验收>"]
 user_ack_at: "…"

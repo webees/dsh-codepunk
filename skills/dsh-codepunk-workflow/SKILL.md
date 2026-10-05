@@ -129,7 +129,7 @@ metadata:
 
 1. 综合结果/交接/评分/知识库 → 更新 `chunks.yaml`；修订招聘标准（`knowledge/hr/`）与提示词（`knowledge/prompts/`）。
 2. 重招 → 执行 → 至 acceptance 全满足 → `completed`（`update_goal complete` + `announce`）。
-3. **收尾核验（MUST）**：`git -C <主仓库> worktree list` 只含主仓库；残留按 P10 第 5 条回收再 complete。
+3. **收尾核验（MUST）**：① `git -C <主仓库> worktree list` 只含主仓库（残留按 P10 第 5 条回收）；② `change_orders/*.yaml` **无未闭环项**（`status` 须为 `closed` 且 `closed_at` 非空）——否则先闭环再 complete。
 
 ## 3. 硬规则（违反即红灯，`subagent_proc_audit` 检查）
 
@@ -140,7 +140,7 @@ metadata:
 | R3 | 小组限工作房与写集内；主会话只写运行根（`~/.dsh-codepunk/projects/<id>/`）状态与 knowledge/，不写业务码；git 操作（worktree add/remove、登记表）限主仓库与工程父目录 |
 | R4 | 未签收不得解散；交接材料文档小组归档 |
 | R5 | 评分不阻断；解散即评分 |
-| R6 | 需求变更单通道：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed）→ 受影响 task；禁止小组直听用户改需求；goal draft 超时不自动推进 |
+| R6 | 需求变更单通道：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed，**迁移主体=run-lead，未闭环不得 complete**）→ 受影响 task；禁止小组直听用户改需求；goal draft 超时不自动推进 |
 | R7 | 禁静默丢脏改动：强制解散前 auto-commit/stash 记 backup_ref |
 | R8 | 审查门：交接/合并前 diff ⊆ write_paths + CHECKLIST + `reviews/` 记录；L/高风险强制独立 code-review |
 | R9 | 合并门：串行、按拓扑、evidence+门禁齐、`approvals/merge.yaml`；未 done 不合并；合并即回收 worktree（D073） |

@@ -61,7 +61,7 @@
 2. 派遣 `subagent_people` 评分：按信号（evidence / status / handoff 完整度 / ack / retries）对**团队**与**每个个人**打 0–100（base 50，公式见 references/knowledge.md）。
 3. 沉淀：`tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`（按人设名/团队名聚合，跨轮优化依据）。评分不阻断流程。
 4. **记忆简报（P11）**：每关闭 N 个 task（默认 3）由 `subagent_docs` 产增量 L2 记忆简报报你；goal 完成前给完整 Memory Brief（模板 references/artifacts.md「记忆简报」）。
-5. **需求变更（R6）**：运行中收到变更 → 落 `change_orders/<id>.yaml`（proposed→applied→closed）→ 只通知受影响 task 的小组；小组 MUST NOT 直听用户改需求（模板 references/artifacts.md）。
+5. **需求变更（R6）**：运行中收到变更 → 落 `change_orders/<id>.yaml`（proposed→applied→closed）→ **迁移主体与时刻（你＝run-lead）**：收到变更即记 `user_ack_at`（发起人确认时刻）并置 `proposed`；变更落地（同步 `chunks.yaml` 的 `new_acceptance` 与验收口径）后置 `applied`；受影响 chunk 验收通过后置 `closed` + `closed_at`。**未闭环（`proposed`/`applied`）的变更单不得进入 ⑥ complete**。只通知受影响 task 的小组；小组 MUST NOT 直听用户改需求（模板 references/artifacts.md）。
 
 ## ⑤ 后段·合并门（P10 · 串行）
 
