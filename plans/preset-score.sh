@@ -59,8 +59,12 @@ for s in "create_goal" "get_goal" "update_goal"; do
 done
 
 # ── A2 质量 ─────────────────────────────────────────────────────────────────
+if git rev-parse --git-dir >/dev/null 2>&1; then
 TODO=$(git grep -nE "TODO|FIXME|XXX(?!X)|待补|待填|WIP" -- '*.md' '*.yml' 2>/dev/null | grep -viE "todo_write|allowParallel|todo\b" | head -3)
 [ -n "$TODO" ] && ded A2 20 "占位残留: $(echo "$TODO" | head -1 | cut -c1-70)"
+else
+  ded A2 20 "占位残留无法核验（非 git 工作区）——无法核验 ≠ 通过"
+fi
 # 命令示例可执行性：SKILL 引用的脚本必须真实存在
 # （原实现只声明 BADCMD 却从不累加 —— 死分支，恒不扣分，属假满分口径）
 BADCMD=0
@@ -83,6 +87,7 @@ UNLABELED=$(grep -rnE "<[A-Z_]{3,}>" "$SKILL" 2>/dev/null | grep -vcE "占位|�
 [ "${UNLABELED:-0}" -gt 3 ] && ded A2 10 "未标注的占位符 ${UNLABELED} 处"
 
 # 行尾空白 / 连续 3+ 空行（格式卫生）
+if command -v python3 >/dev/null 2>&1; then
 WS=$(python3 - <<'PYEOF2'
 import subprocess
 files = subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
@@ -93,10 +98,17 @@ for f in files:
     for ln in txt.split("\n"):
         if ln != ln.rstrip() and ln.strip(): bad += 1
     if "\n\n\n\n" in txt: bad += 1
-print(bad)
+print('UNVERIFIED' if not files else bad)
 PYEOF2
 )
-[ "${WS:-0}" -gt 0 ] && ded A2 10 "行尾空白/连续空行 ${WS} 处"
+if [ "$WS" = "UNVERIFIED" ]; then
+  ded A2 10 "格式卫生无法核验（非 git 工作区或 git ls-files 失败）——无法核验 ≠ 通过"
+elif [ -z "${WS:-}" ]; then
+  ded A2 10 "格式卫生无法核验（python3 不可用或执行失败）——无法核验 ≠ 通过"
+elif [ "$WS" -gt 0 ]; then
+  ded A2 10 "行尾空白/连续空行 ${WS} 处"
+fi
+fi   # command -v python3
 
 # ── A3 准确性 ───────────────────────────────────────────────────────────────
 NB=$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')

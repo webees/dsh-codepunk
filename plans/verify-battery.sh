@@ -5,6 +5,8 @@ ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$ROOT" || exit 2
 F=0
 p() { printf '  %s %s\n' "$1" "$2"; }
+# 无法核验 ≠ 通过：环境不满足时显式判失败，避免「生产者失败→空值→静默 ✅」
+unverified() { p "✗" "$1（无法核验 ≠ 通过）"; F=1; }
 
 # 1) 15 指标评分
 bash plans/preset-score.sh >/dev/null 2>&1 && p "✅" "15 指标评分 100/100" || { p "✗" "15 指标评分未满分"; F=1; }
@@ -16,6 +18,9 @@ for m in --staged --tree --history; do
 done
 [ "$F" -eq 0 ] && p "✅" "泄露防护门 3/3 模式通过"
 # 4) 格式与卫生
+if ! command -v python3 >/dev/null 2>&1; then
+  unverified "格式/换行/空白（缺 python3）"
+else
 H=$(python3 - <<'PY'
 import subprocess
 files = subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
@@ -30,18 +35,31 @@ for f in files:
     for ln in txt.split('\n'):
         if ln != ln.rstrip() and ln.strip(): bad += 1
     if '\n\n\n\n' in txt: bad += 1
-print(bad)
+print('UNVERIFIED' if not files else bad)
 PY
 )
-[ "${H:-0}" -eq 0 ] && p "✅" "格式/换行/空白 全清" || { p "✗" "格式卫生 ${H} 处"; F=1; }
+if [ "$H" = "UNVERIFIED" ]; then
+  unverified "格式/换行/空白（非 git 工作区）"
+elif [ -z "${H:-}" ]; then
+  unverified "格式/换行/空白（python3 执行失败）"
+elif [ "$H" -eq 0 ]; then
+  p "✅" "格式/换行/空白 全清"
+else
+  p "✗" "格式卫生 ${H} 处"; F=1
+fi
+fi   # command -v python3
 # 5) 物理杂散（含被 .gitignore 忽略的游离物——本仓是白名单式 ignore，
 #    故任何被忽略文件都是意外产物；原检查只看 .DS_Store 与未跟踪会漏检 .bak 等）
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  unverified "杂散检查（非 git 工作区）"
+else
 S=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
 U=$(git status --short 2>/dev/null | grep -c '^??' || true)
 I=$(git status --ignored --short 2>/dev/null | grep '^!!' | grep -v '/\.DS_Store$' | grep -vc '^\.DS_Store$' || true)
 [ "$S" -eq 0 ] && [ "${U:-0}" -eq 0 ] && [ "${I:-0}" -eq 0 ] \
   && p "✅" "无杂散（.DS_Store/未跟踪/被忽略游离物）" \
   || { p "✗" "杂散: DS=${S} untracked=${U} ignored=${I}"; F=1; }
+fi   # git 工作区检查
 # 6) 结构（围栏/标题/引用）
 if python3 - <<'PY' >/dev/null 2>&1
 import subprocess, re, sys, os
