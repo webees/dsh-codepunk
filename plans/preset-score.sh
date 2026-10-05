@@ -15,6 +15,13 @@
 set -u
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$ROOT" || { echo "✗ 预设根不存在: $ROOT"; exit 2; }   # 2 = 环境/用法错误（与全仓约定一致）
+# 仓库标识校验：存在但非本预设仓库的根路径属「用法/环境错误」（exit 2），
+#   否则检查器会在错误的树上判 1、甚至挂起（实测：preset-score 于错误根 rc=124）。
+if [ ! -f skills/dsh-codepunk-workflow/SKILL.md ] || [ ! -d plans ]; then
+  printf '✗ 根路径不是本预设仓库（缺 skills/dsh-codepunk-workflow/SKILL.md 或 plans/）: %s\n' "$ROOT" >&2
+  exit 2
+fi
+
 
 # ---- 评分累计器（15 项独立变量） -------------------------------------------
 A1=100; A2=100; A3=100; A4=100; A5=100

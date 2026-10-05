@@ -286,6 +286,13 @@ check_rc "M23-c 主仓库列表不干净 → 失败" \
 check_rc "M23-d 缺主仓库参数 → 用法错" \
   "env -u MAIN_REPO bash plans/verify-worktree.sh 2>&1" 2 "用法"
 
+echo "[M24 错误根路径 → 用法错（exit 2 契约）]"
+fresh
+mkdir -p "$work/wrongroot"
+for script in preset-audit preset-score doc-consistency verify-battery; do
+  check_rc "M24 错误根：$script" "bash plans/$script.sh '$work/wrongroot' 2>&1" 2 "不是本预设仓库"
+done
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
