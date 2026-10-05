@@ -182,8 +182,16 @@ PYEOF2
 
 # ── B6 一致性 ───────────────────────────────────────────────────────────────
 # 术语混用（中英双写须成对出现才算违规；此处查同义词混用）
-if grep -q "工程主责（run-lead）" "$SKILL" 2>/dev/null && ! grep -q "run-lead" "$REF/roles.md" 2>/dev/null; then
+# 判据改为**双向**计数比对（F134：旧判据绑定已不存在的旧措辞「工程主责（run-lead）」，
+#   致该扣分永不可达=死守卫）：任一侧使用 run-lead 别名而另一侧从不使用 → 术语混用。
+# 注意：`grep -c` 零命中时输出 0 但退出 1——若写 `|| echo 0` 会得到**两行**（"0\n0"），
+#   使 `[ "$X" -eq 0 ]` 整数比较失败、分支静默不触发（F135：负向探针抓出的自身缺陷）。
+SK_ALIAS=$(grep -c "run-lead" "$SKILL" 2>/dev/null); SK_ALIAS=${SK_ALIAS:-0}
+RO_ALIAS=$(grep -c "run-lead" "$REF/roles.md" 2>/dev/null); RO_ALIAS=${RO_ALIAS:-0}
+if [ "$SK_ALIAS" -gt 0 ] && [ "$RO_ALIAS" -eq 0 ]; then
   ded B6 10 "roles.md 未使用 run-lead 术语"
+elif [ "$RO_ALIAS" -gt 0 ] && [ "$SK_ALIAS" -eq 0 ]; then
+  ded B6 10 "SKILL 未引入 run-lead 术语（roles.md 单侧使用）"
 fi
 # 工具正式位描述一致
 POSREF=$(grep -c "\.dsh-codepunk/scripts/" "$SKILL" 2>/dev/null)

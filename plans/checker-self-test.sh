@@ -384,6 +384,40 @@ score_reason "M28-f B14 .DS_Store 杂散" \
   "printf 'dsstore-marker\n' > '$work/cur/.DS_Store'" \
   "$work/cur/.DS_Store" 'dsstore-marker' 'DS_Store'
 
+echo "[M29 评分扣分可达性（第二批：B6/B7/B10/B11/B12/B14）]"
+# 约定同 M28：注入定向缺陷 → 断言「不再满分」且**命中该指标的具体扣分理由**
+MUT_GONE=1
+score_reason "M29-a B6 roles.md 失 run-lead 术语" \
+  "sed -i.bak 's/run-lead/主责/g' '$work/cur/skills/dsh-codepunk-workflow/references/roles.md'" \
+  "$work/cur/skills/dsh-codepunk-workflow/references/roles.md" 'run-lead' 'roles.md 未使用 run-lead 术语'
+score_reason "M29-a2 B6 SKILL 单侧失别名（反向分支）" \
+  "sed -i.bak 's/run-lead/主责/g' '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
+  "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" 'run-lead' 'SKILL 未引入 run-lead 术语'
+MUT_GONE=0
+score_reason "M29-b B7 岗位人设不足 9" \
+  "sed -i.bak 's/tool-subagent-/tool-x-/g' '$work/cur/agent.cordis.yml'" \
+  "$work/cur/agent.cordis.yml" 'tool-x-' '岗位人设仅'
+MUT_GONE=1
+score_reason "M29-c B10 Windows 脚本不足 4" \
+  "rm -f '$work/cur/plans/windows/dsh-codepunk-link.ps1' '$work/cur/plans/windows/dsh-codepunk-home.ps1'" \
+  "$work/cur/plans/windows" 'dsh-codepunk-link.ps1' 'Windows 脚本仅'
+score_reason "M29-d B11 禁词留本地未文档化" \
+  "sed -i.bak 's/denylist.txt/DENYWORDFILE/g' '$work/cur/skills/dsh-codepunk-workflow/references/file-hygiene.md'" \
+  "$work/cur/skills/dsh-codepunk-workflow/references/file-hygiene.md" 'denylist.txt' '留本地'
+MUT_GONE=0
+score_reason "M29-e B12 SKILL 无分节导航" \
+  "sed -i.bak -e 's/^## /##x /' -e 's/^### 1\\.1/###x 1.1/' '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
+  "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" '##x ' 'SKILL 无分节导航'
+# B14-a：hub 与仓库不同步（沙箱 hub 内追加标记；测完立刻还原，避免污染后续断言）
+MUT_GONE=0
+score_reason "M29-f B14 plans↔scripts 不同步" \
+  "cp '$SANDBOX/.dsh-codepunk/scripts/preset-audit.sh' '$SANDBOX/preset-audit.sh.orig' && printf '# drift-marker\\n' >> '$SANDBOX/.dsh-codepunk/scripts/preset-audit.sh'" \
+  "$SANDBOX/.dsh-codepunk/scripts/preset-audit.sh" 'drift-marker' 'plans↔scripts 不同步'
+cp "$SANDBOX/preset-audit.sh.orig" "$SANDBOX/.dsh-codepunk/scripts/preset-audit.sh" 2>/dev/null || true
+score_reason "M29-g B14 LICENSE 未跟踪" \
+  "git -C '$work/cur' rm --cached -q LICENSE" \
+  "$work/cur/plans/preset-score.sh" 'B14' '未跟踪发布必备文件'
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
