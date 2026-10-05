@@ -18,7 +18,9 @@
 #   bash dsh-codepunk-leak-guard.sh                 # 扫索引（git diff --cached），适合作为 pre-commit
 #   bash dsh-codepunk-leak-guard.sh --tree          # 扫工作树全部跟踪文件
 #   bash dsh-codepunk-leak-guard.sh --history       # 扫提交信息与新增行（HEAD~N..HEAD）
-#   bash dsh-codepunk-leak-guard.sh --install-hook  # 安装 pre-push 钩子（扫将推送的提交）
+#   bash dsh-codepunk-leak-guard.sh --msg <file>   # 扫指定提交信息文件（commit-msg 钩子用；信息体不进索引，pre-commit 覆盖不到）
+#   bash dsh-codepunk-leak-guard.sh --staged       # 显式指定扫索引（与默认同）
+#   bash dsh-codepunk-leak-guard.sh --install-hook  # 装 pre-commit + pre-push + commit-msg 三钩子
 #   bash dsh-codepunk-leak-guard.sh --list          # 只打印载入的禁词（脱敏）
 #
 # 退出码：0=通过；1=命中（阻断）；2=用法/环境错误
@@ -78,7 +80,7 @@ if [ "$MODE" = "list" ]; then
   exit 0
 fi
 
-# ── 安装 pre-push 钩子 ────────────────────────────────────────────────────
+# ── 安装三钩子：pre-commit（索引）/ pre-push（近 20 提交含信息体）/ commit-msg（信息即时） ──
 if [ "$MODE" = "install" ]; then
   HOOK_DIR=$(git rev-parse --git-path hooks)
   mkdir -p "$HOOK_DIR"

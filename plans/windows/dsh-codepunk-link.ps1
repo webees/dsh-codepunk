@@ -11,7 +11,16 @@
 #
 # 差异说明：PowerShell 无内置 YAML 解析器，本版用行级解析（等价 POSIX 版
 #   在无 PyYAML 时的降级路径）；INDEX.yaml 由 init 生成的格式规范，行级解析足够。
-# 用法：pwsh -File dsh-codepunk-link.ps1 resolve <路径>
+# 用法：
+#   pwsh -File dsh-codepunk-link.ps1 resolve <项目路径>
+#                                   三态路由：① README frontmatter `dsh-codepunk: <id>` 命中 →
+#                                   ② 回退 INDEX.yaml 注册表（project_root 精确匹配）→
+#                                   ③ 都无则报「未注册」并非零退出
+#   pwsh -File dsh-codepunk-link.ps1 index
+#                                   校验 INDEX.yaml：条目字段齐 + project_root/dsh-codepunk_path 无空悬
+#   pwsh -File dsh-codepunk-link.ps1 register <项目路径> <id>
+#                                   追加注册条目（不覆盖既有 project_id/project_root；交互确认）
+#   注：当控制台输入被重定向（非交互）时，register 会明确拒绝而非静默按默认值继续。
 # =============================================================================
 [CmdletBinding()]
 param(
