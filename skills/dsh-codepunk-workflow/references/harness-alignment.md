@@ -15,7 +15,7 @@
 | 上下文纪律（D074） | `dsh-compaction`（pressure/overflow）+ `dsh-session-query-sqlite` + tool-result pruner | 「摘要即证据」官方对应机制 |
 | 双门闩/审查门 权利谱系 | `dsh-sandbox`（3 模式阶梯升级）+ `dsh-user-approval`（ask/never，fail-closed） | 流程内审批 ≠ harness approval（两条独立路径） |
 | sandbox 升级（危险操作） | bash `sandbox_permissions` + `justification` | 仅被拒时才请求一次批准；授权不持久 |
-| 父向汇报 / 结算通知 | `dsh-tool-subagent-control`（`send_message` / `interrupt_agent` / `list_agents`；`agent_id` 限「直接子或直接父」）+ 子代理结算消息 | 结构化回报走 `send_message`；子步骤不进父日志。**注**：早期版本另有 `dsh-tool-subagent-report`，该包在当前安装内已不存在（2026-10-05 实测），故本预设按全局工具正常放行 `send_message` |
+| 父向汇报 / 结算通知 | `dsh-tool-subagent-control`（`send_message` / `interrupt_agent` / `list_agents`；`agent_id` 限「直接子或直接父」）+ 子代理结算消息 | 结构化回报走 `send_message`；子步骤不进父日志。**注**：早期版本另有 `dsh-tool-subagent-report`，该包在当前安装内已不存在（2026-10-05 实测），故本预设按全局工具正常放行 `send_message` |　**`interrupt_agent` 语义（实测）**：`agent_id` 接受「你创建的任何后代」（直接子或更深后代）；**调用即返回、不等待停止**；**其自己派生的子代理会继续运行**（不级联停止）。
 | 后台任务 | `ctx.jobs` + `job_kill/job_list/job_output` | 与后台 bash 同机制 |
 | checkpoints（工作区检查点） | 官方快照/断点机制 | D067 断点续行：progress/handoff/evidence 即重放状态，与官方 checkpoints 对齐（简述） |
 | 目标命令（人类通道） | `dsh-command-goal`（`/goal` 设置或查看长任务目标） | 与 `dsh-tool-goal`（模型通道）配对；两者注入同一个 `goals` 服务 |

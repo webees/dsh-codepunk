@@ -56,7 +56,7 @@
 
 ## ⑤ 解散与评分（P07 尾 + P16 人事）
 
-1. 签收后小组就地解散：对三席 `interrupt_agent`（停当前轮）+ 停止追问；continuable 孩子会转入 idle/ready **可恢复态**（没有 dispose 工具，属正常），但不再派新任务。
+1. 签收后小组就地解散：对三席 `interrupt_agent`（请求停当前轮）——**调用即返回、不等待停止**，随后以 `list_agents` 观察其转 `inactive`；+ 停止追问；continuable 孩子转入**可再次续聊的非运行态**（平台内部记 idle/ready，`list_agents` 外显为 `inactive`；无 dispose 工具属正常），但不再派新任务。**注意（工具语义）**：被中断者**自己派生的子代理会继续运行**，不级联停止——本预设 `maxDepth: 1` 下不存在孙层，故无此风险。
    - **回修授权（合并门失败路径）**：解散席位仍可恢复，但唤醒 MUST 经 run-lead 授权（`send_message` 附断点摘要，登记 `recovered`）；无授权唤醒属红灯。
 2. 派遣 `subagent_people` 评分：按信号（evidence / status / handoff 完整度 / ack / retries）对**团队**与**每个个人**打 0–100（base 50，公式见 references/knowledge.md）。
 3. 沉淀：`tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`（按人设名/团队名聚合，跨轮优化依据）。评分不阻断流程。
