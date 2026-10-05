@@ -512,6 +512,11 @@ open(p, 'w', encoding='utf-8').write(s.replace('1 "未来日期: "', '1 "未来�
 PYEOF
 mutate "断言期望串回退为标题同名" "$work/cur/plans/checker-self-test.sh" '1 "未来日期"'
 check_rc "M32 期望串与标题同名 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "自检期望串特异性不足"
+echo "[M33 移植对等性（doc-consistency 第 17 类存活）]"
+fresh
+sed -i.bak 's/xox\[baprs\]-/xoo-[baprs]-/' "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1"
+mutate_gone "抹掉 ps1 侧通用模式签名 xox" "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" 'xox\[baprs\]-'
+check_rc "M33 移植对等性缺口 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "移植对等性缺口"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

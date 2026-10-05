@@ -506,6 +506,9 @@ pairs = [
     ('dsh-codepunk-home.sh',       'dsh-codepunk-home.ps1',       ['路径常量']),
 ]
 miss = []
+# leak-guard 专项：通用模式**签名**须两侧皆有（防「一侧加模式、另一侧忘」）
+sigs = ['/Users/', '/home/', 'Applications/', '10\\.', '192\\.168\\.', 'sk-[A-Za-z0-9]{20,}',
+        'AKIA', 'gh[pousr]_', 'xox[baprs]-', 'PRIVATE KEY', '@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}']
 for sh, ps, keys in pairs:
     shp, psp = 'plans/' + sh, 'plans/windows/' + ps
     if not (os.path.isfile(shp) and os.path.isfile(psp)):
@@ -516,6 +519,10 @@ for sh, ps, keys in pairs:
     for k in keys:
         if k in st and k not in pt:
             miss.append(ps + '缺「' + k + '」')
+    if 'leak-guard' in sh:
+        for sig in sigs:
+            if sig in st and sig not in pt:
+                miss.append(ps + '缺签名 ' + sig)
 print('; '.join(miss[:4]))
 PYEOF
 )
