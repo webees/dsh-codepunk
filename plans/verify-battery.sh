@@ -224,5 +224,16 @@ else
   unverified "检查器存活自检（缺 plans/checker-self-test.sh）"
 fi
 
+# 11) 文档「声称 ↔ 实现」一致性（计数/阶段口径/工具存在性/退出码契约/头部自称项数）
+if [ -f plans/doc-consistency.sh ]; then
+  if bash plans/doc-consistency.sh >/dev/null 2>&1; then
+    p "✅" "文档声称一致性（计数/阶段口径/工具存在性/退出码契约）"
+  else
+    p "✗" "文档声称一致性未通过（运行 bash plans/doc-consistency.sh 查看）"; F=1
+  fi
+else
+  unverified "文档声称一致性（缺 plans/doc-consistency.sh）"
+fi
+
 echo
 [ "$F" -eq 0 ] && { echo "  本轮：全部通过（满分）"; exit 0; } || { echo "  本轮：存在失败项"; exit 1; }

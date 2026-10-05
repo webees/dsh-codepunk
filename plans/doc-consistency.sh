@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# =============================================================================
+# doc-consistency.sh —— 文档「声称 ↔ 实现」一致性核对（补覆盖矩阵的首要空档）
+# -----------------------------------------------------------------------------
+# 覆盖矩阵（references/skill-governance.md）把「文档声称 ↔ 实现」列为无机械检查的首要空档——
+# 历次审计中该类最高产（F077/F082/F083/F088/F090/F092/F093）。本脚本固化其中可机械化的部分：
+#   1. 计数声称（15 指标 / 5 组 / 电池项数 / 18 references / 16 benchmarks）
+#   2. 阶段口径（README 表 = preset.yml 阶段项 = stages.md 阶段号 = 6）
+#   3. 术语咨询（裸用「工作区」列出供人工确认；**咨询不判失败**——矩阵已把术语一致性列为人工项）
+#   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
+#   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
+#   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#
+# 计数一律**静态**取（不实跑子工具，避免环境依赖与递归）。
+# 用法: doc-consistency.sh [预设根]
+# 退出码: 0=全部一致；1=存在不一致；2=环境/用法错误
+# =============================================================================
+set -u
+ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+cd "$ROOT" || { echo "✗ 预设根不存在: $ROOT" >&2; exit 2; }
+SKILL="skills/dsh-codepunk-workflow/SKILL.md"
+REF="skills/dsh-codepunk-workflow/references"
+BM="skills/dsh-codepunk-workflow/benchmarks"
+NFAIL=0
+ok()  { printf '  ✅ %s\n' "$1"; }
+bad() { printf '  ✗ %s\n' "$1"; NFAIL=$((NFAIL + 1)); }
+na()  { printf '  ⚠ 无法核验：%s（无法核验 ≠ 通过）\n' "$1"; NFAIL=$((NFAIL + 1)); }
+info(){ printf '  ℹ %s\n' "$1"; }
+
+echo "== 文档「声称 ↔ 实现」一致性核对 =="
+
+echo "[1] 计数声称（静态）"
+cmp_num() {
+  if [ -z "$3" ]; then bad "$1：README 未声明计数（实际 $2）"
+  elif [ "$2" = "$3" ]; then ok "$1 实际 $2 = 声称 $3"
+  else bad "$1 实际 $2，README 声称 $3"; fi
+}
+cmp_num "评分指标" "$(grep -cE '^# ── [AB][0-9]+ ' plans/preset-score.sh)" \
+        "$(grep -oE '[0-9]+ 指标' README.md | head -1 | grep -oE '[0-9]+')"
+cmp_num "审计分组" "$(grep -cE '^echo "\[组' plans/preset-audit.sh)" \
+        "$(grep -oE '[0-9]+ 组' README.md | head -1 | grep -oE '[0-9]+')"
+cmp_num "电池项数" "$(grep -cE '^# [0-9]+[a-c]?\)' plans/verify-battery.sh)" \
+        "$(grep -oE '[0-9]+ 项一次跑完' README.md | head -1 | grep -oE '[0-9]+')"
+cmp_num "references" "$(ls "$REF"/*.md 2>/dev/null | wc -l | tr -d ' ')" \
+        "$(grep -oE '[0-9]+ 篇' README.md | head -1 | grep -oE '[0-9]+')"
+cmp_num "benchmarks" "$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')" \
+        "$(grep -oE '[0-9]+ 篇' README.md | sed -n 2p | grep -oE '[0-9]+')"
+
+echo "[2] 阶段口径（六阶段）"
+P_README=$(awk '/^## 流程总览/,/^```/' README.md | grep -cE '^\| [1-6]️⃣')
+P_PRESET=$(grep -oE '[①②③④⑤⑥]' preset.yml | sort -u | wc -l | tr -d ' ')
+P_STAGES=$(grep -oE '^## [①②③④⑤⑥]' "$REF/stages.md" | sort -u | wc -l | tr -d ' ')
+if [ "$P_README" = 6 ] && [ "$P_PRESET" = 6 ] && [ "$P_STAGES" = 6 ]; then
+  ok "三处一致：README 表 ${P_README} / preset.yml ${P_PRESET} / stages.md 阶段号 ${P_STAGES}"
+else
+  bad "阶段口径不一：README ${P_README} / preset.yml ${P_PRESET} / stages.md ${P_STAGES}（期望均 6）"
+fi
+
+echo "[3] 术语咨询（人工确认，不计失败）"
+BARE=$(grep -rn '工作区' "$SKILL" "$REF"/*.md agent.cordis.yml 2>/dev/null \
+       | grep -v 'benchmarks/' | grep -v 'git 工作区' | wc -l | tr -d ' ')
+if [ "$BARE" = 0 ]; then ok "无裸用「工作区」"
+else info "裸用「工作区」${BARE} 处（含「工作区检查点/工作区治理/术语对照」等合法用法，请人工确认是否易与「工作房」混淆）"; fi
+
+echo "[4] 工具存在性"
+MISS=""
+for f in "$SKILL" "$REF"/*.md README.md CONTRIBUTING.md; do
+  [ -f "$f" ] || continue
+  case "$f" in */benchmarks/*) continue ;; esac
+  for s in $(grep -oE 'plans/[a-z0-9._-]+\.(sh|py|mjs)' "$f" 2>/dev/null | sed 's#plans/##' | sort -u); do
+    [ -f "plans/$s" ] || [ -f "plans/windows/$s" ] || MISS="$MISS $(basename "$f"):$s"
+  done
+done
+[ -z "$MISS" ] && ok "文档提到的 plans 脚本均存在" || bad "文档提到但不存在的脚本:${MISS}"
+
+echo "[5] 退出码契约"
+rc_bad=""
+for f in plans/*.sh; do
+  decl_line=$(grep -m1 -E '^#[[:space:]]*退出码' "$f" 2>/dev/null)   # 仅契约行（行首即「退出码」），避免散文提及误配
+  [ -n "$decl_line" ] || continue
+  decl=$(printf '%s' "$decl_line" | grep -oE '[0-9][[:space:]]*=' | grep -oE '[0-9]' | sort -u | tr -d '\n')
+  [ -n "$decl" ] || { na "$(basename "$f") 退出码行未解析出码"; continue; }
+  missing=""
+  for c in $(grep -oE '\bexit [0-9]+' "$f" | grep -oE '[0-9]+' | sort -u); do
+    printf '%s' "$decl" | grep -q -- "$c" || missing="$missing$c"
+  done
+  [ -z "$missing" ] || rc_bad="$rc_bad $(basename "$f")(缺:$missing)"
+done
+[ -z "$rc_bad" ] && ok "实现用到的退出码均在头部契约内" || bad "退出码契约缺声明:${rc_bad}"
+
+echo "[6] 头部自称项数"
+DOC_CN=$(grep -oE '[一二三四五六七八九十]+项检查' plans/preset-compat.py | head -1)
+REAL_CN=$(grep -cE 'print\(f?"  [✅✗ℹ]' plans/preset-compat.py)
+if [ -z "$DOC_CN" ]; then ok "preset-compat 未在头部声称项数（跳过）"
+else info "preset-compat 头部称「${DOC_CN}」；源码输出分支 ${REAL_CN} 处（同项含成功/失败双分支，以实跑输出为准）"; fi
+
+echo
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（6 类检查）"; exit 0; fi
+echo "✗ 存在 ${NFAIL} 处不一致" >&2
+exit 1

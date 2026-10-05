@@ -172,6 +172,18 @@ PYEOF
   check_rc "M14b 改适配路径 → 漂移" "node plans/preset-declare.mjs check" 1 "漂移"
 fi
 
+echo "[M15 文档声称一致性（doc-consistency 存活）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+n = s.replace('15 指标', '99 指标', 1)
+open(p, 'w', encoding='utf-8').write(n)
+PYEOF
+mutate "README 指标声称改为 99" "$work/cur/README.md" '99 指标'
+check_rc "M15 改计数声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "评分指标"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
