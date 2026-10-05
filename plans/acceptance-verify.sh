@@ -67,7 +67,13 @@ for ln in lines:
             continue
         in_block = False
 # 注意用 [ \t] 而非 \s：\s 会跨行匹配到下一行的 `-`，把正确的数组写法误判为标量
-scalar_form = re.search(r'^accepted_by:[ \t]*\S', src, re.M)
+# ②-b 流式数组（合法 YAML 数组写法）：accepted_by: [a, b] —— F171：原实现把 [..] 误判为标量
+flow = re.search(r'^accepted_by:[ \t]*\[(.*)\][ \t]*(?:#.*)?$', src, re.M)
+if flow:
+    items = [x.strip().strip(chr(34) + chr(39)) for x in flow.group(1).split(',')]
+    signers.extend([x for x in items if x])
+# 标量判据须排除流式数组写法
+scalar_form = re.search(r'^accepted_by:[ \t]*(?!\[)\S', src, re.M)
 if scalar_form:
     problems.append("② accepted_by 写成了标量（MUST 为数组，每项一行 `  - \"…\"`）")
 elif not signers:

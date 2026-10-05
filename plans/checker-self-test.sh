@@ -684,6 +684,22 @@ PYEOF
   mutate "篡改包装顶层 name" "$work/patch51t.yml" '@deepseek-ai/dsh-agent-preset-x'
   check_rc "M51 包装 name 漂移 → check 报漂移" "node plans/preset-declare.mjs check --patch '$work/patch51t.yml' 2>&1" 1 "声明包装漂移"
 fi
+echo "[M52 accepted_by 流式数组（F171 修复存活）]"
+fresh
+mkdir -p "$work/acc"
+printf 'task_id: task-a\naccepted_by: [squad-lead]\naccepted_at: 2026-10-06\n' > "$work/acc/flow.yaml"
+check_rc "M52 流式数组 + 独立签收 → 通过" "bash plans/acceptance-verify.sh '$work/acc/flow.yaml' task-b 2>&1" 0 "verdict=PASS"
+python3 - "$work/cur/plans/acceptance-verify.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+old = "scalar_form = re.search(r'^accepted_by:[ " + chr(92) + "t]*(?!" + chr(92) + chr(91) + ")" + chr(92) + "S', src, re.M)"
+new = "scalar_form = re.search(r'^accepted_by:[ " + chr(92) + "t]*" + chr(92) + "S', src, re.M)"
+assert old in s, "锚点未找到"
+open(p, "w", encoding="utf-8").write(s.replace(old, new, 1))
+PYEOF
+mutate_gone "退回 F171（流式数组不再豁免）" "$work/cur/plans/acceptance-verify.sh" "(\?!' || true"
+check_rc "M52 退回修复后 → 流式数组被误判为标量" "bash plans/acceptance-verify.sh '$work/acc/flow.yaml' task-b 2>&1" 1 "标量"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
