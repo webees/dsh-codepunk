@@ -374,6 +374,23 @@ if (diffs.length === 0) {
   const a = summarizePlugins(srcEntries);
   const b = summarizePlugins(copyEntries);
   const sameNames = a.length === b.length && a.every((x, i) => x === b[i]);
+  // F170：包装字段亦须一致——此前只 deepDiff 内嵌条目，改**顶层 name / config.id** 不会被发现
+  //   （生成侧 apply 写包装、校验侧只验内嵌 → 生成/校验不齐，与 F169 同族）。
+  {
+    const wrapIdx = patchLines.findIndex((l) => l.includes(`- id: preset-${ID}`));
+    if (wrapIdx >= 0) {
+      const wrap = patchLines.slice(wrapIdx, wrapIdx + 8).join('\n');
+      const probs = [];
+      const nameLine = patchLines.slice(wrapIdx, wrapIdx + 8).find((l) => l.trimStart().startsWith('name:'));
+      const nameVal = nameLine ? nameLine.slice(nameLine.indexOf(':') + 1).trim().split(String.fromCharCode(39)).join('') : '';
+      if (nameVal !== '@deepseek-ai/dsh-agent-preset') probs.push('顶层 name 与期望不一致（当前 ' + nameVal + '）');
+      if (!new RegExp('^\\s*id:\\s*' + ID + '\\s*$', 'm').test(wrap)) probs.push('config.id 与期望不一致');
+      if (probs.length) {
+        console.log('  ✗ 声明包装漂移：' + probs.join('；') + '（修复：node plans/preset-declare.mjs apply）');
+        process.exit(1);
+      }
+    }
+  }
   console.log(`  ✅ 声明副本与源语义一致（${srcEntries.length} 条）：${ID}`);
   if (!sameNames) console.log('     ⚠ 条目名称顺序不同但结构一致，请复核');
   process.exit(0);

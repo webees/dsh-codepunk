@@ -668,6 +668,22 @@ open(p, 'w', encoding='utf-8').write(s)
 PYEOF
 mutate_gone "退回 F169 修复（重新拒绝条目序列）" "$work/cur/plans/dsh-codepunk-link.sh" 'proj.is_a?(Array)'
 check_rc "M50 退回修复后 → 空列表骨架被拒" "HOME='$work/linkhome' bash plans/dsh-codepunk-link.sh index 2>&1" 1 "须为映射"
+echo "[M51 声明包装字段漂移（F170：check 增比包装的修复存活）]"
+fresh
+if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
+  pass "M51 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）"
+else
+  : > "$work/patch51.yml"
+  node plans/preset-declare.mjs apply --patch "$work/patch51.yml" --append >/dev/null 2>&1 || true
+  python3 - "$work/patch51.yml" "$work/patch51t.yml" <<'PYEOF'
+import sys
+s, d = sys.argv[1], sys.argv[2]
+t = open(s, encoding='utf-8').read()
+open(d, 'w', encoding='utf-8').write(t.replace("'@deepseek-ai/dsh-agent-preset'", "'@deepseek-ai/dsh-agent-preset-x'", 1))
+PYEOF
+  mutate "篡改包装顶层 name" "$work/patch51t.yml" '@deepseek-ai/dsh-agent-preset-x'
+  check_rc "M51 包装 name 漂移 → check 报漂移" "node plans/preset-declare.mjs check --patch '$work/patch51t.yml' 2>&1" 1 "声明包装漂移"
+fi
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
