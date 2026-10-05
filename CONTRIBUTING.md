@@ -36,6 +36,21 @@ dsh-codepunk 是一份**多智能体开发流程预设**：基于 DeepSeek Harne
 3. **agent.cordis.yml 必须过 entryListSchema 校验**：组合须通过形状检查（顶层为列表、每行有 `name`、group 递归）+ `entryListSchema`（含 `!!js` 表达式）解析；格式 / 语义错误会标记为 broken roster row，必须修复后才能合入
 4. **skill 文档须过结构检查**：`SKILL.md` 六阶段闭环与硬规则编号须与 `references/standard.md` 一致；`references/` 全部按需文件结构完整（核心四篇 roles/artifacts/knowledge/standard + 其余阶段/纪律/兼容类，逐篇见 SKILL §6），代码块 / 表格闭合，新增引用有对应释义
 
+## 提交信息约定（据本仓历史实证）
+
+本仓沿用 Conventional-Commits 风格，**正文用中文**：
+
+```text
+<type>(<scope>): <中文动宾式一句话>
+
+<正文：改了什么、为什么、影响面；验证方式（命令 + 结果）>
+```
+
+- `type` 取值（历史实际使用）：`fix` · `docs` · `feat` · `perf` · `test` · `chore`
+- `scope` 为受影响模块，如 `windows` · `tools` · `skill` · `audit` · `score` · `config` · `stages` · `roles`
+- 标题一句话说清结果；**正文须含验证方式**（与上文「维护公约要点」第 1 条一致：任何非 README 改动都要说明目的、影响面与验证）
+- 涉及流程缺陷时，标题末尾附发现编号 `（Fnnn）`，便于与 `skill-governance` 的溯源表对齐
+
 ## 提交前检查清单
 
 - [ ] 改动仅限必要文件，diff 清晰、commit message 说明充分
