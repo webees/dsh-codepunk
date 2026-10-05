@@ -720,6 +720,34 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M73 score B14 未跟踪杂散（存活）]"
+fresh
+python3 - "$work/cur/plans/zz-m73-stray.sh" <<'PYEOF'
+import sys
+open(sys.argv[1], 'w', encoding='utf-8').write('stray\n')
+print('MUTATED')
+PYEOF
+check_rc "M73 造未跟踪文件 → B14 报杂散" "bash plans/preset-score.sh 2>&1" 1 "未跟踪项"
+
+echo "[M74 score B14 plans↔总库不同步（存活，假 HOME）]"
+fresh
+python3 - "$work/fakehome" <<'PYEOF'
+import os, shutil, sys
+fh = sys.argv[1]
+dst = os.path.join(fh, '.dsh-codepunk', 'scripts')
+os.makedirs(dst, exist_ok=True)
+src = 'plans'
+for f in os.listdir(src):
+    if f.endswith('.sh'):
+        shutil.copy(os.path.join(src, f), os.path.join(dst, f))
+# 制造不同步：改动副本内总库中的一个脚本
+p = os.path.join(dst, 'preset-audit.sh')
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + '\n# stale\n')
+print('MUTATED')
+PYEOF
+check_rc "M74 总库脚本过期 → B14 报不同步" "HOME='$work/fakehome' bash plans/preset-score.sh 2>&1" 1 "不同步"
+
 echo "[M71 score A4 决策号重复（存活）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/references/standard.md" <<'PYEOF'
