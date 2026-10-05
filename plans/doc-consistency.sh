@@ -138,7 +138,13 @@ retries 上限扣分|all|上限[ ]*[−-]([0-9]+)
 handoff 缺件扣分|last|每缺[ ]*1[ ]*文件[ ]*[−-]([0-9]+)
 巡检周期（轮）|all|每[ ]*([0-9]+)[ ]*轮
 收口轮数|all|([0-9]+)[ ]*轮未交付
-证据门 exit_code|all|exit_code[ ]*[=＝][ ]*([0-9]+)'
+证据门 exit_code|all|exit_code[ ]*[=＝][ ]*([0-9]+)
+SKILL 体积上限（字节）|all|(?:≤|超预算[ ]*)([0-9]{5})
+汇报摘要 token 预算|all|≤[ ]*([0-9]{3,4})[ ]*token
+续行空转阈值（轮）|all|连续[ ]*([0-9]+)[ ]*轮无产出
+并行上限 S|all|S≤([0-9]+)
+并行上限 M|all|M≤([0-9]+)
+并行上限 L|all|L≤([0-9]+)'
 TH_BAD=""
 # 用 here-string 而非管道：管道右侧是子 shell，其中的 NFAIL 自增会丢失（总判定仍 ✔）
 while IFS='|' read -r label mode pat; do
