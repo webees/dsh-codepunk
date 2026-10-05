@@ -620,6 +620,10 @@ echo "[M45 电池项数计数声称（doc-consistency 第 1 类 F162 修复存�
 fresh
 sed -i.bak 's/14 项独立验证/99 项独立验证/' "$work/cur/README.md"
 check_rc "M45 电池项数声称漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "电池项数 声称不一致"
+echo "[M46 references 计数标签绑定（doc-consistency 第 1 类 F163 修复存活）]"
+fresh
+sed -i.bak 's/×18 篇/×99 篇/' "$work/cur/README.md"
+check_rc "M46 references 篇数声称漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "references 实际 18"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

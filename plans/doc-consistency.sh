@@ -92,10 +92,13 @@ elif [ -n "$BAT_UNIQ" ] && [ "$BAT_UNIQ" -gt 1 ] && [ -n "$BAT_BAD" ]; then
   bad "电池项数 声称不一致（README 内多值: ${BAT_CLAIMS}）"
 elif [ -n "$BAT_BAD" ]; then bad "电池项数 实际 ${BAT_N}，README 声称${BAT_BAD}"
 else ok "电池项数 实际 ${BAT_N} = 声称（README 全部出现处一致）"; fi
-cmp_num "references" "$(ls "$REF"/*.md 2>/dev/null | wc -l | tr -d ' ')" \
-        "$(grep -oE '[0-9]+ 篇' README.md | head -1 | grep -oE '[0-9]+')"
-cmp_num "benchmarks" "$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')" \
-        "$(grep -oE '[0-9]+ 篇' README.md | sed -n 2p | grep -oE '[0-9]+')"
+# F163：按**标签行**绑定取值（原先按「N 篇」的出现顺序 head -1 / sed -n 2p，README 一变序即取错）
+REF_CLAIM="$(grep -E '^  references/' README.md | grep -oE '[0-9]+ 篇' | grep -oE '[0-9]+')"
+BM_CLAIM="$(grep -E '^  benchmarks/' README.md | grep -oE '[0-9]+ 篇' | grep -oE '[0-9]+')"
+if [ -z "$REF_CLAIM" ]; then bad "README 未在 references/ 标签行声明篇数（计数判据空转风险）"
+else cmp_num "references" "$(ls "$REF"/*.md 2>/dev/null | wc -l | tr -d ' ')" "$REF_CLAIM"; fi
+if [ -z "$BM_CLAIM" ]; then bad "README 未在 benchmarks/ 标签行声明篇数（计数判据空转风险）"
+else cmp_num "benchmarks" "$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')" "$BM_CLAIM"; fi
 cmp_num "硬规则上限" "$(grep -oE '^\| R[0-9]+ ' "$SKILL" 2>/dev/null | grep -oE '[0-9]+' | sort -n | tail -1)" \
         "$(grep -oE '硬规则 R1[–-]R[0-9]+' README.md 2>/dev/null | grep -oE '[0-9]+$' | head -1)"
 cmp_num "自检变异项" "$(grep -oE 'M[0-9]+' plans/checker-self-test.sh | sort -u | wc -l | tr -d ' ')" \
