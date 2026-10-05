@@ -36,6 +36,8 @@ else {
 }
 
 function Fail([string]$m) { Write-Error "x $m"; exit 1 }
+# 环境/用法错误 → 2（镜像 POSIX 侧 fail_env；F154/F165）
+function FailEnv([string]$m) { Write-Error "x $m"; exit 2 }
 function Pass([string]$m) { Write-Host "v $m" }
 
 # --- 1. 目录骨架（幂等） ----------------------------------------------------
@@ -46,7 +48,7 @@ function Install-Home {
   $dst = Join-Path $HOME '.dsh-codepunk\dsh-codepunk-home.ps1'
   if ((Test-Path $dst) -and ((Get-FileHash $src).Hash -eq (Get-FileHash $dst).Hash)) { return }
   if ($Check) { Fail "路径常量文件缺失或过期: $dst (运行本体脚本安装)" }
-  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dst) | Out-Null
+  try { New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dst) | Out-Null } catch { FailEnv "无法创建总库根目录" }
   Copy-Item -LiteralPath $src -Destination $dst -Force
   Pass "已安装路径常量: $dst"
 }
@@ -56,14 +58,14 @@ function Sync-Scripts {
     Write-Host "  i 正从总库副本自身运行：更新工具请改用仓内副本"
     return
   }
-  if (-not $Check) { New-Item -ItemType Directory -Force -Path $env:DSH_CODEPUNK_SCRIPTS | Out-Null }
+  if (-not $Check) { try { New-Item -ItemType Directory -Force -Path $env:DSH_CODEPUNK_SCRIPTS | Out-Null } catch { FailEnv "无法创建总库 scripts 目录" } }
   $new = 0; $upd = 0
   foreach ($f in (Get-ChildItem -Path $PSScriptRoot -Filter *.ps1 -File)) {
     $dst = Join-Path $env:DSH_CODEPUNK_SCRIPTS $f.Name
     if (-not (Test-Path $dst)) { $new++ }
     elseif ((Get-FileHash $f.FullName).Hash -ne (Get-FileHash $dst).Hash) { $upd++ }
     else { continue }
-    if (-not $Check) { Copy-Item -LiteralPath $f.FullName -Destination $dst -Force }
+    if (-not $Check) { try { Copy-Item -LiteralPath $f.FullName -Destination $dst -Force } catch { FailEnv "工具脚本同步失败: $($f.Name)" } }
   }
   if ($Check) {
     if ($new + $upd -gt 0) { Fail "总库工具脚本缺失/过期 $($new + $upd) 个 (运行本体脚本同步)" }
@@ -78,7 +80,7 @@ foreach ($d in @($env:DSH_CODEPUNK_PROJECTS, $env:DSH_CODEPUNK_WORKTREES, $env:D
   if ($Check) {
     if (-not (Test-Path $d)) { Fail "目录缺失: $d (运行本体脚本补建)" }
   } else {
-    New-Item -ItemType Directory -Force -Path $d | Out-Null
+    try { New-Item -ItemType Directory -Force -Path $d | Out-Null } catch { FailEnv "目录创建失败: $d" }
     Pass "目录就绪: $d"
   }
 }

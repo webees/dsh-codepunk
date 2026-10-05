@@ -606,6 +606,13 @@ for sh, ps, keys in pairs:
             miss.append(ps + ' 缺开关 --' + fl)
         if fl in ps_flags and fl not in sh_flags:
             miss.append(sh + ' 缺选项 -' + fl)
+    # F165：退出码集合对等（sh 的字面 exit N ∪ ps1 的 exit N 与 $script:rc = N）
+    sh_codes = {m.group(1) for m in re.finditer('exit ([0-9]+)', st)}
+    ps_codes = {m.group(1) for m in re.finditer('exit ([0-9]+)', pt)}
+    ps_codes |= {m.group(1) for m in re.finditer('script:rc = ([0-9]+)', pt)}
+    only_sh = sorted(sh_codes - ps_codes)
+    if only_sh:
+        miss.append(ps + ' 缺退出码 ' + ','.join(only_sh))
 print('PARITY-DONE:' + '; '.join(miss[:4]))
 PYEOF
 )

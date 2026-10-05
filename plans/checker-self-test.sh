@@ -637,6 +637,10 @@ if j > 0:
 open(p, 'w', encoding='utf-8').write(s)
 PYEOF
 check_rc "M47 同一声称多值漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "评分指标 声称不一致"
+echo "[M48 退出码集合对等（doc-consistency 第 17 类 F165 修复存活）]"
+fresh
+sed -i.bak 's/exit 2/exit 1/' "$work/cur/plans/windows/dsh-codepunk-init.ps1"
+check_rc "M48 ps1 缺退出码 2 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "缺退出码 2"
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
