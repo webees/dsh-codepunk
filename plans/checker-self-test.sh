@@ -82,6 +82,14 @@ check() {
 }
 
 # check_rc <标签> <命令> <期望退出码> [必须出现的关键词]
+# mutate_gone <描述> <文件> <grep 模式>：**删除型**变异的生效确认——模式须已**消失**
+mutate_gone() {
+  local desc="$1" f="$2" pat="$3"
+  if grep -qE "$pat" "$f" 2>/dev/null; then
+    printf '  ‼ 删除型变异未生效（%s）——自检自身问题，非守护问题\n' "$desc" >&2
+    MUTFAIL=1
+  fi
+}
 check_rc() {
   local label="$1" cmd="$2" want="$3" kw="${4:-}" rc=0 out
   out="$( cd "$work/cur" && eval "$cmd" 2>&1 )" || rc=$?
@@ -335,6 +343,46 @@ fresh
 printf 'see /%s/%s/private/x.txt\n' 'Users' 'zzz' >> "$work/cur/plans/checker-self-test.sh"
 mutate "夹具注入绝对路径字面量" "$work/cur/plans/checker-self-test.sh" '/Users/'
 check_rc "M27 夹具字面量 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "夹具含触发守卫的字面量"
+
+echo "[M28 评分扣分可达性（代表性子集：证明扣分路径真的会触发）]"
+# 背景（F133）：preset-score 有 37 个扣分点，此前仅 B10/B11 因一次事故被证明可达；
+#   其余 35 个缺可达性证据——若某分支永不可达，15/15 可能就是恒绿假象。
+#   此处对 6 个指标各注入一个定向缺陷，断言「评分不再是满分」且**命中该指标的具体理由**。
+score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言的文件> <变异模式> <期望理由片段>
+  local label="$1" mut="$2" file="$3" pat="$4" want="$5"
+  fresh
+  eval "$mut"
+  if [ "${MUT_GONE:-0}" = 1 ]; then mutate_gone "$label" "$file" "$pat"; else mutate "$label" "$file" "$pat"; fi
+  local rc=0 out
+  out="$( cd "$work/cur" && bash plans/preset-score.sh 2>&1 )" || rc=$?
+  if [ "$rc" = 1 ] && printf '%s' "$out" | grep -q -- "$want"; then
+    printf '  ✅ %s（评分降级且命中「%s」）\n' "$label" "$want"
+  else
+    printf '  ✗ %s（rc=%s，未命中「%s」）\n' "$label" "$rc" "$want"
+    FAILED=1
+  fi
+}
+score_reason "M28-a B7 缺 roles.md" \
+  "rm -f '$work/cur/skills/dsh-codepunk-workflow/references/roles.md'" \
+  "$work/cur/plans/preset-score.sh" 'B7' '缺 references/roles.md'
+score_reason "M28-b B8 bash 语法错" \
+  "printf 'if true; then\n' >> '$work/cur/plans/verify-worktree.sh'" \
+  "$work/cur/plans/verify-worktree.sh" 'if true; then' 'bash -n 失败'
+score_reason "M28-c B10 缺 .gitattributes" \
+  "rm -f '$work/cur/.gitattributes'" \
+  "$work/cur/plans/preset-score.sh" 'B10' '.gitattributes'
+MUT_GONE=1
+score_reason "M28-d B12 README 缺节" \
+  "sed -i.bak '/^## 快速开始/d' '$work/cur/README.md'" \
+  "$work/cur/README.md" '快速开始' 'README 缺节'
+MUT_GONE=1
+score_reason "M28-e B13 SKILL 缺硬规则 R 行" \
+  "sed -i.bak '/^| R9 /d' '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
+  "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" 'R9' '缺硬规则'
+MUT_GONE=0
+score_reason "M28-f B14 .DS_Store 杂散" \
+  "printf 'dsstore-marker\n' > '$work/cur/.DS_Store'" \
+  "$work/cur/.DS_Store" 'dsstore-marker' 'DS_Store'
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
