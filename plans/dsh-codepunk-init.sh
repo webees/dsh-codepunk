@@ -38,7 +38,12 @@ else
 fi
 
 CHECK_ONLY=0
-[[ "${1:-}" == "--check" ]] && CHECK_ONLY=1
+case "${1:-}" in
+  -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  --check)   CHECK_ONLY=1 ;;
+  "")        : ;;
+  *)         echo "未知参数: $1（--check 只读校验；-h 查看用法）" >&2; exit 2 ;;
+esac
 
 fail()     { echo "✗ $*" >&2; exit 1; }   # 1 = 有失败项（内容/一致性）
 fail_env() { echo "✗ $*" >&2; exit 2; }   # 2 = 环境/用法错误（写权限、父目录缺失等）
@@ -47,13 +52,17 @@ pass() { echo "✓ $*"; }
 # --- 0. 安装路径常量文件到总库根（README/SKILL 承诺的 source 路径） ---------------
 install_home_sh() {
   [[ -f "$HOME_SH_SRC" ]] || return 0          # 无源副本（内联兜底路径）时不安装
+  # 只读（--check）模式：**先判定、绝不创建**总库根（F154：原实现在守卫之前 mkdir，
+  #   导致「只读」模式仍会写入总库根目录）。
+  if (( CHECK_ONLY )); then
+    [[ -f "$HOME_SH_DST" ]] || fail "路径常量文件缺失: ${HOME_SH_DST}（运行本体脚本安装）"
+    cmp -s "$HOME_SH_SRC" "$HOME_SH_DST" || fail "路径常量文件过期: ${HOME_SH_DST}（运行本体脚本覆盖）"
+    return 0
+  fi
   mkdir -p "$DSH_CODEPUNK_HOME" 2>/dev/null \
     || fail_env "无法创建总库根: ${DSH_CODEPUNK_HOME}（检查父目录写权限；或改 DSH_CODEPUNK_HOME 环境变量）"
   if [[ -f "$HOME_SH_DST" ]] && cmp -s "$HOME_SH_SRC" "$HOME_SH_DST"; then
     return 0
-  fi
-  if (( CHECK_ONLY )); then
-    fail "路径常量文件缺失或过期: ${HOME_SH_DST}（运行本体脚本安装）"
   fi
   cp "$HOME_SH_SRC" "$HOME_SH_DST" 2>/dev/null \
     || fail_env "路径常量安装失败: ${HOME_SH_DST}（检查 $DSH_CODEPUNK_HOME 写权限）"
@@ -80,7 +89,6 @@ publish_bare_commands() {
     pass "已发布入口: $base"
   done
 }
-publish_bare_commands
 
 # --- 0c. 同步工具脚本到总库正式位（预设升级路径） --------------------------------
 # 运行期用的是总库副本（~/.dsh-codepunk/scripts/*），故升级预设后 MUST 同步此处；
@@ -92,7 +100,7 @@ install_scripts() {
     echo "  ℹ 正从总库副本自身运行：更新工具请改用仓内副本（bash <repo>/plans/dsh-codepunk-init.sh）" >&2
     return 0
   fi
-  if (($(CHECK_ONLY))); then :; else
+  if (( CHECK_ONLY )); then :; else
     mkdir -p "$DSH_CODEPUNK_SCRIPTS" 2>/dev/null \
       || fail_env "无法创建总库 scripts 目录: ${DSH_CODEPUNK_SCRIPTS}（检查写权限）"
   fi
@@ -102,10 +110,10 @@ install_scripts() {
     dst="$DSH_CODEPUNK_SCRIPTS/$base"
     if [[ ! -e "$dst" ]]; then
       n_new=$((n_new + 1))
-      (($(CHECK_ONLY))) || { cp "$f" "$dst"; chmod +x "$dst" 2>/dev/null; }
+      (( CHECK_ONLY )) || { cp "$f" "$dst"; chmod +x "$dst" 2>/dev/null; }
     elif ! cmp -s "$f" "$dst"; then
       n_upd=$((n_upd + 1))
-      (($(CHECK_ONLY))) || { cp "$f" "$dst"; chmod +x "$dst" 2>/dev/null; }
+      (( CHECK_ONLY )) || { cp "$f" "$dst"; chmod +x "$dst" 2>/dev/null; }
     fi
   done
   if (( CHECK_ONLY )); then
@@ -121,6 +129,9 @@ install_scripts() {
   fi
 }
 install_scripts
+
+# 发布无扩展名入口 MUST 在脚本拷入总库之后（F155：原顺序在全新总库上 glob 空匹配，入口从未发布）
+publish_bare_commands
 
 # --- 1. 目录骨架（mkdir -p 幂等） -------------------------------------------------
 for d in "$DSH_CODEPUNK_PROJECTS" "$DSH_CODEPUNK_WORKTREES" "$DSH_CODEPUNK_SCRIPTS"; do
