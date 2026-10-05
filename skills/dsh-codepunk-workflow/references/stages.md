@@ -21,8 +21,8 @@
 1. **分块**：派遣 `subagent_sys_arch` 勘察本仓 → `chunks.yaml`。
    - 规则：写集默认互斥；共享文件须 `owner_chunk`；无依赖环；`1 chunk = 1 task = 1 工作房 = 1 实现三角`。
    - 依赖已满足（无依赖或依赖 done）的 chunk → `ready`；**其后各态的主体与触发条件见 `references/artifacts.md`「chunks.yaml 迁移主体」表**（run-lead 观测事件后写，进度板唯一）。
-2. **简报**：让 `subagent_docs` 把你的意图（目标/边界/acceptance/禁区/必读 refs）+ 调研要点组装成 `WORK_BRIEF.md` + `brief.yaml`；**你审批**（`approved_by/approved_at`）。
-3. **用工**：你写 `staffing/request.yaml`（skills_wanted / constraints / 可覆盖 team_name 与 codename）→ 派遣 `subagent_people` 真招聘三人设（`personas/{squad-lead,engineer,sdet}.md`，含 codename）+ 合规校验 → 呈报你审批 → `staffing.yaml`（`approved_by/approved_at`，锁定三角与 team_name）。
+2. **简报**：让 `subagent_docs` 把你的意图（目标/边界/acceptance/禁区/必读 refs）+ 调研要点组装成 `WORK_BRIEF.md` + `brief.yaml`；产出即 `in_review`（待你把关）；**你审批**（`approved_by/approved_at`）。
+3. **用工**：你写 `staffing/request.yaml`（skills_wanted / constraints / 可覆盖 team_name 与 codename）（落单即 `submitted`）→ 派遣 `subagent_people` 真招聘三人设（招聘完成并锁编制后置 `approved`；若编制不可行则由你置 `rejected` 并回改 `skills_wanted`/`constraints` 或规模后重提）（`personas/{squad-lead,engineer,sdet}.md`，含 codename）+ 合规校验 → 呈报你审批 → `staffing.yaml`（`approved_by/approved_at`，锁定三角与 team_name）。
 4. **双门闩（MUST）**：无你批准的 brief ∧ staffing → 禁止 spawn 任何实现小组。
 
 ## ③ 多小组并行开发（P05–P06）
@@ -61,7 +61,7 @@
 2. 派遣 `subagent_people` 评分：按信号（evidence / status / handoff 完整度 / ack / retries）对**团队**与**每个个人**打 0–100（base 50，公式见 references/knowledge.md）。
 3. 沉淀：`tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`（按人设名/团队名聚合，跨轮优化依据）。评分不阻断流程。
 4. **记忆简报（P11）**：每关闭 N 个 task（默认 3）由 `subagent_docs` 产增量 L2 记忆简报报你；goal 完成前给完整 Memory Brief（模板 references/artifacts.md「记忆简报」）。
-5. **需求变更（R6）**：运行中收到变更 → 落 `change_orders/<id>.yaml`（proposed→applied→closed）→ **迁移主体与时刻（你＝run-lead）**：收到变更即记 `user_ack_at`（发起人确认时刻）并置 `proposed`；变更落地（同步 `chunks.yaml` 的 `new_acceptance` 与验收口径）后置 `applied`；受影响 chunk 验收通过后置 `closed` + `closed_at`。**未闭环（`proposed`/`applied`）的变更单不得进入 ⑥ complete**。只通知受影响 task 的小组；小组 MUST NOT 直听用户改需求（模板 references/artifacts.md）。
+5. **需求变更（R6）**：运行中收到变更 → 落 `change_orders/<id>.yaml`（proposed→applied→closed）→ **迁移主体与时刻（你＝run-lead）**：收到变更即记 `user_ack_at`（发起人确认时刻）并置 `proposed`；变更落地（同步 `chunks.yaml` 的 `new_acceptance` 与验收口径）后置 `applied`；受影响 chunk 验收通过后置 `closed` + `closed_at`。**未闭环（`proposed`/`applied`）的变更单不得进入 ⑥ complete**。**变更落地后**把受影响的旧 `brief.yaml`/`staffing.yaml` 置 `superseded`（作废），受影响 chunk 重新走 ② 简报与用工；只通知受影响 task 的小组；小组 MUST NOT 直听用户改需求（模板 references/artifacts.md）。
 
 ## ⑤ 后段·合并门（P10 · 串行）
 

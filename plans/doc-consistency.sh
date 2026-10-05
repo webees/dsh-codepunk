@@ -10,6 +10,7 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）
+#   13. 状态值正文引用（模板声明的每个状态值 MUST 在**正文**被某步骤引用——否则属「死状态」，#       无主体/无触发条件；排除模板注释行）
 #   12. 状态取值合法性（`status:`/`expected:` 取值须落在**任一**已声明状态机集合内；
 #      集合自 `status: <值>  # a | b | c` 模板行自动采集，无需手工维护）
 #   11. benchmarks 支撑决策号语义相符（括注短名 ↔ standard 含义的 2-gram 重叠：
@@ -54,6 +55,8 @@ cmp_num "references" "$(ls "$REF"/*.md 2>/dev/null | wc -l | tr -d ' ')" \
         "$(grep -oE '[0-9]+ 篇' README.md | head -1 | grep -oE '[0-9]+')"
 cmp_num "benchmarks" "$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')" \
         "$(grep -oE '[0-9]+ 篇' README.md | sed -n 2p | grep -oE '[0-9]+')"
+cmp_num "自检变异项" "$(grep -oE 'M[0-9]+' plans/checker-self-test.sh | sort -u | wc -l | tr -d ' ')" \
+        "$(grep -oE '\*\*[0-9]+ 项\*\*已知缺陷' README.md | head -1 | grep -oE '[0-9]+')"
 
 echo "[2] 阶段口径（六阶段）"
 P_README=$(awk '/^## 流程总览/,/^```/' README.md | grep -cE '^\| [1-6]️⃣')
@@ -366,7 +369,50 @@ PYEOF
   else bad "状态取值越界 → ${ST_ISSUE}"; fi
 fi
 
+echo "[13] 状态值正文引用（死状态检测）"
+if ! command -v python3 >/dev/null 2>&1; then
+  na "死状态核验（缺 python3）"
+else
+  DEAD_ISSUE=$(python3 <<'PYEOF'
+import glob, os, re
+files = (['skills/dsh-codepunk-workflow/SKILL.md', 'README.md', 'agent.cordis.yml']
+         + glob.glob('skills/dsh-codepunk-workflow/references/*.md'))
+# 采集：模板行 `status: <值>  # a → b | c` 中声明的取值
+vals, srcs = set(), {}
+for f in files:
+    try:
+        t = open(f, encoding='utf-8').read()
+    except OSError:
+        continue
+    for m in re.finditer(r'status:\s*[a-z_]+\s*#\s*([^\n]{3,120})', t):
+        for tok in re.findall(r'[a-z_]{3,20}', m.group(1)):
+            if tok in ('status', 'ok', 'fail'):
+                continue
+            vals.add(tok); srcs.setdefault(tok, m.group(1)[:40])
+dead = []
+for v in sorted(vals):
+    hits = 0
+    for f in files:
+        try:
+            t = open(f, encoding='utf-8').read()
+        except OSError:
+            continue
+        for ln in t.split('\n'):
+            if v not in ln:
+                continue
+            if re.match(r'^\s*-?\s*(status|expected)\s*:', ln):
+                continue          # YAML 声明行不算正文引用（注释尾部可能含中文，勿按字符类判）
+            hits += 1
+    if hits == 0:
+        dead.append(v)
+print('; '.join(dead[:4]))
+PYEOF
+)
+  if [ -z "$DEAD_ISSUE" ]; then ok "无死状态（每个声明取值均有正文引用）"
+  else bad "死状态（仅存在于模板注释，无主体/无触发条件）→ ${DEAD_ISSUE}"; fi
+fi
+
 echo
-if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（12 类检查）"; exit 0; fi
+if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（13 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

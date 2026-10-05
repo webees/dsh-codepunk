@@ -61,7 +61,7 @@ chunks:
 
 ```yaml
 task_id: task-chunk-a
-status: approved                   # draft | in_review | approved | superseded
+status: approved                   # draft → in_review → approved（双门闩以 approved 为准）；变更后旧版 → superseded（作废，不得再据其开工）
 approved_by: run-lead
 approved_at: "…"
 objective: "<一句话>"
@@ -79,7 +79,8 @@ attachments: []
 id: staff-req-001
 task_id: task-chunk-a
 from: run-lead
-status: submitted                  # submitted | in_hr | run_lead_review | approved | rejected
+status: submitted                  # submitted → approved（招聘完成且编制锁定 staffing.yaml）| rejected（编制不可行：须回改 skills_wanted/constraints 或规模后重提）
+                                     # 注：本预设为单操作者流程——**无 HR 中间审环节**，故不设 in_hr/run_lead_review（历史声明值已移除，见 F124）
 skills_wanted: ["typescript", "testing"]
 constraints: ["no network", "write_paths only"]
 notes: ""

@@ -252,6 +252,19 @@ PYEOF
 mutate "注入越界状态值" "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" 'bogus_state'
 check_rc "M21 状态越界 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "状态取值越界"
 
+echo "[M22 死状态检测（doc-consistency 第 13 类存活）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(
+    s.replace('# drift_before', '# drift_before', 1).replace(
+        'status: approved                   # draft', 'status: approved                   # draft_zz', 1))
+PYEOF
+mutate "注入 unsupported 状态值" "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" 'draft_zz'
+check_rc "M22 死状态 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "死状态"
+
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
