@@ -288,7 +288,8 @@ seats:
     subagent_id: 6420f25a-0000-4000-8000-000000000000
     label: 衡枢-主责(配置层优化)      # 派单 description 原样
     status: active                   # active | done | interrupted | recovered | failed
-    last_seen: running               # 最近一次 list_agents 状态：running | idle | ready | 未在册
+    last_seen: running               # 最近一次 list_agents 的**工具可见**状态：running | inactive | 未在册
+                                     # （该工具只列可续聊子代理；一次性子代理不列出）
     expected: active                 # 期望：active（有未完成交付）| done（已签收，可不清）
     progress_ref: tasks/chunk-a/progress/progress.md
     last_checkpoint_at: "2026-09-18T00:00:00Z"

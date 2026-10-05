@@ -54,7 +54,7 @@ metadata:
 2. **装载路径常量**：`source ~/.dsh-codepunk/dsh-codepunk-home.sh`（导出 `DSH_CODEPUNK_HOME`/`DSH_CODEPUNK_PROJECTS`/`DSH_CODEPUNK_INDEX`）。
 3. **建运行根**：`mkdir -p ~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/`——本 run 全部状态（goal/chunks/plan/tasks/handoff）写该目录，**绝不写入工程目录**。
 4. **启动自检与子代理恢复（MUST，D094）**：客户端意外关闭会中断子代理，恢复靠以下三步——
-   - **a. 查**：`list_agents(scope=descendants)` 列出全部子代理与其状态（`running`/`idle`/`ready`）。
+   - **a. 查**：`list_agents(scope=descendants)` 列出全部**可续聊**子代理及其**工具可见状态**（`running` | `inactive`——平台内部的 idle/ready 不被该工具外显）。**工具语义（实测）**：① 一次性子代理（`mode: one-shot`）**不列出**；② `scope` 仅 `children`（默认）/`descendants`；③ `descendants` 中 depth>1 的条目**只接受 `interrupt_agent`**（`send_message` 仅达直接子）。
    - **b. 比**：与 `runs/<run_id>/README.md` 的 spawn 登记表（`task_id | seat | subagent_id | status`）逐行对照，找出「登记为 active 但已非 running」的中断席。
    - **c. 续**：读该席工作房 `progress/`、`handoff/`、`evidence.yaml` 定位断点 → `send_message` 精确续行（附断点摘要与待办），不重跑整轮、不重复 spawn。
    - 前置条件：子代理 MUST 为 `backgroundMode: continuable`（一次性子代理中断后不可恢复，见 D088）；登记表 MUST 每 spawn 即写（stages.md §③ 第 5 条），否则无从比对。
@@ -113,7 +113,7 @@ metadata:
 
 ### ⑤ 解散与评分（P07 尾 + P16 人事）
 
-1. 签收且 run-lead 置 `status: done` 后，三席 `interrupt_agent` 就地解散（转 idle/ready 可恢复态，不再派新任务；未置 `done` 不得解散、不得进入合并门）。
+1. 签收且 run-lead 置 `status: done` 后，三席 `interrupt_agent` 就地解散（转为可再次续聊的**非运行态**——平台内部记 idle/ready，`list_agents` 外显为 `inactive`；不再派新任务；未置 `done` 不得解散、不得进入合并门）。
 2. `subagent_people` 按 evidence / status / handoff 完整度 / ack / retries 打 0–100（base 50，见 `references/knowledge.md`）；评分不阻断。
 3. 沉淀 `tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`。
 
