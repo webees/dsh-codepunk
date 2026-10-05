@@ -547,6 +547,12 @@ fresh
 printf 'pwsh -NoProfile -File x.ps1 -Msg "$1"\n' >> "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1"
 mutate "注入 PS 不支持的位置参数语法" "$work/cur/plans/windows/dsh-codepunk-leak-guard.ps1" '\$1'
 check_rc "M35 PS 位置参数语法 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "位置参数语法"
+echo "[M36 硬规则覆盖自推导（F143 回归：R15 亦须受检）]"
+MUT_GONE=1
+score_reason "M36 删 R15 → 扣分（旧版覆盖不到）" \
+  "sed -i.bak '/^| R15 |/d' '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
+  "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" '^\| R15 \|' '缺硬规则 R15'
+MUT_GONE=0
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi

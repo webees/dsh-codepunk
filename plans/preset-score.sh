@@ -258,8 +258,15 @@ done
 grep -qE "^### 1\.1|^## " "$SKILL" 2>/dev/null || ded B12 15 "SKILL 无分节导航"
 
 # ── B13 语义保真 ────────────────────────────────────────────────────────────
-# 硬规则 R1–R14 齐全
-for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
+# 硬规则覆盖：范围**自 SKILL 推导**（R 编号最大值），逐号校验——既能覆盖新增规则，也能发现**缺号**。
+#   旧写法硬编码 `1 2 … 14`，SKILL 增至 R15 后 R15 即失去覆盖（F143：注释也停留在「R1–R14」）。
+# 覆盖面取**独立权威声称**（README 的「硬规则 R1–R15」）：若从 SKILL 自身推导最大值，删掉末条规则会
+#   同步降低范围从而「自证齐全」（R147 对照实验实证），必须用外部声称做上界。
+RN=$(grep -oE '硬规则 R1[–-]R[0-9]+' README.md 2>/dev/null | grep -oE '[0-9]+$' | head -1)
+RN=${RN:-0}
+[ "$RN" -eq 0 ] && RN=$(grep -oE '^\| R[0-9]+ ' "$SKILL" 2>/dev/null | grep -oE '[0-9]+' | sort -n | tail -1)
+RN=${RN:-0}
+for i in $(seq 1 "$RN" 2>/dev/null); do
   grep -qE "\| R$i \||R${i}（" "$SKILL" 2>/dev/null || ded B13 5 "SKILL 缺硬规则 R$i"
 done
 # 关键阈值在位
