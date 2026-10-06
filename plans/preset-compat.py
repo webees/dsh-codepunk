@@ -159,7 +159,7 @@ def main() -> int:
 
     app = resolve_app_root()
     if app is None:
-        # 文案类观察（R552）：旧文案对「路径非目录」与「目录但缺 dsh 标记」不作区分 ⇒ 诊断路径变长。
+        # 文案类观察：旧文案对「路径非目录」与「目录但缺 dsh 标记」不作区分 ⇒ 诊断路径变长（本仓文档禁写 R+三位号，以免与硬规则号同形）。
         _envr = os.environ.get("DSH_APP_ROOT", "")
         if _envr and not os.path.isdir(_envr):
             _hint = f"（DSH_APP_ROOT={_envr} **不是目录**）"
