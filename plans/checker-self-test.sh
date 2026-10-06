@@ -145,6 +145,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M100 回退路径的 front-matter 行数上限须与 python 路径一致（F213 修复存活）]"
+fresh
+check_contains "M100 awk front-matter 上限为 25" "grep -c 'NR > 25' plans/dsh-codepunk-link.sh" "1"
+
 echo "[M99 缺 python3 时不得漏裸 stderr（F212 修复存活）]"
 fresh
 check_contains "M99 工具含 F212 重定向说明" "grep -c F212 plans/preset-audit.sh" "1"

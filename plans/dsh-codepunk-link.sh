@@ -143,7 +143,7 @@ PY
 )"
     if [ -n "$id" ]; then _validate_marker "$id" && { printf '%s' "$id"; return 0; }; return 1; fi
   fi
-  # ② 降级 awk：YAML frontmatter（首行 ---，前 15 行内闭合，dsh-codepunk: <id>）
+  # ② 降级 awk：YAML frontmatter（首行 ---，前 25 行内闭合，dsh-codepunk: <id>）
   id="$(awk '
     NR == 1 && $0 == "---" { fm = 1; next }
     fm && $0 == "---" { exit }
@@ -153,13 +153,13 @@ PY
       gsub(/["'"'"']/, "", line)
       print line; exit
     }
-    NR > 15 { exit }
+    NR > 25 { exit }
   ' "$readme")"
   if [ -n "$id" ]; then _validate_marker "$id" || return 1; printf '%s' "$id"; return 0; fi   # F200：两处 awk 回退（无 python3 / 注释行形态）同样校验
 
-  # ③ 降级 awk：兼容注释行 `<!-- dsh-codepunk: <id> -->`（前 15 行内，无 frontmatter 时）
+  # ③ 降级 awk：兼容注释行 `<!-- dsh-codepunk: <id> -->`（前 25 行内，无 frontmatter 时）
   id="$(awk '
-    NR <= 15 && /<!--[[:space:]]*dsh-codepunk[[:space:]]*:/ {
+    NR <= 25 && /<!--[[:space:]]*dsh-codepunk[[:space:]]*:/ {
       line = $0
       sub(/^.*dsh-codepunk[[:space:]]*:[[:space:]]*/, "", line)
       sub(/[[:space:]]*-->.*$/, "", line)
