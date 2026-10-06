@@ -272,7 +272,15 @@ FSRC_MISS="$(for h in "$HOME"/.dsh-codepunk/scripts/*.sh "$HOME"/.dsh-codepunk/s
   [ -f "plans/$b" ] || [ -f "plans/windows/$b" ] || echo "${b%.*}"
 done | tr '\n' ' ')"
 [ -n "${FSRC_MISS// /}" ] && FSYNC="$(printf '%s 源副本缺失: %s' "$FSYNC" "$FSRC_MISS" | sed 's/^ *//')"
-[ -z "$FSYNC" ] && report "$PASS" "F2 plans↔scripts 同步" || report "$FAIL" "F2 不同步: $FSYNC"
+# F285：hub **完全缺失**（未安装/全新 HOME/CI）时，旧实现让每个源副本 diff 都失败 ⇒ 报
+#   「F2 不同步: <首个脚本名>」，把「**无法核验（未安装）**」说成「**内容不同步**」⇒ 误导诊断
+#   （实测：`HOME=/tmp/DH42` 无 hub ⇒ 「[✗] F2 不同步: acceptance-verify」）。
+#   此处显式分列：**仍判 FAIL**（不放松判据），但点名真实原因并给出安装指引。
+if [ ! -d "$HOME/.dsh-codepunk/scripts" ]; then
+  report "$FAIL" "F2 无法核验: hub 未安装（$HOME/.dsh-codepunk/scripts 不存在）⇒ 先跑 plans/dsh-codepunk-init.sh"
+else
+  [ -z "$FSYNC" ] && report "$PASS" "F2 plans↔scripts 同步" || report "$FAIL" "F2 不同步: $FSYNC"
+fi
 
 echo
 echo "===== 审计结论 ====="
