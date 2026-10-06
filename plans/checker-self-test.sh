@@ -145,6 +145,11 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M88 python 工具须进程内固定 UTF-8 输出（F198 修复存活）]"
+fresh
+check_contains "M88 preset-compat 含 UTF-8 reconfigure" "grep -c F198 plans/preset-compat.py" "1"
+check_contains "M88 fidelity-gate 含 UTF-8 reconfigure" "grep -c F198 plans/fidelity-gate.py" "1"
+
 echo "[M87 其余 shell 工具亦须按需固定 UTF-8 locale（F197 修复存活）]"
 fresh
 check_contains "M87 link.sh 含 locale 固定片段" "grep -c F197 plans/dsh-codepunk-link.sh" "1"

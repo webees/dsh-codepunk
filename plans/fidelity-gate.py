@@ -22,6 +22,20 @@
   star 数（表格中的 `N stars` / `N★` 形态）
   —— 以上与实现 `PATTERNS` 的 14 类一一对应。
 """
+# F198：非 UTF-8 locale 下 python 的 stdout 编码随 locale（如 ISO-8859-15）→ 输出中文结论会抛
+#   `UnicodeEncodeError: 'charmap' codec can't encode`，把「本应清晰降级」变成**崩溃**并破坏退出码契约
+#   （实证：`preset-compat.py` 直接调用时 rc 0 → 1；`fidelity-gate.py verify` 由 2 → 1）。
+#   故进程内固定 stdout/stderr 为 UTF-8（与仓内全 UTF-8 内容一致）；reconfigure 仅 3.7+ 可用，缺失则忽略。
+try:
+    import sys as _sys
+    for _s in (_sys.stdout, _sys.stderr):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+except Exception:
+    pass
+
 import re, sys, json, subprocess, os
 
 import hashlib as _hashlib

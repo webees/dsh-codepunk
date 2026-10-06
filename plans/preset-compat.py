@@ -20,7 +20,22 @@ DSH 安装位置由环境变量给出（不硬编码平台路径）：
 退出码：0=全部通过；1=存在不兼容项；2=无法定位 DSH 安装
 """
 
+
 from __future__ import annotations
+
+# F198：非 UTF-8 locale 下 python 的 stdout 编码随 locale（如 ISO-8859-15）→ 输出中文结论会抛
+#   `UnicodeEncodeError: 'charmap' codec can't encode`，把「本应清晰降级」变成**崩溃**并破坏退出码契约
+#   （实证：`preset-compat.py` 直接调用时 rc 0 → 1；`fidelity-gate.py verify` 由 2 → 1）。
+#   故进程内固定 stdout/stderr 为 UTF-8（与仓内全 UTF-8 内容一致）；reconfigure 仅 3.7+ 可用，缺失则忽略。
+try:
+    import sys as _sys
+    for _s in (_sys.stdout, _sys.stderr):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+except Exception:
+    pass
 
 import os
 import re
