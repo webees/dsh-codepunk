@@ -545,7 +545,8 @@ EOF
     pid="$(_entry_get "$row" project_id)"
     root="$(_entry_get "$row" root)"
     if [ "$pid" = "$id" ]; then dup="project_id=$id"; break; fi
-    if [ -n "$root" ] && [ "$(_norm_path "$root")" = "$target" ]; then dup="project_root=$target"; break; fi
+    # F274：查重亦须覆盖**符号链接别名**（仅比较、不改写存储值）；否则同一实体可被重复登记、记忆分裂。
+    if [ -n "$root" ] && { [ "$(_norm_path "$root")" = "$target" ] || [ "$(_real_path "$root")" = "$(_real_path "$target")" ]; }; then dup="project_root=$target"; break; fi
   done <<< "$rows"
   if [ -n "$dup" ]; then
     printf '%s: 已存在，不覆盖: %s 已在 INDEX.yaml（追加语义）\n' "$SCRIPT_NAME" "$dup" >&2
@@ -611,7 +612,7 @@ EOF
       printf '%s: 已存在，不覆盖: project_id=%s 已在 INDEX.yaml（追加语义）\n' "$SCRIPT_NAME" "$id" >&2
       return 1
     fi
-    if [ -n "$root2" ] && [ "$(_norm_path "$root2")" = "$target" ]; then
+    if [ -n "$root2" ] && { [ "$(_norm_path "$root2")" = "$target" ] || [ "$(_real_path "$root2")" = "$(_real_path "$target")" ]; }; then  # F274
       printf '%s: 已存在，不覆盖: project_root=%s 已在 INDEX.yaml（追加语义）\n' "$SCRIPT_NAME" "$target" >&2
       return 1
     fi
