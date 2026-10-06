@@ -415,7 +415,10 @@ S = 'skills/dsh-codepunk-workflow'
 # benchmarks 不参与：它们分析的是**外部**项目的文档（如 diagram-design 的 SKILL.md §9），
 # 其中的「SKILL.md §N」不是对本仓章节的引用。
 files = [f'{S}/SKILL.md', 'README.md', 'CONTRIBUTING.md'] + glob.glob(f'{S}/references/*.md')
-patA = re.compile(r'references/([a-z0-9-]+)\.md[「『]([^」』]{2,40})[」』]')
+# F294：原 patA 要求 `.md` **紧邻**「」⇒ 漏检仓内常见写法 `references/x.md`「名」（路径带反引号）
+#   与 `references/x.md 的「名」`。本轮巡检实测 实证：该类对「`references/artifacts.md`「chunks.yaml 迁移主体」」
+#   （名称与目标章节不符）**未报错**，而矩阵却声称该类机械覆盖「章节级引用可解析」。现容忍反引号/「的」/空白。
+patA = re.compile(r'references/([a-z0-9-]+)\.md`?[ \t]*(?:的)?[ \t]*[「『]([^」』]{2,40})[」』]')
 patB = re.compile(r'(?:SKILL\.md|references/([a-z0-9-]+)\.md)[^\n]{0,6}?§([0-9]+(?:\.[0-9]+)?)')
 badA, badB = [], []
 for f in files:
