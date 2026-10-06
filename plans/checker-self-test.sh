@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('126 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('127 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -1388,6 +1388,11 @@ if [ -n "$UNKNOWN_HELPERS" ]; then
   echo "✗ 自检引用了未定义的断言助手：$(printf '%s' "$UNKNOWN_HELPERS" | tr '\n' ' ')（变异会静默空转）" >&2
   exit 1
 fi
+echo "[M127 硬规则号重复须扣分（F263：R 号重复覆盖缺口）]"
+score_reason "M127 SKILL 追加重复 R9 行" \
+  "printf '| R9 | 探针：重复 R 号（含义不同） | 探针 |\n' >> skills/dsh-codepunk-workflow/SKILL.md" \
+  skills/dsh-codepunk-workflow/SKILL.md '^\| R9 ' '硬规则号重复'
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

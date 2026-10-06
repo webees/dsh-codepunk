@@ -164,6 +164,12 @@ fi
 # 决策号冲突/跳号
 DUPD=$(grep -oE '^\| D[0-9]{3} ' "$REF/standard.md" 2>/dev/null | tr -d '| ' | sort | uniq -d)
 [ -n "$DUPD" ] && ded A4 20 "决策号重复: $(echo "$DUPD" | tr '\n' ' ')"
+# F263：治理矩阵（skill-governance.md「编号一致性（D/P/R 定义与引用、重复号）」行）声称由
+#   `preset-audit` B7/D1/D3 与本组**并列**承担，但实测**重复 R 号**（SKILL 硬规则表追加第二条 `| R9 |`）
+#   在 `doc-consistency`（rc=0）／`preset-audit`（100/100）／本组（15/15）**三工具下全部放行**，
+#   而重复 **D** 号确被上方抓获 ⇒ D 有覆盖、R 缺失（**覆盖不对称**）。此处**同构**补 R 号重复检测。
+DUPR=$(grep -oE '^\| R[0-9]{1,2} ' skills/dsh-codepunk-workflow/SKILL.md 2>/dev/null | tr -d '| ' | sort | uniq -d)
+[ -n "$DUPR" ] && ded A4 20 "硬规则号重复: $(echo "$DUPR" | tr '\n' ' ')"
 # 文件命名规范（references/benchmarks 均 kebab-case .md）
 BADNAME=$(ls "$REF"/*.md "$BM"/*.md 2>/dev/null | xargs -n1 basename | grep -vE '^[a-z0-9]+(-[a-z0-9]+)*\.md$' | head -3)
 [ -n "$BADNAME" ] && ded A4 10 "命名不符 kebab-case: $(echo "$BADNAME" | tr '\n' ' ')"
