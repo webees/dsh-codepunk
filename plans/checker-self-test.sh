@@ -145,6 +145,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M105 硬规则表 R1–R15 须按数字序（F224 修复存活）]"
+fresh
+check_contains "M105 R14 在 R15 之前" "awk '/ R14 /{a=NR} / R15 /{b=NR} END{print (a<b)+0}' skills/dsh-codepunk-workflow/SKILL.md" "1"
+
 echo "[M104 D3 行号引用守护范围须覆盖全部脚本类型（F218 修复存活）]"
 fresh
 check_contains "M104 D3 正则已扩围" "grep -c 'js|mjs|sh|py|ps1' plans/preset-audit.sh" "1"
