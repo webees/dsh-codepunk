@@ -335,7 +335,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 else
   NUM_ISSUE=$(python3 <<'PYEOF'
 import glob, os, re
-std = open('skills/dsh-codepunk-workflow/references/standard.md', encoding='utf-8').read()
+std = open('skills/dsh-codepunk-workflow/references/standard.md', encoding='utf-8', errors='replace').read()
 D = {int(m) for m in re.findall(r'^\| D(\d{3})', std, re.M)}
 P_ind = {int(m) for m in re.findall(r'^\| P(\d{2})(?!\d)', std, re.M)}
 P_rng = set()
@@ -349,7 +349,7 @@ files = ([ 'skills/dsh-codepunk-workflow/SKILL.md', 'README.md', 'CONTRIBUTING.m
 bad_d, bad_p = [], []
 for f in files:
     try:
-        t = open(f, encoding='utf-8').read()
+        t = open(f, encoding='utf-8', errors='replace').read()
     except OSError:
         continue
     # D：逐条登记；排除 standard.md 自身与其自述样例
@@ -389,7 +389,7 @@ patB = re.compile(r'(?:SKILL\.md|references/([a-z0-9-]+)\.md)[^\n]{0,6}?§([0-9]
 badA, badB = [], []
 for f in files:
     try:
-        t = open(f, encoding='utf-8').read()
+        t = open(f, encoding='utf-8', errors='replace').read()
     except OSError:
         continue
     for m in patA.finditer(t):
@@ -429,7 +429,7 @@ else
   SEM_ISSUE=$(python3 <<'PYEOF'
 import glob, re
 S = 'skills/dsh-codepunk-workflow'
-std = open(f'{S}/references/standard.md', encoding='utf-8').read()
+std = open(f'{S}/references/standard.md', encoding='utf-8', errors='replace').read()
 mean = {int(m.group(1)): m.group(2).strip()
         for m in re.finditer(r'^\| D(\d{3}) \| ([^|]+?) \|', std, re.M)}
 CJK = re.compile(r'[\u4e00-\u9fffA-Za-z0-9]+')
@@ -441,7 +441,7 @@ def grams(x):
     return out
 zero, weak = [], []
 for f in sorted(glob.glob(f'{S}/benchmarks/*.md')):
-    t = open(f, encoding='utf-8').read()
+    t = open(f, encoding='utf-8', errors='replace').read()
     m = re.search(r'支撑决策号：([^\n]{0,120})', t)
     if not m:
         zero.append(f"{f.split('/')[-1]}:无支撑决策号行")
@@ -485,7 +485,7 @@ files = (['skills/dsh-codepunk-workflow/SKILL.md', 'README.md', 'agent.cordis.ym
 declared = set()
 for f in files:
     try:
-        t = open(f, encoding='utf-8').read()
+        t = open(f, encoding='utf-8', errors='replace').read()
     except OSError:
         continue
     for m in re.finditer(r'status:\s*([a-z_]+)\s*#\s*([^\n]{3,200})', t):
@@ -500,7 +500,7 @@ else:
         if f.endswith(('standard.md',)):
             continue
         try:
-            t = open(f, encoding='utf-8').read()
+            t = open(f, encoding='utf-8', errors='replace').read()
         except OSError:
             continue
         for i, ln in enumerate(t.split('\n'), 1):
@@ -527,7 +527,7 @@ files = (['skills/dsh-codepunk-workflow/SKILL.md', 'README.md', 'agent.cordis.ym
 vals, srcs = set(), {}
 for f in files:
     try:
-        t = open(f, encoding='utf-8').read()
+        t = open(f, encoding='utf-8', errors='replace').read()
     except OSError:
         continue
     for m in re.finditer(r'status:\s*[a-z_]+\s*#\s*([^\n]{3,120})', t):
@@ -540,7 +540,7 @@ for v in sorted(vals):
     hits = 0
     for f in files:
         try:
-            t = open(f, encoding='utf-8').read()
+            t = open(f, encoding='utf-8', errors='replace').read()
         except OSError:
             continue
         for ln in t.split('\n'):
@@ -575,7 +575,7 @@ CIRCLED = '①②③④⑤⑥'
 stages_md = 'skills/dsh-codepunk-workflow/references/stages.md'
 # F175：文件缺失时给出清晰结论而非 FileNotFoundError（与 class 2 的结论一致）
 if os.path.isfile(stages_md):
-    defined = set(re.findall(r'^##\s*([①②③④⑤⑥])', open(stages_md, encoding='utf-8').read(), re.M))
+    defined = set(re.findall(r'^##\s*([①②③④⑤⑥])', open(stages_md, encoding='utf-8', errors='replace').read(), re.M))
 else:
     print('stages.md 缺失（阶段定义文件）'); raise SystemExit(1)
 # 注意（F137）：**定义文件自身不算引用**——否则「孤立阶段」分支结构上永不可达
@@ -585,7 +585,7 @@ files = (['skills/dsh-codepunk-workflow/SKILL.md', 'preset.yml', 'README.md']
 refs = {}
 for f in files:
     try:
-        t = open(f, encoding='utf-8').read()
+        t = open(f, encoding='utf-8', errors='replace').read()
     except OSError:
         continue
     for c in re.findall(r'[①②③④⑤⑥]', t):
@@ -606,11 +606,11 @@ PYEOF
 echo "[16] 自检期望串特异性（防「仅凭标题即通过」）"
 SPEC_ISSUE=$(python3 <<'PYEOF'
 import os, re
-st = open('plans/checker-self-test.sh', encoding='utf-8').read()
+st = open('plans/checker-self-test.sh', encoding='utf-8', errors='replace').read()
 
 def headers_of(path):
     try:
-        t = open(path, encoding='utf-8').read()
+        t = open(path, encoding='utf-8', errors='replace').read()
     except OSError:
         return []
     h = re.findall(r'echo\s+"(\[[^\]]*\][^"]*)"', t)
@@ -652,8 +652,8 @@ for sh, ps, keys in pairs:
     if not (os.path.isfile(shp) and os.path.isfile(psp)):
         miss.append(sh + '/缺文件')
         continue
-    st = open(shp, encoding='utf-8').read()
-    pt = open(psp, encoding='utf-8').read()
+    st = open(shp, encoding='utf-8', errors='replace').read()
+    pt = open(psp, encoding='utf-8', errors='replace').read()
     for k in keys:
         if k in st and k not in pt:
             miss.append(ps + '缺「' + k + '」')
@@ -833,7 +833,7 @@ import glob, os, re
 # F234：**输入存在性守卫** —— 旧实现 `open('agent.cordis.yml')` 无守卫 ⇒ 文件缺失时抛 **原始 Traceback**（违反本套件
 #   「禁裸 Traceback」卫生规则），且 python 中断后 stdout 为空 ⇒ 变量空 ⇒ **判据假通过（报「岗位数声称与配置实况一致」）**。
 try:
-    t = open('agent.cordis.yml', encoding='utf-8').read()
+    t = open('agent.cordis.yml', encoding='utf-8', errors='replace').read()
 except OSError:
     print('无法核验：agent.cordis.yml 缺失或不可读——无法核验 ≠ 通过')
     raise SystemExit
@@ -850,7 +850,7 @@ files = (['skills/dsh-codepunk-workflow/SKILL.md', 'README.md']
 MARK = ('历史', '当时', '已废弃', '⚠', '外部后端', 'one-shot', '不适用')
 for f in files:
     try:
-        tt = open(f, encoding='utf-8').read()
+        tt = open(f, encoding='utf-8', errors='replace').read()
     except OSError:
         continue
     for ln in tt.split('\n'):
@@ -865,11 +865,11 @@ PYEOF
 echo "[22] 矩阵覆盖（新增检查类须登记矩阵）"
 MTX_ISSUE=$(python3 <<'PYEOF'
 import re
-dc = open('plans/doc-consistency.sh', encoding='utf-8').read()
+dc = open('plans/doc-consistency.sh', encoding='utf-8', errors='replace').read()
 classes = sorted({int(m) for m in re.findall(r'^echo "\[(\d+)\]', dc, re.M)})
 # F234：同上（class 22）——矩阵来源文件缺失时抛 Traceback 且判据假通过；改为显式「无法核验」并干净退出。
 try:
-    g = open('skills/dsh-codepunk-workflow/references/skill-governance.md', encoding='utf-8').read()
+    g = open('skills/dsh-codepunk-workflow/references/skill-governance.md', encoding='utf-8', errors='replace').read()
 except OSError:
     print('无法核验：skill-governance.md 缺失或不可读——无法核验 ≠ 通过')
     raise SystemExit
@@ -889,7 +889,7 @@ BM_ISSUE=$(python3 <<'PYEOF'
 import glob, os, re
 bad = []
 for f in sorted(glob.glob('skills/dsh-codepunk-workflow/benchmarks/*.md')):
-    t = open(f, encoding='utf-8').read()
+    t = open(f, encoding='utf-8', errors='replace').read()
     if not re.search(r'https?://', t):
         continue
     if 'retrieved_at' not in t and '未记录' not in t:
