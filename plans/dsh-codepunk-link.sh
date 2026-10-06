@@ -516,6 +516,23 @@ EOF
   local hosted="$DSH_CODEPUNK_HOME/projects/$id"
   mkdir -p "$hosted" 2>/dev/null || { printf '%s: 总库目录创建失败: %s\n' "$SCRIPT_NAME" "$hosted" >&2; return 1; }
 
+  # F244（medium）：并发 register 的**读-改-写竞态**。实测：并发两路 `register -y`（不同 id）后
+  #   两进程**均报成功**，而 INDEX 中仅存其中一条（另一条静默丢失）——因临界区内「备份 → sed 改
+  #   last_updated → 归一 `projects: []` → 追加空行 → python 整文件重写」各自独立读写。
+  #   ⇒ 以**可移植 mkdir 自旋锁**串行化整个临界区（macOS 无 flock，故不用 flock）；上限约 10s，
+  #   超时按「环境/用法错误」返回 2 并给出可操作的排除指引（锁残留须人工确认后清理）。
+  DSH_LOCKDIR="$DSH_CODEPUNK_INDEX.lock"   # 必须**全局**：EXIT trap 在函数返回后仍需展开该路径；
+  lk_i=0                                    # 若用 local，trap 内变量已出作用域 ⇒ rmdir 空路径 ⇒ 锁泄漏（F244 首版踩坑）
+  while ! mkdir "$DSH_LOCKDIR" 2>/dev/null; do
+    lk_i=$((lk_i + 1))
+    if [ "$lk_i" -ge 200 ]; then
+      printf '%s: 无法获取 INDEX 写锁（%s）——可能有另一 register 正在写，或锁残留；确认无并发后删除该目录再重试\n' "$SCRIPT_NAME" "$DSH_LOCKDIR" >&2
+      return 2
+    fi
+    sleep 0.05
+  done
+  trap "rmdir \"$DSH_LOCKDIR\" 2>/dev/null" EXIT INT TERM   # 路径**此刻展开**（代入字面量），不依赖退出时变量存在
+
   # 写入前备份（人设：INDEX 写入先备份字段结构），追加后校验新条目
   local bak ts
   ts="$(date '+%Y-%m-%dT%H:%M:%S%z')"
