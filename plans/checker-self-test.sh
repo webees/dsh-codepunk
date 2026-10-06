@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('116 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('117 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -587,6 +587,15 @@ score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言�
     FAILED=1
   fi
 }
+echo "[M117 class 5 空脚本输入须判「无法核验」（F231）]"
+fresh
+for f in "$work/cur"/plans/*.sh; do
+  [ "$(basename "$f")" = doc-consistency.sh ] || rm -f "$f"
+done
+rm -f "$work/cur"/plans/*.py "$work/cur"/plans/*.mjs
+mutate_gone "删除除检查器外的全部脚本" "$work/cur/plans/preset-score.sh" 'ded A1'
+check_rc "M117 无可检脚本 → class 5 判无法核验（非恒真通过）" "bash plans/doc-consistency.sh 2>&1" 1 "plans 下无可检脚本"
+
 echo "[M116 class 18 空 ps1 输入须判「无法核验」（F230）]"
 fresh
 rm -f "$work/cur"/plans/windows/*.ps1

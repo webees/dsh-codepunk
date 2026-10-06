@@ -175,7 +175,14 @@ done
 [ -z "$MISS" ] && ok "文档提到的 plans 脚本均存在" || bad "文档提到但不存在的脚本:${MISS}"
 
 echo "[5] 退出码契约"
-rc_bad=""
+# F231：**空输入守卫** —— plans 下无可检脚本时，下方两处循环均不执行 ⇒ 两个判据都会**恒真通过**（0 脚本 ⇒ 「无违规」）。
+#   与 F230/class 18、F201/B0 的「空输入下判据恒真——无法核验 ≠ 通过」口径统一：以哨兵值让两条判据自行失败。
+if ! ls plans/*.sh plans/*.py plans/*.mjs 2>/dev/null | grep -qv '^plans/doc-consistency\.sh$'; then
+  RC_EMPTY_SENTINEL="（plans 下无可检脚本：无法核验 ≠ 通过）"
+else
+  RC_EMPTY_SENTINEL=""
+fi
+rc_bad="$RC_EMPTY_SENTINEL"
 # F187：覆盖面从 .sh 扩到 .py/.mjs（规则文本为「**运行型**脚本 MUST 声明退出码」，README 亦记载外层工具的码）；
 #   声明判定=**头部 30 行内的码表行**（同时含「退出码」与形如 `0=` 的码），兼容 `#` / JSDoc `*` / docstring 三种风格。
 for f in plans/*.sh plans/*.py plans/*.mjs; do
@@ -208,7 +215,7 @@ done
 [ -z "$rc_bad" ] && ok "实现用到的退出码均在头部契约内" || bad "退出码契约缺声明:${rc_bad}"
 # 缺声明检测（F152）：**运行型**脚本 MUST 在头部声明退出码；纯 source/库脚本豁免。
 #   旧写法对无声明者 `|| continue` 静默跳过，「缺声明」分支实为空转。
-RC_UNDECL=""
+RC_UNDECL="$RC_EMPTY_SENTINEL"
 for f in plans/*.sh plans/*.py plans/*.mjs; do
   base=$(basename "$f")
   case "$base" in dsh-codepunk-home.sh) continue ;; esac        # 纯 source 的路径常量脚本，无退出码
