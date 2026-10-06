@@ -514,7 +514,7 @@ EOF
   # 否则失败路径会留下备份残留、且 INDEX 已被半改写（last_updated 已刷新、
   # `projects: []` 已归一）却无回滚。
   local hosted="$DSH_CODEPUNK_HOME/projects/$id"
-  mkdir -p "$hosted" || { printf '%s: 总库目录创建失败: %s\n' "$SCRIPT_NAME" "$hosted" >&2; return 1; }
+  mkdir -p "$hosted" 2>/dev/null || { printf '%s: 总库目录创建失败: %s\n' "$SCRIPT_NAME" "$hosted" >&2; return 1; }
 
   # 写入前备份（人设：INDEX 写入先备份字段结构），追加后校验新条目
   local bak ts
