@@ -129,6 +129,10 @@ print(m.group(1) if m else "")
 ')"
 cmp_num "自检变异项" "$(grep -oE 'M[0-9]+' plans/checker-self-test.sh | sort -u | wc -l | tr -d ' ')" \
         "$(grep -oE '\*\*[0-9]+ 项\*\*已知缺陷' README.md | head -1 | grep -oE '[0-9]+')"
+# F240：README 电池行曾自称「14 项」，而其**自身枚举仅 13、实现仅 11** ⇒ 三方不符（与 F238「五条↔7 条」同族）。
+#   判据：以**实现**为准（脚本的编号项 `# N)`），与 README 该行标签后的「（**N 项**」比对；锚定「完整验证电池」以免误取他行。
+cmp_num "验证电池项数" "$(grep -cE '^# [0-9]+\)' plans/verify-battery.sh)" \
+        "$(grep -oE '完整验证电池（\*\*[0-9]+ 项\*\*' README.md | grep -oE '[0-9]+')"
 
 echo "[2] 阶段口径（六阶段）"
 P_README=$(awk '/^## 流程总览/,/^```/' README.md | grep -cE '^\| [1-6]️⃣')

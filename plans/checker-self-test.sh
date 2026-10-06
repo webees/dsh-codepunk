@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('123 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('124 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -598,6 +598,19 @@ done
 rm -f "$work/cur"/plans/*.py "$work/cur"/plans/*.mjs
 mutate_gone "删除除 preset-audit 外的源副本脚本" "$work/cur/plans/preset-score.sh" 'ded A1'
 check_rc "M121 源副本缺失 → F2 报不同步（非恒真通过）" "bash plans/preset-audit.sh 2>&1" 1 "源副本缺失"
+
+echo "[M124 README 电池项数声称须与实现一致（F240）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '完整验证电池（**11 项**'
+# 注意：本目标串随「验证电池项数」变化而失效（同 M106 的陈旧陷阱）——改动 verify-battery.sh 项数时须同步此处。
+assert old in s, 'M124 变异目标串未找到'
+open(p, 'w', encoding='utf-8').write(s.replace(old, '完整验证电池（**12 项**', 1))
+PYEOF
+check_rc "M124 篡改电池项数声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "验证电池项数"
 
 echo "[M123 坏根须给友好提示、不得泄漏 cd 原始错误（F239）]"
 fresh
