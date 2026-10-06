@@ -28,6 +28,18 @@
 # ============================================================================
 set -uo pipefail
 
+# F197：本工具的判据/内联脚本含**多字节**内容（中文结论、计数标签）。非 UTF-8 locale（C/POSIX/ISO-8859 系）
+#   下会被逐字节或按 US-ASCII 处理，甚至把**环境问题**误诊为数据损坏（实证：`link.sh index` 在 `LC_ALL=C`
+#   下报「INDEX 语义非法：invalid multibyte char (US-ASCII)」并提示「从备份恢复或重建」——而 INDEX 完好）。
+#   故在非 UTF-8 且系统存在 UTF-8 locale 时固定之；探测只用 ASCII。
+case "$(locale charmap 2>/dev/null)" in
+  UTF-8|utf8|UTF8) ;;
+  *)
+    for _l in en_US.UTF-8 UTF-8; do
+      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
+    done ;;
+esac
+
 MODE="staged"
 MSG_FILE=""
 while [ $# -gt 0 ]; do

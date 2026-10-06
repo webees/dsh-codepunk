@@ -145,6 +145,11 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M87 其余 shell 工具亦须按需固定 UTF-8 locale（F197 修复存活）]"
+fresh
+check_contains "M87 link.sh 含 locale 固定片段" "grep -c F197 plans/dsh-codepunk-link.sh" "1"
+check_contains "M87 init.sh 含 locale 固定片段" "grep -c F197 plans/dsh-codepunk-init.sh" "1"
+
 echo "[M86 门禁工具须按需固定 UTF-8 locale（F195 修复存活）]"
 fresh
 check_contains "M86 preset-score 含 locale 固定片段" "grep -c F195 plans/preset-score.sh" "1"
