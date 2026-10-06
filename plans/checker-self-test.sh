@@ -145,6 +145,18 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M106 「自检变异项」计数声称被守护（F225 修复存活）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+n = s.replace('106 项**已知缺陷', '105 项**已知缺陷', 1)
+open(p, 'w', encoding='utf-8').write(n)
+PYEOF
+mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
+check_rc "M106 篡改变异计数声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "自检变异项"
+
 echo "[M105 硬规则表 R1–R15 须按数字序（F224 修复存活）]"
 fresh
 check_contains "M105 R14 在 R15 之前" "awk '/ R14 /{a=NR} / R15 /{b=NR} END{print (a<b)+0}' skills/dsh-codepunk-workflow/SKILL.md" "1"
