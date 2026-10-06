@@ -63,13 +63,14 @@
 
 ## 溯源档案（benchmarks/）
 
-> **覆盖边界（2026-10-05 实测）**：下表为**已建档**的调研简报（15 篇，文件均存在）。另有若干来源仅出现在机制溯源列而未单独建档——如 LangGraph / crewAI / ADK / CAMEL / ChatDev （`grep -ril` 于 `benchmarks/` 内 0 命中）；引用它们时按「机制层引用」对待，不得声称已有调研档案。
+> **覆盖边界（2026-10-05 实测）**：下表为**已建档**的调研简报（16 篇，文件均存在）。另有若干来源仅出现在机制溯源列而未单独建档——如 LangGraph / crewAI / ADK / CAMEL / ChatDev （`grep -ril` 于 `benchmarks/` 内 0 命中）；引用它们时按「机制层引用」对待，不得声称已有调研档案。
 
 | 简报 | 内容 |
 |---|---|
 | `benchmarks/agent-skills-open-source-benchmark.md` | agent-skills 生态：agentskills 规范 / superpowers / VoltAgent 质量门 |
 | `benchmarks/prompt-context-compression.md` | 提示词压缩/上下文优化（14 个一手来源） |
 | `benchmarks/adhd-workflow-analysis.md` | ayghri/i-have-adhd 输出纪律分析 |
+| `benchmarks/loop-failure-diagnosis.md` | 长任务循环故障诊断（loop-failure-diagnosis）（F290 补登：目录实有 16 篇，原清单漏此篇） |
 | `benchmarks/caveman-analysis.md` | juliusbrussee/caveman 极简分析 |
 | `benchmarks/deepseek-harness-study.md` | DeepSeek Harness 官方机制调研（**原 §0.0** 对齐表来源；该节现名 §0，见 `harness-alignment.md`） |
 | `benchmarks/anti-hallucination.md` | 防幻觉技术调研（D077 来源） |
