@@ -145,6 +145,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M104 D3 行号引用守护范围须覆盖全部脚本类型（F218 修复存活）]"
+fresh
+check_contains "M104 D3 正则已扩围" "grep -c 'js|mjs|sh|py|ps1' plans/preset-audit.sh" "1"
+
 echo "[M103 写入后 YAML 校验在无 ruby 时须声明（F217 修复存活）]"
 fresh
 check_contains "M103 link.sh 含 F217 声明" "grep -c F217 plans/dsh-codepunk-link.sh" "1"

@@ -192,7 +192,7 @@ bad = []
 sym = re.compile(r'`[A-Za-z_][A-Za-z0-9_]*(?:\(\))?`|`[A-Za-z_][A-Za-z0-9_.]*\(`')
 for f in files:
     for i, ln in enumerate(open(f, encoding='utf-8', errors='ignore'), 1):
-        if not re.search(r'\.js:[0-9]+', ln):
+        if not re.search(r'\.(?:js|mjs|sh|py|ps1):[0-9]+', ln):   # F218：范围从「仅 .js」扩到全部脚本类型（理由对 .sh/.py/.mjs/.ps1 同等适用）
             continue
         if not sym.search(ln):
             bad.append(f'{f}:{i}')
