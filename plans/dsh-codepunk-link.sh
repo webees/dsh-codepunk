@@ -78,6 +78,24 @@ _norm_path() {
   esac
   # 去掉尾部斜杠（根目录除外）
   while [ "$p" != "/" ] && [ "${p%/}" != "$p" ]; do p="${p%/}"; done
+  # F270（独立复核所报，medium）：旧实现**只**做「拼 pwd + 去尾斜杠」，不折叠 `.` / `..` / 重复斜杠
+  #   ⇒ `resolve ./proj`、`/x/./proj`、`/x/y/../proj`、`/x//proj` 对**同一已注册目录**误判「未注册」
+  #   （假阴性），且 `register ./proj <另一 id>` 可重复登记同目录（INDEX 键写脏、记忆分裂）。
+  #   ⚠ 修复选型（实测教训）：**不做 realpath/符号链接解析** —— macOS 上 `/tmp` 会解析为 `/private/tmp`，
+  #   而既有注册表存的多是未解析形式 ⇒ 解析会**反向制造不一致**（对存量 hub 属回归）。故仅做
+  #   **纯文本折叠**（`.` / `..` / 重复斜杠），与存量键保持同形；符号链接形态的差异留作已知残余项。
+  local out="" seg
+  local IFS_OLD="$IFS"; IFS='/'
+  set -f
+  for seg in $p; do
+    case "$seg" in
+      ""|".") ;;
+      "..") out="${out%/*}" ;;
+      *) out="$out/$seg" ;;
+    esac
+  done
+  set +f; IFS="$IFS_OLD"
+  p="${out:-/}"
   printf '%s' "$p"
 }
 
@@ -392,7 +410,13 @@ cmd_index() {
   rows="$(_parse_index_entries "$DSH_CODEPUNK_INDEX")"
   if [ -z "$rows" ]; then
     # 空数组 = 合法骨架态（register 填充前），已过结构与解析核验
+    # F271（独立复核所报，low-中）：**无注释头**的「合法但空」INDEX（被截断为 `schema_version: 1` +
+    #   `projects: []`，或运维手写骨架）与**真正的空注册表**在文件层**不可区分** ⇒ 旧实现只打印
+    #   「校验通过：0 条（骨架态）」，读者可能把「条目已丢失」当成正常空表而继续操作（静默）。此处
+    #   保留 rc（合法 YAML 的空表仍是合法输入），但**显式告警 + 给出备份线索**，消除静默。
     printf '%s: 校验通过：0 条（注册表为空，骨架态；结构+解析已核验）\n' "$SCRIPT_NAME"
+    printf '%s: ⚠ 空注册表与「条目已丢失 / 被截断 / 被手写覆盖」在文件层不可区分；若此前登记过项目，请先核对备份（%s*.bak*）再继续\n' \
+      "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX"
     return 0
   fi
   n_ok=0; n_fail=0
@@ -469,14 +493,23 @@ cmd_register() {
   # INDEX 缺失 → 按总库骨架初始化（幂等，不触碰 config.yaml）
   if [ ! -f "$DSH_CODEPUNK_INDEX" ]; then
     mkdir -p "$(dirname "$DSH_CODEPUNK_INDEX")"
-    cat > "$DSH_CODEPUNK_INDEX" <<EOF
+    # F272（独立复核所报，low）：旧实现未检查 `cat >` 的退出码即**无条件**打印「已按骨架创建」⇒
+    #   在总库只读/目录不可写时先冒裸 shell 报错（`cat: …: Permission denied`），紧跟一句**与事实相反**
+    #   的成功宣告。此处改为：失败即给出可读诊断并以 2 退出，成功才宣告。
+    if cat > "$DSH_CODEPUNK_INDEX" <<EOF
 # dsh-codepunk 全局项目索引（骨架模板；条目由 dsh-codepunk-link register 构建）
 schema_version: 1
 projects: []
 
 last_updated: null
 EOF
-    printf '%s: INDEX 未初始化，已按骨架创建: %s\n' "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX" >&2
+    then
+      printf '%s: INDEX 未初始化，已按骨架创建: %s\n' "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX" >&2
+    else
+      printf '%s: INDEX 未初始化，且**无法创建**（总库目录不可写或文件系统只读）：%s\n' "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX" >&2
+      printf '%s: 请检查总库目录权限后重试——无法核验 ≠ 通过\n' "$SCRIPT_NAME" >&2
+      return 2
+    fi
   fi
 
   # 追加不覆盖：project_id 或 project_root 任一已存在即拒绝
