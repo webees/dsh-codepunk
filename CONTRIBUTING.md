@@ -16,6 +16,8 @@ dsh-codepunk 是一份**多智能体开发流程预设**：基于 DeepSeek Harne
 
 要点回顾（避免误改）：`agent.cordis.yml` 是 AGENT-PLANE 组合（权威岗位配置）；`preset.yml` 只承载展示元数据；`plans/` 为工具脚本源副本（运行期正式位见 `SKILL.md` §1.2）；`skills/dsh-codepunk-workflow/` 是流程 playbook 与按需加载的 `references/`、`benchmarks/`。
 
+⚠ **新增顶层文件须先登记白名单（F222）**：发布仓 `.gitignore` 为**默认拒绝**（`*` 后逐条 `!` 放行）。当前仅放行 `.gitignore` / `.gitattributes` / `LICENSE` / `README.md` / `CONTRIBUTING.md` / `agent.cordis.yml` / `preset.yml` 与 `plans/**`、`skills/**`。因此新增**其它**顶层路径（如 `SECURITY.md`、`.github/**`、`docs/**`、`examples/**`）会**静默不入库**——提交前请先在 `.gitignore` 加 `!<路径>`，并用 `git status`/`git check-ignore -v <路径>` 复核其**确实可入库**。
+
 ## 如何改：维护公约要点
 
 对任何文件动手前，先读 `README.md` 末尾「维护公约（改动前必读）」与 `skills/dsh-codepunk-workflow/SKILL.md`。以下四点是硬约束：
