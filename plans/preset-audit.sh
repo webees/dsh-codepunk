@@ -132,6 +132,15 @@ fi
 
 echo "[组B 手册层 25]"
 SIZE=$(wc -c < skills/dsh-codepunk-workflow/SKILL.md)
+# F201：**内容源最小体量前置守卫**——组 B 的判据多为「缺失即无失分」的形态，空文件/截断手册会让它们
+#   **恒真**（实证：`SKILL.md` 清空后本审计仍报「总分 100/100 —— 全项达标」，只有 B1 显示 `0B ≤32768`）。
+#   故先核内容源体量：过小即判失分（不能因此满分证明「零失分」）。阈值为保守下限，非质量标尺。
+SKILL_BYTES_F201=${SIZE:-0}
+[ "${SKILL_BYTES_F201:-0}" -ge 2000 ] \
+  || report "$FAIL" "B0 SKILL 内容过少（${SKILL_BYTES_F201}B < 2000B）：空/截断手册下内容判据恒真——无法核验 ≠ 通过"
+REF_BYTES_F201=$(cat skills/dsh-codepunk-workflow/references/*.md 2>/dev/null | wc -c | tr -d ' ')
+[ "${REF_BYTES_F201:-0}" -ge 2000 ] \
+  || report "$FAIL" "B0 references 内容过少（${REF_BYTES_F201}B < 2000B）：同上，判据恒真——无法核验 ≠ 通过"
 [ "$SIZE" -le 32768 ] && report "$PASS" "B1 SKILL ${SIZE}B ≤32768" || report "$FAIL" "B1 SKILL ${SIZE}B 超限"
 # B5 品牌卫生（全仓）：同样由 OLD_NAME 驱动，排除本脚本自身避免自命中
 if [ -n "${OLD_NAME:-}" ]; then

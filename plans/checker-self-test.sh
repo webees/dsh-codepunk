@@ -145,6 +145,11 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M91 空 SKILL 下审计不得满分（F201 修复存活）]"
+fresh
+: > "$work/cur/skills/dsh-codepunk-workflow/SKILL.md"
+check_rc "M91 清空 SKILL → 审计须失分并说明" "bash plans/preset-audit.sh 2>&1" 1 "B0 SKILL 内容过少"
+
 echo "[M90 两处 awk 回退同样校验（F200 修复存活）]"
 fresh
 check_contains "M90 awk 回退校验点存在（应为 2 处）" "grep -c 'F200：两处 awk 回退' plans/dsh-codepunk-link.sh" "2"
