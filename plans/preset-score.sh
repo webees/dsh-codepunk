@@ -259,7 +259,7 @@ if [ -f "$PV" ] && command -v node >/dev/null 2>&1; then
 else
   echo "  ℹ PowerShell 语法校验跳过：无校验器（\$PV）。启用：见 README「PowerShell 校验」" >&2
 fi
-bash plans/preset-audit.sh >/dev/null 2>&1 || ded B8 25 "preset-audit.sh 自跑未满分"
+bash plans/preset-audit.sh >/dev/null 2>&1 || ded B8 25 "preset-audit.sh 自跑未满分（详见其输出：先跑 bash plans/preset-audit.sh 定位具体 F 项）"
 
 # ── B9 可维护性 ─────────────────────────────────────────────────────────────
 grep -q "## 维护公约" README.md 2>/dev/null || grep -q "维护公约" CONTRIBUTING.md 2>/dev/null || ded B9 20 "缺维护公约"

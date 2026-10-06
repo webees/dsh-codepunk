@@ -159,7 +159,15 @@ def main() -> int:
 
     app = resolve_app_root()
     if app is None:
-        print("  ✗ 未定位 DSH 安装：设 DSH_APP_ROOT（解包 app 目录）或 DSH_ASAR（旧 asar 路径）")
+        # 文案类观察（R552）：旧文案对「路径非目录」与「目录但缺 dsh 标记」不作区分 ⇒ 诊断路径变长。
+        _envr = os.environ.get("DSH_APP_ROOT", "")
+        if _envr and not os.path.isdir(_envr):
+            _hint = f"（DSH_APP_ROOT={_envr} **不是目录**）"
+        elif _envr:
+            _hint = f"（DSH_APP_ROOT={_envr} 是目录，但缺 dsh 产品标记）"
+        else:
+            _hint = ""
+        print(f"  ✗ 未定位 DSH 安装{_hint}：设 DSH_APP_ROOT（解包 app 目录）或 DSH_ASAR（旧 asar 路径）")
         return 2
 
     # F267：定位成功 ≠ 安装真实。伪造同构根（同名包目录 + 生成的 lib/index.js）实测可获 rc=0 与

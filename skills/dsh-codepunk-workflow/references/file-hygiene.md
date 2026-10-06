@@ -33,19 +33,19 @@
 | 6 | .lock 泄漏 | 工程/总库目录无 `.lock`/`.pid` 残留 |
 | 7 | 工程侧忽略 | `git -C <工程根> check-ignore -v rooms` 有输出（工程域产物已被忽略） |
 
-发现残留 → **报告（不擅删）**：报告模板 = 位置 + 内容摘要 + 建议（删 `/ 留 / 移 $TMPDIR/dsh-codepunk/state/`）；删除动作由巡检岗 + 工程主责确认后执行（T4 原则）。
+发现残留 → **报告（不擅删）**：报告模板 = 位置 + 内容摘要 + 建议（删 `/ 留 / 移 $TMPDIR/dsh-codepunk/state/`）；删除动作由主会话 run-lead 巡检 + 工程主责确认后执行（T4 原则）。
 
 ## 三、强制门闩（D079，SoloDawn RB-37 思路）
 
 - 「残留自查通过」= 小组解散/交接的**前置条件**，与双门闩/审查门并列：交接包缺自查结果 → 整包打回（同 D077 证据门控）。
 - 终态清理 check 是**流程硬项**，非 agent 自觉项。
 
-## 四、巡检工具与周期（巡检岗执行）
+## 四、巡检工具与周期（**主会话 run-lead 巡检**执行）
 
 1. **git clean 演练制度**：巡检先 `git clean -nd` 干跑（列出 backup/探索/scaffold/tmp 待删），人工确认后 `-fd`；未授权禁止 `git clean -f/-fd`、`reset --hard`、`stash drop`（破坏性拦截，T9）。
 2. **worktree 清理双判定**：`git branch --merged` + squash-merge 空 diff 判定（davila7 worktree-cleanup）；跳过有未提交/未推送工作的 worktree（T8）；运行时 `git worktree lock` 防并发误删；`worktrees/` 与产出目录进 .gitignore。
 3. **7 天保洁 loop**：陈旧分支/孤儿 worktree → 先 salvage 有价值未合并工作到 issue/新分支 → 再删（davila7 repo-cleanup-loop）；有停止条件。
-4. **保留期清扫**：临时/演示数据 7 天保留（巡检岗执行清扫，不依赖各 agent 自觉）。
+4. **保留期清扫**：临时/演示数据 7 天保留（**主会话 run-lead 巡检**执行清扫，不依赖各 agent 自觉；R555 措辞统一：流程中无「主会话 run-lead 巡检」席位，巡检是 run-lead 的职责）。
 
 ## 五、契约精简原则
 
