@@ -5,6 +5,8 @@
   python3 fidelity-gate.py snapshot   # 压缩前：提取保护区 token 快照
   python3 fidelity-gate.py verify     # 压缩后：逐项比对，缺失即失败
 
+退出码：0=通过；1=失配或丢失（比对失败）；2=用法或环境错误（缺快照、坏参数、无法写入快照）
+
 快照位置：$DSH_CODEPUNK_FIDELITY_SNAP（默认 ${DSH_CODEPUNK_HOME:-~/.dsh-codepunk}/.fidelity/<repo 短哈希>.json —— 按仓库隔离，
           同仓跨进程稳定、异仓互不覆盖；写入不跟随符号链接）
 主动删除文件属预期变更时，删除后重跑 snapshot 刷新基线（勿在未刷新时 verify）。

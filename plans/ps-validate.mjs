@@ -7,7 +7,7 @@
  *       npm init -y && npm i tree-sitter tree-sitter-powershell
  *       把本文件放到该目录（或任意位置，用 PWSH_VALIDATOR 指向它）
  * 用法：node ps-validate.mjs <文件.ps1> [...]
- * 退出码：0=全部通过；1=存在语法错误
+ * 退出码：0=全部通过；1=存在语法错误；2=用法或环境错误（缺文件参数、缺 tree-sitter 依赖）
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
