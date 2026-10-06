@@ -76,6 +76,16 @@ sk[-_][A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|glpat-[A-Za-z0-9_-]{20,}|AIz
 [A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}
 PAT
 
+# F287：本脚本多处引用 $HOME（禁词表、总库路径）。若 HOME 未设（极端环境或已被清空的会话），
+#   旧实现在 `set -u` 下直接以 `HOME: unbound variable` 中止——既非契约式退出、也无「无法核验 ≠ 通过」
+#   式诊断，且因被 pre-commit 钩子调用而**静默阻断一切提交**（实测：提交未发生而仅见 unbound 报错）。
+#   此处统一兜底：HOME 未设/为空 ⇒ 按环境错误给可读诊断并按契约返回 2。
+if [ -z "${HOME:-}" ]; then
+  echo "  ✗ 环境错误：HOME 未设 ⇒ 无法定位禁词表与总库（无法核验 ≠ 通过）" >&2
+  echo "    处理：在设好 HOME 的会话中重跑；或显式提供 DSH_CODEPUNK_DENYLIST 后重试。" >&2
+  exit 2
+fi
+
 # ── 载入禁词 ──────────────────────────────────────────────────────────────
 DENY_RAW=""
 [ -n "${DSH_CODEPUNK_DENYLIST:-}" ] && DENY_RAW+=$'\n'"$(printf '%s' "$DSH_CODEPUNK_DENYLIST" | tr ':,' '\n')"
