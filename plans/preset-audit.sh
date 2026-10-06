@@ -46,9 +46,11 @@ echo "[组A 配置层 25]"
 # A1 解析合法
 parse_ok="skip"
 if command -v ruby >/dev/null 2>&1; then
-  ruby -ryaml -e 'd=YAML.load_file("agent.cordis.yml"); exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r.key?("name")} ? 0 : 1)' 2>/dev/null && parse_ok="ok" || parse_ok="fail"
+  # F214：两路径谓词须**语义一致** —— 统一为「name 为**非空字符串**」（旧 ruby 用 key? 仅查键存在，
+  #   而 node 用真值判定 → `name: ""`/`null` 在两类主机上结论不同）。
+  ruby -ryaml -e 'd=YAML.load_file("agent.cordis.yml"); exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && parse_ok="ok" || parse_ok="fail"
 elif command -v node >/dev/null 2>&1; then
-  node -e 'const p=process.argv[1];const y=require("js-yaml");const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&r.name)?0:1)' 2>/dev/null && parse_ok="ok" || parse_ok="fail"
+  node -e 'const p=process.argv[1];const y=require("js-yaml");const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' 2>/dev/null && parse_ok="ok" || parse_ok="fail"   # F214：与 ruby 路径同语义
 fi
 case "$parse_ok" in
   ok)   report "$PASS" "A1 解析 OK" ;;
