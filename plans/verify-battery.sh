@@ -15,7 +15,7 @@ case "$(locale charmap 2>/dev/null)" in
     done ;;
 esac
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-cd "$ROOT" || exit 2
+cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT"; exit 2; }
 # 仓库标识校验：存在但非本预设仓库的根路径属「用法/环境错误」（exit 2），
 #   否则检查器会在错误的树上判 1、甚至挂起（实测：preset-score 于错误根 rc=124）。
 if [ ! -f skills/dsh-codepunk-workflow/SKILL.md ] || [ ! -d plans ]; then

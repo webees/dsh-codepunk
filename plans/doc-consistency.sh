@@ -64,7 +64,7 @@ case "${1:-}" in
   -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-cd "$ROOT" || { echo "✗ 预设根不存在: $ROOT" >&2; exit 2; }
+cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT" >&2; exit 2; }
 # 仓库标识校验：存在但非本预设仓库的根路径属「用法/环境错误」（exit 2），
 #   否则检查器会在错误的树上判 1、甚至挂起（实测：preset-score 于错误根 rc=124）。
 if [ ! -f skills/dsh-codepunk-workflow/SKILL.md ] || [ ! -d plans ]; then
