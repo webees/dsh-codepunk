@@ -155,7 +155,7 @@ PY
     }
     NR > 15 { exit }
   ' "$readme")"
-  [ -n "$id" ] && { printf '%s' "$id"; return 0; }
+  if [ -n "$id" ]; then _validate_marker "$id" || return 1; printf '%s' "$id"; return 0; fi   # F200：两处 awk 回退（无 python3 / 注释行形态）同样校验
 
   # ③ 降级 awk：兼容注释行 `<!-- dsh-codepunk: <id> -->`（前 15 行内，无 frontmatter 时）
   id="$(awk '
@@ -167,7 +167,7 @@ PY
       print line; exit
     }
   ' "$readme")"
-  [ -n "$id" ] && { printf '%s' "$id"; return 0; }
+  if [ -n "$id" ]; then _validate_marker "$id" || return 1; printf '%s' "$id"; return 0; fi   # F200：两处 awk 回退（无 python3 / 注释行形态）同样校验
   return 1
 }
 
