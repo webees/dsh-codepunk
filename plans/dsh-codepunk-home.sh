@@ -24,6 +24,13 @@
 # =============================================================================
 
 # 尊重外部预置值（允许测试覆写），否则默认用户级总库根
+# F277：本文件**须 source** 方生效（见上方「导入方式」）。旧行为：被**直接执行**时静默 rc=0、零输出 ⇒
+#   使用者可能误以为「已生效」，随后命令却因缺常量而失败。此处仅在【未被 source】时给一行提示（rc 仍 0，
+#   不改任何常量语义；被 source 时无任何输出）。
+if [ "${BASH_SOURCE[0]:-}" = "${0:-}" ]; then
+  printf '%s\n' "dsh-codepunk-home.sh: 本文件须以 source 导入方生效：source ~/.dsh-codepunk/dsh-codepunk-home.sh" >&2
+fi
+
 export DSH_CODEPUNK_HOME="${DSH_CODEPUNK_HOME:-$HOME/.dsh-codepunk}"
 export DSH_CODEPUNK_PROJECTS="$DSH_CODEPUNK_HOME/projects"
 export DSH_CODEPUNK_INDEX="$DSH_CODEPUNK_HOME/INDEX.yaml"

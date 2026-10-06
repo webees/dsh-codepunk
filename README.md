@@ -208,6 +208,7 @@ plans/                              # 工具脚本源副本（运行期正式位
   dsh-codepunk-link.sh              # 项目↔总库关联解析（resolve / index / register）
   dsh-codepunk-init.sh              # 总库骨架幂等初始化
   verify-worktree.sh                # worktree 落点纪律核验
+                                    #   环境变量 SCAN_ROOT = 散落根（未设或不存在 ⇒ 跳过第 1 项扫描并 WARN）；MAIN_REPO 可替代位置参数
   evidence-verify.sh                # 证据机械校验器（D069：防假通过门 S1）
   acceptance-verify.sh              # 签收机械校验器（D069：结构 + 签收独立性，S2）
   doc-consistency.sh                # 文档声称↔实现一致性（计数/阶段口径/工具存在性/退出码契约）
