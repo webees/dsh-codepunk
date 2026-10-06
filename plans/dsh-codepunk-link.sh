@@ -571,8 +571,12 @@ EOF
   #        工具自身靠行级解析才"能用"，属隐式缺陷）。先改为 `projects:` 再追加。
   if grep -qE '^projects:[[:space:]]*\[\][[:space:]]*$' "$DSH_CODEPUNK_INDEX"; then
     tmpf="$(mktemp)"
+    # F257：`sed` 或 `mv` 失败（如 INDEX 不可写/受限文件系统）时该临时文件会**残留**在 $TMPDIR
+    #   （实测失败路径每次泄漏 1 个；成功路径 tmpf 已被 mv 消耗 ⇒ rm 为安全空操作）。
+    #   统一在此清理，与全仓 cleanup 口径（trap/显式 rm）一致。
     sed 's/^projects:[[:space:]]*\[\][[:space:]]*$/projects:/' "$DSH_CODEPUNK_INDEX" > "$tmpf" \
-      && mv "$tmpf" "$DSH_CODEPUNK_INDEX"
+      && mv "$tmpf" "$DSH_CODEPUNK_INDEX" \
+      || rm -f "$tmpf"
   fi
 
   # ② 追加条目（先确保文件末尾有换行，防与末行粘行）
