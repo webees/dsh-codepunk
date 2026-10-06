@@ -722,6 +722,28 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M81 BSD 专有 sed -i '' 须被扣分（F186 另半存活）]"
+fresh
+python3 - "$work/cur/plans/preset-audit.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + "\nsed -i '' 's/a/b/' f.txt\n")
+print('MUTATED')
+PYEOF
+check_rc "M81 注入 sed -i '' → B10 报 BSD 专有未兜底" "bash plans/preset-score.sh 2>&1" 1 "sed -i"
+
+echo "[M80 macOS 专用 stat -f%z 须被扣分（F186 修复存活）]"
+fresh
+python3 - "$work/cur/plans/preset-audit.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s + '\nSZ=$(stat -f%z "$0")\n')
+print('MUTATED')
+PYEOF
+check_rc "M80 注入 stat -f%z → B10 报 BSD 专有未兜底" "bash plans/preset-score.sh 2>&1" 1 "stat -f%z"
+
 echo "[M79 A1 跳过分支不得报 PASS（F184 修复存活）]"
 fresh
 check_contains "M79 A1 无 ruby/node 时须报 FAIL（无法核验≠通过）" "grep -n 'A1 ' plans/preset-audit.sh" 'report "$FAIL" "A1 无法核验'

@@ -250,8 +250,16 @@ NP=$(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' ')
 HARDP=$(git grep -nE "/Users/[a-z]+/|/home/[a-z]+/" -- plans/ '*.md' 2>/dev/null | grep -vE "例|示例|如 \`|/Users/\[" | head -2)
 [ -n "$HARDP" ] && ded B10 20 "硬编码用户绝对路径: $(echo "$HARDP" | head -1 | cut -c1-70)"
 # BSD/GNU 专有未兜底
-if grep -qE "sed -i ''|stat -f%z[^|]*$" plans/*.sh 2>/dev/null; then
-  grep -qE "sed -i ''" plans/*.sh 2>/dev/null && ! grep -q "sed_i()" plans/*.sh 2>/dev/null && ded B10 20 "sed -i ''（BSD 专有）无兜底"
+# F186：扫描须排除**守卫自身**（`preset-score.sh` 的消息文本含这些字面）与**自检 harness**
+#   （`checker-self-test.sh` 的变异载荷必然含这些字面）——否则豁免/命中都会**自触发**：
+#   早先的豁免被自身源码命中 → 扣分恒假；不排除则健康仓库被误扣（假拒绝）。
+SCAN_SH=$(ls plans/*.sh 2>/dev/null | grep -vE 'preset-score\.sh|checker-self-test\.sh')
+if grep -qE "sed -i ''|stat -f%z[^|]*$" $SCAN_SH 2>/dev/null; then
+  grep -qE "sed -i ''" $SCAN_SH 2>/dev/null && ! grep -qE "sed_i[[:space:]]" $SCAN_SH 2>/dev/null && ded B10 20 "sed -i ''（BSD 专有）无兜底"
+  # F186：`stat -f%z` 同为 BSD 专有（GNU 侧为 `stat -c%s`）；**原实现只进入外层 if 却不扣分**，
+  #   使该半边守卫恒假（macOS 专用用法可免罚）——此处补扣分，与本项「BSD/GNU 专有未兜底」的声明一致。
+  grep -qE "stat -f%z" $SCAN_SH 2>/dev/null && ! grep -qE "stat_z[[:space:]]" $SCAN_SH 2>/dev/null \
+    && ded B10 20 "stat -f%z（BSD 专有）无兜底封装"
 fi
 
 # ── B11 安全性 ──────────────────────────────────────────────────────────────
