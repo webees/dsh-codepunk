@@ -1463,6 +1463,81 @@ PYEOF
   check_rc "M133 等价改写不得误报" "node plans/preset-declare.mjs check --patch '$work/patch133e.yml' 2>&1" 0 "语义一致"
 fi
 
+echo "[M134 未跟踪探针命名物须被写盘纪律门捕获（G1 仓库残留）]"
+fresh
+# 变异：在沙箱副本内落**未跟踪**的探针命名物（未跟踪 + 不在 .git/ 内）。旧口径若只看 `git ls-files`，
+#   这类落盘即漏检——写盘纪律契约要求「含未跟踪文件」一并计入。
+printf '#!/usr/bin/env bash\necho probe\n' > "$work/cur/probe-r1.sh"
+mutate "未跟踪探针 probe-r1.sh" "$work/cur/probe-r1.sh" 'echo probe'
+check_rc "M134 未跟踪 probe-r1.sh → rc 1 且报「残留」" "bash plans/write-scope-check.sh --repo '$work/cur'" 1 "残留"
+
+echo "[M135 备份后缀残留须被写盘纪律门捕获（G1 仓库残留）]"
+fresh
+# 变异：`plans/` 内落 `*.bak` 备份物（黑名单后缀之一）。
+mkdir -p "$work/cur/plans"
+printf 'x = 1\n' > "$work/cur/plans/foo.py.bak"
+mutate "备份后缀 plans/foo.py.bak" "$work/cur/plans/foo.py.bak" '^x = 1$'
+check_rc "M135 plans/foo.py.bak → rc 1 且报「残留」" "bash plans/write-scope-check.sh --repo '$work/cur'" 1 "残留"
+
+echo "[M136 豁免登记须被机械采信（--exempt-from：命中降级 INFO，不判 FAIL）]"
+fresh
+# 变异：仓库内落**未跟踪**探针命名物（G1 必命中）+ 造运行根 README 夹具，把该路径登记进
+#   `write_scope.exempt:`。守护 MUST 采信登记（降级 INFO 且不判 FAIL），否则 R17 的豁免机制形同虚设。
+#   断言的两种模式一律显式加 `--home`：写盘门在**未给模式参数**时默认同时扫系统临时目录，
+#   而宿主 /tmp 常有他人遗留 ⇒ 默认模式 rc 恒为 1，断言会与守护本身无关地失败（环境耦合）。
+printf '#!/usr/bin/env bash\necho ok\n' > "$work/cur/probe-ok.sh"
+{
+  printf '# M136 夹具：运行根 README.md 的 write_scope 段（R17）\n'
+  printf 'write_scope:\n  run_id: run-m136\n  cleanup_status: clean\n'
+  printf '  exempt:                                # 豁免登记：真实交付物不属临时物\n'
+  printf '    - path: probe-ok.sh\n'
+} > "$work/README136.md"
+mutate "未跟踪 probe-ok.sh" "$work/cur/probe-ok.sh" 'echo ok'
+mutate "豁免夹具 write_scope.exempt" "$work/README136.md" 'path: probe-ok.sh'
+check_rc "M136 带 --exempt-from（登记被采信）⇒ rc 0 且含「豁免」" \
+  "bash plans/write-scope-check.sh --repo '$work/cur' --home --exempt-from '$work/README136.md'" 0 "豁免"
+check_rc "M136 对照：不带 --exempt-from ⇒ rc 1 且报「残留」" \
+  "bash plans/write-scope-check.sh --repo '$work/cur' --home" 1 "残留"
+# F306 finding-1 存活变异：登记项为命中路径的**祖先目录**（父目录粒度）时同样必须降级 INFO——
+#   旧实现把前缀判据写反（`case "$e" in "$hit"/*`），四种父目录写法全部漏判，且与该门 usage 和
+#   README 的「登记项为命中路径的相等项或祖先目录」自相矛盾。此组断言**必须**与 `mutate` 配对：
+#   先证变异落地，再断言 rc/关键词（否则变异未生效时断言恒绿 = 守护空转）。
+#   夹具须**只留一个**命中项：上一段的 `probe-ok.sh` 未登记，若留着则 rc 恒为 1，本段断言会
+#   与「父目录判据」无关地失败（假红），故先移除它。
+rm -f "$work/cur/probe-ok.sh"
+mkdir -p "$work/cur/plans"
+printf 'x = 1\n' > "$work/cur/plans/keep-me.bak"
+{
+  printf '# M136 夹具：父目录粒度登记（登记项 = 命中路径的祖先目录）\n'
+  printf 'write_scope:\n  run_id: run-m136b\n  cleanup_status: pending\n'
+  printf '  exempt:                                # 豁免登记：交付物所在目录\n'
+  printf '    - path: plans\n'
+} > "$work/README136b.md"
+mutate "父目录粒度登记（exempt: plans）" "$work/README136b.md" 'path: plans'
+mutate "计划目录内备份物 plans/keep-me.bak" "$work/cur/plans/keep-me.bak" '^x = 1$'
+check_rc "M136 父目录登记 plans（祖先目录）⇒ rc 0 且含「豁免」" \
+  "bash plans/write-scope-check.sh --repo '$work/cur' --home --exempt-from '$work/README136b.md'" 0 "豁免"
+check_rc "M136 父目录对照：同夹具不带 --exempt-from ⇒ rc 1 且报「残留」" \
+  "bash plans/write-scope-check.sh --repo '$work/cur' --home" 1 "残留"
+
+echo "[M137 G3 归属收窄：契约命名空间残留判红、他人同形条目降级 INFO（不改判，不影响退出码）]"
+fresh
+# 变异：在**沙箱** TMPDIR 顶层造本契约命名空间条目（`dsh-codepunk-` 前缀，即 §一.3 允许的
+#   /tmp/dsh-codepunk-<run>-<step>/ 形态）⇒ G3 MUST 判 FAIL；
+#   对照：造**非**契约命名空间的同形条目（`probe-*`）⇒ MUST 降级 INFO（rc 0，输出「归属不明」）。
+#   两条断言一律显式 `--tmp` 且把 TMPDIR 指向沙箱根——默认模式还会扫宿主 /tmp，
+#   与宿主遗留耦合（他人残留会让断言与守护本身无关地失败）。
+mkdir -p "$work/tmp137/dsh-codepunk-r601-probe"
+printf 'x = 1\n' > "$work/tmp137/dsh-codepunk-r601-probe/probe.py"
+mutate "契约命名空间残留（轮次 601）" "$work/tmp137/dsh-codepunk-r601-probe/probe.py" '^x = 1$'
+check_rc "M137 契约命名空间残留 ⇒ rc 1 且报「G3 临时目录残留」" \
+  "TMPDIR='$work/tmp137' bash plans/write-scope-check.sh --repo '$work/cur' --tmp" 1 "G3 临时目录残留"
+rm -rf "$work/tmp137/dsh-codepunk-r601-probe"
+printf '#!/usr/bin/env bash\necho foreign\n' > "$work/tmp137/probe-foreign-x.sh"
+mutate "非契约命名空间同形条目 probe-foreign-x.sh" "$work/tmp137/probe-foreign-x.sh" 'echo foreign'
+check_rc "M137 对照：非契约命名空间同形条目 ⇒ rc 0 且含「归属不明」" \
+  "TMPDIR='$work/tmp137' bash plans/write-scope-check.sh --repo '$work/cur' --tmp" 0 "归属不明"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

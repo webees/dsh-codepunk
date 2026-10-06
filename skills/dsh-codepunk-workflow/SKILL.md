@@ -53,6 +53,7 @@ metadata:
 1. **关联项目**：`dsh-codepunk-link resolve <工程根路径>`→ `project_id` 与 `dsh_codepunk_path`（**总库托管路径**，绝不等价于工程根；见 benchmarks/preset-tool-fixes.md）。README 有 `dsh-codepunk: <id>` frontmatter → 主通道命中；无 → INDEX 兜底；都无 → 未注册（`dsh-codepunk-link register <工程根> <id>`）。
 2. **装载路径常量**：`source ~/.dsh-codepunk/dsh-codepunk-home.sh`（导出 `DSH_CODEPUNK_HOME`/`DSH_CODEPUNK_PROJECTS`/`DSH_CODEPUNK_INDEX`）。
 3. **建运行根**：`mkdir -p ~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/`——本 run 全部状态（goal/chunks/plan/tasks/handoff）写该目录，**绝不写入工程目录**。
+   - **③′ 运行根 `README.md` MUST 含 `write_scope:` 段（写盘台账，R17）**：登记允许写入前缀（优先序：运行根 → 授权工作树内该任务 `write_paths` → 系统临时目录（**次选**，用毕即删）→ 总库 `knowledge/`）+ 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记；**收尾时 MUST 清理越界物并更新该段**；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验——结论码 2 不得当作通过）。段模板见 `references/artifacts.md` §1.3。
 4. **启动自检与子代理恢复（MUST，D094）**：客户端意外关闭会中断子代理，恢复靠以下三步——
    - **a. 查**：`list_agents(scope=descendants)` 列出全部**可续聊**子代理及其**工具可见状态**（`running` | `inactive`——平台内部的 idle/ready 不被该工具外显）。**工具语义（实测）**：① 一次性子代理（`mode: one-shot`）**不列出**；② `scope` 仅 `children`（默认）/`descendants`；③ `descendants` 中 depth>1 的条目**只接受 `interrupt_agent`**（`send_message` 仅达直接子）。
    - **b. 比**：与 `runs/<run_id>/README.md` 的 spawn 登记表（`task_id | seat | subagent_id | status`）逐行对照，找出「登记为 active 但已非 running」的中断席。
@@ -62,6 +63,8 @@ metadata:
    - **清单**：`runs/<run_id>/agents.yaml` 为独立 YAML 状态清单（模板见 `references/artifacts.md`「子代理状态清单」），与 README 登记表双写一致；每次巡检后刷新 `updated_at`。
    - **节奏**：启动执行一次；运行中每 `patrol_every_n_rounds`（默认 5 轮）执行一次；收到失败/中断结算通知时加跑一次。
    - **动作**：每次巡检执行「查→比→续→写」闭环：`list_agents` 查实测态 → 对照清单找 `expected: active` 但非 running 的中断席 → 读断点 `send_message` 续行 → **写回** `agents.yaml`（`status`/`last_seen`/`last_checkpoint_at`/`note`；**取值与触发条件见 `references/artifacts.md`「状态迁移主体」表**——如中断席写 `interrupted`、授权唤醒后续行写 `recovered`、不可恢复写 `failed`）。`status: done` 的席跳过。
+
+> 第 3 项的写盘纪律细则见 `references/file-hygiene.md` §六/§七 与 `references/roles.md`「各岗位写域（MUST）」；硬规则为 R17（`references/standard.md` D098）。
 
 ### 1.2 运行根结构（速记）
 
@@ -151,6 +154,7 @@ metadata:
 | R14 | 产出归位：收子代理产出/简报 MUST 核对归属域 vs 实际落位；错位即移出并 grep 核销，不得跨 run 漂移 |
 | R15 | 子代理任务边界（MUST）：子代理 MUST NOT 承载循环型目标（收敛到连续 N 轮 / 反复迭代直到达标）；此类目标由主会话按轮驱动，每轮只派单次可收敛任务（实测：循环目标被反复分派产生 47 个异常大会话） |
 | R16 | 反思考循环（MUST）：连续 3 步无新证据、或同一失败指纹重复达 2 次时，MUST 换策略或上报，不得原样重试；被证伪的结论与失败轨迹只写结论与已证伪路径，不得进入上下文或交接包 |
+| R17 | 写盘纪律（MUST）：写入按优先序——① 运行根 `~/.dsh-codepunk/projects/<id>/runs/<run_id>/`（首选）② 授权工作树内该任务的 `write_paths` ③ 系统临时目录（**次选**，用毕即删）④ 总库 `knowledge/`。禁令：工程仓库工作树内落探针/临时脚本或 `*.bak`/`*.orig`/`*.rej`/`*.log`；`$HOME` 顶层散落；`/usr`、`/opt`、`/etc`、`/Library` 等系统目录自建物；在工程目录内建沙箱副本。探针脚本 MUST 落运行根 `logs/`（`logs/probe-r<轮次>-<用途>.sh`）。**越界即缺陷**，MUST 当轮清理并在运行根 `README.md` 的 `write_scope:` 段记台账；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）；细则见 `references/file-hygiene.md`「写盘白名单与越界判据」 |
 
 ## 4. 工具映射速查
 
@@ -171,7 +175,7 @@ metadata:
 
 ## 6. 参考文件（按需读取）
 
-`references/roles.md` `references/stages.md` `references/artifacts.md`（产物模板 goal/chunks/brief/staffing/handoff/evidence/acceptance/scores）`references/knowledge.md` `references/standard.md` `references/output-discipline.md`（D074/D075/D076/D077）`references/harness-alignment.md` `references/anti-hallucination-rules.md`（D077）`references/model-routing.md`（D078）`references/rate-limit-adaptation.md`（D086）`references/file-hygiene.md`（D079）`references/anti-overengineering.md`（D081/YAGNI）`references/diagram-guide.md`（D082）`references/skill-governance.md`（D083）`references/prompt-injection-rules.md`（D084）`references/model-fallback.md`（D089/D090）`references/memory-enhancement.md`（D085）`references/learned-skills.md`。反循环细则与阈值见 `references/anti-loop.md`。
+`references/roles.md` `references/stages.md` `references/artifacts.md`（产物模板 goal/chunks/brief/staffing/handoff/evidence/acceptance/scores）`references/knowledge.md` `references/standard.md` `references/output-discipline.md`（D074/D075/D076/D077）`references/harness-alignment.md` `references/anti-hallucination-rules.md`（D077）`references/model-routing.md`（D078）`references/rate-limit-adaptation.md`（D086）`references/file-hygiene.md`（D079）`references/anti-overengineering.md`（D081/YAGNI）`references/diagram-guide.md`（D082）`references/skill-governance.md`（D083）`references/prompt-injection-rules.md`（D084）`references/model-fallback.md`（D089/D090）`references/memory-enhancement.md`（D085）`references/learned-skills.md`。**R17 写盘纪律细则**见 `references/file-hygiene.md`「写盘白名单与越界判据」；机械门 `plans/write-scope-check.sh`。反循环细则与阈值见 `references/anti-loop.md`。
 
 ## 7. 开源基准借鉴（benchmark note）
 

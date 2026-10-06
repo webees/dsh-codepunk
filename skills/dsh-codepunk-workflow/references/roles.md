@@ -91,6 +91,21 @@
 > **席层**取值：`主会话`（本体承担）· `人类`（sponsor）· `主责`（主会话派出的职能主责席）· `专员`（主责下的专业席）· `实现`（每 task 实现三角）· `门禁`（审查/合并席）· `跨组`（沉淀席）。
 > 不用 `L0`–`L5` 记号：本仓另有四套同名分层（加载常驻/按需、限流降级、注入防护、知识库三级），复用会造成歧义。
 
+## 各岗位写域（MUST）
+
+> 写盘纪律的**岗位侧**口径（承重 R17）；落点优先序、命名与越界判据见 `references/file-hygiene.md`「写盘白名单与越界判据」。写域只收紧不放开：岗位实际可写范围 = 本表 ∩ 简报声明的 `write_paths`。**越界写入 = 缺陷**——当轮清理 + 记台账（运行根 `README.md` 的 `write_scope:` 段），并按审查门打回项处理。
+
+| 岗位（ID） | 写域（MUST） |
+|---|---|
+| 工程主责 run-lead（兼 sess-mgr / tpm） | 运行根 + 总库 `knowledge/`；不写业务码（R3） |
+| 小队主责 squad-lead | 运行根 `tasks/<task_id>/` 与工作房（`progress/`、`handoff/`） |
+| 开发 engineer | 其工作树内该任务声明的 `write_paths` |
+| 测试 sdet | 测试路径（`write_paths` 内测试域）+ 运行根（`evidence.yaml` 等状态产物） |
+| 行业分析 ind-res（research） | 总库 `knowledge/research/`；不改仓库文件 |
+| 文档 docs-lead / tech-writer / docs-qa | `skills/**/references/` 与运行根（`docs/memory/`、`tasks/**/brief/`、`knowledge/`） |
+| 发布执行 release-eng | 发布产物路径（合并门内）+ 运行根（`approvals/`、worktree 回收留痕） |
+| 审查岗 code-review / proc-audit | 运行根 `reviews/`（proc-audit 只读，不写任何文件） |
+
 ## 派遣 prompt 模板
 
 > **撰写标准（标点/格式统一，D080）**：①节名一律用**方块标签** `【节名】`（`## 背景`/`## 检索主题`/`===` 等 Markdown 标题**禁用于 prompt 正文**）；②一行一节、节与节之间不空行；③标点统一中文全角（`，。；：（）`），技术内容（命令/路径/代码）用半角；④每节一句话，≤40 字，动宾起头；⑤禁用修饰性副词（//务必/）——规则用「必须/MUST/禁止」表达；⑥招模板以「首行=可执行结论」开头（D075）。以下各模板即按此标准维护，实战派遣**照抄模板，不自创格式**。

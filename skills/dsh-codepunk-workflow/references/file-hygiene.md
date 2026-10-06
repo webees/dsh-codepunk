@@ -49,4 +49,124 @@
 
 ## 五、契约精简原则
 
-卫生规则控制在本文件规模（5 硬规则 + 1 自查清单 + 1 报告模板 + 巡检工具集），配 IMPORTANT 强调；规则膨胀会导致 agent 忽略（Claude Code best-practices——少而硬）。
+卫生规则控制在本文件规模（5 硬规则 + 1 自查清单 + 1 报告模板 + 巡检工具集 + 1 写盘白名单），配 IMPORTANT 强调；规则膨胀会导致 agent 忽略（Claude Code best-practices——少而硬）。
+
+## 六、写盘白名单与越界判据（MUST）
+
+> 本节点是写盘纪律的**判据权威**（承重 R17；机械门 `plans/write-scope-check.sh`）。**与 §一/§二 冲突时以本节点为准**：§一.1、§一.5 的临时落点 `$TMPDIR/dsh-codepunk/<task-id>/` 属**次选**，首选已改为运行根 `logs/`、`tmp/<run_id>/<step>/`；§二 自查表第 3 项同按本节点口径核验。定位：防产生（开工契约）+ 就高落点（白名单优先序）+ 机械判据（越界即缺陷）三层。
+
+### 6.1 白名单（按优先序，MUST 就高不就低）
+
+| 序 | 落点 | 用途 | 备注 |
+|---|---|---|---|
+| 1 | `~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/` | 探针脚本、日志、临时脚本、夹具、沙箱副本 | **首选**；子目录 `logs/`、`tmp/<run_id>/<step>/` |
+| 2 | `~/.dsh-codepunk/worktrees/<task_id>/…` | 该任务的实现物 | 仅限简报声明的 `write_paths` |
+| 3 | `${TMPDIR:-/tmp}/dsh-codepunk-<run_id>-<step>/` | 运行根不可写时的临时落点 | **次选**；用毕即删，不得留裸文件 |
+| 4 | `~/.dsh-codepunk/projects/<project_id>/knowledge/` | 结论性知识 | `research/`、`decisions/`、`hr/`、`lessons/` |
+
+### 6.2 黑名单（严禁）
+
+- 工程仓库工作树内的临时/探针命名物：`probe-*`、`patch-*`、`tmp*`、`*.bak`、`*.orig`、`*.rej`、`*.log`、`*.tmp`、`*~`。
+- `$HOME` 顶层散落脚本/文档/数据（`~/xxx.sh`、`~/xxx.py`、`~/note.md` 等）。
+- 系统目录内自建物：`/usr`、`/opt`、`/etc`、`/Library`、`/Applications`。
+- 在工程目录（预设/项目仓库）内建**沙箱副本** ⇒ 改落运行根或 `$TMPDIR`。
+
+### 6.3 命名与台账
+
+- 探针脚本 `logs/probe-r<轮次>-<用途>.sh`；补丁脚本 `logs/patch-r<轮次>-<用途>.py`。
+- 临时产物 `tmp/<run_id>/<step>/`；沙箱根 `~/.dsh-codepunk/tmp/<run_id>-<step>/`。
+- **命名空间契约（MUST）**：临时物 MUST 落在 `/tmp/dsh-codepunk-<run_id>-<step>/` 这类**契约命名空间**内（等价于运行根 `logs/`、`tmp/<run_id>/<step>/`）。裸落的 `probe-*`、`patch-*`、轮次号 `r`+两位数字型条目一律视为**归属不明**——门禁无法归属，且他人同名物会干扰判读；**归属降级只适用于临时根顶层（§6.4 G3）**：同一批命名出现在工程工作树（G1）或 `$HOME` 顶层（G2）时一律判 FAIL，不降级（判据见 §6.4 G1/G2/G3）。
+- 台账 = 运行根 `README.md` 的 `write_scope:` 段（模板见 `references/artifacts.md`），一行一件：路径 + 用途 + 清理状态。
+
+### 6.4 清理要求与越界判据（机械门）
+
+- **越界即缺陷**：命中 §6.2 任一黑名单即缺陷，MUST **当轮**清理（不留待下轮/交接前）并在台账把该项标为已清；未清理不得进入交接门与合并门（同 §三 门闩）。
+- 三组判据 G1/G2/G3 逐条对应机械门实现，命名口径同 §6.3；退出码统一见本节末。
+- **G1 仓库工作树残留**：工程工作树内（**含未跟踪文件**，排除 `.git/`）命中 §6.2 黑名单命名——`probe-*`、`patch-*`、`tmp*`、`*.bak`、`*.orig`、`*.rej`、`*.log`、`*.tmp`、`*~` 等 ⇒ **FAIL（exit 1）**。
+- **G2 主目录散落**：`$HOME` 顶层（`maxdepth 1`）命中 `dsh-codepunk*`、`probe-*`、`patch-*`、**轮次号**（`r` + 两位数字起，正则 `r[0-9][0-9]`）⇒ **FAIL（exit 1）**；轮次号与预设/探针前缀同列，均属本流程命名空间，**不适用** G3 的归属降级。`--home-all` 额外列出的通用脚本/文档类仅 INFO，不判 FAIL。
+- **G3 临时目录残留**（临时根顶层；**归属语义**）：扫描 `${TMPDIR:-/tmp}` 与 `/tmp` **两个根**——契约允许临时物落 `$TMPDIR` 或 `/tmp/dsh-codepunk-<run_id>-<step>/`，只扫一根会漏检；二者解析为**同一目录**时按真实路径去重、**只扫一次**。
+  - **判 FAIL（exit 1）**：条目名以 **`dsh-codepunk-`** 开头者——即 §6.1 第 3 项允许的 `/tmp/dsh-codepunk-<run_id>-<step>/` 契约命名空间未被清理。
+  - **降级 INFO（不影响退出码）**：其他同形条目（轮次号 `r`+两位数字、`probe-*`、`patch-*`，但不以 `dsh-codepunk-` 开头）⇒ 输出 `ℹ G3 归属不明（非本契约命名空间，不改判）：<绝对路径>` 加**计数行**；如确属本工程，须清理或用 `--exempt-from <运行根 README.md>` 登记。
+  - **为何不一律判红**：临时根顶层常有**他人**遗留且持续新增的同形条目，一律判红会使本机默认模式恒红并**归因错误**（把他人残留记到本工程头上）。
+- **豁免（`--exempt-from <文件>`，缺省不启用）**：读取登记文件的 `write_scope:` 段 `exempt:` 列表（约定为运行根 `README.md`）；命中路径与登记项**相等**、或**为其子路径**（登记项是命中路径的祖先目录，如登记 `plans` 覆盖 `plans/keep-me.bak`）者降级 **INFO**（列出但不判 FAIL）。登记文件不存在或不可读 ⇒ **exit 2**（无法核验 ≠ 通过）。
+- 不变：G1 与 G2 仍按 §6.2 命名口径**一律判 FAIL**，不适用上述归属降级。
+- 实现：`plans/write-scope-check.sh`（正式位 `~/.dsh-codepunk/scripts/`）——**退出码：0 通过 / 1 发现越界 / 2 无法核验或用法错**；结论码为 2 时不得当作通过（无法核验 ≠ 通过）。
+
+### 6.5 宿主执行陷阱（本机实测，MUST）
+
+以下为本机宿主层的执行陷阱（中性表述，不含本机绝对路径）。违反即按执行纪律缺陷处理，与 §6.2 越界同属「当轮清理/当轮改正」范围。
+
+1. **禁内联喂解释器、禁内联方括号 glob**：内联 heredoc 喂解释器（形如 `python3 - <<'PY'`）与内联方括号 glob（形如 `probe-[^/]*`）会触发宿主侧挂起（约 300 秒超时并重置持久 shell，无副作用）。MUST 改用**脚本文件**执行——脚本落运行根 `logs/`，命名按 §6.3。
+2. **`/tmp` 视图按调用易失**：同一 shell 调用内创建的长跑日志，跨调用可能消失。长跑日志 MUST 落总库运行根 `~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/logs/`，不得只落临时目录。
+3. **重型扫描易超时**：全量枚举、多轮门禁在负载峰值下易超时。MUST 先自评成本、只做一次并缓存结果，或交后台作业（`nohup … & disown`），并在简报或交接包声明预计耗时。
+
+## 七、宿主层强制（可选启用，宿主 cwd/tmp 粒度）
+
+> **定位：辅助层，不是主力。** 宿主（DSH Desktop）确有机械写盘强制，但粒度只能到「会话 cwd + 系统临时区」，且**本机当前未生效**（运行时策略为完全访问）。证据全部来自本机源码只读调研：`~/.dsh-codepunk/projects/dsh-codepunk/runs/run-audit-50/knowledge/write-scope-mechanisms.md`（轮次 601，194 行，含逐条证据行号）。
+> 下文路径简写同调研文件：`APP` = `<DSH 安装根>`（macOS 桌面版即应用程序包内的 `Contents/Resources/app`）；`PKG` = `<DSH 安装根>/node_modules/@deepseek-ai`；`PROF` = `~/.dsh/profiles/desktop`（用户 DSH 配置根）；`PRESET` = `~/.dsh/.agent-presets/dsh-codepunk`（本预设仓库）。
+
+### 7.1 词汇与可写白名单（宿主事实）
+
+- **沙箱三值封闭词汇**：`read-only` / `workspace-write` / `danger-full-access`，定义于 `PKG/dsh-sandbox-policy/lib/index.js:35-39`（`const SANDBOX_MODES = [ "read-only", "workspace-write", "danger-full-access" ]`），运行时会校验取值；策略插件仅两个配置键（`mode` 默认 `read-only`、`workspaceRoot` 默认 `process.cwd()`，见 `PKG/dsh-sandbox-policy/README.zh.md:47-48` 与 schema `PKG/dsh-sandbox-policy/lib/index.js:97-104`），**无 `allowWrite`/`writePaths`/`denyWrite` 类扩展**。
+- **宿主可写白名单仅三处**：会话 cwd（不可变）、`/tmp`、`os.tmpdir()`——推导函数 `PKG/dsh-sandbox/lib/index.js:166-174` 的 `writableRoots()`：`if (policy.mode !== "workspace-write") return []; return [...new Set([policy.workspaceRoot, "/tmp", tmpdir()].map(canonicalPath))]`；`read-only` 下白名单为空集。
+- **越界由宿主直接拒绝**：文件侧抛结构化错误，关键错误串 **`FS_SANDBOX_DENIED`**（`PKG/dsh-fs-sandbox/lib/index.js:157-164`）；bash/pwsh 与文件系统两族共用同一策略（`PKG/dsh-base/cordis.patch.yml:226-243`、`:518-519`）。
+- **审批只挡升权，不挡常规写**：`workspace-write` 内的正常写不触发审批；模型须用 `sandbox_permissions` + `justification` 重试一次更宽模式，经 `ask` 审批（`PKG/dsh-tool-fs/lib/index.js:1111-1147`）；应答者缺失即拒绝式关闭（`PKG/dsh-user-approval/README.zh.md:36,46`）。
+
+### 7.2 声明层级（谁能改、改的是哪一层）
+
+| 层级 | 落点（文件:行号） | 效果与范围 |
+|---|---|---|
+| 部署平面 | `PKG/dsh-base/cordis.patch.yml:229-233` | `mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'`；`workspaceRoot: !!js process.cwd()`；环境变量同时决定沙箱模式与审批策略（`:232`、`:248`）；影响所有新会话 |
+| 用户平面 | `PROF/cordis.patch.yml:168-181` | id 定向覆盖层（语法自述见 `:1-4`：top-level YAML array of loader patch entries，允许 `!!js`）；声明 `permission` 预设表与 `defaultPreset`；对**新会话**机械生效 |
+| 会话级 | `PKG/dsh-sandbox-policy/lib/index.js:40` 的 `setSandboxMode()` | `function setSandboxMode(session, mode) { session.append("sandbox/mode", { mode }); }`；用户入口为 `/permission` 命令或 UI 控件（`PKG/dsh-permission-presets/README.zh.md:50`）；只影响当前会话，重启后按事件回放保留 |
+| 解析优先级 | `PKG/dsh-sandbox-policy/lib/index.js:141-146` 的 `resolve()` | `request.mode ?? overrideOf(session) ?? defaultMode`；工作根恒取会话不可变 cwd（`session?.header.cwd`）；预设平面不宜作强制点（`PRESET/agent.cordis.yml:6` 自述沙箱归宿主平面） |
+
+**本机现状（MUST 知悉）**：用户平面 `PROF/cordis.patch.yml:181` 的 `defaultPreset: danger-full-access` ⇒ **本会话无任何宿主写盘限制**，与运行时上下文自述一致（「Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.」）。故 §6.1 白名单与 §6.4 机械门当前**是唯一在岗的写盘约束**。
+
+### 7.3 可直接照抄的启用片段（**须重启 DSH Desktop 生效**）
+
+方案甲（推荐：用户平面一处改动，对新会话机械生效）。把 `PROF/cordis.patch.yml` 第 168-181 行的 `permission` 项改为：
+
+```yaml
+- id: permission
+  name: "@deepseek-ai/dsh-permission-presets"
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+    defaultPreset: workspace-write
+```
+
+要点：① 表内不得保留 `custom`/`auto` 名称，且 `defaultPreset` 必须指向表内项，否则插件加载即报错（`PKG/dsh-permission-presets/lib/index.js:175-184`）；② 出厂预设表**不含** `read-only`（`PKG/dsh-permission-presets/lib/index.js:143-156`），本机 profile 自行补入，收敛时须显式保留；③ 删掉 `danger-full-access` 行不会关闭升权通道——升权阶梯是 `dsh-sandbox` 内封闭表（`read-only` 可升两级，`workspace-write` 只能升到 `danger-full-access`），仍须经 `ask` 审批，这是唯一的人类闸口。
+
+方案乙（可选加固：部署平面）。在部署环境设 `DSH_PERMISSION_MODE=workspace-write`，使 bundle 层默认值也不再是宽值（依据 `PKG/dsh-base/cordis.patch.yml:232,248`）。
+
+方案丙（可选，彻底禁用写盘工具：宿主侧工具闸门；**默认未挂载**）。在 profile 追加 `hooks-claude-code` 行并配 `hooks.json` 中对 `Write`/`Edit`/`Bash` 的 `PreToolUse` command 钩子，退出码 2 即阻断该次调用（挂载点 `PKG/dsh-hooks-claude-code/lib/index.js:248-257`，拒绝文案 `Error: blocked by PreToolUse hook`，能力自述 `PKG/dsh-hooks-claude-code/README.zh.md:60,157`）。限制：随附所有 bundle 组合均未挂载钩子桥（全树 grep 无命中），且只运行 command 钩子（`http`/`mcp_tool`/`prompt`/`agent` handler 被跳过并告警，`PKG/dsh-hook-protocol/README.zh.md`）。片段全文见调研文件 §三 方案乙。
+
+**生效方式统一为「改配置 → 重启 DSH Desktop → 新会话按新值解析」**：三层都是加载期配置；会话内模式以 `sandbox/mode` 事件记录，重启后回放保留，故旧会话的既有模式不会因重启而自动收敛。
+
+### 7.4 规则（MUST）
+
+- 预设与子代理 **MUST NOT** 擅自修改用户平面的权限配置（`~/.dsh/profiles/**`）——那是**人类环境决策**：改它等于自行放宽或收紧本机**所有会话**的写盘边界，属越权变更环境。
+- 如有变更建议，MUST 以「**建议 + 片段 + 影响面 + 生效方式**」四件套提交人类裁定，并记入台账（运行根 `README.md` 的 `write_scope:` 段）；未获裁定前 MUST NOT 落地，也 MUST NOT 以「试跑」名义临时改配置。
+- MUST NOT 以「宿主沙箱会拦」为由省去 §六 纪律：本机现状该层未生效；即便启用，也只覆盖 cwd `/tmp` `os.tmpdir()` 三处，与 §6.1 的「运行根 + 授权工作树 + 知识库」口径**不等价**。
+
+### 7.5 缺口清单（宿主层覆盖不到，各附影响）
+
+| # | 缺口 | 影响 |
+|---|---|---|
+| 1 | 无多可写根；每个会话只有一个工作区根（`PKG/dsh-sandbox-policy/README.zh.md`「已知限制」节：额外可写根不属于 `SandboxExecutionPolicy`） | 无法同时授权「运行根 + 授权工作树 + 知识库」三处互异目录；§6.1 就高落点只能靠人设纪律与审查维持 |
+| 2 | 不能禁写 `/tmp` 与 `os.tmpdir()`（`workspace-write` 语义上必然包含临时区） | 临时区散落物不会被告警或拦截；只能靠 §6.4 G3 机械门在收尾时发现 |
+| 3 | cwd 覆盖 `$HOME` 时不拦 `$HOME` 顶层（白名单以 cwd 为根） | 若会话 cwd 为 `$HOME` 或其祖先，`$HOME` 顶层散落即在白名单内；§6.2 该禁令仍需人设加 G2 兜底 |
+| 4 | 主会话无工具白名单配置键（`toolFilter` 仅对子代理生效，由 `PKG/dsh-subagent/lib/index.js:522` 的 `childCtx.tools.restrict()` 消费，schema 见 `PKG/dsh-tool-subagent/lib/index.js:265-268`） | 主会话不能经配置机械禁 `write`/`edit`/`bash`；可行替代是**只读子代理**（`allow` 列表去掉 `write`/`edit`/`bash`） |
+| 5 | `read-only` 下 `bash` 仍可执行（只禁写）；产品无内置只读工具集或只读角色 | 只读模式不能防读外泄与派生进程；「只读」≠「无副作用」 |
+| 6 | 网络与进程限制不在沙箱词汇内（`PKG/dsh-sandbox/README.zh.md`「已知限制」节：文件操作是完整的策略词汇） | 「禁联网」只能靠工具允许表移除 `web_search`/`web_fetch`；沙箱不构成网络闸门 |
+| 7 | 宿主不认识「授权工作树 `write_paths`」 | `~/.dsh-codepunk/worktrees/...` 的写集隔离仍靠 git 加人设纪律加审查门，不是沙箱；跨工作房写不会被告警 |
+
+### 7.6 收束
+
+宿主层为**辅助**，预设层三层（R17 + 本文件 §六 + `plans/write-scope-check.sh`）为**主**；两者叠加时仍以运行根 `~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/` 为唯一首选落点（§6.1 序 1）。宿主层是「可能多一道拦网」，不得被当作「已经安全」的理由；未启用时（本机现状）与启用后，§6.2 黑名单与 §6.4 越界判据一律照常执行。

@@ -172,7 +172,8 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 | `bash plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 证据机械校验（D069 防假通过门）：`task_id`/`command`/`exit_code=0`/`log_ref` 齐备 + 证据 `id` 去重 + **时间序（`validated_at` 必须晚于交付目录 mtime；不满足即 ❌ 计入 FAIL）**；未提供交付目录时该腿以「**无法核验 ≠ 通过**」的 WARN 呈现并**不影响**其余判据；**verdict=PASS 才算过** | 0=通过（verdict=PASS）；1=未过；2=用法/文件缺失 |
 | `bash plans/acceptance-verify.sh <acceptance.yaml> [交付方 task_id]` | 签收文件机械校验（D069）：`task_id`/`accepted_by[]`/`accepted_at` 齐备 + 签收独立性（**自签一律不合规，与 `note` 无关**；签收方出现 run-lead/技术统筹字样且非自签时 `note` 须记原因） | 0=合规；1=不合规；2=用法/文件缺失 |
 | `bash plans/doc-consistency.sh` | 文档**声称 ↔ 实现**一致性（计数声称 / 阶段口径 / 工具存在性 / 退出码契约；**咨询/仅提示类不计失败**）——此类含：术语咨询、头部自称项数、**正则未匹配（表述漂移）**、**语义弱重叠**、**环境缺口**（如缺校验器、非 git 仓库跳过 ps1 行尾）等，输出中以 `ℹ` 显式标注，凡属「无法核验」者必写「**无法核验 ≠ 通过**」；故「无硬性不一致」指其余硬性判据 | 0=一致；1=存在不一致；2=环境/用法错误 |
-| `bash plans/checker-self-test.sh` | 检查器**存活自检**（变异测试）：沙箱副本内注入 **133 项**已知缺陷（M1–M133），断言**对应检查项**必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境/自检问题 |
+| `bash plans/checker-self-test.sh` | 检查器**存活自检**（变异测试）：沙箱副本内注入 **137 项**已知缺陷（M1–M137），断言**对应检查项**必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境/自检问题 |
+| `bash plans/write-scope-check.sh [--repo <路径>] [--home] [--tmp] [--home-all] [--exempt-from <文件>]` | 写盘纪律门（R17）：G1 仓库残留（**含未跟踪文件**，排除 `.git/`）/ G2 主目录顶层散落 / G3 临时目录顶层残留（`${TMPDIR:-/tmp}` **与** `/tmp` 双根，同目录按物理路径去重；**判定只认本契约命名空间**——仅条目名以 `dsh-codepunk-` 开头者判 FAIL，其余同形条目降级 INFO「归属不明」，**不改判、不影响退出码**）；默认等价 `--repo . --tmp`（未给模式参数时含临时目录扫描）；`--home-all` 的脚本/文档类清单为 INFO，**不判失败**；`--exempt-from` 读运行根 `README.md` 的 `write_scope.exempt:` 登记，把与登记项**相等**、或**位于某登记项之内**（＝登记项为命中路径的**祖先目录**，如登记 `plans` 覆盖 `plans/keep-me.bak`）的命中降级为 INFO（**不判失败**；登记写法相对/`./x`/尾斜杠/绝对等价），文件不可读⇒2（无法核验 ≠ 通过） | 0=通过；1=发现越界；2=无法核验或用法错 |
 | `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push + commit-msg） | 0=通过；1=命中并阻断；2=用法/环境错误 |
 | `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（**14 类**：编号（D/R/P）/约束词/阈值/路径/工具名/代码标识/文件名/全大写常量/URL/证据标记/日期/star 数），改后逐项比对 | 0=零丢失；1=检出丢失；2=缺参数/未知模式/无快照；**受检范围**：仅 `.md`/`.yml`/`.sh`/`.ps1` |
 
@@ -212,7 +213,8 @@ plans/                              # 工具脚本源副本（运行期正式位
   evidence-verify.sh                # 证据机械校验器（D069：防假通过门 S1）
   acceptance-verify.sh              # 签收机械校验器（D069：结构 + 签收独立性，S2）
   doc-consistency.sh                # 文档声称↔实现一致性（计数/阶段口径/工具存在性/退出码契约）
-  checker-self-test.sh              # 检查器存活自检（变异测试：133 项注入缺陷（M1–M133）须被对应守护捕获）
+  write-scope-check.sh              # 写盘纪律门（G1 仓库残留 / G2 主目录散落 / G3 临时双根残留（仅 `dsh-codepunk-*` 判红，他人同形条目 INFO「归属不明」）/ 豁免登记 --exempt-from；R17）
+  checker-self-test.sh              # 检查器存活自检（变异测试：137 项注入缺陷（M1–M137）须被对应守护捕获）
   preset-audit.sh                   # 预设质量审计（5 组 rubric；否决式：零失分即满分）
   dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
   preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
@@ -227,7 +229,7 @@ plans/                              # 工具脚本源副本（运行期正式位
     dsh-codepunk-link.ps1           # 关联解析（resolve / index / register）
     dsh-codepunk-leak-guard.ps1     # 泄露防护门（-Tree / -History / -InstallHook / -List）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
-  SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R16 + D 决策号）
+  SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R17 + D 决策号）
   references/                       # 按需参考 ×19 篇（核心：roles/artifacts/knowledge/standard；逐篇见 SKILL §6）
   benchmarks/                       # 基准调研 ×18 篇（决策号来源与实战取证；逐篇清单见 references/learned-skills.md「溯源档案」）
 ```

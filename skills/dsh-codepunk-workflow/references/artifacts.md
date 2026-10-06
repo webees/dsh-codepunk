@@ -287,6 +287,28 @@ knowledge/                      # 知识库（跨 run 沉淀）
 > **工程域例外（不属于总库）**：worktree 建在**工程父目录**（`../room-<task_id>`）、S 规模 `rooms/squad-<task_id>/` 在**工程根内**，两者均不进总库；总库只存本 run 状态（goal/chunks/plan/tasks/handoff）。
 > **项目记忆关联**：主通道 = 工程根 `README.md` 顶部 YAML frontmatter `dsh-codepunk: <project_id>`（无 frontmatter 可用 `<!-- dsh-codepunk: <id> -->`）；兜底 = `~/.dsh-codepunk/INDEX.yaml` 注册表（5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source）。工具 `dsh-codepunk-link resolve <项目路径>` 三态路由「README 标记 → INDEX 回退 → 未注册报错」；`index` 校验无空悬；`register` 追加（不覆盖、需确认）。**冲突以 INDEX 为准**；不批量改写项目 README。正式位 `~/.dsh-codepunk/scripts/`（`plans/` 仅源副本）。
 
+### 1.3 运行根 `README.md` 的 `write_scope:` 段（R17）
+
+> 运行根 `README.md` 除 spawn 登记表外 MUST 含 `write_scope:` 段（写盘台账）：允许写入前缀清单 + 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记。机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）据此核验；越界即缺陷（判据与命名见 `references/file-hygiene.md`「写盘白名单与越界判据」）。
+
+```yaml
+write_scope:
+  run_id: run-2026-0001
+  allowed_prefixes:                      # 允许写入前缀（按优先序，R17：运行根 → 授权工作树 → 临时目录 → 总库）
+    - "~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/"
+    - "~/.dsh-codepunk/worktrees/<task_id>/"          # 仅限该任务 write_paths
+    - "${TMPDIR:-/tmp}/dsh-codepunk-<run_id>-<step>/" # 次选，用毕即删
+    - "~/.dsh-codepunk/projects/<project_id>/knowledge/"
+  created:                               # 本轮已创建物清单（一行一件：路径 + 用途 + 清理状态）
+    - { path: "logs/probe-r<轮次>-<用途>.sh", purpose: "<用途>", cleaned: true }
+    - { path: "tmp/<run_id>/<step>/", purpose: "<用途>", cleaned: false }
+  cleanup_status: pending                # clean（本轮临时物已全清）| pending（有残留：须写残留清单与责任席）
+  exempt:                                # 豁免登记：真实交付物不属临时物（每条须写理由）
+    - { path: "skills/dsh-codepunk-workflow/references/file-hygiene.md", reason: "交付物，非临时物" }
+```
+
+> 口径：`cleanup_status: clean` 是交接门与合并门的**前置读数**；`pending` 不得进入交接/合并（同 D079 残留自查门闩）。台账行与实况不符（写 clean 而门禁判 FAIL）以机械门结论为准。
+
 ## 子代理状态清单（D095：启动自检 + 定时巡检用）
 
 > 独立 YAML 状态清单（区别于 `runs/<run_id>/README.md` 里的人读登记表）。主进程每次启动 + 每 N 轮定时执行「查 → 比 → 续 → 写」闭环，并在每次巡检后更新本文件。文件名 `runs/<run_id>/agents.yaml`（与同目录 README 登记表双写一致）。
