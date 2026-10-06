@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('125 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('126 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -598,6 +598,19 @@ done
 rm -f "$work/cur"/plans/*.py "$work/cur"/plans/*.mjs
 mutate_gone "删除除 preset-audit 外的源副本脚本" "$work/cur/plans/preset-score.sh" 'ded A1'
 check_rc "M121 源副本缺失 → F2 报不同步（非恒真通过）" "bash plans/preset-audit.sh 2>&1" 1 "源副本缺失"
+
+echo "[M126 凡「无法核验」情形须标注「无法核验≠通过」（F242）]"
+fresh
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '——无法核验≠通过（同 F180 口径）'
+# 注意：本目标串随该标注文案变化而失效（同 M106/M124/M125 的陈旧陷阱）。
+assert old in s, 'M126 变异目标串未找到'
+open(p, 'w', encoding='utf-8').write(s.replace(old, '', 1))
+PYEOF
+check_rc "M126 移除「无法核验」标注 → 约定型模式守卫须报缺" "grep -q '未匹配到取值.*无法核验≠通过' plans/doc-consistency.sh" 1
 
 echo "[M125 治理表 class 20 探针数须与实现一致（F241）]"
 fresh
