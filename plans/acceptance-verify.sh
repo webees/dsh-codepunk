@@ -118,7 +118,9 @@ for s in signers:
     if deliverer and deliverer in s:
         problems.append(f"④ 自签：签收方 {s} 即交付方 {deliverer}（无独立签收；无下游时改由 docs-lead 签）")
     if "run-lead" in s and not note:
-        problems.append(f"④ 签收方 {s}（run-lead）但 note 为空——仅 docs-lead 不可用时方可自签，且 MUST 在 note 记原因")
+        problems.append(f"④ 签收方 {s}（run-lead）但 note 为空——run-lead 签收 MUST 在 note 记明原因"
+                        "（F283：此处原写「仅 docs-lead 不可用时方可自签」，暗示已被 F268 废除的自签例外；"
+                        "自签＝签收方为交付方，一律不合规且与 note 无关，判据见上一条）")
 
 # ⑤ 提示级
 if not signers and not scalar_form:
