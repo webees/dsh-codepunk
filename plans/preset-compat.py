@@ -142,7 +142,19 @@ def main() -> int:
         print("  ✗ 未定位 DSH 安装：设 DSH_APP_ROOT（解包 app 目录）或 DSH_ASAR（旧 asar 路径）")
         return 2
 
-    entries = parse_entries(combo.read_text(encoding="utf-8"))
+    # F247：截断/损坏配置曾以**未捕获** UnicodeDecodeError 抛裸 traceback，且退出码 1 被文档释义为
+    #   「存在不兼容项」⇒ 把「无法解析／无法核验」冒充成兼容性结论（与 F234/F239/F241 同族）。
+    #   按本仓教义显式报错，并归入「环境/用法错误」（2），与上面「组合文件不存在」同档。
+    try:
+        combo_text = combo.read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError) as exc:
+        print(f"  ✗ 组合文件不可读：{combo}（{type(exc).__name__}: {exc}）——无法核验 ≠ 通过")
+        return 2
+    try:
+        entries = parse_entries(combo_text)
+    except Exception as exc:  # 解析失败同属「无法核验」，不得以裸 traceback + 1 冒充兼容性结论
+        print(f"  ✗ 组合文件解析失败：{combo}（{type(exc).__name__}: {exc}）——无法核验 ≠ 通过")
+        return 2
     pkgs = {e["name"].split("/")[1] for e in entries if e["name"] and e["name"].startswith(SCOPE + "/")}
 
     fails: list[str] = []
