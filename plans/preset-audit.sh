@@ -263,7 +263,12 @@ FSYNC="$(printf '%s %s' "$FSYNC" "$WSYNC" | tr -s ' ' ' ' | sed 's/^ *//; s/ *$/
 #   此处反向核对：镜像中**带脚本扩展名**的文件（排除 `init` 安装的无扩展名 CLI 入口包装）必须在
 #   `plans/`（或 `plans/windows/`）有源副本，否则视为「源副本缺失」而失败。
 FSRC_MISS="$(for h in "$HOME"/.dsh-codepunk/scripts/*.sh "$HOME"/.dsh-codepunk/scripts/*.py "$HOME"/.dsh-codepunk/scripts/*.mjs; do
-  [ -f "$h" ] || continue; b="$(basename "$h")"
+  # F269：旧实现在此对**非普通文件**一律 `continue` ⇒ hub 内的**悬空符号链接**（`-f` 为假）
+  #   被**静默跳过**：实测在真 hub 注入 dangling 链接后，审计仍报「[✅] F2 plans↔scripts 同步」
+  #   且总分 100/100 ⇒ 损坏入口对门禁不可见（假绿）。此处对两类非普通文件**点名计入 F2 失败**。
+  if [ -L "$h" ] && [ ! -e "$h" ]; then echo "悬空入口:$(basename "$h")"; continue; fi
+  if [ ! -f "$h" ]; then echo "非普通文件:$(basename "$h")"; continue; fi
+  b="$(basename "$h")"
   [ -f "plans/$b" ] || [ -f "plans/windows/$b" ] || echo "${b%.*}"
 done | tr '\n' ' ')"
 [ -n "${FSRC_MISS// /}" ] && FSYNC="$(printf '%s 源副本缺失: %s' "$FSYNC" "$FSRC_MISS" | sed 's/^ *//')"
