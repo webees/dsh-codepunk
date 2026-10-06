@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('119 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('120 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -587,6 +587,13 @@ score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言�
     FAILED=1
   fi
 }
+echo "[M120 class 21 缺配置须判「无法核验」且不得抛 Traceback（F234）]"
+fresh
+rm -f "$work/cur/agent.cordis.yml"
+mutate_gone "删除 agent.cordis.yml（class 21 用）" "$work/cur/agent.cordis.yml" 'tool-subagent-squad-lead'
+check_rc "M120 缺配置 → class 21 判无法核验（非假通过）" "bash plans/doc-consistency.sh 2>&1" 1 "无法核验：agent.cordis.yml 缺失"
+check_no_match "M120 不得抛原始 Traceback（卫生规则）" "bash plans/doc-consistency.sh 2>&1" "Traceback"
+
 echo "[M119 B10 空 .gitattributes 须扣分（F233）]"
 MUT_GONE=1
 score_reason "M119 B10 .gitattributes 为空" \

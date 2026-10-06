@@ -806,7 +806,13 @@ echo "[21] 岗位数一致性（11 内建 + 2 外部）"
 ROLE_COUNT_ISSUE=$(python3 <<'PYEOF'
 import glob, os, re
 # 实况：yml 中 tool-subagent-* 条目 = 11 内建岗位 + 2 外部后端 + 3 控制面
-t = open('agent.cordis.yml', encoding='utf-8').read()
+# F234：**输入存在性守卫** —— 旧实现 `open('agent.cordis.yml')` 无守卫 ⇒ 文件缺失时抛 **原始 Traceback**（违反本套件
+#   「禁裸 Traceback」卫生规则），且 python 中断后 stdout 为空 ⇒ 变量空 ⇒ **判据假通过（报「岗位数声称与配置实况一致」）**。
+try:
+    t = open('agent.cordis.yml', encoding='utf-8').read()
+except OSError:
+    print('无法核验：agent.cordis.yml 缺失或不可读——无法核验 ≠ 通过')
+    raise SystemExit
 ids = re.findall(r'id:\s*tool-subagent-([a-z-]+)', t)
 EXT = {'codex', 'claude-code'}
 CTRL = {'control', 'list-agents', 'fork'}
@@ -837,7 +843,12 @@ MTX_ISSUE=$(python3 <<'PYEOF'
 import re
 dc = open('plans/doc-consistency.sh', encoding='utf-8').read()
 classes = sorted({int(m) for m in re.findall(r'^echo "\[(\d+)\]', dc, re.M)})
-g = open('skills/dsh-codepunk-workflow/references/skill-governance.md', encoding='utf-8').read()
+# F234：同上（class 22）——矩阵来源文件缺失时抛 Traceback 且判据假通过；改为显式「无法核验」并干净退出。
+try:
+    g = open('skills/dsh-codepunk-workflow/references/skill-governance.md', encoding='utf-8').read()
+except OSError:
+    print('无法核验：skill-governance.md 缺失或不可读——无法核验 ≠ 通过')
+    raise SystemExit
 covered = set()
 for m in re.finditer(r'第\s*(\d+)\s*[–\-—~]\s*(\d+)\s*类', g):
     covered |= set(range(int(m.group(1)), int(m.group(2)) + 1))
