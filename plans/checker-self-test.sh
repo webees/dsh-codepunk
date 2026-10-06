@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('111 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('113 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -587,6 +587,14 @@ score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言�
     FAILED=1
   fi
 }
+echo "[M112/M113 score A 组 A1/A3 扣分可达（F228）]"
+score_reason "M112 score A1 SKILL 缺阶段" \
+  "sed -i.bak 's/需求确认/需求核定/g' '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
+  "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" '需求核定' 'SKILL 缺阶段'
+score_reason "M113 score A3 README 基准声称不符" \
+  "sed -i.bak 's/×16 篇/×19 篇/' '$work/cur/README.md'" \
+  "$work/cur/README.md" '×19 篇' 'README 声称基准'
+
 score_reason "M28-a B7 缺 roles.md" \
   "rm -f '$work/cur/skills/dsh-codepunk-workflow/references/roles.md'" \
   "$work/cur/plans/preset-score.sh" 'B7' '缺 references/roles.md'
