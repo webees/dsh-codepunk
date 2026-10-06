@@ -132,10 +132,16 @@ install_scripts() {
     dst="$DSH_CODEPUNK_SCRIPTS/$base"
     if [[ ! -e "$dst" ]]; then
       n_new=$((n_new + 1))
-      (( CHECK_ONLY )) || { cp "$f" "$dst"; chmod +x "$dst" 2>/dev/null; }
+      (( CHECK_ONLY )) || { cp "$f" "$dst"; chmod 755 "$dst" 2>/dev/null; }
     elif ! cmp -s "$f" "$dst"; then
       n_upd=$((n_upd + 1))
-      (( CHECK_ONLY )) || { cp "$f" "$dst"; chmod +x "$dst" 2>/dev/null; }
+      (( CHECK_ONLY )) || { cp "$f" "$dst"; chmod 755 "$dst" 2>/dev/null; }
+    elif (( ! CHECK_ONLY )); then
+      # F304：内容一致时**权限仍可能漂移**——源为 711/644 会把非规范模式带进总库，或副本被人工改成
+      #   644 后 `chmod +x` 分支永不触及 ⇒ 总库脚本不可执行/不可读，而 init 仍报成功。故此处按规范
+      #   模式 755（可执行 + 可读）归一化；仅当与 755 不同才改，保持幂等与无副作用。
+      _mode="$(stat -f '%Lp' "$dst" 2>/dev/null || stat -c '%a' "$dst" 2>/dev/null)"
+      [ "$_mode" = "755" ] || chmod 755 "$dst" 2>/dev/null
     fi
   done
   if (( CHECK_ONLY )); then
