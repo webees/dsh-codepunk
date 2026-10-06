@@ -789,6 +789,22 @@ probe_rc 2 "ps-validate 缺文件" "timeout 60 node plans/ps-validate.mjs /nonex
 probe_rc 2 "declare 坏子命令"  "timeout 60 node plans/preset-declare.mjs bogus"
 probe_rc 2 "audit 坏根"       "bash plans/preset-audit.sh /tmp"
 probe_rc 2 "doc-consistency 坏根" "bash plans/doc-consistency.sh /tmp"
+# F239：坏根/非法参数不仅要**码对**（2），还须**只给友好提示**——不得把 bash 原始错误
+#   （`cd: --: invalid option` / `cd: usage: …`）直接抛给使用者，也不得**完全没有**提示行
+#   （实测：verify-battery 曾仅输出裸错、无任何解释）。缺提示与泄漏原始错误同属可观测性缺陷。
+probe_msg() { # probe_msg <标签> <命令> <须含串> <禁含串>
+  local label="$1" cmd="$2" must="$3" forbid="$4" rc=0 out=""
+  out=$(eval "$cmd" 2>&1) || rc=$?
+  RC_N=$((RC_N + 1))
+  [ "$rc" = 2 ] || RC_BAD="${RC_BAD}${label}(rc=${rc},want=2) "
+  printf '%s' "$out" | grep -q "$must" || RC_BAD="${RC_BAD}${label}(缺友好提示) "
+  if printf '%s' "$out" | grep -q "$forbid"; then RC_BAD="${RC_BAD}${label}(泄漏原始错误) "; fi
+  return 0
+}
+probe_msg "audit 坏根提示"           "bash plans/preset-audit.sh --bogus"    "预设根不存在" "cd: usage"
+probe_msg "score 坏根提示"           "bash plans/preset-score.sh --bogus"    "预设根不存在" "cd: usage"
+probe_msg "doc-consistency 坏根提示" "bash plans/doc-consistency.sh --bogus" "预设根不存在" "cd: usage"
+probe_msg "battery 坏根提示"         "bash plans/verify-battery.sh --bogus"  "预设根不存在" "cd: usage"
 # -h/--help 通用约定：六个脚本均须返回 0（F153）
 probe_rc 0 "audit -h"           "bash plans/preset-audit.sh -h"
 probe_rc 0 "score -h"           "bash plans/preset-score.sh -h"
@@ -796,7 +812,7 @@ probe_rc 0 "doc-consistency -h" "bash plans/doc-consistency.sh -h"
 probe_rc 0 "verify-worktree -h" "bash plans/verify-worktree.sh -h"
 probe_rc 0 "link -h"            "bash plans/dsh-codepunk-link.sh -h"
 probe_rc 0 "leak-guard -h"      "bash plans/dsh-codepunk-leak-guard.sh -h"
-RC_DECL=15   # 声明探针数（9 条用法/环境错 + 6 条 -h）；新增探针须同步此值
+RC_DECL=19   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 6 条 -h）；新增探针须同步此值
 if [ "$RC_N" -ne "$RC_DECL" ]; then bad "退出码探针仅执行 ${RC_N}/${RC_DECL} 条（疑似被吞错，无法核验≠通过）"
 elif [ -n "$RC_BAD" ]; then bad "退出码契约漂移 → ${RC_BAD}"
 elif [ "$RC_V" -gt 0 ]; then info "退出码探针 ${RC_N} 条中 ${RC_V} 条因**环境缺口**无法核验（${RC_GAP}）——无法核验≠通过（F180）"
