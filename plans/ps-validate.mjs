@@ -7,6 +7,9 @@
  *       npm init -y && npm i tree-sitter tree-sitter-powershell
  *       把本文件放到该目录（或任意位置，用 PWSH_VALIDATOR 指向它）
  * 用法：node ps-validate.mjs <文件.ps1> [...]
+ * 局限（F206 文档化）：基于 tree-sitter 的错误恢复较**宽容** —— 实测非 PowerShell 文本（如 Python 源码）
+ *   也可能判为「✓ 通过」；本工具用于**捕获结构性语法错误**（未闭合括号/引号等），**不构成**
+ *   「该文件是合法 PowerShell 程序」的证明。需要严格判定请用真实 `pwsh -NoProfile -Command` 解析。
  * 退出码：0=全部通过；1=存在语法错误；2=用法或环境错误（缺文件参数、缺 tree-sitter 依赖）
  */
 import { readFileSync, existsSync } from 'node:fs';
