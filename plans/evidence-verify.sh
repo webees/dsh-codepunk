@@ -93,7 +93,9 @@ if TIME_CHECKED:
             if va <= mt:
                 problems.append(f"③ validated_at({va}) 不晚于交付目录 mtime({mt}) → 疑似旧快照")
         except Exception as e:
-            warnings.append(f"validated_at 解析失败({e})，跳过时间序断言")
+            # F280：validated_at **已提供但不可解析**属**数据错误**（与「未提供交付目录」的环境缺口不同）；
+            #   旧实现仅 WARN + 最终 PASS ⇒ 「无法核验」被当「通过」。此处判 FAIL；「未提供交付目录」仍走上一分支的 WARN。
+            problems.append(f"③ validated_at 不可解析({e}) → 数据错误（须为 ISO 8601）—— 无法核验 ≠ 通过")
     else:
         problems.append("④ 缺 validated_at（R12 必填）")
 
@@ -158,7 +160,11 @@ for e in entries:
                 cands.insert(0, os.path.join(delivery, "evidence", base_log))
                 cands.insert(0, os.path.join(delivery, "handoff", base_log))
             cands.insert(0, os.path.join(delivery, "evidence", "logs", base_log.lstrip("logs/")))
-        if not any(os.path.exists(c) for c in cands):
+        # F279：log_ref 语义是**日志文件**；旧实现用 os.path.exists ⇒ 指向**目录**亦算「存在」⇒ 假通过。
+        _dirhits = [c for c in cands if os.path.isdir(c)]
+        if _dirhits:
+            problems.append(f"⑤ log_ref 指向目录（须为日志文件）: {_dirhits[0]}")
+        elif not any(os.path.isfile(c) for c in cands):
             problems.append(f"[{evid}] log_ref 文件不存在: {log_s}")
     # ③ exit_code 必须为 0（D074「command + exit_code=0 + log_ref」是证据门的定义；
     #    非 0 表示命令未成功，不得作为通过性证据。原先仅对「非常见值」告警、不判失败，
