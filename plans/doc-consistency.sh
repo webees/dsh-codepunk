@@ -732,10 +732,16 @@ PYEOF
   esac
 
 echo "[18] pwsh 钩子参数语法"
+# F230：**空输入守卫** —— 无 ps1 时旧实现 `grep` 得空 ⇒ 直接 `ok`（0 文件 ⇒ 恒真）。
+#   与 class 1/B0/B7 的「空/截断输入下判据恒真——无法核验 ≠ 通过」口径统一。
+if ! ls plans/windows/*.ps1 >/dev/null 2>&1; then
+  bad "pwsh 钩子语法无法核验：plans/windows 下无 .ps1 文件——无法核验 ≠ 通过"
+else
 # 排除注释行（说明文字里可能提到 `$1` 作反例）
 HOOK_SYNTAX=$(grep -nE '\$[1-9]' plans/windows/*.ps1 2>/dev/null | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | grep -vE '\\\$[1-9]' | head -3)
 if [ -z "$HOOK_SYNTAX" ]; then ok "Windows 侧未使用 PS 不支持的位置参数语法（\$1/…）"
 else bad "Windows 侧出现 PS 不支持的位置参数语法 → $(printf '%s' "$HOOK_SYNTAX" | head -1 | cut -c1-96)"; fi
+fi
 
 echo "[19] 硬规则命名空间洁净（禁 R### 轮次引用）"
 NS_ISSUE=$(grep -rnoE '\bR[0-9]{3,}\b' skills README.md plans/*.sh plans/*.py plans/*.mjs agent.cordis.yml 2>/dev/null \

@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('115 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('116 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -587,6 +587,12 @@ score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言�
     FAILED=1
   fi
 }
+echo "[M116 class 18 空 ps1 输入须判「无法核验」（F230）]"
+fresh
+rm -f "$work/cur"/plans/windows/*.ps1
+mutate_gone "删除全部 ps1 文件" "$work/cur/plans/windows/dsh-codepunk-link.ps1" 'param('
+check_rc "M116 无 ps1 → class 18 判无法核验（非恒真通过）" "bash plans/doc-consistency.sh 2>&1" 1 "pwsh 钩子语法无法核验"
+
 echo "[M114/M115 audit A2 与 D3 正检可达（F229）]"
 fresh
 sed -i.bak 's/边界：/边界=/g' "$work/cur/agent.cordis.yml"
