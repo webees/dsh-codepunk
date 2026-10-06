@@ -79,9 +79,27 @@ PAT
 # ── 载入禁词 ──────────────────────────────────────────────────────────────
 DENY_RAW=""
 [ -n "${DSH_CODEPUNK_DENYLIST:-}" ] && DENY_RAW+=$'\n'"$(printf '%s' "$DSH_CODEPUNK_DENYLIST" | tr ':,' '\n')"
+DENY_UNREADABLE=""
 for f in "$HOME/.dsh-codepunk/denylist.txt" "$ROOT/.leak-denylist"; do
-  [ -f "$f" ] && DENY_RAW+=$'\n'"$(grep -v '^\s*#' "$f" 2>/dev/null)"
+  # F284：旧实现 `[ -f "$f" ] && … 2>/dev/null` 会**吞掉读错误** ⇒ 文件存在但不可读时禁词**静默降为 0 条**，
+  #   而门禁仍报「通过」❌（违反本仓教义「无法核验 ≠ 通过」；对公开仓的推送前隐私门属**静默失效**）。
+  #   现分三态：不存在＝正常态（只用通用模式）；可读＝载入；**存在但不可读＝无法核验 ⇒ 响亮失败 rc=2**。
+  if [ -f "$f" ]; then
+    if [ -r "$f" ]; then
+      DENY_RAW+=$'\n'"$(grep -v '^\s*#' "$f" 2>/dev/null)"
+    else
+      DENY_UNREADABLE="$f"
+    fi
+  fi
 done
+if [ -n "$DENY_UNREADABLE" ]; then
+  {
+    printf '\033[31m✗ 禁词表存在但不可读：%s\033[0m\n' "$DENY_UNREADABLE"
+    printf '  ⇒ 禁词数未知（无法核验），按「无法核验 ≠ 通过」判**失败**（rc=2）。\n'
+    printf '  ⇒ 请修复该文件权限后重跑；如确为空表，请写入至少一行或删除该文件。\n'
+  } >&2
+  exit 2
+fi
 # 归一：去空白、去过短（<3 字符易误报）、去重
 DENY=$(printf '%s\n' "$DENY_RAW" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | awk 'length($0)>=3' | sort -u)
 
