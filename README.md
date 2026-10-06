@@ -169,7 +169,7 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 | `bash plans/verify-battery.sh` | 完整验证电池（**11 项**：15 指标评分 / 5 组审计 / 泄露防护门三模式 / 格式与卫生 / 物理杂散 / 结构 / 脚本语法与健壮性 / DSH 兼容性 / E2E 沙箱 / 检查器存活自检 / 文档声称一致性；另含**目录树一致**、**声明漂移**、**E2E 与总库无污染**等子检），一次跑完 | 0=全通过；1=存在失败项；2=无法进入预设根 |
 | `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致；1=确认漂移；2=参数错误，或缺 js-yaml 时「无法判定」（设 `DSH_APP_ROOT` 可启用语义核验）（缺 js-yaml 时降级比对） |
 | `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离与锚点顺序 / allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
-| `bash plans/evidence-verify.sh <evidence.yaml> <task_dir>` | 证据机械校验（D069 防假通过门）：`task_id`/`command`/`exit_code=0`/`log_ref` 齐备 + 证据 `id` 去重 + 时间序（乱序仅告警）；**verdict=PASS 才算过** | 0=通过（verdict=PASS）；1=未过；2=用法/文件缺失 |
+| `bash plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 证据机械校验（D069 防假通过门）：`task_id`/`command`/`exit_code=0`/`log_ref` 齐备 + 证据 `id` 去重 + **时间序（`validated_at` 必须晚于交付目录 mtime；不满足即 ❌ 计入 FAIL）**；未提供交付目录时该腿以「**无法核验 ≠ 通过**」的 WARN 呈现并**不影响**其余判据；**verdict=PASS 才算过** | 0=通过（verdict=PASS）；1=未过；2=用法/文件缺失 |
 | `bash plans/acceptance-verify.sh <acceptance.yaml> [交付方 task_id]` | 签收文件机械校验（D069）：`task_id`/`accepted_by[]`/`accepted_at` 齐备 + 签收独立性（不得自签；run-lead 自签须在 `note` 记原因） | 0=合规；1=不合规；2=用法/文件缺失 |
 | `bash plans/doc-consistency.sh` | 文档**声称 ↔ 实现**一致性（计数声称 / 阶段口径 / 工具存在性 / 退出码契约；**咨询/仅提示类不计失败**）——此类含：术语咨询、头部自称项数、**正则未匹配（表述漂移）**、**语义弱重叠**、**环境缺口**（如缺校验器、非 git 仓库跳过 ps1 行尾）等，输出中以 `ℹ` 显式标注，凡属「无法核验」者必写「**无法核验 ≠ 通过**」；故「无硬性不一致」指其余硬性判据 | 0=一致；1=存在不一致；2=环境/用法错误 |
 | `bash plans/checker-self-test.sh` | 检查器**存活自检**（变异测试）：沙箱副本内注入 **127 项**已知缺陷（M1–M127），断言**对应检查项**必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境/自检问题 |
