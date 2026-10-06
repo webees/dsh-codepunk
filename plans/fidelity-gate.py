@@ -79,9 +79,13 @@ def _write_snap(obj):
     d = _os.path.dirname(SNAP)
     try:
         if d:
+            # F289：原实现在**已存在**目录上无条件 `chmod 0700` ⇒ 当快照路径指向**既有目录**（例如把
+            #   DSH_CODEPUNK_FIDELITY_SNAP 指到总库根或项目目录）时，该目录权限被**静默收紧为 0700**，
+            #   属未声明副作用（实测：把总库置 500 后跑 snapshot 仍能写入——因为工具先把父目录改成 0700）。
+            #   现仅对**本次新建**的目录收紧 0700；既有目录权限一律不动。
+            _existed = _os.path.isdir(d)
             _os.makedirs(d, mode=0o700, exist_ok=True)
-            # makedirs 的 mode 只在新建时生效且受 umask 影响；已存在时显式收紧
-            if (_os.stat(d).st_mode & 0o777) != 0o700:
+            if (not _existed) and (_os.stat(d).st_mode & 0o777) != 0o700:
                 _os.chmod(d, 0o700)
         fd = _os.open(SNAP, _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC | getattr(_os, 'O_NOFOLLOW', 0), 0o600)
         with _os.fdopen(fd, 'w', encoding='utf-8') as fh:
