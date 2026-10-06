@@ -1446,6 +1446,23 @@ printf '\n日期形态示例：2099-01-01。\n' >> "$work/cur/README.md"
 mutate "非 git 工作区 + 注入未来日期" "$work/cur/README.md" '2099-01-01'
 check_rc "M132 非 git 回退核验 → 未来日期须报" "bash plans/doc-consistency.sh 2>&1" 1 "2099-01-01"
 
+echo "[M133 声明包装语义等价改写不得误报（F305：旧实现以文本正则/切片比 config.id 与 name，YAML 等价加引号即假红）]"
+fresh
+if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
+  printf '  ℹ M133 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）\n'
+else
+  : > "$work/patch133.yml"
+  ( cd "$work/cur" && node plans/preset-declare.mjs apply --patch "$work/patch133.yml" --append >/dev/null 2>&1 ) || true
+  python3 - "$work/patch133.yml" "$work/patch133e.yml" <<'PYEOF'
+import sys
+s, d = sys.argv[1], sys.argv[2]
+t = open(s, encoding='utf-8').read()
+open(d, 'w', encoding='utf-8').write(t.replace("\n        id: dsh-codepunk\n", "\n        id: \"dsh-codepunk\"\n", 1))
+PYEOF
+  mutate "包装 config.id 加引号（YAML 语义等价）" "$work/patch133e.yml" 'id: "dsh-codepunk"'
+  check_rc "M133 等价改写不得误报" "node plans/preset-declare.mjs check --patch '$work/patch133e.yml' 2>&1" 0 "语义一致"
+fi
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

@@ -395,12 +395,31 @@ if (diffs.length === 0) {
   {
     const wrapIdx = patchLines.findIndex((l) => l.includes(`- id: preset-${ID}`));
     if (wrapIdx >= 0) {
-      const wrap = patchLines.slice(wrapIdx, wrapIdx + 8).join('\n');
+      const wrapLines = patchLines.slice(wrapIdx, wrapIdx + 8);
+      const wrap = wrapLines.join('\n');
       const probs = [];
-      const nameLine = patchLines.slice(wrapIdx, wrapIdx + 8).find((l) => l.trimStart().startsWith('name:'));
-      const nameVal = nameLine ? nameLine.slice(nameLine.indexOf(':') + 1).trim().split(String.fromCharCode(39)).join('') : '';
+      // F305：包装字段须按 **YAML 语义**比对（解析后取值），不得用文本正则/切片——
+      //   否则语义等价改写（给纯量加引号、改引号风格）会被误判为漂移（实测：`id: "dsh-codepunk"`
+      //   触发假红「config.id 与期望不一致」，而内嵌条目走 deepDiff 语义比对，两者口径不一）。
+      let wrapDoc = null;
+      try {
+        const indent = wrapLines[0].match(/^\s*/)[0].length;
+        const dedented = wrapLines.map((l) => l.replace(new RegExp(`^\\s{0,${indent}}`), ''));
+        const doc = yaml.load(dedented.join('\n'), { schema });
+        wrapDoc = Array.isArray(doc) ? doc[0] : doc;
+      } catch (e) {
+        wrapDoc = null; // 解析失败 ⇒ 退回文本口径（保守：宁可报漂移，不得假通过）
+      }
+      let nameVal = '';
+      if (wrapDoc && typeof wrapDoc.name === 'string') nameVal = wrapDoc.name;
+      else {
+        const nameLine = wrapLines.find((l) => l.trimStart().startsWith('name:'));
+        nameVal = nameLine ? nameLine.slice(nameLine.indexOf(':') + 1).trim().split(String.fromCharCode(39, 34)).join('') : '';
+      }
       if (nameVal !== '@deepseek-ai/dsh-agent-preset') probs.push('顶层 name 与期望不一致（当前 ' + nameVal + '）');
-      if (!new RegExp('^\\s*id:\\s*' + ID + '\\s*$', 'm').test(wrap)) probs.push('config.id 与期望不一致');
+      const idSemantic = wrapDoc && wrapDoc.config && typeof wrapDoc.config.id === 'string' ? wrapDoc.config.id === ID : null;
+      const idOk = idSemantic !== null ? idSemantic : new RegExp('^\\s*id:\\s*' + ID + '\\s*$', 'm').test(wrap);
+      if (!idOk) probs.push('config.id 与期望不一致');
       if (probs.length) {
         console.log('  ✗ 声明包装漂移：' + probs.join('；') + '（修复：node plans/preset-declare.mjs apply）');
         process.exit(1);
