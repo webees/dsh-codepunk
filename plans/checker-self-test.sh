@@ -722,6 +722,10 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M79 A1 跳过分支不得报 PASS（F184 修复存活）]"
+fresh
+check_contains "M79 A1 无 ruby/node 时须报 FAIL（无法核验≠通过）" "grep -n 'A1 ' plans/preset-audit.sh" 'report "$FAIL" "A1 无法核验'
+
 echo "[M78 class 17 对数不得硬编码（F183 修复存活）]"
 fresh
 # 精确断言：结论行必须由派生变量构造（而非写死数字）；不可用「全文不得出现某数字」——

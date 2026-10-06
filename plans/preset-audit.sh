@@ -40,7 +40,7 @@ fi
 case "$parse_ok" in
   ok)   report "$PASS" "A1 解析 OK" ;;
   fail) report "$FAIL" "A1 YAML 解析失败" ;;
-  skip) report "$PASS" "A1 解析跳过（无 ruby/node，未验证）" ;;
+  skip) report "$FAIL" "A1 无法核验（无 ruby/node，无法解析 agent.cordis.yml）——无法核验 ≠ 通过（装 ruby 或 node 后重跑）" ;;
 esac
 # A2 岗位 6 维
 A2=$(python3 - <<'PYEOF'
