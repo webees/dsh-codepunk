@@ -155,9 +155,10 @@ grep -qE "D087[^|]*现行实现" "$REF/standard.md" 2>/dev/null && ded A3 25 "D0
 # ── A4 规范性 ───────────────────────────────────────────────────────────────
 PARSE="skip"
 if command -v ruby >/dev/null 2>&1; then
-  ruby -ryaml -e 'd=YAML.load_file("agent.cordis.yml"); exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r.key?("name")} ? 0 : 1)' 2>/dev/null && PARSE="ok" || PARSE="fail"
+  # F215：两路径谓词须**语义一致**（与 preset-audit 的 F214 同族）——统一为「name 为**非空字符串**」。
+  ruby -ryaml -e 'd=YAML.load_file("agent.cordis.yml"); exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && PARSE="ok" || PARSE="fail"
 elif command -v node >/dev/null 2>&1 && [ -d "$HOME/.dsh-codepunk/tools/node_modules/js-yaml" ]; then
-  node -e 'const y=require(process.env.HOME+"/.dsh-codepunk/tools/node_modules/js-yaml");const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&r.name)?0:1)' 2>/dev/null && PARSE="ok" || PARSE="fail"
+  node -e 'const y=require(process.env.HOME+"/.dsh-codepunk/tools/node_modules/js-yaml");const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' 2>/dev/null && PARSE="ok" || PARSE="fail"   # F215：与 ruby 路径同语义
 fi
 [ "$PARSE" = "fail" ] && ded A4 100 "agent.cordis.yml 解析失败"
 # 决策号冲突/跳号
@@ -334,6 +335,10 @@ if [ -f "$IDX" ] && command -v ruby >/dev/null 2>&1; then
     raise "缺 schema_version" unless d.key?("schema_version")
     raise "缺 projects 或非数组" unless d["projects"].is_a?(Array) || d["projects"].nil?
   ' "$IDX" 2>/dev/null || ded B14 20 "总库 INDEX.yaml schema 非法（真实 YAML 解析失败或键名不符）"
+elif [ -f "$IDX" ]; then
+  # F216：INDEX 存在但**无 ruby** → 旧实现**静默跳过**该校验（判据消失而不告知 = 「缺失即通过」）。
+  #   与本套件「无法核验 ≠ 通过」口径一致，此处按失分处理并说明原因（可用 python3 解析的可选增强见台账 ℹ）。
+  ded B14 20 "总库 INDEX.yaml schema 无法核验（缺 ruby）——无法核验 ≠ 通过（装 ruby 后重跑）"
 fi
 # 本地脚本正式位与本仓源副本的 schema 约定一致性由 F2 同步检查覆盖
 

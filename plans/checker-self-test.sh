@@ -145,6 +145,11 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M102 preset-score 的双路径谓词与 INDEX 缺口声明（F215/F216 修复存活）]"
+fresh
+check_contains "M102 score 含 F215 说明" "grep -c F215 plans/preset-score.sh" "2"
+check_contains "M102 score 含 F216 缺口声明" "grep -c F216 plans/preset-score.sh" "1"
+
 echo "[M101 解析双路径谓词须语义一致（F214 修复存活）]"
 fresh
 check_contains "M101 preset-audit 含 F214 说明" "grep -c F214 plans/preset-audit.sh" "2"
