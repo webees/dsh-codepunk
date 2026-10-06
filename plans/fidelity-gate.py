@@ -186,9 +186,13 @@ def main():
         for f, cat, t in missing[:30]:
             print(f"   [{cat}] {f.split('/')[-1]}: {t}")
         return 1
-    # F208：空快照下 verify 会显示「✓ 全部受保护 token 均在」——这是**空真**（验证靠缺失），
-    #   故补一条 ℹ 提示；不硬失败，避免对「确无受保护内容」的仓库产生假拒绝。
-    if isinstance(snap, dict) and not snap.get("tokens"):
+    # F208/F249：空快照下 verify 会显示「✓ 全部受保护 token 均在」——这是**空真**（验证靠缺失）。
+    #   F249 修正：原判据查 `snap.get("tokens")`，而写入侧（snapshot）产出的结构是
+    #   `{文件名: {类别: [token…]}}`，**从不含 `tokens` 键** ⇒ 该提示对任何快照**恒发**
+    #   （对 8,391 token/55 文件的快照也称「为空」），使真·空快照与假告警不可区分、F208 护栏实效为 0。
+    #   现按写入侧口径统计 token 总数判空（与 snapshot 的 `tot` 口径一致）。
+    if isinstance(snap, dict) and sum(len(toks) for cats in snap.values()
+                                      for toks in (cats.values() if isinstance(cats, dict) else [])) == 0:
         print("  ℹ 快照为空（未捕获受保护 token）——若该仓确有编号/约束词，请检查 snapshot 是否漏扫；空快照下的「通过」不构成保护证明", file=sys.stderr)
     print("✓ 保护闸通过：全部受保护 token 均在")
     return 0
