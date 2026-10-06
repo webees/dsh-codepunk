@@ -296,6 +296,13 @@ knowledge/                      # 知识库（跨 run 沉淀）
 run_id: run-2026-0001
 updated_at: "2026-09-18T00:00:00Z"   # 每次巡检后刷新
 patrol_every_n_rounds: 5             # 定时巡检间隔（默认 5 轮，可按 run 规模调）
+policy:                              # 反循环策略段（细则见 references/anti-loop.md；无该段时按 SKILL R16 默认执行）
+  no_new_evidence_steps: 3           # 连续 N 步无新证据 ⇒ 强制输出「当前假设/已证伪项/下一步不同做法」
+  no_new_evidence_hard: 5            # 连续 N 步无新证据 ⇒ 换策略或上报，禁止原样重试
+  same_failure_fingerprint: 2        # 同一失败指纹重复 N 次 ⇒ 换策略；第 3 次由派发层拒绝并回结构化反馈
+  same_command_repeat: 3             # 同一命令重复 N 次 ⇒ 判为空转，改走后台或降规模
+  step_timeout_s: 300                # 单步超时 ⇒ 转后台任务并降低扫描规模
+  context_hygiene: conclusion-only   # 失败轨迹只写结论与已证伪路径；压缩后复核硬约束原文
 seats:
   - task_id: chunk-a
     seat: squad-lead                 # squad-lead | engineer | sdet

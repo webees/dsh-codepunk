@@ -227,9 +227,9 @@ plans/                              # 工具脚本源副本（运行期正式位
     dsh-codepunk-link.ps1           # 关联解析（resolve / index / register）
     dsh-codepunk-leak-guard.ps1     # 泄露防护门（-Tree / -History / -InstallHook / -List）
 skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
-  SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R15 + D 决策号）
-  references/                       # 按需参考 ×18 篇（核心：roles/artifacts/knowledge/standard；逐篇见 SKILL §6）
-  benchmarks/                       # 基准调研 ×16 篇（决策号来源与实战取证；逐篇清单见 references/learned-skills.md「溯源档案」）
+  SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R16 + D 决策号）
+  references/                       # 按需参考 ×19 篇（核心：roles/artifacts/knowledge/standard；逐篇见 SKILL §6）
+  benchmarks/                       # 基准调研 ×18 篇（决策号来源与实战取证；逐篇清单见 references/learned-skills.md「溯源档案」）
 ```
 
 用户级总库 `~/.dsh-codepunk/`：`INDEX.yaml`（项目注册表）、`dsh-codepunk-home.sh`（路径常量）、`projects/<id>/`（各项目全部 run 记忆与知识库）。
