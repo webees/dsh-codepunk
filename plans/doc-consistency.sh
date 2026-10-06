@@ -145,6 +145,20 @@ cmp_num "验证电池项数" "$(grep -cE '^# [0-9]+\)' plans/verify-battery.sh)"
 cmp_num "治理表探针数" "$(grep -cE '^probe_rc |^probe_msg ' plans/doc-consistency.sh)" \
         "$(grep -oE '\*\*[0-9]+ 条探针\*\*' skills/dsh-codepunk-workflow/references/skill-governance.md | grep -oE '[0-9]+')"
 
+# F255：README 与 fidelity-gate.py 均声称保护闸为「14 类」，但**无任何工具**核验该计数
+#   （battery「11 项」/ mutations「126 项」已由上方 cmp_num 守护 ⇒ 覆盖不对称：增删 PATTERNS 会静默漂移）。
+#   派生严格按实现（ast 取 PATTERNS 字典键数），比对 README 内唯一的「**N 类**」声称。
+FID_DERIVED=$(python3 - <<'PY'
+import ast
+t = open('plans/fidelity-gate.py', encoding='utf-8').read()
+for node in ast.walk(ast.parse(t)):
+    if isinstance(node, ast.Assign) and any(getattr(tg, 'id', '') == 'PATTERNS' for tg in node.targets):
+        print(len(node.value.keys))
+        break
+PY
+)
+cmp_num "fidelity 类数" "$FID_DERIVED" "$(grep -oE '\*\*[0-9]+ 类\*\*' README.md | grep -oE '[0-9]+')"
+
 echo "[2] 阶段口径（六阶段）"
 P_README=$(awk '/^## 流程总览/,/^```/' README.md | grep -cE '^\| [1-6]️⃣')
 P_PRESET=$(python3 -c '
@@ -170,6 +184,16 @@ if [ "$P_README" = 6 ] && [ "$P_PRESET" = 6 ] && [ "$P_STAGES" = 6 ]; then
   ok "三处一致：README 表 ${P_README} / preset.yml ${P_PRESET} / stages.md 阶段号 ${P_STAGES}"
 else
   bad "阶段口径不一：README ${P_README} / preset.yml ${P_PRESET} / stages.md ${P_STAGES}（期望均 6）"
+fi
+
+# F256：第 2 类只比「README 表格行数 / preset.yml 阶段号 / stages.md 阶段号」，**不覆盖** README 散文与标题里的
+#   阶段字样 ⇒ 把标题写成「七阶段闭环」而表格仍 6 行时**无任何门禁发现**（与 F240/F241 的计数守护不对称）。
+#   现以派生值反查中文数字（1–10），核标题字样与派生阶段数一致（不硬编码计数）。
+CN_NUM=(一 二 三 四 五 六 七 八 九 十)
+if [ "${P_README:-0}" -ge 1 ] && [ "${P_README:-0}" -le 10 ]; then
+  EXPECT_CN="${CN_NUM[$((P_README - 1))]}"
+  grep -qE "^## 流程总览（${EXPECT_CN}阶段闭环）" README.md \
+    || bad "README 标题阶段字样与派生阶段数不一致（表格 ${P_README} ⇒ 期望「${EXPECT_CN}阶段闭环」）"
 fi
 
 echo "[3] 术语咨询（人工确认，不计失败）"
