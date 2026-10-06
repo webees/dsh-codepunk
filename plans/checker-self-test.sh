@@ -145,6 +145,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M103 写入后 YAML 校验在无 ruby 时须声明（F217 修复存活）]"
+fresh
+check_contains "M103 link.sh 含 F217 声明" "grep -c F217 plans/dsh-codepunk-link.sh" "1"
+
 echo "[M102 preset-score 的双路径谓词与 INDEX 缺口声明（F215/F216 修复存活）]"
 fresh
 check_contains "M102 score 含 F215 说明" "grep -c F215 plans/preset-score.sh" "2"

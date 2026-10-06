@@ -601,6 +601,10 @@ raise "projects 非数组" unless d["projects"].is_a?(Array)
       _rollback "$bak" "写入后校验失败（INDEX 非法 YAML）"
       return 1
     fi
+  else
+    # F217：本校验注释声明「必须能读」，但旧实现仅在**有 ruby** 时执行 → 无 ruby 主机上**静默跳过**
+    #   （判据消失而不告知）；与上方「无 ruby/node 时明确声明『未做解析核验』」的口径也应一致。
+    printf '%s: ⚠ 写入后未做真实 YAML 解析核验（无 ruby）——已写入，建议装 ruby 后复跑 index 复验\n' "$SCRIPT_NAME" >&2
   fi
   rm -f "$PYERR" "$DSH_CODEPUNK_INDEX.bak" "$bak"
   printf '%s: 已注册 %s ← %s\n' "$SCRIPT_NAME" "$id" "$target"
