@@ -71,7 +71,7 @@
 | `benchmarks/prompt-context-compression.md` | 提示词压缩/上下文优化（14 个一手来源） |
 | `benchmarks/adhd-workflow-analysis.md` | ayghri/i-have-adhd 输出纪律分析 |
 | `benchmarks/caveman-analysis.md` | juliusbrussee/caveman 极简分析 |
-| `benchmarks/deepseek-harness-study.md` | DeepSeek Harness 官方机制调研（§0.0 对齐表来源） |
+| `benchmarks/deepseek-harness-study.md` | DeepSeek Harness 官方机制调研（**原 §0.0** 对齐表来源；该节现名 §0，见 `harness-alignment.md`） |
 | `benchmarks/anti-hallucination.md` | 防幻觉技术调研（D077 来源） |
 | `benchmarks/dsh-deepseek-analysis.md` | dsh-llm-deepseek 适配器分析（模型路由/成本/thinking 规划输入） |
 | `benchmarks/ponytail-analysis.md` | YAGNI 产出纪律分析（D081 来源） |
