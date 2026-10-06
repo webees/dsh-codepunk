@@ -145,6 +145,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M97 缺运行时须判为环境缺口而非契约漂移（F209 修复存活）]"
+fresh
+check_contains "M97 probe_rc 含 rc126/127 自动缺口判定" "grep -c 'rc\" = 126' plans/doc-consistency.sh" "1"
+
 echo "[M95/M96 fidelity-gate 快照异常须清晰降级（F207/F208 修复存活）]"
 fresh
 check_contains "M95 快照损坏分支存在" "grep -c 快照损坏或不可读 plans/fidelity-gate.py" "1"

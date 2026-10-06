@@ -757,6 +757,14 @@ probe_rc() { # probe_rc <期望码> <标签> <命令> [缺口标记]
     RC_GAP="${RC_GAP}${label} "
     return 0
   fi
+  # F209：rc 126/127 = **运行时不可用/不可执行**（`command not found`，如缺 node/pwsh）——属**环境缺口**，
+  #   不是「退出码契约漂移」。否则缺运行时的环境会被误报为**质量缺陷**（实测：隐藏 node 后本项报
+  #   「✗ 退出码契约漂移 → ps-validate 缺参数(rc=127,want=2) …」），与 F180 的缺口口径及 F194/F203/F207 同族冲突。
+  if [ "$rc" = 126 ] || [ "$rc" = 127 ]; then
+    RC_V=$((RC_V + 1))
+    RC_GAP="${RC_GAP}${label}(缺运行时) "
+    return 0
+  fi
   [ "$rc" = "$want" ] || RC_BAD="${RC_BAD}${label}(rc=${rc},want=${want}) "
 }
 probe_rc 2 "compat 坏根"      "timeout 60 python3 plans/preset-compat.py /nonexistent"
