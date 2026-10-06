@@ -132,6 +132,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M84 自检须含「未定义断言助手」守卫（F191 修复存活）]"
+fresh
+check_contains "M84 自检含未定义助手守卫" "grep -n UNKNOWN_HELPERS plans/checker-self-test.sh" "UNKNOWN_HELPERS"
+
 echo "[M82 运行型 mjs 缺退出码声明须被检出（F187 覆盖面）]"
 fresh
 python3 - "$work/cur/plans/ps-validate.mjs" <<'PYEOF'
@@ -1081,6 +1085,16 @@ PYEOF
 #   且「D 未登记」字样由第 9 类产出，脆弱反向断言会误判（同类先例：M26 只做存活断言）。
 check_rc "M54 注入未登记决策号 → 第 9 类报错" "bash plans/doc-consistency.sh 2>&1" 1 "D 未登记"
 
+# F191：覆盖自检——**所有** `check*` 调用点必须使用**已定义**的断言助手。
+#   起因：M78/M79 曾引用不存在的 `check_contains` → 断言静默空转（`command not found`）而自检仍报「通过」。
+#   备选设计（「调用点数 vs 实际执行数」）经对照实验**否决**：本 harness 内含循环调用，`ASSERT_N` 恒 ≥ 调用点数
+#   （健康仓库亦然）→ 该判据在此处**永不成立**。故改判「调用名是否属于已定义的助手集合」——直接且可证伪。
+UNKNOWN_HELPERS=$(grep -oE '^[[:space:]]*check[a-z_]*' "$0" 2>/dev/null | tr -d ' ' | sort -u \
+                  | grep -vxE 'check|check_rc|check_no_match|check_contains' || true)
+if [ -n "$UNKNOWN_HELPERS" ]; then
+  echo "✗ 自检引用了未定义的断言助手：$(printf '%s' "$UNKNOWN_HELPERS" | tr '\n' ' ')（变异会静默空转）" >&2
+  exit 1
+fi
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
