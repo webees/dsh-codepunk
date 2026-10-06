@@ -145,13 +145,46 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M107 审计分组计数声称被守护（F226）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s.replace('5 组 rubric', '9 组 rubric', 1))
+PYEOF
+mutate "README 审计分组声称改为 9" "$work/cur/README.md" '9 组 rubric'
+check_rc "M107 篡改审计分组声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "审计分组"
+
+echo "[M108 benchmarks 篇数声称被守护（F226）]"
+fresh
+python3 - "$work/cur/README.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s.replace('16 篇', '19 篇', 1))
+PYEOF
+mutate "README benchmarks 篇数声称改为 19" "$work/cur/README.md" '19 篇'
+check_rc "M108 篡改 benchmarks 篇数声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "benchmarks 实际"
+
+echo "[M109 硬规则上限声称被守护（F226）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s.replace('| R15 |', '| R19 |', 1))
+PYEOF
+mutate "SKILL 硬规则最大号改为 R19" "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" 'R19'
+check_rc "M109 篡改硬规则上限 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "硬规则上限"
+
 echo "[M106 「自检变异项」计数声称被守护（F225 修复存活）]"
 fresh
 python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('106 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('109 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
