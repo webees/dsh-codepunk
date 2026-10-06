@@ -145,6 +145,11 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M95/M96 fidelity-gate 快照异常须清晰降级（F207/F208 修复存活）]"
+fresh
+check_contains "M95 快照损坏分支存在" "grep -c 快照损坏或不可读 plans/fidelity-gate.py" "1"
+check_contains "M96 空快照提示存在" "grep -c F208 plans/fidelity-gate.py" "1"
+
 echo "[M94 总库目录创建失败不得漏裸 stderr（F204 修复存活）]"
 fresh
 check_contains "M94 link.sh 的 mkdir 已静默 stderr" "grep -c 'mkdir -p \"\$hosted\" 2>/dev/null' plans/dsh-codepunk-link.sh" "1"
@@ -179,8 +184,8 @@ check_contains "M89 link.sh 含 _validate_marker" "grep -n _validate_marker plan
 
 echo "[M88 python 工具须进程内固定 UTF-8 输出（F198 修复存活）]"
 fresh
-check_contains "M88 preset-compat 含 UTF-8 reconfigure" "grep -c F198 plans/preset-compat.py" "1"
-check_contains "M88 fidelity-gate 含 UTF-8 reconfigure" "grep -c F198 plans/fidelity-gate.py" "1"
+check_contains "M88 preset-compat 含 UTF-8 reconfigure" "grep -c F198：非 UTF-8 locale 下 python 的 stdout 编码随 locale plans/preset-compat.py" "1"
+check_contains "M88 fidelity-gate 含 UTF-8 reconfigure" "grep -c F198：非 UTF-8 locale 下 python 的 stdout 编码随 locale plans/fidelity-gate.py" "1"
 
 echo "[M87 其余 shell 工具亦须按需固定 UTF-8 locale（F197 修复存活）]"
 fresh

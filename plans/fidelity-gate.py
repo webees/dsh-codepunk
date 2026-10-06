@@ -163,7 +163,14 @@ def main():
     if not os.path.exists(SNAP):
         print("✗ 无快照，先跑 snapshot")
         return 2
-    snap = json.load(open(SNAP, encoding='utf-8'))
+    try:
+        with open(SNAP, encoding='utf-8') as _f:
+            snap = json.load(_f)
+    except (OSError, ValueError) as _e:
+        # F207：快照损坏/不可读（截断、空文件、非法 JSON、权限）不得抛裸 Traceback——
+        #   这与本文件文档的退出码契约一致（2=用法或环境错误），也与 F194/F198/F203 同族口径一致。
+        print(f"✗ 快照损坏或不可读：{SNAP}（{type(_e).__name__}: {_e}）——请重跑 snapshot 重建基线", file=sys.stderr)
+        sys.exit(2)
     missing = []
     for f, cats in snap.items():
         if not os.path.exists(f):
@@ -179,6 +186,10 @@ def main():
         for f, cat, t in missing[:30]:
             print(f"   [{cat}] {f.split('/')[-1]}: {t}")
         return 1
+    # F208：空快照下 verify 会显示「✓ 全部受保护 token 均在」——这是**空真**（验证靠缺失），
+    #   故补一条 ℹ 提示；不硬失败，避免对「确无受保护内容」的仓库产生假拒绝。
+    if isinstance(snap, dict) and not snap.get("tokens"):
+        print("  ℹ 快照为空（未捕获受保护 token）——若该仓确有编号/约束词，请检查 snapshot 是否漏扫；空快照下的「通过」不构成保护证明", file=sys.stderr)
     print("✓ 保护闸通过：全部受保护 token 均在")
     return 0
 
