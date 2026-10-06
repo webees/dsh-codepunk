@@ -126,8 +126,10 @@ PYEOF
 else
   A7="无法核验（缺 python3）——无法核验 ≠ 通过"
 fi
-[ -z "$A7" ] && report "$PASS" "A7 配置不变量（可恢复/工具面收口/岗位在位/可派遣）" \
-             || report "$FAIL" "A7 配置不变量违规: $A7"
+# F232：**输入存在性守卫** —— `agent.cordis.yml` 缺失时，上述 python 取不到任何条目 ⇒ `A7` 恒空 ⇒ 旧实现报
+#   「✅ 配置不变量」= **空输入恒真**（被判据校验的配置根本不存在）。与 F230/F231、F201/B0 的「无法核验 ≠ 通过」口径统一。
+[ -z "$A7" ] && [ -f agent.cordis.yml ] && report "$PASS" "A7 配置不变量（可恢复/工具面收口/岗位在位/可派遣）" \
+             || report "$FAIL" "A7 配置不变量违规: ${A7:-agent.cordis.yml 缺失——无法核验 ≠ 通过}"
 
 # B1b 全角紧邻陷阱守护：`$VAR` 直接跟全角标点时，bash 会把全角字节并进变量名，
 #     在 set -u 下报 unbound variable 并中止脚本（本会话实测在 init.sh 真实发生）。
