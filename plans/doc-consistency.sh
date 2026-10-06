@@ -284,7 +284,7 @@ while IFS='|' read -r label mode pat; do
   if [ "$n" = 1 ]; then
     ok "${label} 全仓唯一取值 $(printf '%s' "$vals" | tr -d ',')"
   elif [ "$n" = 0 ]; then
-    info "${label} 未匹配到取值（正则或表述已变，需人工确认）"
+    info "${label} 未匹配到取值（正则或表述已变，需人工确认）——无法核验≠通过（同 F180 口径）"
   else
     bad "${label} 取值不一: ${vals}（同一机制必须唯一）"
   fi
@@ -905,7 +905,7 @@ if git rev-parse --git-dir >/dev/null 2>&1; then
   EOLBAD=$(git ls-files --eol plans/windows/ 2>/dev/null | awk '$2 != "w/crlf" {print $NF}' | tr '\n' ' ')
   [ -z "$EOLBAD" ] && ok "ps1 工作树行尾均为 CRLF（eol=crlf 落地）" || bad "ps1 工作树行尾非 CRLF: ${EOLBAD}"
 else
-  info "非 git 工作区，跳过 ps1 行尾校验"
+  info "非 git 工作区，跳过 ps1 行尾校验——无法核验≠通过（同 F180 口径）"
 fi
 
 echo

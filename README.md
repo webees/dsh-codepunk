@@ -171,7 +171,7 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 | `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离与锚点顺序 / allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
 | `bash plans/evidence-verify.sh <evidence.yaml> <task_dir>` | 证据机械校验（D069 防假通过门）：`task_id`/`command`/`exit_code=0`/`log_ref` 齐备 + 证据 `id` 去重 + 时间序（乱序仅告警）；**verdict=PASS 才算过** | 0=通过（verdict=PASS）；1=未过；2=用法/文件缺失 |
 | `bash plans/acceptance-verify.sh <acceptance.yaml> [交付方 task_id]` | 签收文件机械校验（D069）：`task_id`/`accepted_by[]`/`accepted_at` 齐备 + 签收独立性（不得自签；run-lead 自签须在 `note` 记原因） | 0=合规；1=不合规；2=用法/文件缺失 |
-| `bash plans/doc-consistency.sh` | 文档**声称 ↔ 实现**一致性（计数声称 / 阶段口径 / 工具存在性 / 退出码契约；**术语项为咨询、头部自称项数为仅提示——此二类不计失败**，故「无硬性不一致」指其余硬性判据） | 0=一致；1=存在不一致；2=环境/用法错误 |
+| `bash plans/doc-consistency.sh` | 文档**声称 ↔ 实现**一致性（计数声称 / 阶段口径 / 工具存在性 / 退出码契约；**咨询/仅提示类不计失败**）——此类含：术语咨询、头部自称项数、**正则未匹配（表述漂移）**、**语义弱重叠**、**环境缺口**（如缺校验器、非 git 仓库跳过 ps1 行尾）等，输出中以 `ℹ` 显式标注，凡属「无法核验」者必写「**无法核验 ≠ 通过**」；故「无硬性不一致」指其余硬性判据 | 0=一致；1=存在不一致；2=环境/用法错误 |
 | `bash plans/checker-self-test.sh` | 检查器**存活自检**（变异测试）：沙箱副本内注入 **125 项**已知缺陷（M1–M125），断言**对应检查项**必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境/自检问题 |
 | `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push + commit-msg） | 0=通过；1=命中并阻断；2=用法/环境错误 |
 | `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（**14 类**：编号（D/R/P）/约束词/阈值/路径/工具名/代码标识/文件名/全大写常量/URL/证据标记/日期/star 数），改后逐项比对 | 0=零丢失；1=检出丢失；2=缺参数/未知模式/无快照；**受检范围**：仅 `.md`/`.yml`/`.sh`/`.ps1` |
