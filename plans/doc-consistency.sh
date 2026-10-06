@@ -22,7 +22,7 @@
 #       「轮次 N」，避免同形误读；F144 实证）
 #   18. pwsh 钩子参数语法（Windows 侧生成的钩子体不得用 `$1`/`$2` 位置参数——PowerShell 无该
 #       语法，参数恒空致钩子静默退化；F142 实证）
-#   17. 移植对等性（4 对 sh↔ps1：POSIX 侧已修的关键守卫关键词 MUST 在 Windows 端口出现——
+#   17. 移植对等性（sh↔ps1 对数由实况派生（不写死）：POSIX 侧已修的关键守卫关键词 MUST 在 Windows 端口出现——
 #       防「修了一侧忘另一侧」；F139 实证：link.ps1 曾缺解析/语义核验）
 #   16. 自检期望串特异性（`check_rc` 的期望串 MUST NOT 被被检脚本的**小节标题**包含——
 #       否则断言可能仅凭标题即通过＝假通过；实测由轮次 131 的「死状态」误判导出）
@@ -664,7 +664,10 @@ PYEOF
 )
   case "$PARITY_ISSUE" in
     PARITY-DONE:*) REST="${PARITY_ISSUE#PARITY-DONE:}"
-      if [ -z "$REST" ]; then ok "4 对 sh↔ps1 关键守卫关键词与功能开关对等"
+      # F183：对数与核验范围**同源派生**（class 17 逐对比较 plans/windows/*.ps1 与其 POSIX 对应体），
+    #   避免新增一对后消息仍写死**固定对数**而静默低报。
+    PAIRS_CN=$(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' ')
+    if [ -z "$REST" ]; then ok "${PAIRS_CN} 对 sh↔ps1 关键守卫关键词与功能开关对等"
       else bad "移植对等性缺口 → ${REST}"; fi ;;
     *) bad "第 17 类未完成（疑似被吞错，无法核验≠通过）：${PARITY_ISSUE:-空输出}" ;;
   esac

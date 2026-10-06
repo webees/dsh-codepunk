@@ -722,6 +722,12 @@ check_no_match "M53 退回修复后 → 健康场景不再判「零旧名」" "O
 
 echo
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+echo "[M78 class 17 对数不得硬编码（F183 修复存活）]"
+fresh
+# 精确断言：结论行必须由派生变量构造（而非写死数字）；不可用「全文不得出现某数字」——
+#   那会误伤文档说明（我首版即如此，被自检如实拦下）。
+check_contains "M78 class 17 结论行的对数由派生变量构造" "grep -n 关键守卫关键词 plans/doc-consistency.sh" "PAIRS_CN"
+
 echo "[M77 battery 自检项不得硬编码变异数（F182 修复存活）]"
 fresh
 check_no_match "M77 battery 不得再出现硬编码「6 项变异」" "grep -n 存活自检 plans/verify-battery.sh" "6 项变异"
