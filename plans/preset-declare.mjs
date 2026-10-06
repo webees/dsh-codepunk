@@ -15,6 +15,7 @@
  *   node plans/preset-declare.mjs emit   [--id <id>] [--order N] [--root <dir>]
  *   node plans/preset-declare.mjs check  [--patch <profile-patch>] [--id <id>]
  *   node plans/preset-declare.mjs apply  [--patch <profile-patch>] [--id <id>] [--order N]
+ * 说明：副本中同一 id 出现多处（重复声明）时，check/apply 一律以退出码 2 拒绝并提示人工保留 1 处。
  *
  * profile patch 默认取 $DSH_PROFILE_PATCH，其次 ~/.dsh/profiles/desktop/cordis.patch.yml。
  * 退出码：0=一致/成功；1=漂移；2=环境或参数错误。
@@ -290,6 +291,12 @@ if (action === 'emit') {
 if (!existsSync(PATCH)) die(`profile patch 不存在：${PATCH}`);
 const patchText = readFileSync(PATCH, 'utf8');
 const patchLines = patchText.split('\n');
+// 重复声明检测（F302）：同一 id 出现多处时产品注册行为未定义，且本工具既不改也不报 ⇒ 先显式拒绝（无法核验 ≠ 通过）。
+const declCount = patchText.split(`id: preset-${ID}`).length - 1;
+if (declCount > 1) {
+  die(`profile patch 中存在 ${declCount} 处声明：id: preset-${ID}`
+      + `——重复声明将被产品重复注册或行为未定义；请保留 1 处（本工具不擅自删改多余块）`);
+}
 const span = locateBlock(patchLines);
 if (!span && !(action === 'apply' && args.append !== undefined)) {
   die(`profile patch 中找不到声明：id: preset-${ID}（首次安装用 apply --append 追加）`);
