@@ -91,7 +91,14 @@ while IFS= read -r line; do
       # 跳过主仓库自身条目
       [ "$(phys "$wt")" = "$MAIN_ABS" ] && continue
       if [ "$(dirname "$(phys "$wt")")" = "$SCAN_ROOT" ]; then
-        fail "散落 worktree 在散落根（主仓库登记）: $wt"
+        # F275：登记指向散落根但**目录已不存在**（`rm -rf` 后未 `prune`）时，旧实现仍报「散落 worktree 在
+        #   散落根（主仓库登记）」⇒ 诊断指向一个并不存在的目录、且不给补救路径。此处分列并给出可执行建议
+        #   （**仍判 FAIL**：登记残留属管理态不一致，须 `prune` 后方算干净）。
+        if [ -d "$wt" ]; then
+          fail "散落 worktree 在散落根（主仓库登记）: $wt"
+        else
+          fail "登记残留：worktree 目录已不存在但仍在登记中: ${wt}（建议执行 git -C \"${MAIN_ABS}\" worktree prune）"
+        fi
         SCATTER=1
       else
         say "  提示: 非散落根的 worktree 存在: ${wt}（列表干净检查会裁决）"
