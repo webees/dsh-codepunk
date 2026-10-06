@@ -15,6 +15,16 @@
 # 退出码: 0=全部变异均被对应检查项捕获；1=存在未被捕获的变异（守护失效/空转）；2=环境/自检问题
 # =============================================================================
 set -u
+
+# F195：本工具多处判据依赖**多字节**模式（占位符、编号、①②③…）。C/POSIX locale 下 BSD 工具链会
+#   逐字节处理，`grep`/`cut` 甚至报 `Invalid argument` / `Illegal byte sequence` → 判据失效或**误报**
+#   （假拒绝；F192/F193 已各实证一处）。故在当前 locale 为 C/POSIX（或未设）且系统存在 UTF-8 locale 时固定之。
+case "${LC_ALL:-${LC_CTYPE:-}}" in
+  ''|C|POSIX)
+    for _l in en_US.UTF-8 UTF-8; do
+      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
+    done ;;
+esac
 SRC="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 [ -d "$SRC/plans" ] || { echo "✗ 预设根无效: $SRC" >&2; exit 2; }
 FAILED=0
@@ -131,6 +141,11 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 }
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
+
+echo "[M86 门禁工具须按需固定 UTF-8 locale（F195 修复存活）]"
+fresh
+check_contains "M86 preset-score 含 locale 固定片段" "grep -c F195 plans/preset-score.sh" "1"
+check_contains "M86 doc-consistency 含 locale 固定片段" "grep -c F195 plans/doc-consistency.sh" "1"
 
 echo "[M85 preset-score 缺 python3 时须给明确核验缺口（F194 修复存活）]"
 fresh

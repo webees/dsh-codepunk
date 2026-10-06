@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 # 完整验证电池（每轮独立可复跑）：评分器 + 审计 + 守卫 + 格式 + 结构 + 健壮性 + E2E + 兼容性
 set -u
+
+# F195：本工具多处判据依赖**多字节**模式（占位符、编号、①②③…）。C/POSIX locale 下 BSD 工具链会
+#   逐字节处理，`grep`/`cut` 甚至报 `Invalid argument` / `Illegal byte sequence` → 判据失效或**误报**
+#   （假拒绝；F192/F193 已各实证一处）。故在当前 locale 为 C/POSIX（或未设）且系统存在 UTF-8 locale 时固定之。
+case "${LC_ALL:-${LC_CTYPE:-}}" in
+  ''|C|POSIX)
+    for _l in en_US.UTF-8 UTF-8; do
+      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
+    done ;;
+esac
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$ROOT" || exit 2
 # 仓库标识校验：存在但非本预设仓库的根路径属「用法/环境错误」（exit 2），

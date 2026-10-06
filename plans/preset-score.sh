@@ -13,6 +13,16 @@
 # bash 3.2 兼容（macOS 自带）：不使用关联数组/mapfile。
 # =============================================================================
 set -u
+
+# F195：本工具多处判据依赖**多字节**模式（占位符、编号、①②③…）。C/POSIX locale 下 BSD 工具链会
+#   逐字节处理，`grep`/`cut` 甚至报 `Invalid argument` / `Illegal byte sequence` → 判据失效或**误报**
+#   （假拒绝；F192/F193 已各实证一处）。故在当前 locale 为 C/POSIX（或未设）且系统存在 UTF-8 locale 时固定之。
+case "${LC_ALL:-${LC_CTYPE:-}}" in
+  ''|C|POSIX)
+    for _l in en_US.UTF-8 UTF-8; do
+      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
+    done ;;
+esac
 # -h/--help：打印头部用法（与其余脚本一致的通用约定）
 case "${1:-}" in
   -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
