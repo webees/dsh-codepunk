@@ -1389,9 +1389,12 @@ if [ -n "$UNKNOWN_HELPERS" ]; then
   exit 1
 fi
 echo "[M127 硬规则号重复须扣分（F263：R 号重复覆盖缺口）]"
+# F264：本变异的**首版**用了**相对路径**（`>> skills/…`）⇒ `score_reason` 的 `eval "$mut"` 不以沙箱为 cwd，
+#   后果有二：① 变异写进**真仓库**的 SKILL.md（污染：`\| R9 \|` 计 2、`git status` 现 ` M`）；
+#   ② 沙箱内无变异 ⇒ 断言 rc=0 ⇒ M127 恒失败（整轮 rc=1）。既有变异一律用 `'$work/cur/…'`（见 M28-e/M125）。
 score_reason "M127 SKILL 追加重复 R9 行" \
-  "printf '| R9 | 探针：重复 R 号（含义不同） | 探针 |\n' >> skills/dsh-codepunk-workflow/SKILL.md" \
-  skills/dsh-codepunk-workflow/SKILL.md '^\| R9 ' '硬规则号重复'
+  "printf '| R9 | 探针：重复 R 号（含义不同） | 探针 |\n' >> '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
+  "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" '^\| R9 ' '硬规则号重复'
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
