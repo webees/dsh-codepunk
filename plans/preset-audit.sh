@@ -180,7 +180,9 @@ if ! command -v python3 >/dev/null 2>&1; then
   report "$FAIL" "D3/E3 无法核验：缺 python3（无法核验 ≠ 通过）——装 python3 或手工核对"
   NOPY=1
 fi
-D3=$(python3 - <<'PYEOF'
+# F212：`2>/dev/null` 必须落在 **python3 之后**（命令替换内部）——放在外层 `) 2>/dev/null` 时，
+#   内部 python3 的 stderr 仍会漏出（实测缺 python3 时漏 2 行 `command not found`）。
+D3=$(python3 - <<'PYEOF' 2>/dev/null
 import re, subprocess
 files = [f for f in subprocess.run(['git','ls-files'],capture_output=True,text=True).stdout.split()
          if f.endswith('.md')]
@@ -194,7 +196,7 @@ for f in files:
             bad.append(f'{f}:{i}')
 print(' '.join(bad[:3]))
 PYEOF
-) 2>/dev/null; D3_RC=$?
+); D3_RC=$?
 if [ "$NOPY" = 1 ]; then
   :                                  # 上方已报「无法核验」，勿重复
 elif [ "${D3_RC:-1}" != 0 ]; then
@@ -210,7 +212,7 @@ EC=$(grep -c "^## " README.md)
 [ "$EC" -ge 7 ] && report "$PASS" "E2 README ${EC} 节 ≥7" || report "$FAIL" "E2 README ${EC} 节 <7"
 
 # E3 仓内相对链接可达性（死链 = 读者可见缺陷；实测原三检查器全漏）
-E3=$(python3 - <<'PYEOF'
+E3=$(python3 - <<'PYEOF' 2>/dev/null
 import os, re, subprocess
 files = [f for f in subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
          if f.endswith('.md')]
@@ -236,7 +238,7 @@ for f in files:
         bad.append(f'{f} → {t}')
 print(' '.join(bad[:3]))
 PYEOF
-) 2>/dev/null; E3_RC=$?
+); E3_RC=$?
 if [ "$NOPY" = 1 ]; then
   :                                  # 上方已报「无法核验」，勿重复
 elif [ "${E3_RC:-1}" != 0 ]; then
