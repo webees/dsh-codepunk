@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('128 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('129 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -521,6 +521,21 @@ check_rc "M23-c 主仓库列表不干净 → 失败" \
 # ④ 用法错：无参数且无 MAIN_REPO → 退出码 2
 check_rc "M23-d 缺主仓库参数 → 用法错" \
   "env -u MAIN_REPO bash plans/verify-worktree.sh 2>&1" 2 "用法"
+
+echo "[M129 登记残留（目录已删未 prune）须分列诊断（F275）]"
+fresh
+wt2_main="$work/wt2/main"; wt2_scan="$work/wt2/scan"
+rm -rf "$work/wt2"; mkdir -p "$wt2_main" "$wt2_scan"
+( cd "$wt2_main" && git init -q . && git config user.email t@t && git config user.name t && : > f.txt && \
+  git add f.txt && git commit -qm init && git worktree add -q "$wt2_scan/wt-gone" -b gone ) >/dev/null 2>&1
+rm -rf "$wt2_scan/wt-gone"
+check_rc "M129-a 登记残留须点名「登记残留」" \
+  "SCAN_ROOT='$wt2_scan' bash plans/verify-worktree.sh '$wt2_main' 2>&1" 1 "登记残留"
+check_rc "M129-b 残留态须给出 prune 建议" \
+  "SCAN_ROOT='$wt2_scan' bash plans/verify-worktree.sh '$wt2_main' 2>&1" 1 "worktree prune"
+git -C "$wt2_main" worktree prune >/dev/null 2>&1
+check_rc "M129-c prune 后恢复通过" \
+  "SCAN_ROOT='$wt2_scan' bash plans/verify-worktree.sh '$wt2_main' --quiet" 0
 
 echo "[M24 错误根路径 → 用法错（exit 2 契约）]"
 fresh
