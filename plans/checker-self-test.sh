@@ -250,7 +250,10 @@ check_contains "M97 probe_rc 含 rc126/127 自动缺口判定" "grep -c 'rc\" = 
 echo "[M95/M96 fidelity-gate 快照异常须清晰降级（F207/F208 修复存活）]"
 fresh
 check_contains "M95 快照损坏分支存在" "grep -c 快照损坏或不可读 plans/fidelity-gate.py" "1"
-check_contains "M96 空快照提示存在" "grep -c F208 plans/fidelity-gate.py" "1"
+# F258：原断言以**决策号字面量计数**（`grep -c F208 … == 1`）判存活 ⇒ 任何**合法**新增的 F208 引用
+#   都会把断言击穿（R475 的 F249 修复在注释中新增第二处 F208 ⇒ 套件转红，而 F208 守护实际健在：
+#   实测 `grep -c F208 plans/fidelity-gate.py` = 2）。改为断言**提示消息本体**（该消息在 fidelity-gate.py 中唯一）。
+check_contains "M96 空快照提示存在" "grep -c '快照为空（未捕获受保护 token）' plans/fidelity-gate.py" "1"
 
 echo "[M94 总库目录创建失败不得漏裸 stderr（F204 修复存活）]"
 fresh
@@ -1002,7 +1005,10 @@ check_rc "M50 退回修复后 → 空列表骨架被拒" "HOME='$work/linkhome' 
 echo "[M51 声明包装字段漂移（F170：check 增比包装的修复存活）]"
 fresh
 if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
-  pass "M51 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）"
+  # F259：此处原调用**未定义助手** `pass`（实测 stderr: `line 1005: pass: command not found`）⇒
+  #   与本脚本 F191 守卫所针对的「调用不存在助手」属同类缺陷（该守卫仅扫描 `check*` 调用点，漏掉此处）。
+  #   按本套件既有跳过口径改用 printf（同 M14 的 `  ℹ … 跳过（…）` 风格）。
+  printf '  ℹ M51 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）\n'
 else
   : > "$work/patch51.yml"
   node plans/preset-declare.mjs apply --patch "$work/patch51.yml" --append >/dev/null 2>&1 || true
