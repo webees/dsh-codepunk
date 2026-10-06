@@ -37,6 +37,7 @@ try:
 except Exception:
     pass
 
+import json
 import os
 import re
 import sys
@@ -56,6 +57,25 @@ def resolve_app_root() -> Path | None:
         if (cand / "node_modules" / SCOPE).is_dir():
             return cand
     return None
+
+
+def _has_product_marker(root: Path) -> bool:
+    """F267：安装**真实性**判据。
+
+    背景：本工具此前仅凭「目录名（`node_modules/@deepseek-ai` 是否目录）+ 文本正则」即宣称
+    「与当前 DSH 安装兼容」——独立复核以**伪造同构根**（26 个同名包目录，各只写一个生成的
+    `lib/index.js`，内含 27 键 `Config` 与 16 个工具 `name`，零真实插件代码）实测 **rc=0**，
+    即「静默通过」（假通过）。
+    真安装根自带产品标记：`package.json` 顶层含 `dsh` 键（实测真根 name=dsh-plugin-desktop、
+    version=2.0.17、顶层键含 dsh）。此处要求该标记存在，否则按本仓口径「**无法核验 ≠ 通过**」拒绝。
+    """
+    try:
+        data = json.loads((root / "package.json").read_text(encoding="utf-8", errors="replace"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(data, dict):
+        return False
+    return "dsh" in data or str(data.get("name", "")).startswith("dsh")
 
 
 def parse_entries(text: str) -> list[dict]:
@@ -140,6 +160,12 @@ def main() -> int:
     app = resolve_app_root()
     if app is None:
         print("  ✗ 未定位 DSH 安装：设 DSH_APP_ROOT（解包 app 目录）或 DSH_ASAR（旧 asar 路径）")
+        return 2
+
+    # F267：定位成功 ≠ 安装真实。伪造同构根（同名包目录 + 生成的 lib/index.js）实测可获 rc=0 与
+    #   「结论：与当前 DSH 安装兼容」⇒ 假通过。要求产品标记，缺失即按「无法核验 ≠ 通过」判 2。
+    if not _has_product_marker(app):
+        print(f"  ⚠ 无法核验安装真实性（{app}/package.json 缺 `dsh` 产品标记或不可读）——无法核验 ≠ 通过")
         return 2
 
     # F247：截断/损坏配置曾以**未捕获** UnicodeDecodeError 抛裸 traceback，且退出码 1 被文档释义为

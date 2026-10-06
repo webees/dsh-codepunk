@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('127 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('128 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -1395,6 +1395,12 @@ echo "[M127 硬规则号重复须扣分（F263：R 号重复覆盖缺口）]"
 score_reason "M127 SKILL 追加重复 R9 行" \
   "printf '| R9 | 探针：重复 R 号（含义不同） | 探针 |\n' >> '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
   "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" '^\| R9 ' '硬规则号重复'
+
+echo "[M128 伪造同构根不得判「兼容」（F267：安装真实性判据）]"
+fresh
+mkdir -p "$work/cur/node_modules/@deepseek-ai/fake-pkg/lib" && printf 'export const x = 1;\n' > "$work/cur/node_modules/@deepseek-ai/fake-pkg/lib/index.js"
+check_rc "M128 伪造根（无 dsh 产品标记）→ compat rc 2 且报「无法核验安装真实性」" \
+  "DSH_APP_ROOT=\"$work/cur\" python3 plans/preset-compat.py ." 2 "无法核验安装真实性"
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
