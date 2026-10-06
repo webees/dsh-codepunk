@@ -72,6 +72,13 @@ if [ ! -f skills/dsh-codepunk-workflow/SKILL.md ] || [ ! -d plans ]; then
   exit 2
 fi
 
+# F253：python3 不可用时，下游未加守卫的判定点（11 处：123/143/152/199/230/572/607/637/830/866/888）
+#   会以**空值**参与比较 ⇒ 输出**虚假不一致**（例：凭空报「阶段口径不一」「文档未声明计数」），
+#   即把「无法核验」归因为「文档缺陷」。与本仓教义（无法核验 ≠ 通过）相悖 ⇒ 统一前置为显式失败（2）。
+#   既有 6 处细粒度 `command -v python3` + na() 分支保持不变（各自标注无法核验）。
+command -v python3 >/dev/null 2>&1 && python3 -c 'pass' 2>/dev/null \
+  || { echo "✗ python3 不可用（缺失或执行失败）——无法核验 ≠ 通过" >&2; exit 2; }
+
 SKILL="skills/dsh-codepunk-workflow/SKILL.md"
 REF="skills/dsh-codepunk-workflow/references"
 BM="skills/dsh-codepunk-workflow/benchmarks"
