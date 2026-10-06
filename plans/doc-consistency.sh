@@ -937,40 +937,107 @@ PYEOF
   if [ -z "$BM_ISSUE" ]; then ok "含 URL 的简报均带 retrieved_at（或无检索日时显式标注）"
   else bad "简报缺检索日 → ${BM_ISSUE}"; fi
 
-echo "[24] Markdown 表格列数一致（行单元格数须等于表头；代码跨度内 | 须转义）"
+echo "[24] Markdown 表格列数一致与结构完整（表头↔分隔行↔数据行；围栏/缩进/引用块/无行首竖线）"
 TBL_ISSUE=$(python3 <<'PYEOF'
+# F296/F297 修复：原实现只认「行首竖线」且仅按 ``` 前缀切换围栏 ⇒ 对**引用块内表格**与「无行首
+#   竖线」的真表格漏检（其多余单元格仍会被渲染器静默丢弃），对 ~~~ 围栏、4 空格/制表符缩进代码块、
+#   长反引号围栏内嵌 ``` 的**代码示例**误报；且对「表头列数 ≠ 分隔行列数」「分隔行后紧跟空行」两类
+#   **结构性断表**不报，却输出「全部一致」（过度声称；实证：learned-skills.md:8 表头 5 vs 分隔行 4、
+#   standard.md:29 分隔行后空行 ⇒ GFM 整表不成立，表体渲染为字面管道文本）。
+# 新口径（分隔行驱动）：仅当某行**紧邻**一个列数相符的分隔行时才成立表头；围栏按字符+长度配对；
+#   排除缩进代码块；空行即断表；另新增两条结构性判据（表头↔分隔行列数、分隔行后紧跟空行）。
 import glob, re
-bad = []
-def ncell(l):
-    l = l.rstrip()
-    if l.startswith('|'): l = l[1:]
-    if l.endswith('|'): l = l[:-1]
-    return len(re.split(r'(?<!\\)\|', l))
+
+def strip_bq(s):
+    while True:
+        m = re.match(r'^[ \t]{0,3}>[ \t]?', s)
+        if not m:
+            return s
+        s = s[m.end():]
+
+def fence_of(s):
+    m = re.match(r'^[ \t]{0,3}(`{3,}|~{3,})', s)
+    return (m.group(1)[0], len(m.group(1))) if m else None
+
+def is_code_line(s):
+    return s.startswith('    ') or s.startswith('\t')
+
+def cells(s):
+    t = strip_bq(s).strip()
+    if t.startswith('|'):
+        t = t[1:]
+    if t.endswith('|') and not t.endswith('\\|'):
+        t = t[:-1]
+    return re.split(r'(?<!\\)\|', t)
+
+def is_delim(s):
+    t = strip_bq(s).strip()
+    if '-' not in t or set(t) - set('|-: '):
+        return False
+    return all(re.fullmatch(r':?-+:?', c.strip()) for c in t.strip('|').split('|') if c.strip())
+
+excess, struct = [], []
 for f in sorted(glob.glob('**/*.md', recursive=True)):
-    if f.startswith('.git/'):
+    if '/.git/' in f or f.startswith('.git/'):
         continue
     lines = open(f, encoding='utf-8', errors='replace').read().split('\n')
-    infence = False; hdr = 0; n = 0
-    for i, l in enumerate(lines, 1):
-        s = l.strip()
-        if s.startswith('```'):
-            infence = not infence; continue
-        if infence: continue
-        if s.startswith('|') and s.count('|') >= 2:
-            c = ncell(l)
-            if hdr == 0:
-                hdr, n = i, c
-            elif re.fullmatch(r'\|[\s:|-]+\|', s):
-                continue
-            elif c > n:
-                bad.append('%s:%d(%d>%d)' % (f, i, c, n))
-        else:
-            hdr = 0; n = 0
-print(', '.join(bad[:4]) + ('' if len(bad) <= 4 else ' 等共 %d 行' % len(bad)))
+    fence = None
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
+        if fence:
+            fo = fence_of(raw)
+            if fo and fo[0] == fence[0] and fo[1] >= fence[1]:
+                fence = None
+            i += 1
+            continue
+        fo = fence_of(raw)
+        if fo:
+            fence = fo
+            i += 1
+            continue
+        if is_code_line(raw):
+            i += 1
+            continue
+        cur = strip_bq(raw).strip()
+        nxt = strip_bq(lines[i + 1]).strip() if i + 1 < len(lines) else ''
+        if '|' not in cur or not nxt or not is_delim(nxt):
+            i += 1
+            continue
+        h, d = len(cells(raw)), len(cells(nxt))
+        if h != d:
+            struct.append('%s:%d(表头 %d ≠ 分隔行 %d)' % (f, i + 1, h, d))
+        j = i + 2
+        if j < len(lines) and strip_bq(lines[j]).strip() == '':
+            k = j
+            while k < len(lines) and strip_bq(lines[k]).strip() == '':
+                k += 1
+            if k < len(lines) and '|' in strip_bq(lines[k]) and not is_code_line(lines[k]) \
+               and not fence_of(lines[k]) and len(cells(lines[k])) <= d:
+                struct.append('%s:%d(分隔行后紧跟空行，表体被断)' % (f, i + 2))
+        while j < len(lines):
+            r = lines[j]
+            if is_code_line(r) or fence_of(r) or strip_bq(r).strip() == '' or '|' not in strip_bq(r):
+                break
+            c = len(cells(r))
+            if c > d:
+                excess.append('%s:%d(%d>%d)' % (f, j + 1, c, d))
+            j += 1
+        i = max(j, i + 1)
+if excess:
+    print('EXCESS ' + ', '.join(excess[:4]) + ('' if len(excess) <= 4 else ' 等共 %d 行' % len(excess)))
+if struct:
+    print('STRUCT ' + ', '.join(struct[:4]) + ('' if len(struct) <= 4 else ' 等共 %d 处' % len(struct)))
 PYEOF
 )
-  if [ -z "$TBL_ISSUE" ]; then ok "全部 Markdown 表格行列数一致（多余单元格会被渲染器忽略致内容静默丢失）"
-  else bad "表格行单元格数超过表头 → ${TBL_ISSUE}"; fi
+  TBL_EXCESS="$(printf '%s' "$TBL_ISSUE" | grep '^EXCESS ' | sed 's/^EXCESS //')"
+  TBL_STRUCT="$(printf '%s' "$TBL_ISSUE" | grep '^STRUCT ' | sed 's/^STRUCT //')"
+  if [ -z "$TBL_EXCESS" ] && [ -z "$TBL_STRUCT" ]; then
+    ok "全部 Markdown 表格列数一致且结构完整（表头↔分隔行↔数据行）"
+  else
+    if [ -n "$TBL_EXCESS" ]; then bad "表格行单元格数超过表头 → ${TBL_EXCESS}"; fi
+    if [ -n "$TBL_STRUCT" ]; then bad "表格结构异常（断表）→ ${TBL_STRUCT}"; fi
+  fi
 
 # class 17 子项（F179）：ps1 工作树行尾须为 CRLF（.gitattributes eol=crlf 的落地校验）
 if git rev-parse --git-dir >/dev/null 2>&1; then

@@ -27,7 +27,6 @@
 
 | 标号 | 一句话含义 | 出处 |
 |---|---|---|
-
 | D024 | 并行软上限：S=1 / M=3 / L=6（本预设自律上限，非平台字段） | SKILL.md §2 ③ |
 | D031 | 双门闩齐即自动开工，不必再等人工点头 | SKILL.md §2 ③ |
 | D034 | goal active 前 `product_acceptance[]` 必须非空 | SKILL.md §2 ① / artifacts.md |

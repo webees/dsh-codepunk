@@ -200,10 +200,14 @@ check_rc "M109 篡改硬规则上限 → doc-consistency 失败" "bash plans/doc
 echo "[M106 「自检变异项」计数声称被守护（F225 修复存活）]"
 fresh
 python3 - "$work/cur/README.md" <<'PYEOF'
-import sys
+import re, sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('129 项**已知缺陷', '105 项**已知缺陷', 1)
+# F298：此处曾硬编码 '129 项**已知缺陷'。计数**合法**更新（如 129→131）后目标串即失效，
+#   于是变异未落地、自检误报「有变异未生效」并**提前退出**（其后全部变异不再执行）。
+#   改为按模式匹配当前计数，使变异目标不随计数增长而陈旧。
+n = re.sub(r'\*\*\d+ 项\*\*已知缺陷', '**105 项**已知缺陷', s, count=1)
+assert n != s, 'M106 变异目标串未找到（README 的计数声称文案已变）'
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -1416,6 +1420,24 @@ fresh
 mkdir -p "$work/cur/node_modules/@deepseek-ai/fake-pkg/lib" && printf 'export const x = 1;\n' > "$work/cur/node_modules/@deepseek-ai/fake-pkg/lib/index.js"
 check_rc "M128 伪造根（无 dsh 产品标记）→ compat rc 2 且报「无法核验安装真实性」" \
   "DSH_APP_ROOT=\"$work/cur\" python3 plans/preset-compat.py ." 2 "无法核验安装真实性"
+
+echo "[M130 Markdown 表格列数一致（doc-consistency 第 24 类存活）]"
+fresh
+# 变异：追加一个「数据行单元格数 > 表头」的表格。GFM 规范下多余单元格被**渲染器忽略** ⇒ 该内容在
+#   任何渲染面上**静默丢失**（F295 实证：仓内 10 行，含契约级附注）。守护须报出，否则等于没写。
+printf '\n| 甲 | 乙 | 丙 |\n| --- | --- | --- |\n| 1 | 2 | 3 | 注入多余单元格 |\n' \
+  >> "$work/cur/skills/dsh-codepunk-workflow/references/standard.md"
+mutate "追加超列表格行" "$work/cur/skills/dsh-codepunk-workflow/references/standard.md" '注入多余单元格'
+check_rc "M130 表格行超列 → doc-consistency 失败" "bash plans/doc-consistency.sh 2>&1" 1 "表格行单元格数超过表头"
+
+echo "[M131 表格结构断表（表头↔分隔行列数不等）须报（F296：断表后表体渲染为字面文本）]"
+fresh
+# 变异：追加一个**表头 3 列 / 分隔行 2 列**的表格。GFM 要求两者列数相符，否则整表不成立 ⇒ 表体
+#   会以字面管道文本呈现（实证：learned-skills.md:8 表头 5 vs 分隔行 4 ⇒ 整表失效）。
+printf '\n| 甲 | 乙 | 丙 |\n| --- | --- |\n| 1 | 2 | 3 |\n' \
+  >> "$work/cur/skills/dsh-codepunk-workflow/references/standard.md"
+mutate "追加表头与分隔行列数不等的表格" "$work/cur/skills/dsh-codepunk-workflow/references/standard.md" '甲'
+check_rc "M131 断表 → doc-consistency 失败" "bash plans/doc-consistency.sh 2>&1" 1 "表格结构异常"
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
