@@ -147,7 +147,22 @@ rc_bad=""
 # F187：覆盖面从 .sh 扩到 .py/.mjs（规则文本为「**运行型**脚本 MUST 声明退出码」，README 亦记载外层工具的码）；
 #   声明判定=**头部 30 行内的码表行**（同时含「退出码」与形如 `0=` 的码），兼容 `#` / JSDoc `*` / docstring 三种风格。
 for f in plans/*.sh plans/*.py plans/*.mjs; do
-  decl_line=$(head -30 "$f" 2>/dev/null | grep -m1E '退出码.*[0-9][[:space:]]*=')
+  # F192：多字节词用 `grep -F`（字节级、locale 无关——BSD grep 在 C locale 下用多字节 **模式**会报
+  #   `Invalid argument` 并致本检查恒空转）；码表另以 ASCII 的 `[0-9]=` 判定。
+  decl_line=$(python3 - "$f" <<'PYEOF'
+import sys
+# F192：不使用多字节 grep 参数——BSD grep 在 C locale 下会报 `Invalid argument`（与 F097 的
+#   `grep -P` 同族），曾致本检查恒空转。python 读文件与判字符均不受 locale 影响。
+try:
+    head = open(sys.argv[1], encoding='utf-8', errors='replace').read().split('\n')[:30]
+except Exception:
+    head = []
+for l in head:
+    if '退出码' in l and '=' in l and any(c.isdigit() for c in l):
+        print(l)
+        break
+PYEOF
+)   # F187/F192：头部 30 行内含「退出码」且含码表；三种注释风格皆可
   [ -n "$decl_line" ] || continue
   decl=$(printf '%s' "$decl_line" | grep -oE '[0-9][[:space:]]*=' | grep -oE '[0-9]' | sort -u | tr -d '\n')
   [ -n "$decl" ] || { na "$(basename "$f") 退出码行未解析出码"; continue; }
@@ -165,7 +180,15 @@ RC_UNDECL=""
 for f in plans/*.sh plans/*.py plans/*.mjs; do
   base=$(basename "$f")
   case "$base" in dsh-codepunk-home.sh) continue ;; esac        # 纯 source 的路径常量脚本，无退出码
-  head -30 "$f" 2>/dev/null | grep -qE '退出码.*[0-9][[:space:]]*=' && continue   # F187：头部码表行即视为已声明
+  python3 -c '
+import sys
+try:
+    head = open(sys.argv[1], encoding="utf-8", errors="replace").read().split("\n")[:30]
+except Exception:
+    head = []
+ok = any(("退出码" in l) and ("=" in l) and any(c.isdigit() for c in l) for l in head)
+sys.exit(0 if ok else 1)
+' "$f" && continue   # F192：同上，避免多字节 grep 参数在 C locale 下失效
   case "$f" in *.sh) grep -qE '\bsource\b|^\s*\.\s' "$f" 2>/dev/null && continue ;; esac  # F187：库脚本豁免**仅限 .sh**（.py/.mjs 里的 source 字样会误豁免）
   grep -qE 'exit [0-9]|sys\.exit\(|process\.exit\(' "$f" 2>/dev/null || continue   # F187：非「运行型」（无显式退出调用）豁免
   RC_UNDECL="$RC_UNDECL $base"
