@@ -526,7 +526,15 @@ EOF
   while ! mkdir "$DSH_LOCKDIR" 2>/dev/null; do
     lk_i=$((lk_i + 1))
     if [ "$lk_i" -ge 200 ]; then
-      printf '%s: 无法获取 INDEX 写锁（%s）——可能有另一 register 正在写，或锁残留；确认无并发后删除该目录再重试\n' "$SCRIPT_NAME" "$DSH_LOCKDIR" >&2
+      # F260：**只读/无写权限的总库目录**同样令 mkdir 失败，而原消息只归因「另一进程正在写 / 锁残留」⇒
+      #   实测（`chmod 555` 总库目录）真因为权限，指引误导运维（去查不存在的并发）。此处补一次写权限探测，
+      #   按因给出可操作指引：目录不可写 ⇒ 直指权限/只读文件系统；可写 ⇒ 维持并发/残留锁口径。
+      lk_parent="$(dirname "$DSH_LOCKDIR")"
+      if [ ! -w "$lk_parent" ]; then
+        printf '%s: 无法获取 INDEX 写锁（%s）——总库目录不可写（权限或只读文件系统）：%s\n' "$SCRIPT_NAME" "$DSH_LOCKDIR" "$lk_parent" >&2
+      else
+        printf '%s: 无法获取 INDEX 写锁（%s）——可能有另一 register 正在写，或锁残留；确认无并发后删除该目录再重试\n' "$SCRIPT_NAME" "$DSH_LOCKDIR" >&2
+      fi
       return 2
     fi
     sleep 0.05
