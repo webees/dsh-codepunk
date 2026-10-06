@@ -10,6 +10,9 @@
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）（**仅提示，不计失败**）
+#   24. Markdown 表格列数一致（表格行的单元格数 MUST NOT 超过表头——GFM 规范下多余单元格被忽略
+#       ⇒ 内容静默丢失；代码跨度内的 `|` 须转义为 `\|`。行单元格数少于表头则补空单元格，不判失败。
+#       F295 实证：10 行不一致，其中 4 行为代码跨度内未转义 `|`）
 #   23. 简报检索日（含 URL 的 benchmarks MUST 带 `retrieved_at`；若原始检索日不可考，须显式写
 #       「未记录」并注明依据——依赖约定「URL+retrieved_at+事实/推断」；F151 实证）
 #   22. 矩阵覆盖（每个检查类 1..N 须在 skill-governance 矩阵中被提及——含「第 a–b 类」范围写法；
@@ -933,6 +936,41 @@ PYEOF
 )
   if [ -z "$BM_ISSUE" ]; then ok "含 URL 的简报均带 retrieved_at（或无检索日时显式标注）"
   else bad "简报缺检索日 → ${BM_ISSUE}"; fi
+
+echo "[24] Markdown 表格列数一致（行单元格数须等于表头；代码跨度内 | 须转义）"
+TBL_ISSUE=$(python3 <<'PYEOF'
+import glob, re
+bad = []
+def ncell(l):
+    l = l.rstrip()
+    if l.startswith('|'): l = l[1:]
+    if l.endswith('|'): l = l[:-1]
+    return len(re.split(r'(?<!\\)\|', l))
+for f in sorted(glob.glob('**/*.md', recursive=True)):
+    if f.startswith('.git/'):
+        continue
+    lines = open(f, encoding='utf-8', errors='replace').read().split('\n')
+    infence = False; hdr = 0; n = 0
+    for i, l in enumerate(lines, 1):
+        s = l.strip()
+        if s.startswith('```'):
+            infence = not infence; continue
+        if infence: continue
+        if s.startswith('|') and s.count('|') >= 2:
+            c = ncell(l)
+            if hdr == 0:
+                hdr, n = i, c
+            elif re.fullmatch(r'\|[\s:|-]+\|', s):
+                continue
+            elif c > n:
+                bad.append('%s:%d(%d>%d)' % (f, i, c, n))
+        else:
+            hdr = 0; n = 0
+print(', '.join(bad[:4]) + ('' if len(bad) <= 4 else ' 等共 %d 行' % len(bad)))
+PYEOF
+)
+  if [ -z "$TBL_ISSUE" ]; then ok "全部 Markdown 表格行列数一致（多余单元格会被渲染器忽略致内容静默丢失）"
+  else bad "表格行单元格数超过表头 → ${TBL_ISSUE}"; fi
 
 # class 17 子项（F179）：ps1 工作树行尾须为 CRLF（.gitattributes eol=crlf 的落地校验）
 if git rev-parse --git-dir >/dev/null 2>&1; then

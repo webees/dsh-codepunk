@@ -6,7 +6,7 @@
 
 | dsh-codepunk 概念 | 官方机制（包/文档） | 备注 |
 |---|---|---|
-| goal 自动续行 / 结算自动递送 | `dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`（§0.1） | 词汇 Goal→Round→Turn→Step；armed 进程本地；resume 需人类消息 |　**动作权限（实测契约）**：`edit`/`pause`/`resume` 须**人类直请**；`complete`/`blocked` 可在自动续行中调用，且 `blocked` 在达最小轮数前被拒。
+| goal 自动续行 / 结算自动递送 | `dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`（§0.1） | 词汇 Goal→Round→Turn→Step；armed 进程本地；resume 需人类消息；**动作权限（实测契约）**：`edit`/`pause`/`resume` 须**人类直请**；`complete`/`blocked` 可在自动续行中调用，且 `blocked` 在达最小轮数前被拒。
 | skill playbook 渐进披露 | `dsh-skill` + `dsh-skill-filesystem` + `dsh-tool-skill` | preset 技能经组合 `skill-filesystem` baseUrl 装载（非目录扫描） |
 | subagent 派遣/continuable | `dsh-subagent`（spawn/fork/ACP/codex/claude-code 五后端）+ `dsh-tool-subagent-*` | outputSchema/depthLimit/toolFilter/persona 静态声明 |
 | 委派深度上限 | `dsh-tool-subagent` 的 `maxDepth`（官方 `README.zh.md`） | **绝对委派深度上限**：`0` 禁止委派、正整数即上限层数；`'provider-managed'` 不向进程外提供方发送上限。默认取 Host 设置（`1`）。提供方须具备 `depthLimit` 能力，否则 MUST 用 `provider-managed`（否则挂载即报错）。本预设 11 岗位 + generic 均设 `maxDepth: 1` → 岗位子代理**不能再向下派遣**（只有主会话能组建小组，与双门闩配套）；两个外部后端（codex/claude-code，禁用态）设 `provider-managed` |
@@ -17,7 +17,7 @@
 | 上下文纪律（D074） | `dsh-compaction`（pressure/overflow）+ `dsh-session-query-sqlite` + tool-result pruner | 「摘要即证据」官方对应机制 |
 | 双门闩/审查门 权利谱系 | `dsh-sandbox`（3 模式阶梯升级）+ `dsh-user-approval`（ask/never，fail-closed） | 流程内审批 ≠ harness approval（两条独立路径） |
 | sandbox 升级（危险操作） | bash `sandbox_permissions` + `justification` | 仅被拒时才请求一次批准；授权不持久 |
-| 父向汇报 / 结算通知 | `dsh-tool-subagent-control`（`send_message` / `interrupt_agent` / `list_agents`；`agent_id` 限「直接子或直接父」）+ 子代理结算消息 | 结构化回报走 `send_message`；子步骤不进父日志。**注**：早期版本另有 `dsh-tool-subagent-report`，该包在当前安装内已不存在（2026-10-05 实测），故本预设按全局工具正常放行 `send_message` |　**`interrupt_agent` 语义（实测）**：`agent_id` 接受「你创建的任何后代」（直接子或更深后代）；**调用即返回、不等待停止**；**其自己派生的子代理会继续运行**（不级联停止）。
+| 父向汇报 / 结算通知 | `dsh-tool-subagent-control`（`send_message` / `interrupt_agent` / `list_agents`；`agent_id` 限「直接子或直接父」）+ 子代理结算消息 | 结构化回报走 `send_message`；子步骤不进父日志。**注**：早期版本另有 `dsh-tool-subagent-report`，该包在当前安装内已不存在（2026-10-05 实测），故本预设按全局工具正常放行 `send_message`；**`interrupt_agent` 语义（实测）**：`agent_id` 接受「你创建的任何后代」（直接子或更深后代）；**调用即返回、不等待停止**；**其自己派生的子代理会继续运行**（不级联停止）。
 | 后台任务 | `ctx.jobs` + `job_kill/job_list/job_output` | 与后台 bash 同机制 |
 | checkpoints（工作区检查点） | 官方快照/断点机制 | D067 断点续行：progress/handoff/evidence 即重放状态，与官方 checkpoints 对齐（简述） |
 | 目标命令（人类通道） | `dsh-command-goal`（`/goal` 设置或查看长任务目标） | 与 `dsh-tool-goal`（模型通道）配对；两者注入同一个 `goals` 服务 |

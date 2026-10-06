@@ -65,14 +65,14 @@
 | `skills/ponytail/SKILL.md`（120 行，~6.6KB） | **主技能全文**（行为唯一单源） | §1 全量；Persistence："ACTIVE EVERY RESPONSE. No drift back to over-building."；Boundaries："Ponytail governs what you build, not how you talk (pair with Caveman for terse prose)."；"The shortest path to done is the right path." |
 | `skills/ponytail-review/SKILL.md` | **面向 over-engineering 的 diff 审查**（只找该删的） | 输出契约 `L<line>: <tag> <what>. <replacement>.`；五 tag：`delete:`/`stdlib:`/`native:`/`yagni:`/`shrink:`；结尾唯一指标 `net: -<N> lines possible.`；无物可删 `Lean already. Ship.`；范围声明"correctness/security/perf 明确出局，转正常 review"；"The diff's best outcome is getting shorter." |
 | `skills/ponytail-audit/SKILL.md` | **全仓 over-engineering 审计**（review 的 repo-wide 版） | 同五 tag；Hunt 清单（deps stdlib 已带、单实现接口、单产物工厂、仅委派 wrapper、单导出文件、死 flag/config）；输出 `net: -<N> lines, -<M> deps possible.`；one-shot，不改代码 |
-| `skills/ponytail-debt/SKILL.md` | **把 `ponytail:` 注释收集成债务台账** | `grep -rnE '(#|//) ?ponytail:' .`（skip node_modules/.git/build）；每行 `<file>:<line>, <what>. ceiling: <limit>. upgrade: <trigger>.`；**无 upgrade path 的标 `no-trigger`**（"那些会悄悄腐烂"）；结尾 `<N> markers, <M> with no trigger.` |
+| `skills/ponytail-debt/SKILL.md` | **把 `ponytail:` 注释收集成债务台账** | `grep -rnE '(#\|//) ?ponytail:' .`（skip node_modules/.git/build）；每行 `<file>:<line>, <what>. ceiling: <limit>. upgrade: <trigger>.`；**无 upgrade path 的标 `no-trigger`**（"那些会悄悄腐烂"）；结尾 `<N> markers, <M> with no trigger.` |
 | `skills/ponytail-gain/SKILL.md` | 基准收益计分板（ASCII 条） | **Honesty boundary：** "NEVER print a per-repo savings number... the unbuilt version was never written, so there is no real baseline to subtract from in a live repo."；one-shot，不改模式 |
 | `skills/ponytail-help/SKILL.md` | 命令速查 | 模式/关闭语/默认模式解析（env > config > full） |
 
 ### 2.3 hooks/（跨 host 注入 + 多智能体纪律注入）
 | 文件 | 定位 | 关键原文/摘要 |
 |---|---|---|
-| `hooks/ponytail-subagent.js` | **Claude Code SubagentStart hook——让 Task 子代理也带纪律** | "SessionStart context is parent-thread only and never reaches subagents, so without this every Task-spawned agent runs ponytail-unaware (issue #252)."；缺 mode/off → inject none；`PONYTAIL_SUBAGENT_MATCHER` 正则按 `agent_type` **选择注入**（`explore|general` 或 `^general$`）；**fail-open**：坏正则/读不到 type/stdin 出错/超时都注入，保证"scoping never silently drops the persona" |
+| `hooks/ponytail-subagent.js` | **Claude Code SubagentStart hook——让 Task 子代理也带纪律** | "SessionStart context is parent-thread only and never reaches subagents, so without this every Task-spawned agent runs ponytail-unaware (issue #252)."；缺 mode/off → inject none；`PONYTAIL_SUBAGENT_MATCHER` 正则按 `agent_type` **选择注入**（`explore\|general` 或 `^general$`）；**fail-open**：坏正则/读不到 type/stdin 出错/超时都注入，保证"scoping never silently drops the persona" |
 | `hooks/ponytail-runtime.js` | 模式读/写 + 各宿主输出格式适配（Claude/Codex/Copilot/Qoder） | `writeHookOutput` 依据 isCopilot/isCodex/isQoder 分支吐不同 JSON（Copilot `additionalContext`、Codex `systemMessage PONYTAIL:<MODE>`、Claude SubagentStart 需 `hookSpecificOutput` JSON 否则 context 被丢）；`.ponytail-active` 状态文件作 mode 旗标 |
 | `hooks/ponytail-activate.js` | 会话启动激活 + 默认模式 | 每 session 激活当前 mode 并注入 ruleset |
 | `hooks/claude-codex-hooks.json` | 宿主 hook 清单 | 事件名映射 |
