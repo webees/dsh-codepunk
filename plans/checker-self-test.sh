@@ -177,13 +177,10 @@ check_rc "M107 篡改审计分组声称 → doc-consistency 失败" "bash plans/
 
 echo "[M108 benchmarks 篇数声称被守护（F226）]"
 fresh
-python3 - "$work/cur/README.md" <<'PYEOF'
-import sys
-p = sys.argv[1]
-s = open(p, encoding='utf-8').read()
-open(p, 'w', encoding='utf-8').write(s.replace('16 篇', '19 篇', 1))
-PYEOF
-mutate "README benchmarks 篇数声称改为 19" "$work/cur/README.md" '19 篇'
+# F300：计数声称类变异不得硬编码期望值（README 计数一变，sed 即静默不匹配 ⇒ 守护空转）。
+#   改为按标签行地址替换为固定错值 99，并用不带数字的关键词断言，从此对实际计数免疫。
+sed -i.bak -E "/^  benchmarks\//s/×[0-9]+ 篇/×99 篇/" "$work/cur/README.md"
+mutate "README benchmarks 篇数声称改为 ×99（按标签行派生）" "$work/cur/README.md" '×99 篇'
 check_rc "M108 篡改 benchmarks 篇数声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "benchmarks 实际"
 
 echo "[M109 硬规则上限声称被守护（F226）]"
@@ -722,8 +719,8 @@ score_reason "M112 score A1 SKILL 缺阶段" \
   "sed -i.bak 's/需求确认/需求核定/g' '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
   "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" '需求核定' 'SKILL 缺阶段'
 score_reason "M113 score A3 README 基准声称不符" \
-  "sed -i.bak 's/×16 篇/×19 篇/' '$work/cur/README.md'" \
-  "$work/cur/README.md" '×19 篇' 'README 声称基准'
+  "sed -i.bak -E '/^  benchmarks\\//s/×[0-9]+ 篇/×99 篇/' '$work/cur/README.md'" \
+  "$work/cur/README.md" '×99 篇' 'README 声称基准'
 
 score_reason "M28-a B7 缺 roles.md" \
   "rm -f '$work/cur/skills/dsh-codepunk-workflow/references/roles.md'" \
@@ -975,8 +972,9 @@ sed -i.bak 's/14 项独立验证/99 项独立验证/' "$work/cur/README.md"
 check_rc "M45 电池项数声称漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "电池项数 声称不一致"
 echo "[M46 references 计数标签绑定（doc-consistency 第 1 类 F163 修复存活）]"
 fresh
-sed -i.bak 's/×18 篇/×99 篇/' "$work/cur/README.md"
-check_rc "M46 references 篇数声称漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "references 实际 18"
+sed -i.bak -E "/^  references\//s/×[0-9]+ 篇/×99 篇/" "$work/cur/README.md"
+mutate "README references 篇数声称改为 ×99（按标签行派生）" "$work/cur/README.md" '×99 篇'
+check_rc "M46 references 篇数声称漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "references 实际"
 echo "[M47 多值声称一致（doc-consistency 第 1 类 F164 修复存活）]"
 fresh
 python3 - "$work/cur/README.md" <<'PYEOF'
