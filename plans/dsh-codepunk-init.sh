@@ -97,7 +97,17 @@ publish_bare_commands() {
       [[ -e "$dst" ]] || fail "缺无扩展名入口: ${dst}（运行本体脚本发布）"
       continue
     fi
-    ln -sf "$(basename "$src")" "$dst"
+    if ! ln -sf "$(basename "$src")" "$dst" 2>/dev/null; then
+      # F262：BSD `ln -sf` 是 unlink→symlink 两步，存在**竞态窗口** ⇒ 并发 init 时落败方得 EEXIST 并
+      #   **泄漏原始报错**（实测 4 路并发：rc=1,0,1,1 且输出 `ln: … File exists`），而**顺序**重跑是幂等的
+      #   （实测 rc=0）⇒ 此处若链接**已正确**即视为成功（等价于对端先行完成），否则给可读结论、不泄漏底层报错。
+      if [[ -L "$dst" && "$(readlink "$dst")" == "$(basename "$src")" ]]; then
+        pass "已发布入口: ${base}（并发对端已先行完成）"
+      else
+        fail "无法发布入口: ${dst}（ln 失败且链接不正确；请检查总库 scripts/ 目录权限）"
+      fi
+      continue
+    fi
     pass "已发布入口: $base"
   done
 }
