@@ -309,8 +309,17 @@ if (action === 'apply') {
   // ISO 串含 '.'（毫秒前），只去 [-:T] 会让备份名以尾随点结尾；一并去掉 '.' 并截到秒。
   const stamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
   const backup = `${PATCH}.bak-${stamp}`;
-  copyFileSync(PATCH, backup);
-  writeFileSync(PATCH, mergedText, 'utf8');
+  try {
+    copyFileSync(PATCH, backup);
+    writeFileSync(PATCH, mergedText, 'utf8');
+  } catch (e) {
+    const _p = (e && e.path) ? e.path : PATCH;
+    const _c = (e && e.code) ? e.code : 'IO';
+    const _m = (e && e.message) ? e.message : String(e);
+    // F203：写入失败（如只读文件/只读挂载/权限不足）不得抛裸堆栈——给清晰消息并按契约用环境错误码 2
+    console.error(`✗ 无法写入 profile patch：${_p}（${_c}：${_m}）——请检查文件权限或只读挂载`);
+    process.exit(2);
+  }
   console.log(`  ✅ 已用源${span ? '重写' : '追加'}声明块：${ID}`);
   console.log(`     备份：${backup}`);
   console.log('     生效：重启 DSH Desktop（声明在进程启动时读取）');

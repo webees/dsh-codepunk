@@ -145,6 +145,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M93 apply 写入失败须清晰降级（F203 修复存活）]"
+fresh
+check_contains "M93 declare 含写入失败捕获分支" "grep -c '无法写入 profile patch' plans/preset-declare.mjs" "1"
+
 echo "[M92 A5 成段重复扣分可达（15 指标全覆盖收口）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" <<'PYEOF'
