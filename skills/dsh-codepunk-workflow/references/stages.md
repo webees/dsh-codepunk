@@ -20,7 +20,7 @@
 
 1. **分块**：派遣 `subagent_sys_arch` 勘察本仓 → `chunks.yaml`。
    - 规则：写集默认互斥；共享文件须 `owner_chunk`；无依赖环；`1 chunk = 1 task = 1 工作房 = 1 实现三角`。
-   - 依赖已满足（无依赖或依赖 done）的 chunk → `ready`；**其后各态的主体与触发条件见 `references/artifacts.md`「chunks.yaml 迁移主体」表**（run-lead 观测事件后写，进度板唯一）。
+   - 依赖已满足（无依赖或依赖 done）的 chunk → `ready`；**其后各态的主体与触发条件见 `references/artifacts.md`「迁移主体与触发条件」表**（run-lead 观测事件后写，进度板唯一）。
 2. **简报**：让 `subagent_docs` 把你的意图（目标/边界/acceptance/禁区/必读 refs）+ 调研要点组装成 `WORK_BRIEF.md` + `brief.yaml`；产出即 `in_review`（待你把关）；**你审批**（`approved_by/approved_at`）。
 3. **用工**：你写 `staffing/request.yaml`（skills_wanted / constraints / 可覆盖 team_name 与 codename）（落单即 `submitted`）→ 派遣 `subagent_people` 真招聘三人设（招聘完成并锁编制后置 `approved`；若编制不可行则由你置 `rejected` 并回改 `skills_wanted`/`constraints` 或规模后重提）（`personas/{squad-lead,engineer,sdet}.md`，含 codename）+ 合规校验 → 呈报你审批 → `staffing.yaml`（`approved_by/approved_at`，锁定三角与 team_name）。
 4. **双门闩（MUST）**：无你批准的 brief ∧ staffing → 禁止 spawn 任何实现小组。
