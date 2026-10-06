@@ -172,7 +172,7 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 | `bash plans/doc-consistency.sh` | 文档**声称 ↔ 实现**一致性（计数声称 / 阶段口径 / 工具存在性 / 退出码契约 / 头部自称项数；术语项为咨询） | 0=一致；1=存在不一致；2=环境/用法错误 |
 | `bash plans/checker-self-test.sh` | 检查器**存活自检**（变异测试）：沙箱副本内注入 **94 项**已知缺陷（M1–M94），断言**对应检查项**必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境/自检问题 |
 | `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push + commit-msg） | 0=通过；1=命中并阻断；2=用法/环境错误 |
-| `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（编号/约束词/阈值/路径/工具名/代码标识），改后逐项比对 | 0=零丢失；1=检出丢失；2=缺参数/未知模式/无快照 |
+| `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（编号/约束词/阈值/路径/工具名/代码标识），改后逐项比对 | 0=零丢失；1=检出丢失；2=缺参数/未知模式/无快照；**受检范围**：仅 `.md`/`.yml`/`.sh`/`.ps1` |
 
 `verify-battery.sh` 的参数：`bash plans/verify-battery.sh [预设根]`（默认取脚本上级目录）。
 DSH 相关的可选检查由环境变量开启：`DSH_APP_ROOT`（DSH 解包 app 目录）、`DSH_ASAR`（旧版 asar 路径）、`DSH_PROFILE_PATCH`（profile patch 路径，默认 `~/.dsh/profiles/desktop/cordis.patch.yml`）。
