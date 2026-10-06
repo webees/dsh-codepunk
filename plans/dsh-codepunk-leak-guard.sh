@@ -174,18 +174,37 @@ case "$MODE" in
     scan_stream "commit-msg" "$CONTENT"
     ;;
   staged)
-    CONTENT=$(git diff --cached -U0 2>/dev/null | grep '^+' | grep -v '^+++')
-    [ -z "$CONTENT" ] && { echo "✓ 索引无新增内容（无可扫描的提交内容）"; exit 0; }
+    # F250：二进制文件在 `git diff --cached -U0` 中不产生 `+` 内容行 ⇒ 原实现把「唯一变更是一个二进制文件」
+    #   也当作「索引无新增内容」并以 0 放行 ⇒ 该二进制**从未被扫描**却呈现为「通过」（跳过 ≠ 通过），
+    #   且 `2>/dev/null` 会把 git 报错一并降级为「通过」。现改为：git 出错 ⇒ 2（无法核验）；
+    #   含二进制 ⇒ 显式阻断（本仓口径：无法核验不得当作通过；确需提交二进制用 --no-verify 并留痕）。
+    if ! DIFF=$(git diff --cached -U0 2>&1); then
+      echo "✗ 无法读取索引（git diff 失败）：$(printf '%s' "$DIFF" | head -1)——无法核验 ≠ 通过" >&2
+      exit 2
+    fi
+    CONTENT=$(printf '%s\n' "$DIFF" | grep '^+' | grep -v '^+++')
+    BIN=$(git diff --cached --numstat 2>/dev/null | awk '$1=="-" && $2=="-"' | wc -l | tr -d ' ')
+    if [ -z "$CONTENT" ]; then
+      if [ "${BIN:-0}" -gt 0 ]; then
+        echo "✗ 索引含 ${BIN} 个二进制文件（无法扫描内容）——无法核验 ≠ 通过；确需提交请 git commit --no-verify 并留痕说明"
+        exit 1
+      fi
+      echo "✓ 索引无新增内容（无可扫描的提交内容）"; exit 0
+    fi
+    [ "${BIN:-0}" -gt 0 ] && echo "  ℹ 另有 ${BIN} 个二进制文件未扫描（无法核验 ≠ 通过；确需提交请 --no-verify 并留痕）" >&2
     scan_stream "staged" "$CONTENT"
     ;;
   tree)
-    CONTENT=""
+    # F250 同族：按扩展名排除的二进制从未被扫描 ⇒ 原实现对此**不发一言**即打「✓ 通过」。
+    #   现显式告知跳过数量（无法核验 ≠ 通过）。非 git 工作区已由上方 ROOT 守卫以 2 拒绝，此处无需再判。
+    CONTENT=""; SKIPPED=0
     while IFS= read -r f; do
       [ -f "$f" ] || continue
-      case "$f" in *.png|*.jpg|*.jpeg|*.gif|*.webp|*.pdf|*.zip|*.gz|*.bundle) continue ;; esac
+      case "$f" in *.png|*.jpg|*.jpeg|*.gif|*.webp|*.pdf|*.zip|*.gz|*.bundle) SKIPPED=$((SKIPPED+1)); continue ;; esac
       CONTENT+=$(sed -n '1,4000p' "$f" 2>/dev/null)
       CONTENT+=$'\n'
     done < <(git ls-files)
+    [ "$SKIPPED" -gt 0 ] && echo "  ℹ 跳过 ${SKIPPED} 个按扩展名排除的二进制文件（未扫描）——无法核验 ≠ 通过" >&2
     scan_stream "tracked-tree" "$CONTENT"
     ;;
   history)
