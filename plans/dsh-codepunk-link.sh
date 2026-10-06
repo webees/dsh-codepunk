@@ -249,6 +249,17 @@ _entry_get() {
 }
 
 # INDEX 查询 helpers（TSV 行集 → 单值/整行）
+# F273（F270 残余项）：**仅比较用**的实体路径求值。刻意**不**改写存储值 —— 存量 INDEX 的 project_root
+#   可能是 /tmp/... 或 /private/tmp/...（macOS 下 /tmp 为符号链接）任一写法，改写会造成与旧记录错位。
+_real_path() {
+  local p="$1" r=""
+  if command -v realpath >/dev/null 2>&1; then r="$(realpath "$p" 2>/dev/null)" || r=""; fi
+  if [ -z "$r" ] && command -v python3 >/dev/null 2>&1; then
+    r="$(python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "$p" 2>/dev/null)" || r=""
+  fi
+  if [ -n "$r" ]; then printf '%s' "$r"; else _norm_path "$p"; fi
+}
+
 _index_id_by_root() {  # 按 project_root(/repo_path 别名) 精确匹配 → project_id
   local want="$1"
   _parse_index_entries "$DSH_CODEPUNK_INDEX" | awk -v want="$want" -F '\t' '
@@ -259,6 +270,17 @@ _index_id_by_root() {  # 按 project_root(/repo_path 别名) 精确匹配 → pr
         if ($i ~ /^project_id=/) { pid = $i; sub(/^project_id=/, "", pid) } }
       if (root == want) print pid }
   ' | head -1
+}
+# F273：实体形兜底匹配 —— 折叠形未命中时，比较双方 realpath（仅内存比较，不写盘）。
+_index_id_by_root_real() {
+  local want rroot
+  want="$(_real_path "$1")"
+  _parse_index_entries "$DSH_CODEPUNK_INDEX" | while IFS= read -r row; do
+    rroot="$(_entry_get "$row" project_root)"
+    [ -n "$rroot" ] || rroot="$(_entry_get "$row" repo_path)"
+    [ -n "$rroot" ] || continue
+    if [ "$(_real_path "$rroot")" = "$want" ]; then _entry_get "$row" project_id; break; fi
+  done
 }
 
 _index_row_by_id() {  # 按 project_id 匹配 → 整行 TSV
@@ -326,6 +348,8 @@ cmd_resolve() {
   # ② 无标记：回退 INDEX 按 project_root 精确匹配
   local pid2 dcp2
   pid2="$(_index_id_by_root "$target")"
+  # F273：折叠形未命中时按【实体形】兜底（覆盖 macOS /tmp ↔ /private/tmp 等符号链接写法差异）
+  [ -n "$pid2" ] || pid2="$(_index_id_by_root_real "$target")"
   if [ -n "$pid2" ]; then
     dcp2="$(_index_dsh-codepunk_by_id "$pid2")"
     [ -n "$dcp2" ] || dcp2="$DSH_CODEPUNK_HOME/projects/$pid2"
