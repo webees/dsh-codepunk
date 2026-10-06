@@ -145,6 +145,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M89 link.sh 标记值须做形状校验（F199 修复存活）]"
+fresh
+check_contains "M89 link.sh 含 _validate_marker" "grep -n _validate_marker plans/dsh-codepunk-link.sh" "_validate_marker"
+
 echo "[M88 python 工具须进程内固定 UTF-8 输出（F198 修复存活）]"
 fresh
 check_contains "M88 preset-compat 含 UTF-8 reconfigure" "grep -c F198 plans/preset-compat.py" "1"

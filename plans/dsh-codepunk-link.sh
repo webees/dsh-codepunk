@@ -84,6 +84,16 @@ _norm_path() {
 # ---------- README 主通道：frontmatter `dsh-codepunk:` 或注释行 ----------
 # 成功输出 project_id；无命中输出空 + exit 1
 # 优先 python3（PyYAML → 行级正则），降级 awk：二者等价，双保险
+# F199：标记值形状校验——python(PyYAML 缺失→正则回退)与 awk 回退都可能把**畸形 YAML 标量**
+#   （如 `dsh-codepunk: [unclosed`、含空格、超长串）原样当作 project_id（实测 rc 0 + project_id="[unclosed"）。
+_validate_marker() {
+  case "$1" in
+    *[!A-Za-z0-9._-]*|'') printf '%s: README 标记非法：%s（dsh-codepunk 值仅允许字母/数字/./_/-，≤64 字符）\n' "$SCRIPT_NAME" "$1" >&2; return 1 ;;
+  esac
+  [ "${#1}" -le 64 ] || { printf '%s: README 标记非法：值超长（>64 字符）\n' "$SCRIPT_NAME" >&2; return 1; }
+  return 0
+}
+
 _extract_dsh-codepunk_from_readme() {
   local readme="$1" id=""
   [ -f "$readme" ] || return 1
@@ -131,7 +141,7 @@ except ImportError:
 sys.exit(1)
 PY
 )"
-    [ -n "$id" ] && { printf '%s' "$id"; return 0; }
+    if [ -n "$id" ]; then _validate_marker "$id" && { printf '%s' "$id"; return 0; }; return 1; fi
   fi
   # ② 降级 awk：YAML frontmatter（首行 ---，前 15 行内闭合，dsh-codepunk: <id>）
   id="$(awk '
