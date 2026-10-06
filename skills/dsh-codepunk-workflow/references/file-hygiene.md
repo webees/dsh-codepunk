@@ -45,7 +45,7 @@
 1. **git clean 演练制度**：巡检先 `git clean -nd` 干跑（列出 backup/探索/scaffold/tmp 待删），人工确认后 `-fd`；未授权禁止 `git clean -f/-fd`、`reset --hard`、`stash drop`（破坏性拦截，T9）。
 2. **worktree 清理双判定**：`git branch --merged` + squash-merge 空 diff 判定（davila7 worktree-cleanup）；跳过有未提交/未推送工作的 worktree（T8）；运行时 `git worktree lock` 防并发误删；`worktrees/` 与产出目录进 .gitignore。
 3. **7 天保洁 loop**：陈旧分支/孤儿 worktree → 先 salvage 有价值未合并工作到 issue/新分支 → 再删（davila7 repo-cleanup-loop）；有停止条件。
-4. **保留期清扫**：临时/演示数据 7 天保留（**主会话 run-lead 巡检**执行清扫，不依赖各 agent 自觉；R555 措辞统一：流程中无「主会话 run-lead 巡检」席位，巡检是 run-lead 的职责）。
+4. **保留期清扫**：临时/演示数据 7 天保留（**主会话 run-lead 巡检**执行清扫，不依赖各 agent 自觉；措辞统一：流程中无「主会话 run-lead 巡检」席位，巡检是 run-lead 的职责）。
 
 ## 五、契约精简原则
 
