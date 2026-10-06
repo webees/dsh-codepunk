@@ -81,5 +81,9 @@ for (const f of files) {
     console.log(`✓ ${f.split('/').pop()}  (${src.split('\n').length} 行)`);
   }
 }
-console.log(failed ? `\n❌ ${failed} 个文件有语法错误` : '\n✅ 全部 PS 脚本语法通过');
+// F237：汇总须计入 `missing` —— 旧实现只看 `failed`，故「传入目录/全部不可读」时（failed=0、missing>0）
+//   会打印「✅ 全部 PS 脚本语法通过」而**退出码仍为 2** ⇒ 消息与退出码矛盾、且**零文件校验即恒真通过**。
+console.log(failed ? `\n❌ ${failed} 个文件有语法错误`
+  : (missing ? `\n✗ ${missing} 个文件未校验（读取失败或非文件）——无法核验 ≠ 通过`
+             : '\n✅ 全部 PS 脚本语法通过'));
 process.exit(missing ? 2 : (failed ? 1 : 0));

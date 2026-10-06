@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('121 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('122 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -587,6 +587,9 @@ score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言�
     FAILED=1
   fi
 }
+echo "[M122 ps-validate 目录/不可读输入须判「未校验」而非恒真通过（F237）]"
+check_rc "M122 目录参数 → ps-validate rc 2 且判「未校验」（非恒真通过）" "node plans/ps-validate.mjs plans/windows 2>&1" 2 "个文件未校验"
+
 echo "[M121 F2 源副本缺失须报不同步（F235）]"
 fresh
 for f in "$work/cur"/plans/*.sh; do
