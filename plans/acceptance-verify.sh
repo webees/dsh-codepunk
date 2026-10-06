@@ -44,6 +44,11 @@ DELIVERER="${2:-}"
 
 [ -f "$ACC" ] || { echo "❌ [fetch] acceptance 文件不存在: $ACC"; exit 2; }
 
+# F254：python3 不可用时下方断言体输出为空 ⇒ `grep -q verdict=PASS` 落空 ⇒ **rc=1 但零诊断**
+#   （违背本脚本「列出问题」契约；方向失败安全，但成因不可见）。统一前置为显式失败（2）。
+command -v python3 >/dev/null 2>&1 && python3 -c 'pass' 2>/dev/null \
+  || { echo "✗ python3 不可用（缺失或执行失败）——无法核验 ≠ 通过" >&2; exit 2; }
+
 ACC_OUT="$(mktemp "${TMPDIR:-/tmp}/acceptance_verify.XXXXXX")" || { echo "❌ 无法创建临时文件"; exit 2; }
 trap 'rm -f "$ACC_OUT"' EXIT
 python3 - "$ACC" "$DELIVERER" <<'PYEOF' > "$ACC_OUT" 2>&1
