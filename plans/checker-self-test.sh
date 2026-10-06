@@ -145,6 +145,25 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M110 class 3 术语咨询须「检出但不计失败」（F227）]"
+fresh
+printf '\n> 探针：本行裸用工作区一词。\n' >> "$work/cur/skills/dsh-codepunk-workflow/SKILL.md"
+mutate "SKILL 注入裸用「工作区」" "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" '裸用工作区一词'
+check_rc "M110 注入术语问题 → 仍须 rc 0（不计失败）" "bash plans/doc-consistency.sh" 0 ""
+check_contains "M110 术语咨询须真的检出（特异提示行出现）" "bash plans/doc-consistency.sh 2>&1" "裸用「工作区」"
+
+echo "[M111 class 6 头部自称项数须「提示但不计失败」（F227）]"
+fresh
+python3 - "$work/cur/plans/preset-compat.py" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+open(p, 'w', encoding='utf-8').write(s.replace('七项检查', '九项检查', 1))
+PYEOF
+mutate "preset-compat 头部自称改为九项检查" "$work/cur/plans/preset-compat.py" '九项检查'
+check_rc "M111 注入头部自称项数 → 仍须 rc 0（不计失败）" "bash plans/doc-consistency.sh" 0 ""
+check_contains "M111 头部自称项数须真的提示（特异提示行出现）" "bash plans/doc-consistency.sh 2>&1" "头部称「九项检查」"
+
 echo "[M107 审计分组计数声称被守护（F226）]"
 fresh
 python3 - "$work/cur/README.md" <<'PYEOF'
@@ -184,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('109 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('111 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
