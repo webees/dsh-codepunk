@@ -18,6 +18,7 @@ set -u
 SRC="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 [ -d "$SRC/plans" ] || { echo "✗ 预设根无效: $SRC" >&2; exit 2; }
 FAILED=0
+ASSERT_N=0     # F190：断言**实际执行**计数（与调用点数比对，防助手缺失致变异静默空转）
 MUTFAIL=0
 
 # 递归防护：若自身已在自检上下文内（如 M5 经电池再次触发本脚本），立即退出
@@ -59,6 +60,7 @@ mutate() {
 
 # check <标签> <命令> <必须出现的检查项名|BASELINE>
 check() {
+  ASSERT_N=$((ASSERT_N + 1))
   local label="$1" cmd="$2" marker="$3" rc=0 out
   out="$( cd "$work/cur" && eval "$cmd" 2>&1 )" || rc=1
   if [ "$marker" = "BASELINE" ]; then
@@ -91,6 +93,7 @@ mutate_gone() {
   fi
 }
 check_rc() {
+  ASSERT_N=$((ASSERT_N + 1))
   local label="$1" cmd="$2" want="$3" kw="${4:-}" rc=0 out
   out="$( cd "$work/cur" && eval "$cmd" 2>&1 )" || rc=$?
   if [ "$rc" = "$want" ] && { [ -z "$kw" ] || printf '%s' "$out" | grep -q -- "$kw"; }; then
@@ -104,6 +107,7 @@ check_rc() {
 
 # check_no_match <标签> <命令> <不得出现的模式>：断言命令输出**不含**该模式（防「守卫回显原文」类缺陷）
 check_no_match() {
+  ASSERT_N=$((ASSERT_N + 1))
   local label="$1" cmd="$2" pat="$3" rc=0 out
   out="$( cd "$work/cur" && eval "$cmd" 2>&1 )" || rc=$?
   if printf '%s' "$out" | grep -qF -- "$pat"; then
@@ -111,6 +115,18 @@ check_no_match() {
     FAILED=1
   else
     printf '  ✅ %s（退出码 %s，输出未回显原文）\n' "$label" "$rc"
+  fi
+}
+# F190：M78/M79 引用过本助手但**它当时不存在** → 断言静默空转、自检仍报「通过」= 自检自身的假通过
+check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
+  ASSERT_N=$((ASSERT_N + 1))
+  local label="$1" cmd="$2" want="$3" out rc=0
+  out="$( cd "$work/cur" && eval "$cmd" 2>&1 )" || rc=$?
+  if printf '%s' "$out" | grep -qF -- "$want"; then
+    printf '  ✅ %s\n' "$label"
+  else
+    printf '  ✗ %s（未含「%s」）\n' "$label" "$want"
+    FAILED=1
   fi
 }
 
