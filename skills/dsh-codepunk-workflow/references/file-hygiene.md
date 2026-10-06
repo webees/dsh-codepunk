@@ -3,7 +3,7 @@
 > dsh-codepunk 防「临时文件/残留」机制（D079）。骨架借鉴 alexzheng-unzen/agent-housekeeping（MIT）+ davila7/claude-code-templates（MIT）+ SoloDawn RB-37 强制门闩思路 + Claude Code 官方 tmp/清扫机制。溯源：`benchmarks/file-hygiene-skill.md`（19 来源）。
 > 定位：**防产生（开工契约）+ 及时清理（收尾自查）+ 强制门闩（解散前置）** 三层。
 
-## 一、开工卫生契约（小组开工必读，五条硬规则）
+## 一、开工卫生契约（小组开工必读，七条硬规则）
 
 1. **状态文件不进工程目录**：`.lock`/`.pid`/`.heartbeat` 等运行时状态只写 `$TMPDIR/dsh-codepunk/<task-id>/` 或工作房临时目录，**绝不出现在工程目录/总库项目目录**。
 2. **不主动造文档/脚手架**：未要求则不建 README/说明书/样板目录；产出物只进简报声明的产出路径。
