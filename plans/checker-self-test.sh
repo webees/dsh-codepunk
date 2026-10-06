@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('113 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('115 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -587,6 +587,16 @@ score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言�
     FAILED=1
   fi
 }
+echo "[M114/M115 audit A2 与 D3 正检可达（F229）]"
+fresh
+sed -i.bak 's/边界：/边界=/g' "$work/cur/agent.cordis.yml"
+mutate "persona 维度词「边界：」全部改名" "$work/cur/agent.cordis.yml" '边界='
+check_rc "M114 缺岗位维度 → A2 报 FAIL 0/11" "bash plans/preset-audit.sh 2>&1" 1 "A2 FAIL 0/11"
+fresh
+printf '\n> 探针：见 plans/preset-score.sh:123 的实现。\n' >> "$work/cur/README.md"
+mutate "README 注入裸行号引用" "$work/cur/README.md" 'preset-score.sh:123'
+check_rc "M115 裸行号引用 → D3 报缺符号名" "bash plans/preset-audit.sh 2>&1" 1 "D3 行号引用缺符号名"
+
 echo "[M112/M113 score A 组 A1/A3 扣分可达（F228）]"
 score_reason "M112 score A1 SKILL 缺阶段" \
   "sed -i.bak 's/需求确认/需求核定/g' '$work/cur/skills/dsh-codepunk-workflow/SKILL.md'" \
