@@ -132,6 +132,10 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M85 preset-score 缺 python3 时须给明确核验缺口（F194 修复存活）]"
+fresh
+check_contains "M85 缺 python3 分支存在（A5 无法核验扣分）" "grep -n 'command -v python3' plans/preset-score.sh" "command -v python3"
+
 echo "[M84 自检须含「未定义断言助手」守卫（F191 修复存活）]"
 fresh
 check_contains "M84 自检含未定义助手守卫" "grep -n UNKNOWN_HELPERS plans/checker-self-test.sh" "UNKNOWN_HELPERS"

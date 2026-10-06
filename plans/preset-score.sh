@@ -165,6 +165,9 @@ SZ=$(wc -c < "$SKILL" | tr -d ' ')
 # 成段重复检测：只算「实质段落」——按**字符**（非字节）≥60 且非结构行。
 #   理由：①各基准共用的小节标题/表格头属正常结构；②中文一行 30 字 ≈ 85 字节，
 #   按字节计会把短标语误判为长段落，故按字符计。
+# F194：缺 python3 时不得抛裸 `command not found`（会把**环境缺口**误报成质量缺陷），
+#   而应与套件其它工具一致地标注「无法核验 ≠ 通过」并给出扣分理由。
+if command -v python3 >/dev/null 2>&1; then
 DUPSEG=$(python3 - <<'PYEOF2'
 import glob, io
 seen = {}
@@ -182,6 +185,10 @@ dups = [k for k, v in seen.items() if v > 1]
 print(" ||| ".join(d[:70] for d in dups[:2]))
 PYEOF2
 )
+else
+  ded A5 15 "成段重复无法核验（缺 python3）——无法核验 ≠ 通过"
+  DUPSEG=""
+fi
 [ -n "$DUPSEG" ] && ded A5 15 "成段重复: $(echo "$DUPSEG" | head -1 | cut -c1-60)"
 
 # ── B6 一致性 ───────────────────────────────────────────────────────────────
