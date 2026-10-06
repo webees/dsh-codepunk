@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('118 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('119 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -587,6 +587,13 @@ score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言�
     FAILED=1
   fi
 }
+echo "[M119 B10 空 .gitattributes 须扣分（F233）]"
+MUT_GONE=1
+score_reason "M119 B10 .gitattributes 为空" \
+  ": > '$work/cur/.gitattributes'" \
+  "$work/cur/.gitattributes" 'eol=lf' '换行策略名存实亡'
+MUT_GONE=0
+
 echo "[M118 A7 缺配置须判「无法核验」（F232）]"
 fresh
 rm -f "$work/cur/agent.cordis.yml"

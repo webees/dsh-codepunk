@@ -266,7 +266,12 @@ grep -q "process.platform === 'win32'" agent.cordis.yml 2>/dev/null || ded B10 2
 grep -q "process.platform !== 'win32'" agent.cordis.yml 2>/dev/null || ded B10 20 "缺 POSIX shell 门控"
 NP=$(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' ')
 [ "$NP" -lt 4 ] && ded B10 20 "Windows 脚本仅 ${NP} 个（应 ≥4）"
-[ -f .gitattributes ] || ded B10 15 "缺 .gitattributes（换行策略）"
+# F233：原判据仅 `[ -f ]`（**存在性**）⇒ 空 `.gitattributes` 也算通过 —— 而该文件承载的「换行策略」是 README
+#   明确指向的跨平台不变量（第 370 轮曾实测：仓内统一 LF、ps1 检出 CRLF）。故加**非空 + 含 eol 规则**两项，并给出诚实理由。
+if [ ! -f .gitattributes ]; then ded B10 15 "缺 .gitattributes（换行策略）"
+elif [ ! -s .gitattributes ] || ! grep -q 'eol=' .gitattributes 2>/dev/null; then
+  ded B10 15 ".gitattributes 为空或未含任何 eol 规则（换行策略名存实亡）"
+fi
 # 硬编码用户绝对路径
 HARDP=$(git grep -nE "/Users/[a-z]+/|/home/[a-z]+/" -- plans/ '*.md' 2>/dev/null | grep -vE "例|示例|如 \`|/Users/\[" | head -2)
 [ -n "$HARDP" ] && ded B10 20 "硬编码用户绝对路径: $(echo "$HARDP" | head -1 | cut -c1-70)"
