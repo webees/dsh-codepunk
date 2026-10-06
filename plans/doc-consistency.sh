@@ -144,13 +144,16 @@ done
 
 echo "[5] 退出码契约"
 rc_bad=""
-for f in plans/*.sh; do
-  decl_line=$(grep -m1 -E '^#[[:space:]]*退出码' "$f" 2>/dev/null)   # 仅契约行（行首即「退出码」），避免散文提及误配
+# F187：覆盖面从 .sh 扩到 .py/.mjs（规则文本为「**运行型**脚本 MUST 声明退出码」，README 亦记载外层工具的码）；
+#   声明判定=**头部 30 行内的码表行**（同时含「退出码」与形如 `0=` 的码），兼容 `#` / JSDoc `*` / docstring 三种风格。
+for f in plans/*.sh plans/*.py plans/*.mjs; do
+  decl_line=$(head -30 "$f" 2>/dev/null | grep -m1E '退出码.*[0-9][[:space:]]*=')
   [ -n "$decl_line" ] || continue
   decl=$(printf '%s' "$decl_line" | grep -oE '[0-9][[:space:]]*=' | grep -oE '[0-9]' | sort -u | tr -d '\n')
   [ -n "$decl" ] || { na "$(basename "$f") 退出码行未解析出码"; continue; }
   missing=""
-  for c in $(grep -oE '\bexit [0-9]+' "$f" | grep -oE '[0-9]+' | sort -u); do
+  for c in $(grep -oE '\bexit [0-9]+|sys\.exit\([0-9]+\)|process\.exit\([0-9]+\)' "$f" | grep -oE '[0-9]+' | sort -u); do
+    [ -n "$c" ] || continue
     printf '%s' "$decl" | grep -q -- "$c" || missing="$missing$c"
   done
   [ -z "$missing" ] || rc_bad="$rc_bad $(basename "$f")(缺:$missing)"
@@ -159,11 +162,12 @@ done
 # 缺声明检测（F152）：**运行型**脚本 MUST 在头部声明退出码；纯 source/库脚本豁免。
 #   旧写法对无声明者 `|| continue` 静默跳过，「缺声明」分支实为空转。
 RC_UNDECL=""
-for f in plans/*.sh; do
+for f in plans/*.sh plans/*.py plans/*.mjs; do
   base=$(basename "$f")
   case "$base" in dsh-codepunk-home.sh) continue ;; esac        # 纯 source 的路径常量脚本，无退出码
-  grep -qE '^#[[:space:]]*退出码' "$f" 2>/dev/null && continue
-  grep -qE '\bsource\b|^\s*\.\s' "$f" 2>/dev/null && continue  # 库脚本（供 source）豁免
+  head -30 "$f" 2>/dev/null | grep -qE '退出码.*[0-9][[:space:]]*=' && continue   # F187：头部码表行即视为已声明
+  case "$f" in *.sh) grep -qE '\bsource\b|^\s*\.\s' "$f" 2>/dev/null && continue ;; esac  # F187：库脚本豁免**仅限 .sh**（.py/.mjs 里的 source 字样会误豁免）
+  grep -qE 'exit [0-9]|sys\.exit\(|process\.exit\(' "$f" 2>/dev/null || continue   # F187：非「运行型」（无显式退出调用）豁免
   RC_UNDECL="$RC_UNDECL $base"
 done
 [ -z "$RC_UNDECL" ] && ok "运行型脚本均声明了退出码" || bad "运行型脚本缺退出码声明:${RC_UNDECL}"

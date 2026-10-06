@@ -132,6 +132,28 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M82 运行型 mjs 缺退出码声明须被检出（F187 覆盖面）]"
+fresh
+python3 - "$work/cur/plans/ps-validate.mjs" <<'PYEOF'
+import sys
+p = sys.argv[1]
+keep = [l for l in open(p, encoding='utf-8').read().split('\n') if '退出码' not in l]
+open(p, 'w', encoding='utf-8').write('\n'.join(keep))
+print('MUTATED' if len(keep) else 'EMPTY')
+PYEOF
+check_rc "M82 抽掉 mjs 的码表行 → 报缺声明" "bash plans/doc-consistency.sh 2>&1" 1 "缺退出码声明"
+
+echo "[M83 对照：无退出调用的 py 抽掉声明行不应报缺（F187 豁免不得误伤）]"
+fresh
+python3 - "$work/cur/plans/preset-compat.py" <<'PYEOF'
+import sys
+p = sys.argv[1]
+keep = [l for l in open(p, encoding='utf-8').read().split('\n') if '退出码' not in l]
+open(p, 'w', encoding='utf-8').write('\n'.join(keep))
+print('MUTATED')
+PYEOF
+check_no_match "M83 非运行型 py 抽掉声明后不得报缺（豁免正确）" "bash plans/doc-consistency.sh 2>&1" "preset-compat.py"
+
 echo "== 检查器存活自检（变异测试） =="
 echo "预设根: $SRC"
 
