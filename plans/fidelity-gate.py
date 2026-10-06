@@ -153,8 +153,11 @@ def main():
             os.makedirs(_d, exist_ok=True)
         err = _write_snap(snap)
         if err:
+            # F286：写入失败属「用法/环境错误」⇒ 须与头注（:8）与用法输出（:133）声明的 **2** 一致。
+            #   旧实现 `return 3` 造成契约外的退出码（实测：`DSH_CODEPUNK_FIDELITY_SNAP=/System/x.json`
+            #   ⇒ rc=3），任何按 0/1/2 分支的调用方会把 3 当未知/崩溃。同族 F207 分支即用 2。
             print(f"✗ 快照写入失败: {SNAP}\n  {err}")
-            return 3
+            return 2
         tot = sum(len(v) for d in snap.values() for v in d.values())
         print(f"✓ 快照已存：{len(snap)} 文件，{tot:,} 个受保护 token")
         print(f"  {SNAP}")
