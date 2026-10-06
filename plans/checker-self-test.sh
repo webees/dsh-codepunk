@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('120 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('121 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -587,6 +587,15 @@ score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言�
     FAILED=1
   fi
 }
+echo "[M121 F2 源副本缺失须报不同步（F235）]"
+fresh
+for f in "$work/cur"/plans/*.sh; do
+  [ "$(basename "$f")" = preset-audit.sh ] || rm -f "$f"
+done
+rm -f "$work/cur"/plans/*.py "$work/cur"/plans/*.mjs
+mutate_gone "删除除 preset-audit 外的源副本脚本" "$work/cur/plans/preset-score.sh" 'ded A1'
+check_rc "M121 源副本缺失 → F2 报不同步（非恒真通过）" "bash plans/preset-audit.sh 2>&1" 1 "源副本缺失"
+
 echo "[M120 class 21 缺配置须判「无法核验」且不得抛 Traceback（F234）]"
 fresh
 rm -f "$work/cur/agent.cordis.yml"

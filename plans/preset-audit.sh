@@ -258,6 +258,15 @@ FSYNC=$(for p in plans/*.sh; do f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk
 # Windows 侧（plans/windows/*.ps1）与总库 scripts/ 同源对照
 WSYNC=$(for p in plans/windows/*.ps1; do [ -f "$p" ] || continue; f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "${f%.ps1}"; done)
 FSYNC="$(printf '%s %s' "$FSYNC" "$WSYNC" | tr -s ' ' ' ' | sed 's/^ *//; s/ *$//')"
+# F235：**源侧存在性守卫** —— 旧 F2 只对照「**已存在**」的源文件，故**删光源副本即恒真**
+#   （实测：`plans/` 仅剩 `preset-audit.sh` 时 F2 竟报「✅ plans↔scripts 同步」且审计总分 100/100）。
+#   此处反向核对：镜像中**带脚本扩展名**的文件（排除 `init` 安装的无扩展名 CLI 入口包装）必须在
+#   `plans/`（或 `plans/windows/`）有源副本，否则视为「源副本缺失」而失败。
+FSRC_MISS="$(for h in "$HOME"/.dsh-codepunk/scripts/*.sh "$HOME"/.dsh-codepunk/scripts/*.py "$HOME"/.dsh-codepunk/scripts/*.mjs; do
+  [ -f "$h" ] || continue; b="$(basename "$h")"
+  [ -f "plans/$b" ] || [ -f "plans/windows/$b" ] || echo "${b%.*}"
+done | tr '\n' ' ')"
+[ -n "${FSRC_MISS// /}" ] && FSYNC="$(printf '%s 源副本缺失: %s' "$FSYNC" "$FSRC_MISS" | sed 's/^ *//')"
 [ -z "$FSYNC" ] && report "$PASS" "F2 plans↔scripts 同步" || report "$FAIL" "F2 不同步: $FSYNC"
 
 echo
