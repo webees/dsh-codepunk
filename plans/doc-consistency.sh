@@ -107,17 +107,36 @@ else cmp_num "references" "$(ls "$REF"/*.md 2>/dev/null | wc -l | tr -d ' ')" "$
 if [ -z "$BM_CLAIM" ]; then bad "benchmarks：README 标签行未声明篇数（判据空转风险）"
 else cmp_num "benchmarks" "$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')" "$BM_CLAIM"; fi
 cmp_num "硬规则上限" "$(grep -oE '^\| R[0-9]+ ' "$SKILL" 2>/dev/null | grep -oE '[0-9]+' | sort -n | tail -1)" \
-        "$(grep -oE '硬规则 R1[–-]R[0-9]+' README.md 2>/dev/null | grep -oE '[0-9]+$' | head -1)"
+        "$(python3 -c '
+import re,sys
+# F193：多字节模式在 C locale 下会被 BSD grep 拒绝或按字节误配——改用 python（locale 无关）
+t=open("README.md",encoding="utf-8",errors="replace").read()
+m=re.search(r"硬规则 R1[\u2013-]R([0-9]+)", t)
+print(m.group(1) if m else "")
+')"
 cmp_num "自检变异项" "$(grep -oE 'M[0-9]+' plans/checker-self-test.sh | sort -u | wc -l | tr -d ' ')" \
         "$(grep -oE '\*\*[0-9]+ 项\*\*已知缺陷' README.md | head -1 | grep -oE '[0-9]+')"
 
 echo "[2] 阶段口径（六阶段）"
 P_README=$(awk '/^## 流程总览/,/^```/' README.md | grep -cE '^\| [1-6]️⃣')
-P_PRESET=$(grep -oE '[①②③④⑤⑥]' preset.yml | sort -u | wc -l | tr -d ' ')
+P_PRESET=$(python3 -c '
+# F193：多字节字符类在 C locale 下逐字节匹配 → 计数漂移（曾致 6/8/1 之类误报）
+marks="①②③④⑤⑥"
+t=open("preset.yml",encoding="utf-8",errors="replace").read()
+print(len({c for c in t if c in marks}))
+')
 # F175：stages.md 缺失时不抛 raw grep 噪声；置 0 由下方比较给出清晰结论
 P_STAGES=0
 if [ -f "$REF/stages.md" ]; then
-  P_STAGES=$(grep -oE '^## [①②③④⑤⑥]' "$REF/stages.md" | sort -u | wc -l | tr -d ' ')
+  P_STAGES=$(python3 -c '
+import sys
+marks="①②③④⑤⑥"
+seen=set()
+for l in open(sys.argv[1],encoding="utf-8",errors="replace"):
+    if l.startswith("## ") and len(l) > 3 and l[3] in marks:
+        seen.add(l[3])
+print(len(seen))
+' "$REF/stages.md")
 fi
 if [ "$P_README" = 6 ] && [ "$P_PRESET" = 6 ] && [ "$P_STAGES" = 6 ]; then
   ok "三处一致：README 表 ${P_README} / preset.yml ${P_PRESET} / stages.md 阶段号 ${P_STAGES}"
