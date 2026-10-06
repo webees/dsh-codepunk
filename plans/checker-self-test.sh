@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('122 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('123 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -598,6 +598,18 @@ done
 rm -f "$work/cur"/plans/*.py "$work/cur"/plans/*.mjs
 mutate_gone "删除除 preset-audit 外的源副本脚本" "$work/cur/plans/preset-score.sh" 'ded A1'
 check_rc "M121 源副本缺失 → F2 报不同步（非恒真通过）" "bash plans/preset-audit.sh 2>&1" 1 "源副本缺失"
+
+echo "[M123 坏根须给友好提示、不得泄漏 cd 原始错误（F239）]"
+fresh
+python3 - "$work/cur/plans/verify-battery.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = 'cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT"; exit 2; }'
+assert old in s, 'M123 变异目标串未找到'
+open(p, 'w', encoding='utf-8').write(s.replace(old, 'cd "$ROOT" 2>/dev/null || exit 2'))
+PYEOF
+check_rc "M123 battery 坏根缺提示 → class 20 须失败（非恒真通过）" "bash plans/doc-consistency.sh 2>&1" 1 "缺友好提示"
 
 echo "[M120 class 21 缺配置须判「无法核验」且不得抛 Traceback（F234）]"
 fresh
