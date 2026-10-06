@@ -56,6 +56,9 @@ case "$parse_ok" in
   skip) report "$FAIL" "A1 无法核验（无 ruby/node，无法解析 agent.cordis.yml）——无法核验 ≠ 通过（装 ruby 或 node 后重跑）" ;;
 esac
 # A2 岗位 6 维
+# F210：A2 计算依赖 python3 —— 缺失时不得让失败消息**为空**（实测缺 python3 时本项输出「[✗] A2 」
+#   即「失败却无原因」）。缺失时给出明确缺口说明，与套件「无法核验 ≠ 通过」口径一致。
+if command -v python3 >/dev/null 2>&1; then
 A2=$(python3 - <<'PYEOF'
 import re
 s=open("agent.cordis.yml").read()
@@ -64,7 +67,10 @@ ok=sum(1 for n in names if all(d in (re.search(r"tool-subagent-"+n+r".*?persona:
 print("OK" if ok==11 else f"FAIL {ok}/11")
 PYEOF
 )
-[ "$A2" = "OK" ] && report "$PASS" "A2 岗位 6 维 11/11" || report "$FAIL" "A2 $A2"
+else
+  A2="无法核验（缺 python3）——无法核验 ≠ 通过"
+fi
+[ "$A2" = "OK" ] && report "$PASS" "A2 岗位 6 维 11/11" || report "$FAIL" "A2 ${A2:-核验失败但未给出原因（疑似缺运行时）——无法核验 ≠ 通过}"
 # A3 无过期注释
 [ "$(grep -c 'str_replace' agent.cordis.yml)" -eq 0 ] && report "$PASS" "A3 无 str_replace 残留" || report "$FAIL" "A3 str_replace 残留"
 # A5 品牌卫生：如本仓库有改名历史，用 OLD_NAME 环境变量注入旧名做回归检查（默认跳过，不在仓库内硬编码旧名）
@@ -79,6 +85,9 @@ else
 fi
 
 # A7 配置不变量（机械守护核心契约：可恢复 / 工具面收口 / 岗位在位 / 可派遣）
+# F211：A7 依赖 python3；缺失时旧实现得到**空值** → 下一行 `[ -z "$A7" ]` 判为 **PASS**（**假通过**，
+#   实测缺 python3 时本项报 [✅]）。改为：缺失即给明确缺口说明，使该项按「无法核验 ≠ 通过」判失败。
+if command -v python3 >/dev/null 2>&1; then
 A7=$(python3 - <<'PYEOF'
 import re, sys
 s = open('agent.cordis.yml', encoding='utf-8').read()
@@ -112,6 +121,9 @@ if n_role < 13:
 print(' | '.join(bad))
 PYEOF
 )
+else
+  A7="无法核验（缺 python3）——无法核验 ≠ 通过"
+fi
 [ -z "$A7" ] && report "$PASS" "A7 配置不变量（可恢复/工具面收口/岗位在位/可派遣）" \
              || report "$FAIL" "A7 配置不变量违规: $A7"
 
@@ -182,7 +194,7 @@ for f in files:
             bad.append(f'{f}:{i}')
 print(' '.join(bad[:3]))
 PYEOF
-); D3_RC=$?
+) 2>/dev/null; D3_RC=$?
 if [ "$NOPY" = 1 ]; then
   :                                  # 上方已报「无法核验」，勿重复
 elif [ "${D3_RC:-1}" != 0 ]; then
@@ -224,7 +236,7 @@ for f in files:
         bad.append(f'{f} → {t}')
 print(' '.join(bad[:3]))
 PYEOF
-); E3_RC=$?
+) 2>/dev/null; E3_RC=$?
 if [ "$NOPY" = 1 ]; then
   :                                  # 上方已报「无法核验」，勿重复
 elif [ "${E3_RC:-1}" != 0 ]; then

@@ -145,6 +145,11 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M98 缺 python3 时 A7 不得假通过（F211 修复存活）]"
+fresh
+check_contains "M98 A7 含 python3 守卫" "grep -c 'A7=\"无法核验（缺 python3）' plans/preset-audit.sh" "1"
+check_contains "M98 A2 含 python3 守卫" "grep -c 'A2=\"无法核验（缺 python3）' plans/preset-audit.sh" "1"
+
 echo "[M97 缺运行时须判为环境缺口而非契约漂移（F209 修复存活）]"
 fresh
 check_contains "M97 probe_rc 含 rc126/127 自动缺口判定" "grep -c 'rc\" = 126' plans/doc-consistency.sh" "1"
