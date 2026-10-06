@@ -588,7 +588,7 @@ mutate "夹具注入绝对路径字面量" "$work/cur/plans/checker-self-test.sh
 check_rc "M27 夹具字面量 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "夹具含触发守卫的字面量"
 
 echo "[M28 评分扣分可达性（代表性子集：证明扣分路径真的会触发）]"
-# 背景（F133）：preset-score 有 37 个扣分点，此前仅 B10/B11 因一次事故被证明可达；
+# 背景（F133）：preset-score 有 **64** 个扣分点（F281：旧记 37/38 系未派生的陈旧数；派生= `grep -cE 'ded +[AB][0-9]+ +[0-9]+' plans/preset-score.sh`），此前仅 B10/B11 因一次事故被证明可达；
 #   其余 35 个缺可达性证据——若某分支永不可达，15/15 可能就是恒绿假象。
 #   此处对 6 个指标各注入一个定向缺陷，断言「评分不再是满分」且**命中该指标的具体理由**。
 score_reason() {  # score_reason <标签> <变异命令> <变异后进行断言的文件> <变异模式> <期望理由片段>
