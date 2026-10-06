@@ -11,14 +11,17 @@
 #     MUST 生成期可机器校验（必填字段齐、类型对、accepted_by 为数组）；
 #   artifacts.md「无此文件不得 dissolved」；
 #   stages.md ④：有下游 → 下游小队主责签；无下游 → docs-lead 签收；
-#     仅 docs-lead 不可用时才由 run-lead 自签，且 MUST 在 note 记原因。
+#     **签收方 MUST 独立于交付方**。F268：本文件旧头注曾写「仅 docs-lead 不可用时才由 run-lead 自签，
+#     且 MUST 在 note 记原因」，与实现（:116「自签」判据**一律 FAIL、不看 note**）不一致 ⇒ 现按实现与
+#     流程权威（artifacts.md:154／stages.md:52「无下游 → docs-lead」）改写：自签**无例外**。
 #
 # 断言：
 #   ① task_id 必填
 #   ② accepted_by 必填且为**数组**（至少 1 项；不能写成标量）
 #   ③ accepted_at 必填且可解析为 ISO 8601
-#   ④ 签收独立性：签收方不得等于交付方 task_id（自签）；若签收方为 run-lead/
-#      技术统筹（run-lead 兼任），则 note 必须非空（记明为何由 run-lead 自签）
+#   ④ 签收独立性：签收方不得等于**或包含**交付方 task_id —— **自签一律判不合规，与 note 无关**
+#      （F268：实现见 :116/:121，无例外分支）；签收方出现 run-lead/技术统筹（run-lead 兼任）字样
+#      且**非**自签时，note 必须非空（记明由 run-lead 签收的原因，:122/:123）
 #   ⑤ note 若出现「不可用/缺席」类表述但为空则告警（不判失败）
 # =============================================================================
 set -uo pipefail
