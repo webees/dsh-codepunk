@@ -158,6 +158,8 @@ pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
 
 换行策略见 `.gitattributes`：仓库内统一 LF，`.ps1` 检出为 CRLF。
 
+ℹ **输出标记约定（F223）**：`.ps1` 侧刻意以 ASCII `v` / `x` 代替 POSIX 侧的 `✓` / `✗`（如 `v 泄露防护门：通过…`、`Write-Error "x …"`），以减少 Windows 控制台/编码差异带来的风险 —— **请勿「顺手统一」为 `✓/✗`**。两栈各自内部自洽：POSIX 用 `✓/✗/ℹ`，Windows 用 `v/x`；退出码约定两栈一致（`0`=通过 / `1`=质量失败 / `2`=环境或用法错误）。
+
 ## 质量工具（可复跑）
 
 | 命令 | 作用 | 退出码 |
