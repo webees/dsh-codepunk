@@ -83,10 +83,14 @@ def _write_snap(obj):
             #   DSH_CODEPUNK_FIDELITY_SNAP 指到总库根或项目目录）时，该目录权限被**静默收紧为 0700**，
             #   属未声明副作用（实测：把总库置 500 后跑 snapshot 仍能写入——因为工具先把父目录改成 0700）。
             #   现仅对**本次新建**的目录收紧 0700；既有目录权限一律不动。
-            _existed = _os.path.isdir(d)
+            # F289+F291：**用户显式指定**的目录（env 覆盖）一律**不动其权限**（F289：旧实现无条件 chmod 0700
+            #   会静默收紧用户既有目录，如总库根/项目目录，并因此可穿透只读目录）；
+            #   而**默认位置**（<hub>/.fidelity/）属本工具的私有产物目录 ⇒ 仍确保 0700（F291：只按「是否新建」
+            #   判断会漏掉「目录已被更早步骤建好」的情形，实测得 0755，违背文档所声明的 0700 意图）。
             _os.makedirs(d, mode=0o700, exist_ok=True)
-            if (not _existed) and (_os.stat(d).st_mode & 0o777) != 0o700:
-                _os.chmod(d, 0o700)
+            if not _os.environ.get('DSH_CODEPUNK_FIDELITY_SNAP'):
+                if (_os.stat(d).st_mode & 0o777) != 0o700:
+                    _os.chmod(d, 0o700)
         fd = _os.open(SNAP, _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC | getattr(_os, 'O_NOFOLLOW', 0), 0o600)
         with _os.fdopen(fd, 'w', encoding='utf-8') as fh:
             json.dump(obj, fh, ensure_ascii=False, indent=1)
