@@ -332,7 +332,17 @@ else
   DATE_ISSUE=$(python3 - "$TODAY" <<'PYEOF'
 import re, subprocess, sys
 today = sys.argv[1]
-files = subprocess.run(['git', 'ls-files'], capture_output=True, text=True).stdout.split()
+# F299：非 git 工作区（或 git 不可用）时 `git ls-files` **静默返回空** ⇒ 本类空转却输出
+#   「✅ 无未来日期」= 假绿灯（与同脚本类 17 的「ℹ 非 git 工作区…无法核验≠通过」口径不一致）。
+#   改为：git 索引不可用即**回退文件系统遍历**（真核验，非跳过），并由 shell 侧 info 明示回退。
+r = subprocess.run(['git', 'ls-files'], capture_output=True, text=True)
+files = r.stdout.split() if r.returncode == 0 else []
+mode = 'git'
+if not files:
+    import glob
+    files = [f for f in glob.glob('**/*', recursive=True)
+             if f.endswith(('.md', '.yml')) and '/.git/' not in f and not f.startswith('.git/')]
+    mode = 'walk'
 files = [f for f in files if f.endswith(('.md', '.yml')) and '/benchmarks/' not in f]
 bad_form, future = [], []
 for f in files:
@@ -356,9 +366,11 @@ if future:
     out.append('未来日期: ' + ', '.join(future[:3]))
 if bad_form:
     out.append('非 ISO 形态: ' + ', '.join(bad_form[:3]))
-print('; '.join(out))
+print(mode + '|' + '; '.join(out))
 PYEOF
 )
+  DATE_MODE="${DATE_ISSUE%%|*}"; DATE_ISSUE="${DATE_ISSUE#*|}"
+  if [ "$DATE_MODE" = walk ]; then info "非 git 工作区：类 8 回退到文件系统遍历核验（已核验，非跳过）"; fi
   if [ -z "$DATE_ISSUE" ]; then ok "日期形态与新鲜度（ISO 形态；无未来日期；今日 ${TODAY}）"
   else bad "日期问题 → ${DATE_ISSUE}"; fi
 fi

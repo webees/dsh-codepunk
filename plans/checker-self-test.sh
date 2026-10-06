@@ -1439,6 +1439,15 @@ printf '\n| 甲 | 乙 | 丙 |\n| --- | --- |\n| 1 | 2 | 3 |\n' \
 mutate "追加表头与分隔行列数不等的表格" "$work/cur/skills/dsh-codepunk-workflow/references/standard.md" '甲'
 check_rc "M131 断表 → doc-consistency 失败" "bash plans/doc-consistency.sh 2>&1" 1 "表格结构异常"
 
+echo "[M132 非 git 工作区下类 8 须回退核验（F299：原实现 git ls-files 静默返空 ⇒ 空转却报「无未来日期」）]"
+fresh
+# 变异：删掉 .git 使 `git ls-files` 失败，并注入未来日期。修复前该场景 rc=0 且输出「✅ 无未来日期」（假绿灯）；
+#   修复后应回退文件系统遍历并把未来日期报出。
+rm -rf "$work/cur/.git"
+printf '\n日期形态示例：2099-01-01。\n' >> "$work/cur/README.md"
+mutate "非 git 工作区 + 注入未来日期" "$work/cur/README.md" '2099-01-01'
+check_rc "M132 非 git 回退核验 → 未来日期须报" "bash plans/doc-consistency.sh 2>&1" 1 "2099-01-01"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
