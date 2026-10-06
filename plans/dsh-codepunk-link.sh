@@ -533,6 +533,25 @@ EOF
   done
   trap "rmdir \"$DSH_LOCKDIR\" 2>/dev/null" EXIT INT TERM   # 路径**此刻展开**（代入字面量），不依赖退出时变量存在
 
+  # F246（low/medium）：**同键并发**时两进程各自通过上面的**锁外**存在性检查，随后在锁内各追加一条
+  #   ⇒ INDEX 出现两条同 id 条目、且双方均回显「已注册」（实测 rcs=0,0、重复 2 行）。F244 的锁只挡
+  #   「丢更新」，不挡「同键重复」。⇒ 取锁后以**同一判据**复检一次；命中则按既定语义「已存在，不覆盖」
+  #   返回 1（锁由上面的 EXIT trap 释放）。
+  local r2 pid2 root2
+  while IFS= read -r r2; do
+    [ -n "$r2" ] || continue
+    pid2="$(_entry_get "$r2" project_id)"
+    root2="$(_entry_get "$r2" root)"
+    if [ "$pid2" = "$id" ]; then
+      printf '%s: 已存在，不覆盖: project_id=%s 已在 INDEX.yaml（追加语义）\n' "$SCRIPT_NAME" "$id" >&2
+      return 1
+    fi
+    if [ -n "$root2" ] && [ "$(_norm_path "$root2")" = "$target" ]; then
+      printf '%s: 已存在，不覆盖: project_root=%s 已在 INDEX.yaml（追加语义）\n' "$SCRIPT_NAME" "$target" >&2
+      return 1
+    fi
+  done <<< "$(_parse_index_entries "$DSH_CODEPUNK_INDEX")"
+
   # 写入前备份（人设：INDEX 写入先备份字段结构），追加后校验新条目
   local bak ts
   ts="$(date '+%Y-%m-%dT%H:%M:%S%z')"
