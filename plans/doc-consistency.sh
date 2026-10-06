@@ -97,9 +97,9 @@ cmp_claims_all() { # 标签 实况 模式 文件
 }
 
 cmp_num() {
-  if [ -z "$3" ]; then bad "$1：README 未声明计数（实际 $2）"
+  if [ -z "$3" ]; then bad "$1：文档未声明计数（实际 $2）"
   elif [ "$2" = "$3" ]; then ok "$1 实际 $2 = 声称 $3"
-  else bad "$1 实际 $2，README 声称 $3"; fi
+  else bad "$1 实际 $2，文档声称 $3"; fi
 }
 cmp_claims_all "评分指标" "$(grep -cE '^# ── [AB][0-9]+ ' plans/preset-score.sh)" \
                 '[0-9]+ 指标' README.md
@@ -133,6 +133,10 @@ cmp_num "自检变异项" "$(grep -oE 'M[0-9]+' plans/checker-self-test.sh | sor
 #   判据：以**实现**为准（脚本的编号项 `# N)`），与 README 该行标签后的「（**N 项**」比对；锚定「完整验证电池」以免误取他行。
 cmp_num "验证电池项数" "$(grep -cE '^# [0-9]+\)' plans/verify-battery.sh)" \
         "$(grep -oE '完整验证电池（\*\*[0-9]+ 项\*\*' README.md | grep -oE '[0-9]+')"
+# F241：治理表曾称 class 20 为「9 条探针」，而实现（第 465 轮扩项后）为 19 条 ⇒ 陈旧计数（与 F240/F238 同族）。
+#   判据：实现侧派生（`probe_rc`/`probe_msg` 调用数）↔ `skill-governance.md` 治理表声称的「**N 条探针**」。
+cmp_num "治理表探针数" "$(grep -cE '^probe_rc |^probe_msg ' plans/doc-consistency.sh)" \
+        "$(grep -oE '\*\*[0-9]+ 条探针\*\*' skills/dsh-codepunk-workflow/references/skill-governance.md | grep -oE '[0-9]+')"
 
 echo "[2] 阶段口径（六阶段）"
 P_README=$(awk '/^## 流程总览/,/^```/' README.md | grep -cE '^\| [1-6]️⃣')

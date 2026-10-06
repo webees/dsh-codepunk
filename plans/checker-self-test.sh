@@ -203,7 +203,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('124 项**已知缺陷', '105 项**已知缺陷', 1)
+n = s.replace('125 项**已知缺陷', '105 项**已知缺陷', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 变异项声称改为 105" "$work/cur/README.md" '105 项'
@@ -598,6 +598,19 @@ done
 rm -f "$work/cur"/plans/*.py "$work/cur"/plans/*.mjs
 mutate_gone "删除除 preset-audit 外的源副本脚本" "$work/cur/plans/preset-score.sh" 'ded A1'
 check_rc "M121 源副本缺失 → F2 报不同步（非恒真通过）" "bash plans/preset-audit.sh 2>&1" 1 "源副本缺失"
+
+echo "[M125 治理表 class 20 探针数须与实现一致（F241）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '**19 条探针**'
+# 注意：本目标串随 class 20 探针数变化而失效（同 M106/M124 的陈旧陷阱）——增删探针时须同步此处。
+assert old in s, 'M125 变异目标串未找到'
+open(p, 'w', encoding='utf-8').write(s.replace(old, '**9 条探针**', 1))
+PYEOF
+check_rc "M125 篡改治理表探针数声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "治理表探针数"
 
 echo "[M124 README 电池项数声称须与实现一致（F240）]"
 fresh
