@@ -145,6 +145,17 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+echo "[M92 A5 成段重复扣分可达（15 指标全覆盖收口）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" <<'PYEOF'
+import sys
+dup = "这是一段用于探针的重复长句：它足够长以便超过六十字符阈值，并且不以特殊字符开头，重复出现应当被检测为成段重复；此处再补足若干字符以确保长度明显超过阈值。"
+p = sys.argv[1]
+open(p, "a", encoding="utf-8").write("\n" + "\n".join([dup] * 4) + "\n")
+print("MUTATED")
+PYEOF
+check_rc "M92 注入成段重复 → A5 扣分" "bash plans/preset-score.sh 2>&1" 1 "成段重复"
+
 echo "[M91 空 SKILL 下审计不得满分（F201 修复存活）]"
 fresh
 : > "$work/cur/skills/dsh-codepunk-workflow/SKILL.md"
