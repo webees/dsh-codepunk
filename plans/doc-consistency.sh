@@ -47,7 +47,14 @@
 #      retries 扣分与上限、handoff 缺件扣分、巡检周期、收口轮数、证据门退出码；
 #      另含「分支保护必需检查名」：`plans/github-setup.sh` 的 `CHECK_CONTEXTS` ↔
 #      `.github/workflows/ci.yml` 的作业 `name` ↔ `docs/maintenance.md` 的提及——
-#      ruleset 按**上下文名**匹配，作业改名后该检查永不出现 ⇒ PR 永久阻塞且无门禁可见；F347 实证）
+#      ruleset 按**上下文名**匹配，作业改名后该检查永不出现 ⇒ PR 永久阻塞且无门禁可见；F347 实证；
+#      另含「必需检查的文档声称 ↔ 作业实际执行」：`CONTRIBUTING.md` 门禁表给出的可执行等价命令
+#      必须真被该作业执行、声称覆盖 Windows 侧则该作业须触及 ps1、指向电池项则电池须有该项——
+#      实测（修复前）「跨平台可移植」声称 Windows 侧对等 + 电池「跨平台项」，两者皆不成立；F354 实证；
+#      另含「Dependabot 声明 ↔ 仓库与治理脚本」：声明的生态须有对应清单（否则该条目恒不产出 PR）、
+#      `labels` 引用的标签须由 `plans/github-setup.sh` 幂等创建（否则该字段静默失效）、
+#      `docs/maintenance.md` 的生态清单须与声明一致——实测（修复前）声明 `pip` 而仓库无任何 pip 清单且
+#      文档声称巡检该生态；本轮巡检实证）
 #
 # 计数一律**静态**取（不实跑子工具，避免环境依赖与递归）。
 # 用法: doc-consistency.sh [预设根]
@@ -393,6 +400,124 @@ if [ -f plans/github-setup.sh ] && [ -f "$CI_YML" ]; then
   fi
 else
   info "必需检查名核验跳过（缺 plans/github-setup.sh 或 ${CI_YML}）——无法核验≠通过"
+fi
+
+# 必需检查的「文档声称 ↔ 作业实际执行」（F354）：
+# CONTRIBUTING.md 的 CI 门禁表逐行声明每个必需检查的「覆盖内容 / 等价本地命令」。若文档给出可执行的
+# 等价命令，它必须**真的**被该作业执行；若声称覆盖 Windows 侧，该作业段内必须出现 ps1 路径；若指向
+# 电池的某一项，电池项标题内必须有该词。实测（修复前）：「跨平台可移植」声称覆盖 Windows 侧对等性、
+# 等价命令写作电池的「跨平台项」——而该作业只扫 plans/*.sh、电池并无此项 ⇒ 读者会以为平台对等有机械
+# 守护，实际只有人工公约。判据只看**正向**声称：不带 runner 动词的纯路径提及（如「近似项见 …」）不计。
+if [ -f CONTRIBUTING.md ] && [ -f "$CI_YML" ]; then
+  CONTRIB_ISSUE=$(python3 <<'PYEOF'
+import io, os, re, sys
+try:
+    ci = io.open('.github/workflows/ci.yml', encoding='utf-8').read()
+    co = io.open('CONTRIBUTING.md', encoding='utf-8').read()
+    bat = io.open('plans/verify-battery.sh', encoding='utf-8').read()
+except OSError as e:
+    print('无法读取（%s）' % e); sys.exit(0)
+ms = list(re.finditer(r'^  ([a-z][a-z0-9-]*):\s*$', ci, re.M))
+jobs = {}
+for i, m in enumerate(ms):
+    end = ms[i + 1].start() if i + 1 < len(ms) else len(ci)
+    jobs[m.group(1)] = ci[m.end():end]
+name2job = {}
+for j, body in jobs.items():
+    nm = re.search(r'^\s+name:\s*(.+?)\s*$', body, re.M)
+    if nm:
+        name2job[nm.group(1).strip()] = j
+titles = ' '.join(t for _, t in re.findall(r'^# ([0-9]+[a-c]?)\) (.+)$', bat, re.M))
+sec = co.split('### 5.2 CI 门禁', 1)
+if len(sec) < 2:
+    print('CONTRIBUTING.md 缺「### 5.2 CI 门禁」小节'); sys.exit(0)
+issues = []
+for line in sec[1].split('\n'):
+    m = re.match(r'^\|\s*`([^`]+)`\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*$', line)
+    if not m:
+        continue
+    name, cover, local = m.group(1), m.group(2), m.group(3)
+    if name not in name2job:
+        continue
+    body = jobs[name2job[name]]
+    for cmd in re.findall(r'`(?:bash|python3|node)\s+(plans/[A-Za-z0-9_.-]+)`', local):
+        if not os.path.exists(cmd):
+            issues.append('%s 等价命令 %s 不存在' % (name, cmd))
+        elif cmd not in body:
+            issues.append('%s 声称等价命令 %s，而作业 %s 段内未执行它' % (name, cmd, name2job[name]))
+    if 'Windows' in cover and 'plans/windows' not in body and '.ps1' not in body:
+        issues.append('%s 声称覆盖 Windows 侧，而作业 %s 段内无任何 ps1 路径' % (name, name2job[name]))
+    for item in re.findall(r'verify-battery\.sh`?\s*的\s*[`「]?([^`」）|]{2,12})[`」]?\s*项', local):
+        if item.strip() and item.strip() not in titles:
+            issues.append('%s 指向电池的「%s」项，而电池项标题内无该词' % (name, item.strip()))
+print('；'.join(issues[:4]) + ('' if len(issues) <= 4 else ' 等共 %d 项' % len(issues)))
+PYEOF
+)
+  if [ -z "$CONTRIB_ISSUE" ]; then
+    ok "CONTRIBUTING 的 CI 门禁表与工作流实际执行相符（等价命令存在且被该作业执行；未声称不存在的覆盖）"
+  else
+    bad "CI 门禁表与实现不符：${CONTRIB_ISSUE}"
+  fi
+else
+  info "CI 门禁表核验跳过（缺 CONTRIBUTING.md 或 ${CI_YML}）——无法核验≠通过"
+fi
+
+# Dependabot 声明 ↔ 仓库与治理脚本（本轮巡检实测）：
+# `.github/dependabot.yml` 声明的每个生态（package-ecosystem）必须在仓库内有对应清单——声明而无清单的
+# 条目恒不产出 PR（静默空转，实测：曾声明 `pip` 而仓库无任何 pip 清单、`plans/*.py` 仅用标准库）；
+# 每个 `labels` 引用的标签必须由 `plans/github-setup.sh` 幂等创建——标签不存在时该字段静默失效；
+# 且 `docs/maintenance.md` 的生态清单须与声明一致（文档不得声称不存在的巡检）。
+if [ -f .github/dependabot.yml ] && [ -f plans/github-setup.sh ]; then
+  DEP_ISSUE=$(python3 <<'PYEOF'
+import io, os, re, sys
+try:
+    dep = io.open('.github/dependabot.yml', encoding='utf-8').read()
+    gs = io.open('plans/github-setup.sh', encoding='utf-8').read()
+except OSError as e:
+    print('无法读取（%s）' % e); sys.exit(0)
+md = ''
+if os.path.exists('docs/maintenance.md'):
+    md = io.open('docs/maintenance.md', encoding='utf-8').read()
+issues = []
+ecos = re.findall(r'package-ecosystem:\s*([A-Za-z0-9_-]+)', dep)
+PIP = ['requirements.txt', 'requirements-dev.txt', 'pyproject.toml', 'setup.py', 'setup.cfg', 'Pipfile', 'poetry.lock', 'uv.lock']
+NPM = ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock']
+for eco in sorted(set(ecos)):
+    if eco == 'github-actions':
+        d = '.github/workflows'
+        found = os.path.isdir(d) and any(f.endswith(('.yml', '.yaml')) for f in os.listdir(d))
+    elif eco == 'pip':
+        found = any(os.path.exists(p) for p in PIP)
+    elif eco == 'npm':
+        found = any(os.path.exists(p) for p in NPM)
+    elif eco == 'docker':
+        found = any(os.path.exists(p) for p in ['Dockerfile', 'docker-compose.yml'])
+    else:
+        issues.append('生态 %s 未在判据内登记清单形态（无法核验 ≠ 通过）' % eco)
+        continue
+    if not found:
+        issues.append('声明生态 %s 但仓库无对应清单（该条目恒不产出 PR）' % eco)
+labels = []
+for m in re.finditer(r'^([ \t]*)labels:[ \t]*\n((?:[ \t]+-[^\n]*\n)+)', dep, re.M):
+    labels += re.findall(r'-[ \t]*([A-Za-z0-9_.-]+)', m.group(2))
+for lab in sorted(set(labels)):
+    if '"%s"' % lab not in gs:
+        issues.append('标签「%s」未被 plans/github-setup.sh 创建（标签不存在时 labels 字段静默失效）' % lab)
+if md:
+    for eco in sorted(set(ecos)):
+        if eco not in md:
+            issues.append('docs/maintenance.md 未提及声明的生态 %s' % eco)
+if issues:
+    print(', '.join(issues[:4]) + ('' if len(issues) <= 4 else ' 等共 %d 处' % len(issues)))
+PYEOF
+)
+  if [ -z "$DEP_ISSUE" ]; then
+    ok "Dependabot 声明自洽（每个生态有对应清单；每个标签由 plans/github-setup.sh 幂等创建；docs/maintenance.md 与声明一致）"
+  else
+    bad "Dependabot 配置与仓库/治理脚本不符 → ${DEP_ISSUE}"
+  fi
+else
+  info "Dependabot 配置核验跳过（缺 .github/dependabot.yml 或 plans/github-setup.sh）——无法核验≠通过"
 fi
 
 echo "[8] 日期形态与未来日期"

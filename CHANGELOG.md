@@ -18,6 +18,27 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **Dependabot 声明的生态无对应清单（静默空转）**：`.github/dependabot.yml` 声明 `pip` 生态，而仓库
+  没有任何 pip 清单（`plans/*.py` 仅用标准库，`git ls-files` 无 requirements/pyproject/setup/Pipfile/lock），
+  该条目**恒不产出 PR**；`docs/maintenance.md` 还声称「每周一巡检 `github-actions` 与 `pip` 两个生态」。
+  已删除 pip 条目（只声明仓库真实存在的生态）并更正文档，新增 `plans/doc-consistency.sh` 第 7 类的
+  Dependabot 子项（声明的生态须有对应清单；`labels` 引用的标签须由 `plans/github-setup.sh` 幂等创建；
+  维护文档的生态清单须与声明一致）+ 永久存活变异（M160）。
+- **Dependabot PR 标签 `dependencies` 不存在**：两条条目声明 `labels: [dependencies]`，而仓库标签集里
+  没有该标签（同判据对 `automerge` 判存在）⇒ 该字段静默失效、5 个历史 Dependabot PR 的 labels 全为空。
+  已按既有约定（自动化引用的标签由治理脚本创建）在 `plans/github-setup.sh` 增加幂等创建步骤（步骤 ⑤）。
+- **`Makefile` 自述与 CI 关系不符**：头部称「本地与 CI（Ubuntu）用同一条命令复跑」，而 `.github/workflows/ci.yml`
+  全文无 `make` 调用（四个作业各自直调 `plans/` 脚本，并有 Makefile 没有的步骤：`bash -n`、`py_compile`、
+  shellcheck、可执行位与移植性扫描）；`make gates` 与 CI 的「门禁回归」也不等价，`make write-scope`
+  实参窄于 CI（缺假 HOME 的 `--home`）。已改为实测口径的描述，并写明「以 CI 结论为准」。
+- **CI 门禁表与实际执行不符**：`CONTRIBUTING.md` 的「CI 门禁」表把必需检查 `跨平台可移植` 描述为
+  「POSIX 与 Windows 两侧实现的对等性」并指向 `verify-battery.sh` 的「跨平台项」——该作业实际只扫描
+  `plans/*.sh` 的可执行代码（GNU/BSD 专有写法、CRLF、TAB 缩进）与可执行位，既不看 `plans/windows/*.ps1`，
+  电池也没有「跨平台」项 ⇒ 平台对等实为人工公约，读者却以为有机械守护。已改为与实现相符的描述，并在
+  `plans/doc-consistency.sh` 新增「必需检查的文档声称 ↔ 作业实际执行」子项 + 永久存活变异（M159）。
+
 ### 新增
 
 - **写盘纪律三层强制（硬规则 R17）**：机械门 + 硬规则 + 岗位写域三者同时生效，规定 AI 写入的优先序——运行根 → 授权工作树内该任务的写集路径 → 系统临时目录（次选，用毕即删）→ 总库 `knowledge/`；探针脚本一律落运行根 `logs/`；越界即缺陷并当轮清理。细则见 `skills/dsh-codepunk-workflow/references/file-hygiene.md` 与 `references/roles.md`。

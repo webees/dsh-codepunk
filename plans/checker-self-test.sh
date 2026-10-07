@@ -1953,6 +1953,82 @@ else
     "STUB_INDEX=date PATH='$farm_noruby' DSH_CODEPUNK_TOOLS='$work/m157tools' DSH_CODEPUNK_INDEX='$work/m158/INDEX.yaml' bash plans/dsh-codepunk-link.sh index 2>&1 | grep -qF 'last_updated 须为标量'" 0
 fi
 
+echo "[M159 必需检查的「文档声称 ↔ 作业实际执行」（F354）]"
+# 守护点：doc-consistency.sh 的「CI 门禁表」子项。CONTRIBUTING 的门禁表若给出可执行等价命令，
+# 该命令必须真被对应作业执行；声称覆盖 Windows 侧则作业段内须有 ps1 路径；指向电池项则电池须有该项。
+# 本机可跑（纯文本判据，无外部依赖）。
+fresh
+sed -i.bak 's#\*\*不核验\*\* sh↔ps1 平台对等#POSIX 与 Windows 两侧实现的对等性#' "$work/cur/CONTRIBUTING.md"
+rm -f "$work/cur/CONTRIBUTING.md.bak"
+mutate "M159-a 门禁表声称覆盖 Windows 侧对等（旧文案）" \
+  "$work/cur/CONTRIBUTING.md" 'POSIX 与 Windows 两侧实现的对等性'
+check_rc "M159-a 旧声称须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF 'CI 门禁表与实现不符'" 0
+check_rc "M159-a2 旧声称须给出具体不一致点" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '声称覆盖 Windows 侧，而作业 portability 段内无任何 ps1 路径'" 0
+
+fresh
+sed -i.bak 's#`bash plans/doc-consistency.sh`#`bash plans/no-such-check.sh`#' "$work/cur/CONTRIBUTING.md"
+rm -f "$work/cur/CONTRIBUTING.md.bak"
+mutate "M159-b 门禁表等价命令改为不存在的脚本" \
+  "$work/cur/CONTRIBUTING.md" 'plans/no-such-check\.sh'
+check_rc "M159-b 不存在的等价命令须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '等价命令 plans/no-such-check.sh 不存在'" 0
+
+fresh
+sed -i.bak 's#的 B10 跨平台性 |#的 B10 跨平台性；另见 `bash plans/verify-battery.sh` 的「跨平台」项 |#' "$work/cur/CONTRIBUTING.md"
+rm -f "$work/cur/CONTRIBUTING.md.bak"
+mutate "M159-c 门禁表指向电池不存在的项" \
+  "$work/cur/CONTRIBUTING.md" '另见 `bash plans/verify-battery\.sh` 的「跨平台」项'
+check_rc "M159-c 电池不存在的项须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '指向电池的「跨平台」项'" 0
+
+fresh
+sed -i.bak 's/CI 门禁表与实现不符/（判据已移除）/' "$work/cur/plans/doc-consistency.sh"
+rm -f "$work/cur/plans/doc-consistency.sh.bak"
+mutate "M159-d 抹掉 F354 判据的消息串" \
+  "$work/cur/plans/doc-consistency.sh" '（判据已移除）'
+sed -i.bak 's#的 B10 跨平台性 |#的 B10 跨平台性；另见 `bash plans/verify-battery.sh` 的「跨平台」项 |#' "$work/cur/CONTRIBUTING.md"
+rm -f "$work/cur/CONTRIBUTING.md.bak"
+check_no_match "M159-d 判据被抹掉 → 不得再报该消息（断言非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "CI 门禁表与实现不符"
+
+echo "[M160 Dependabot 声明 ↔ 仓库与治理脚本（本轮巡检实测）]"
+# 守护点：doc-consistency.sh 第 7 类的 Dependabot 子项。声明的生态须有对应清单（否则条目恒不产出 PR）、
+# labels 引用的标签须由 plans/github-setup.sh 幂等创建（否则字段静默失效）、维护文档的生态清单须与声明一致。
+# 本机可跑（纯文本判据，无外部依赖）。
+fresh
+printf '  - package-ecosystem: pip\n' >> "$work/cur/.github/dependabot.yml"
+mutate "M160-a 重新声明 pip 生态（仓库无 pip 清单）" \
+  "$work/cur/.github/dependabot.yml" 'package-ecosystem: pip'
+check_rc "M160-a 声明生态无清单须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '声明生态 pip 但仓库无对应清单'" 0
+
+fresh
+sed -i.bak 's/^      - dependencies$/      - deps-not-governed/' "$work/cur/.github/dependabot.yml"
+rm -f "$work/cur/.github/dependabot.yml.bak"
+mutate "M160-b labels 引用治理脚本未创建的标签" \
+  "$work/cur/.github/dependabot.yml" 'deps-not-governed'
+check_rc "M160-b 未受治理的标签须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '未被 plans/github-setup.sh 创建'" 0
+
+fresh
+sed -i.bak 's/github-actions/gh-actions/' "$work/cur/docs/maintenance.md"
+rm -f "$work/cur/docs/maintenance.md.bak"
+mutate "M160-c 维护文档的生态清单与声明不符" \
+  "$work/cur/docs/maintenance.md" 'gh-actions'
+check_rc "M160-c 文档未提及声明生态须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '未提及声明的生态'" 0
+
+fresh
+sed -i.bak 's#Dependabot 配置与仓库/治理脚本不符#（判据已移除）#' "$work/cur/plans/doc-consistency.sh"
+rm -f "$work/cur/plans/doc-consistency.sh.bak"
+mutate "M160-d 抹掉 Dependabot 判据的消息串" \
+  "$work/cur/plans/doc-consistency.sh" '（判据已移除）'
+printf '  - package-ecosystem: pip\n' >> "$work/cur/.github/dependabot.yml"
+check_no_match "M160-d 判据被抹掉 → 不得再报该消息（断言非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "Dependabot 配置与仓库/治理脚本不符"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
