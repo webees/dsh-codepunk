@@ -8,7 +8,7 @@
 |---|---|---|
 | DSH 版本 | ≥ 0.1.7 的注册模型 | 0.1.7 起 `dsh-agent-preset-registry` **不再扫描**预设目录，自定义预设必须经声明行注入 profile |
 | 实测基线 | 应用 2.0.17 / CLI 包 0.2.0-rc.2 | 两套版本号独立，勿互相推断；取值命令见 §6 |
-| node | 用于 `preset-declare.mjs`（生成 / 校验声明块） | 缺 js-yaml 时 `check` 降级为行内容比对 |
+| node | 用于 `preset-declare.mjs`（生成 / 校验声明块） | 缺 js-yaml 时 `check` 降级为行内容比对；`apply` 在降级模式仍拒答不兼容根结构（按首个有效行做文本判定）与含 `---`/`...` 文档分隔符的补丁 |
 | python3 | 用于兼容核验与多数门禁 | 缺失时相关检查报「无法核验」，不得当作通过 |
 | 平台 | macOS / Linux（bash）/ Windows（pwsh） | Windows 侧经 `plans/windows/*.ps1` 覆盖核心脚本 |
 

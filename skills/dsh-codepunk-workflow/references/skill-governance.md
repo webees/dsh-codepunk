@@ -181,6 +181,7 @@
 | **散落根判据与默认根解析**（`verify-worktree.sh`：只有与本主仓库共享 git 目录的散落 worktree 判 FAIL，散落根内其它 git 仓库只报 INFO；默认根顺序 `SCAN_ROOT` > `DSH_CODEPUNK_WORKTREES` > `DESKTOP` > 桌面候选。F345 实证：旧实现把开发机桌面上的无关仓库一律判 FAIL，而文档化落点从不被扫描） | `checker-self-test.sh` M151（四断言：无关仓库 ⇒ rc=0 且含「不计 FAIL」/ 主仓克隆 ⇒ 同上 / 真散落 worktree ⇒ rc=1 / 未设 `SCAN_ROOT` ⇒ 优先扫总库 `worktrees/`） | 机械（变异） |
 | **INDEX 序列缩进风格容忍与保持**（`link.sh`：`projects:` 下顶格序列项（`- project_id: …`）与 `---`/`...` 文档标记不得被当「未知顶层键」；追加条目沿用既有缩进，否则产出非法 YAML 被回滚；真未知顶层键仍失败。F346 实证：真总库 24 条目顶格 ⇒ `index`/`register` 双双 rc=1，登记链整体失效且提示「从备份恢复」为误导） | `checker-self-test.sh` M152（五断言：顶格 ⇒ `index` rc=0 / `register` rc=0 / 追加沿用顶格 / 追加后条目齐 / 真未知顶层键 ⇒ rc=1） | 机械（变异） |
 | **分支保护必需检查名三方一致**（`plans/github-setup.sh` 的 `CHECK_CONTEXTS` ↔ `.github/workflows/ci.yml` 各作业 `name` ↔ `docs/maintenance.md` 的提及。ruleset 按上下文名匹配，改名后该检查永不出现 ⇒ PR 永久阻塞；F347 实证：四作业名各加 `-v2` 时四门禁仍全绿） | `doc-consistency.sh` 第 7 类子项 | 机械（变异 M153，两断言：改名 ⇒ rc=1 且缺/多同报；文档漏提 ⇒ 不得报「一致」） |
+| **声明应用的根结构前提与产物可解析性**（`preset-declare.mjs`：profile patch 的根 MUST 为序列（`- id: …` / `- insert: …`）——根为映射时追加 `- insert:` 项会让顶层混用映射与序列 ⇒ 产出非法 YAML；写出后 MUST 用同一解析器复核产物，不合规则回滚并以 2 拒答；缺 js-yaml 的降级模式按首个有效行做文本判定，并对含 `---`/`...` 文档分隔符的补丁拒答。F349 实证：旧实现只校验「输入能否解析」，映射根补丁被追加后报「✅ 生效」而产物 `YAML_FAIL (14:1)`） | `checker-self-test.sh` M155（六断言：映射根 ⇒ rc=2 且文件与备份均未变 / 含 `...` ⇒ rc=2 且不留半成品 / 序列根 ⇒ rc=0 不回归 / 判据移除 ⇒ 不得再报该消息） | 机械（变异） |
 | **日期时效性**（文档内实测结论是否已过期） | 无 | 人工 |
 | 需求/流程自洽（阶段归属、汇报链、责任席位是否有人） | 部分（A7/结构检查） | 半人工 |
 

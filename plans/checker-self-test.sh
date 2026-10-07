@@ -1848,6 +1848,33 @@ mutate "副本内移除包含性判据的提示串" "$work/cur/plans/evidence-ve
 check_no_match "M154-c 判据被移除后不得仍报「指向交付目录之外」（断言非空转）" \
   "bash plans/evidence-verify.sh '$f348_d/evidence.yaml' '$f348_d' 2>&1" "指向交付目录之外"
 
+# M155（F349）：preset-declare.mjs 的**根结构前置校验**与**写后自校验/降级拒答**——旧实现只校验
+#   「输入能否解析」：根为映射的补丁被追加 `- insert:` 项后顶层混用映射与序列 ⇒ 产出**非法 YAML**，
+#   却仍打印「✅ 生效」并提示重启 DSH（operator 拿到坏补丁）；含 `...` 的补丁追加后成多文档同理。
+echo "[M155 声明应用：不兼容根结构与不可解析产物须拒答（F349）]"
+f349_d="$work/f349"
+mkdir -p "$f349_d"
+printf 'plugins:\n  - name: "@deepseek-ai/dsh-agent-preset"\n    config:\n      id: preset-other\n      order: 9\n' > "$f349_d/map.yml"
+printf -- '- id: other-plugin\n...\n' > "$f349_d/doc.yml"
+printf -- '- id: other-plugin\n  config:\n    a: 1\n' > "$f349_d/ok.yml"
+check_rc "M155-a 根为映射 → 拒答（根节点不是序列）" \
+  "node plans/preset-declare.mjs apply --patch '$f349_d/map.yml' --append 2>&1" 2 "根节点不是序列"
+check_contains "M155-b 前置校验不改动文件（声明块数须为 0）" \
+  "grep -c 'id: preset-dsh-codepunk' '$f349_d/map.yml' || true" "0"
+check_contains "M155-b2 前置校验不留备份（备份数须为 0）" \
+  "ls '$f349_d/map.yml'.bak-* 2>/dev/null | wc -l | tr -d ' '" "0"
+check_rc "M155-c 含文档分隔符 → 拒答或回滚（无法核验 ≠ 通过）" \
+  "node plans/preset-declare.mjs apply --patch '$f349_d/doc.yml' --append 2>&1" 2 "无法核验 ≠ 通过"
+check_contains "M155-d 拒答后不留半成品（声明块数须为 0）" \
+  "grep -c 'id: preset-dsh-codepunk' '$f349_d/doc.yml' || true" "0"
+check_rc "M155-e 序列根正常路径不回归" \
+  "node plans/preset-declare.mjs apply --patch '$f349_d/ok.yml' --append 2>&1" 0 "追加声明块"
+sed -i.bak 's/根节点不是序列/根节点形态不符/' "$work/cur/plans/preset-declare.mjs"
+rm -f "$work/cur/plans/preset-declare.mjs.bak"
+mutate_gone "preset-declare 抹掉根结构判据消息" "$work/cur/plans/preset-declare.mjs" '根节点不是序列'
+check_no_match "M155-f 判据移除 → 不得再报「根节点不是序列」（断言非空转）" \
+  "node plans/preset-declare.mjs apply --patch '$f349_d/map.yml' --append 2>&1" "根节点不是序列"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
