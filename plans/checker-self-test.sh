@@ -1828,6 +1828,26 @@ mutate "docs/maintenance.md 抹掉检查名提及" "$work/cur/docs/maintenance.m
 check_no_match "M153-b 文档漏提检查名 → 不得仍报「必需检查名一致」" \
   "bash plans/doc-consistency.sh 2>&1" "必需检查名一致（脚本"
 
+# M154（F348）：证据门 log_ref 的**交付目录包含性**——旧实现用 os.path.isfile 直通 ⇒
+#   `log_ref: /etc/hosts`、`../<交付目录外>`、指向交付目录外的符号链接**均 verdict=PASS**（②③ 对本次交付不成立）。
+echo "[M154 证据门 log_ref 包含性（F348）]"
+f348_d="$work/f348/deliv"
+mkdir -p "$f348_d/logs" "$work/f348"
+printf 'inside log\n' > "$f348_d/logs/ok.log"
+printf 'outside log\n' > "$work/f348/outside.log"
+printf 'task_id: t\ndelivered_at: "2026-10-07T10:00:00+07:00"\nvalidated_at: "2099-01-01T00:00:00+07:00"\nevidence:\n  - id: EV-1\n    command: "bash plans/doc-consistency.sh"\n    exit_code: 0\n    log_ref: "../outside.log"\n' > "$f348_d/evidence.yaml"
+mutate "交付目录外的 log_ref 夹具（.. 逃逸）" "$f348_d/evidence.yaml" 'log_ref: "../outside.log"'
+check_rc "M154-a log_ref 逃出交付目录 → FAIL（旧实现 PASS）" \
+  "bash plans/evidence-verify.sh '$f348_d/evidence.yaml' '$f348_d' 2>&1" 1 "指向交付目录之外"
+printf 'task_id: t\ndelivered_at: "2026-10-07T10:00:00+07:00"\nvalidated_at: "2099-01-01T00:00:00+07:00"\nevidence:\n  - id: EV-1\n    command: "bash plans/doc-consistency.sh"\n    exit_code: 0\n    log_ref: "logs/ok.log"\n' > "$f348_d/evidence.yaml"
+check_rc "M154-b 交付目录内的 log_ref → PASS（不误伤正常证据）" \
+  "bash plans/evidence-verify.sh '$f348_d/evidence.yaml' '$f348_d' 2>&1" 0 "verdict=PASS"
+sed -i.bak 's/指向交付目录之外/（判据已移除）/' "$work/cur/plans/evidence-verify.sh"
+rm -f "$work/cur/plans/evidence-verify.sh.bak"
+mutate "副本内移除包含性判据的提示串" "$work/cur/plans/evidence-verify.sh" '（判据已移除）'
+check_no_match "M154-c 判据被移除后不得仍报「指向交付目录之外」（断言非空转）" \
+  "bash plans/evidence-verify.sh '$f348_d/evidence.yaml' '$f348_d' 2>&1" "指向交付目录之外"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
