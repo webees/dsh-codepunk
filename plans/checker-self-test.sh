@@ -1659,6 +1659,53 @@ PYEOF
 check_contains "M145 对照：恢复 CRLF 后回退核验判合格（非恒真报错）" \
   "bash plans/doc-consistency.sh 2>&1" "ps1 行尾均为 CRLF（文件系统字节核验）"
 
+# M146（F336）：class 5「运行型脚本 MUST 声明退出码」的豁免 MUST NOT 由**散文**触发——
+#   旧实现 `grep -qE '\bsource\b'` 使任何含「source」一词的 .sh 被当库脚本豁免（doc-consistency.sh
+#   因自身规则文本自我豁免；verify-battery.sh 因注释含「source 它」豁免；link.sh 为运行型 CLI 却豁免）。
+#   注入：一个新 .sh，注释里含「source」一词、有显式 exit、**无**退出码声明 ⇒ 必须报缺声明。
+echo "[M146 运行型脚本缺退出码声明不得被注释里的 source 一词豁免（F336）]"
+fresh
+mkdir -p "$work/cur/plans"
+cat > "$work/cur/plans/zz-src-probe.sh" <<'SHEOF'
+#!/usr/bin/env bash
+# 说明：本文件仅为自检夹具，注释里提到 source 一词（用于验证豁免不再由散文触发）。
+echo zz-src-probe
+exit 2
+SHEOF
+chmod 755 "$work/cur/plans/zz-src-probe.sh"
+mutate "注入无退出码声明且注释含 source 的运行型脚本" "$work/cur/plans/zz-src-probe.sh" "zz-src-probe"
+check_rc "M146 注释含 source 的运行型脚本 → class 5 报缺退出码声明" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "运行型脚本缺退出码声明"
+# 对照：同一夹具补上退出码声明后 MUST 不再报（防「新判据把带声明的脚本也误报」）
+python3 - "$work/cur/plans/zz-src-probe.sh" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+lines = io.open(p, encoding='utf-8').read().split('\n')
+lines.insert(2, '# 退出码: 0=成功; 2=用法/环境错误')
+io.open(p, 'w', encoding='utf-8').write('\n'.join(lines))
+PYEOF
+mutate "对照：为夹具补上退出码声明" "$work/cur/plans/zz-src-probe.sh" "退出码: 0=成功; 2=用法/环境错误"
+check_contains "M146 对照：补上声明后 class 5 判合格（非恒真报错）" \
+  "bash plans/doc-consistency.sh 2>&1" "运行型脚本均声明了退出码"
+
+# M147（F338）：`docs/**` 的计数声称 MUST 与实现派生值一致——开源规格化引入 docs/ 后，
+#   其计数不在任何门禁域（class 1 只扫 README），曾长期声称「137 项变异」而实现已 146。
+echo "[M147 docs/ 计数声称陈旧须被 class 1 扩域后捕获（F338）]"
+fresh
+python3 - "$work/cur/docs/development.md" <<'PYEOF'
+import io, re, sys
+p = sys.argv[1]
+t = io.open(p, encoding='utf-8').read()
+# 计数无关：匹配「<数字> 项变异」的**任意**取值再改坏（写死目标数会随计数增长静默不落地——F300 教训）
+n = re.subn(r'(?<![0-9])[0-9]+(?= 项变异)', '999', t, count=1)
+if n[1] != 1:
+    raise SystemExit('变异未落地：docs/development.md 未找到「<数字> 项变异」')
+io.open(p, 'w', encoding='utf-8').write(n[0])
+PYEOF
+mutate "把 docs/development.md 的变异项数改为 999" "$work/cur/docs/development.md" "999 项变异"
+check_rc "M147 docs/ 陈旧计数 → class 1 扩域判失败" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "docs/ 计数声称陈旧"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

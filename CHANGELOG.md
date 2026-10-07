@@ -39,6 +39,9 @@
 
 ### 修复
 
+- **退出码声明要求可被注释散文规避**：`doc-consistency.sh` 第 5 类的库脚本豁免原为 `grep -qE '\bsource\b'`——任何含「source」一词的 `.sh` 一律豁免，注释与规则文本即可触发（`doc-consistency.sh` 因自身规则文本而**自我豁免**、`verify-battery.sh` 因注释含该词而豁免、`dsh-codepunk-link.sh` 为运行型 CLI 却因加载路径常量被豁免），致三者长期无头部退出码声明、`实现退出码 ⊆ 声明码集` 判据对其恒空转。现取消该启发式：豁免只剩 home 脚本特例与「无显式退出调用」，并为三个脚本补上头部退出码声明。
+- **`docs/**` 计数声称无机械监督且已陈旧**：第 1 类的计数域原只到 README，开源规格化引入的 `docs/` 无任何计数守护 ⇒ `docs/development.md`、`docs/architecture.md`、`docs/naming-conventions.md` 长期声称「137 项变异（M1–M137）」而实现已 146。现将「实现派生量」的声称域扩到 `README.md` + `docs/**`（同实现值、同族写法，域与覆盖范围写在结论里），并同步更正上述计数。
+- **兼容性文档的产品源码行号引用漂移**：`references/file-hygiene.md` 的 3 处引用按旧版本行号，实测已失准——`SANDBOX_MODES` 由 `:35-39` → `:26-30`、用户平面 `permission` 区块由 `:168-181` → `:216-229`、`defaultPreset` 由 `:181` → `:229`（声称内容仍成立，故内容类检查无法发现）。现更正行号，并新增「行号引用规则（MUST）」：引用一律附符号名检索式，核验以符号名检索为准。
 - **依赖更新自动合并的两条路径与自证判据**：对已可合并（`mergeStateStatus=CLEAN`）的 PR 武装自动合并会被 GitHub 拒绝（`Pull request is in clean status`），而武装成功后若立即可合并，GitHub 会当场合并并使 `autoMergeRequest` 变 `null` ⇒ 原自证判据误报失败。现改为「已可合并即直接以合并提交入库；否则武装，命中该错误时回退直接合并」，自证判据取「已武装**或**已合并」。见 `.github/workflows/dependabot-auto-merge.yml`。
 - **`automerge` 标签路径可用**：工作流触发事件补 `labeled`（此前打标签不会触发），并由 `plans/github-setup.sh` 幂等创建该标签（此前仓库中不存在）。
 - **无 `.git` 环境下 ps1 行尾校验被跳过而整体仍报「无硬性不一致」**：`doc-consistency.sh` 第 17 类的 ps1 工作树行尾（`eol=crlf` 落地）子项原先在 git 不可用时只打印跳过说明却仍以 rc=0 收尾，环境缺陷可整体假绿灯；现改为回退**文件系统字节核验**（剥离合法 CRLF 后仍有裸 LF 即判不合格），并按类 8 口径打印「已核验，非跳过」。

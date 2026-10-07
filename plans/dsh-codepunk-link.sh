@@ -2,6 +2,8 @@
 #
 # dsh-codepunk-link.sh — 项目↔总库记忆关联解析器
 #
+# 退出码: 0=成功; 1=业务失败（未注册、目录不存在、ID 重复、INDEX 结构或语义非法）; 2=用法/环境错误（未知子命令、缺参数）
+#
 # 用法：
 #   dsh-codepunk-link resolve <项目路径>   三态路由：
 #                                   ① README frontmatter `dsh-codepunk: <id>` 命中（主通道）
