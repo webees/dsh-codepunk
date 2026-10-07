@@ -35,7 +35,7 @@ set -u
 case "$(locale charmap 2>/dev/null)" in
   UTF-8|utf8|UTF8) ;;
   *)
-    for _l in en_US.UTF-8 UTF-8; do
+    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
       if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
     done ;;
 esac
@@ -404,7 +404,7 @@ cmd_index() {
   #    空骨架放行，随后 register 会据错模型覆盖注册表 → 真实登记项丢失。此处按同一解析链核验类型。
   local sem_rc=0 sem_msg=""
   if command -v ruby >/dev/null 2>&1; then
-    sem_msg="$(ruby -E utf-8 -ryaml -e '
+    sem_msg="$(ruby -Ku -ryaml -e '   # -Ku：本片段含中文字面量，须显式声明 -e 源编码为 UTF-8（C/POSIX locale 下默认 US-ASCII 会编译失败）
       begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end   # Psych 4/5 见 ② 的说明
       d = {} if d.nil?
       fail "顶层须为映射" unless d.is_a?(Hash)
@@ -704,7 +704,7 @@ PYEOF
   fi
   # 写入后校验：真实 YAML 解析器必须能读（防「行级解析自洽但 YAML 非法」长期潜伏）
   if command -v ruby >/dev/null 2>&1; then
-    if ! ruby -E utf-8 -ryaml -e '
+    if ! ruby -Ku -ryaml -e '   # -Ku：本片段含中文字面量，须显式声明 -e 源编码为 UTF-8（C/POSIX locale 下默认 US-ASCII 会编译失败）
 begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end   # Psych 4/5 见 ② 的说明
 raise "顶层非映射" unless d.is_a?(Hash)
 raise "projects 非数组" unless d["projects"].is_a?(Array)

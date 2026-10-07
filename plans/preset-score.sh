@@ -22,7 +22,7 @@ set -u
 case "$(locale charmap 2>/dev/null)" in
   UTF-8|utf8|UTF8) ;;
   *)
-    for _l in en_US.UTF-8 UTF-8; do
+    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
       if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
     done ;;
 esac
@@ -348,9 +348,10 @@ if [ -f "$IDX" ] && command -v ruby >/dev/null 2>&1; then
   #   ① Psych 4/5（ruby ≥ 3.1）的 load_file 是 safe_load，INDEX 未加引号的 last_updated 时间戳
   #      会抛 Psych::DisallowedClass ⇒ 在 Linux 上把「合法注册表」误判为非法；带 permitted_classes
   #      后由 Psych 3 的 ArgumentError 回退旧调用。
-  #   ② `-E utf-8`：本片段含中文字面量，C/POSIX locale 下（无 UTF-8 locale 的最小容器/CI）
-  #      ruby 以 US-ASCII 读取 `-e` 源码 ⇒ `invalid multibyte char` 编译失败 ⇒ 同一误判。
-  ruby -E utf-8 -ryaml -e '
+  #   ② `-Ku`（源编码 UTF-8）：本片段含中文字面量，C/POSIX locale 下（无 UTF-8 locale 的最小
+  #      容器/CI）ruby 以 US-ASCII 读取 `-e` 源码 ⇒ `invalid multibyte char` 编译失败 ⇒ 同一误判。
+  #      注意：`-E utf-8` 只改**外部编码**，不改 `-e` 源码编码，修不了此病；`-Ku` 才行（两者实测见台账）。
+  ruby -Ku -ryaml -e '
     begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end
     raise "顶层非映射" unless d.is_a?(Hash)
     raise "缺 schema_version" unless d.key?("schema_version")
