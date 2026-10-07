@@ -318,6 +318,11 @@ write_scope:
 run_id: run-2026-0001
 updated_at: "2026-09-18T00:00:00Z"   # 每次巡检后刷新
 patrol_every_n_rounds: 5             # 定时巡检间隔（默认 5 轮，可按 run 规模调）
+```
+
+> **写入约束（MUST，D099）**：本文件是**机器可读**清单，写入后 MUST 立即用解析器回读校验（如 `ruby -ryaml -e 'YAML.load_file("<path>")'`），并比对关键字段长度：自由文本值（`result` / `note`）若含裸半角冒号加空格 ⇒ YAML **语法错误**（整文件不可解析）；若含**空格 + 半角井号** ⇒ 该值被当作注释**静默截断**（实测：同一条 `result` 源 536 字，写入后仅解析出 325 字）。两者均须改用全角冒号 / 全角井号，或把值加引号。校验命令不得只做 grep——**行存在 ≠ 可解析**。
+
+```yaml
 policy:                              # 反循环策略段（细则见 references/anti-loop.md；无该段时按 SKILL R16 默认执行）
   no_new_evidence_steps: 3           # 连续 N 步无新证据 ⇒ 强制输出「当前假设/已证伪项/下一步不同做法」
   no_new_evidence_hard: 5            # 连续 N 步无新证据 ⇒ 换策略或上报，禁止原样重试
