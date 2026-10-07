@@ -40,7 +40,7 @@
 | 阶段号 | `P01`–`P17` | `references/standard.md` 阶段号段 | 须落在已声明范围或 span 内（`doc-consistency.sh` 第 9 类） |
 | 决策号 | `D0xx` | `references/standard.md` 决策登记表 | 逐条登记，未登记即红（第 9 类） |
 | 硬规则 | `R1`–`R17` | `SKILL.md` §3 硬规则表 | 禁「R 加三位及以上数字」写法（第 19 类） |
-| 变异号 | `M1`–`M148` | `plans/checker-self-test.sh` 变异表 | 计数与 README 声称同步（第 1 类） |
+| 变异号 | `M1`–`M149` | `plans/checker-self-test.sh` 变异表 | 计数与 README 声称同步（第 1 类） |
 | 检查类号 | `[1]`–`[24]` | `plans/doc-consistency.sh` 的类段输出 | 每个类须在治理矩阵中登记（第 22 类） |
 | 发现编号 | `Fnnn` | `references/skill-governance.md` 溯源表 | 提交信息尾部附注 |
 | 轮次 | 「轮次 N」 | 会话/审计轮次的中文写法 | 禁止与硬规则同形的三位写法 |

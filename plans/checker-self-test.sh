@@ -634,13 +634,13 @@ check_rc "M126 移除「无法核验」标注 → 约定型模式守卫须报缺
 echo "[M125 治理表 class 20 探针数须与实现一致（F241）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md" <<'PYEOF'
-import sys
+import re, sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-old = '**19 条探针**'
-# 注意：本目标串随 class 20 探针数变化而失效（同 M106/M124 的陈旧陷阱）——增删探针时须同步此处。
-assert old in s, 'M125 变异目标串未找到'
-open(p, 'w', encoding='utf-8').write(s.replace(old, '**9 条探针**', 1))
+# 计数无关（F300 类陷阱）：不再硬编码探针数，按模式替换首个「**N 条探针**」。
+s2, n = re.subn(r'\*\*[0-9]+ 条探针\*\*', '**9 条探针**', s, count=1)
+assert n == 1, 'M125 变异目标未找到（治理表探针数声称形态已变）'
+open(p, 'w', encoding='utf-8').write(s2)
 PYEOF
 check_rc "M125 篡改治理表探针数声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "治理表探针数"
 
@@ -1715,6 +1715,24 @@ ln -s . "$work/cur/loop_self" && ln -s ../cur "$work/cur/loop_up"
 [ -L "$work/cur/loop_self" ] || { echo "  ✗ M148 变异未落地：链接环未创建"; MUTFAIL=1; }
 check_rc "M148 链接环下 doc-consistency 仍限时返回且通过（不得 rc=124）" \
   "timeout 90 bash plans/doc-consistency.sh 2>&1" 0 "无硬性不一致"
+
+# M149（F342）：`-h/--help` 约定只对**实现者**成立，且第 20 类探针 MUST 覆盖全部实现者——
+#   修复前探针集只有 6 条（漏掉 init/git-merge-flow/github-setup/write-scope-check），
+#   这 4 个脚本的 `-h` 回归不可见（实测：变异后旧探针集仍报 rc=0「19 条探针」「✔ 无硬性不一致」）。
+echo "[M149 -h 约定探针须覆盖全部实现者（F342）]"
+fresh
+python3 - "$work/cur/plans/write-scope-check.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "    -h|--help)  sed -n '2,44p' \"$0\" | sed 's/^# \\{0,1\\}//'; exit 0 ;;"
+new = "    -h|--help)  echo '用法回归（探针用）' >&2; exit 2 ;;"
+assert old in s, 'M149 变异目标行未找到'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+PYEOF
+mutate "write-scope-check.sh 的 -h 分支改为 exit 2" "$work/cur/plans/write-scope-check.sh" '用法回归（探针用）'
+check_rc "M149 实现者的 -h 回归 → doc-consistency 须报退出码契约漂移" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "退出码契约漂移"
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
