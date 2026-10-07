@@ -37,6 +37,12 @@
 - **合并方式明确为合并提交**：一律通过 Pull Request 以**合并提交（merge commit，`--no-ff`）**并入 `main`，仓库设置仅保留「Create a merge commit」；禁止直接推送与强制推送。
 - **发布流程文档化**：版本号按语义化版本判定，`CHANGELOG.md` 的 `Unreleased` 段在发布时落为版本段，由维护者打 tag `vX.Y.Z` 并在 GitHub Releases 发布（发布说明直接取自本文件，不另写一套）。
 
+### 修复
+
+- **依赖更新自动合并的两条路径与自证判据**：对已可合并（`mergeStateStatus=CLEAN`）的 PR 武装自动合并会被 GitHub 拒绝（`Pull request is in clean status`），而武装成功后若立即可合并，GitHub 会当场合并并使 `autoMergeRequest` 变 `null` ⇒ 原自证判据误报失败。现改为「已可合并即直接以合并提交入库；否则武装，命中该错误时回退直接合并」，自证判据取「已武装**或**已合并」。见 `.github/workflows/dependabot-auto-merge.yml`。
+- **`automerge` 标签路径可用**：工作流触发事件补 `labeled`（此前打标签不会触发），并由 `plans/github-setup.sh` 幂等创建该标签（此前仓库中不存在）。
+- **治理脚本覆盖自动合并能力**：`plans/github-setup.sh` 的仓库元数据期望、比对字段与请求体三处纳入 `allow_auto_merge=true`，最终回读新增该字段与标签校验（此前关闭该能力不会被脚本发现）。
+
 ---
 
 ## 版本比较链接
