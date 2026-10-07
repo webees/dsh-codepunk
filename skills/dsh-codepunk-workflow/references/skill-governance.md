@@ -178,6 +178,7 @@
 | **坏输入不得假绿灯**（`preset-declare` 的补丁：含 NUL 的非文本、非空且不可被 YAML 解析 ⇒ `check`/`apply` 一律 rc=2；`apply --append` 曾把声明块追加进损坏文件并报「生效」） | `preset-declare.mjs` 头部守卫（F341） | 机械 |
 | **制品字段模板声称可解析**（凡「`<制品>`（字段模板见 `references/artifacts.md`）」的声称，该制品名 MUST 在 `artifacts.md` 有 `##` 小节；F344 实证：`plan_draft.md` 的字段契约曾悬空，全文仅出现在运行根树状图） | `doc-consistency.sh` 第 10 类子项 | 机械（变异 M150） |
 | **散落根判据与默认根解析**（`verify-worktree.sh`：只有与本主仓库共享 git 目录的散落 worktree 判 FAIL，散落根内其它 git 仓库只报 INFO；默认根顺序 `SCAN_ROOT` > `DSH_CODEPUNK_WORKTREES` > `DESKTOP` > 桌面候选。F345 实证：旧实现把开发机桌面上的无关仓库一律判 FAIL，而文档化落点从不被扫描） | `checker-self-test.sh` M151（四断言：无关仓库 ⇒ rc=0 且含「不计 FAIL」/ 主仓克隆 ⇒ 同上 / 真散落 worktree ⇒ rc=1 / 未设 `SCAN_ROOT` ⇒ 优先扫总库 `worktrees/`） | 机械（变异） |
+| **INDEX 序列缩进风格容忍与保持**（`link.sh`：`projects:` 下顶格序列项（`- project_id: …`）与 `---`/`...` 文档标记不得被当「未知顶层键」；追加条目沿用既有缩进，否则产出非法 YAML 被回滚；真未知顶层键仍失败。F346 实证：真总库 24 条目顶格 ⇒ `index`/`register` 双双 rc=1，登记链整体失效且提示「从备份恢复」为误导） | `checker-self-test.sh` M152（五断言：顶格 ⇒ `index` rc=0 / `register` rc=0 / 追加沿用顶格 / 追加后条目齐 / 真未知顶层键 ⇒ rc=1） | 机械（变异） |
 | **日期时效性**（文档内实测结论是否已过期） | 无 | 人工 |
 | 需求/流程自洽（阶段归属、汇报链、责任席位是否有人） | 部分（A7/结构检查） | 半人工 |
 
