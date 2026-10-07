@@ -64,7 +64,8 @@ case "$(locale charmap 2>/dev/null)" in
       if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
     done ;;
 esac
-# -h/--help：打印头部用法（与其余脚本一致的通用约定）
+# -h/--help：打印头部用法并返回 0。仓内约定只对**实现者**成立（实现者 MUST 返回 0 并打印用法；
+#   未实现者按用法错误返回 2）——实测 10 个实现 / 8 个未实现，第 20 类探针覆盖全部实现者。
 case "${1:-}" in
   -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
@@ -905,14 +906,20 @@ probe_msg "audit 坏根提示"           "bash plans/preset-audit.sh --bogus"   
 probe_msg "score 坏根提示"           "bash plans/preset-score.sh --bogus"    "预设根不存在" "cd: usage"
 probe_msg "doc-consistency 坏根提示" "bash plans/doc-consistency.sh --bogus" "预设根不存在" "cd: usage"
 probe_msg "battery 坏根提示"         "bash plans/verify-battery.sh --bogus"  "预设根不存在" "cd: usage"
-# -h/--help 通用约定：六个脚本均须返回 0（F153）
+# -h/--help 约定：**实现该约定的脚本** MUST 返回 0 并打印头部用法（F153）；
+#   探针覆盖全部实现者（实测 10 个：audit/score/doc-consistency/verify-worktree/link/leak-guard/init/git-merge-flow/github-setup/write-scope-check；
+#   未实现者按用法错误返回 2，另有 4 条坏根提示形状探针）。
 probe_rc 0 "audit -h"           "bash plans/preset-audit.sh -h"
 probe_rc 0 "score -h"           "bash plans/preset-score.sh -h"
 probe_rc 0 "doc-consistency -h" "bash plans/doc-consistency.sh -h"
 probe_rc 0 "verify-worktree -h" "bash plans/verify-worktree.sh -h"
 probe_rc 0 "link -h"            "bash plans/dsh-codepunk-link.sh -h"
 probe_rc 0 "leak-guard -h"      "bash plans/dsh-codepunk-leak-guard.sh -h"
-RC_DECL=19   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 6 条 -h）；新增探针须同步此值
+probe_rc 0 "init -h"            "bash plans/dsh-codepunk-init.sh -h"
+probe_rc 0 "git-merge-flow -h"  "bash plans/git-merge-flow.sh -h"
+probe_rc 0 "github-setup -h"    "bash plans/github-setup.sh -h"
+probe_rc 0 "write-scope -h"     "bash plans/write-scope-check.sh -h"
+RC_DECL=23   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 10 条 -h）；新增探针须同步此值
 if [ "$RC_N" -ne "$RC_DECL" ]; then bad "退出码探针仅执行 ${RC_N}/${RC_DECL} 条（疑似被吞错，无法核验≠通过）"
 elif [ -n "$RC_BAD" ]; then bad "退出码契约漂移 → ${RC_BAD}"
 elif [ "$RC_V" -gt 0 ]; then info "退出码探针 ${RC_N} 条中 ${RC_V} 条因**环境缺口**无法核验（${RC_GAP}）——无法核验≠通过（F180）"
