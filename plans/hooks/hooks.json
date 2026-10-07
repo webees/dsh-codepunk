@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "write|edit|bash|pwsh",
+        "hooks": [ { "type": "command",
+                     "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/plans/hook-write-scope.py\"",
+                     "timeout": 10 } ] }
+    ]
+  }
+}

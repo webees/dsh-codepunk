@@ -29,7 +29,8 @@
 #   未给 --home/--tmp/--home-all 时，默认等价于 `--repo . --tmp`；显式给了模式参数时只跑所选模式。
 #
 # 检查:
-#   G1 仓库残留：--repo 目录树内命中临时/探针命名 ⇒ FAIL
+#   G1 仓库残留：--repo 目录树内命中临时/探针命名 ⇒ FAIL（含 Python 字节码缓存 `__pycache__`/`*.pyc`
+#       —— 本仓多个 python 门禁被 import 即生成，实测对旧判据不可见：F364）
 #       （probe-*、patch-*、tmp*、*.bak、*.orig、*.rej、*.log、*.tmp、*~）
 #   G2 主目录散落：$HOME 顶层命中预设/探针前缀/轮次号 ⇒ FAIL
 #   G3 临时目录残留（**归属收窄**）：${TMPDIR:-/tmp} 与 /tmp 顶层命中同前缀/轮次号时——
@@ -302,7 +303,7 @@ say "-- [G1] 仓库残留扫描: ${REPO_ABS}（含未跟踪，排除 .git/）--"
 G1_LIST=()
 while IFS= read -r -d '' p; do
   case "${p##*/}" in
-    probe-*|patch-*|tmp*|*.bak|*.orig|*.rej|*.log|*.tmp|*~) G1_LIST+=( "$p" ) ;;
+    probe-*|patch-*|tmp*|*.bak|*.orig|*.rej|*.log|*.tmp|*~|__pycache__|*.pyc) G1_LIST+=( "$p" ) ;;
   esac
 done < <(find "${REPO_ABS}" -mindepth 1 \( -name .git -type d -prune \) -o -print0 2>/dev/null)
 G1_HIT=${#G1_LIST[@]}

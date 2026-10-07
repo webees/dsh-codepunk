@@ -24,7 +24,7 @@
  *      $DSH_ASAR 同级 → 当前目录 顺序发现）。找不到时 check 退化为「行内容比对」
  *      （忽略缩进，仍能捕获增删改，但报不出精确路径）。
  */
-import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, existsSync, writeSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -299,7 +299,11 @@ if (!existsSync(SOURCE)) die(`源组合不存在：${SOURCE}`);
 const sourceLines = readFileSync(SOURCE, 'utf8').split('\n');
 
 if (action === 'emit') {
-  process.stdout.write(renderBlock(sourceLines).join('\n') + '\n');
+  // F362（实测）：`process.stdout.write(...)` 紧接 `process.exit(0)` 时，stdout 在**管道**
+  //   （`| cmd`、`$(...)`、子进程 capture）上是异步写，exit 立即终止进程 ⇒ 只写出管道缓冲
+  //   （实测恰 64 KiB）内的部分；截断产物仍是**合法 YAML** 且含声明 id，故下游会静默采用
+  //   半截声明（红证：`emit | wc -c` = 65536 vs 重定向 71493）。故改为同步写 fd 1。
+  writeSync(1, renderBlock(sourceLines).join('\n') + '\n');
   process.exit(0);
 }
 

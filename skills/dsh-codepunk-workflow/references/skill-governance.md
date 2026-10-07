@@ -176,7 +176,7 @@
 | **同一制品的多处生成器须一致**（总库 `INDEX.yaml` 骨架：`link.sh` 与 `init.sh` 两处 heredoc 模板须**逐字节一致**——否则终态内容取决于「谁先建文件」；F360 实证：link 原为 1 行头、init 为 11 行注释块） | `doc-consistency.sh` 第 25 类 | 机械 |
 | **外部输入变量须被记载**（未在本文件赋值、或写成 `${VAR:-默认}` 的覆盖开关 MUST 出现在任一 `.md` 或脚本**头部注释块**〔`#` 块 / `.py` docstring / `.mjs` JSDoc〕；F358 实证：`git-merge-flow.sh` 的 `PR_BODY` 曾只在实现里存在） | `doc-consistency.sh` 第 5 类子项 | 机械 |
 | **术语一致性**（含「工作房」vs「工作区」消歧） | 无（**实测不可机械化**：简单抽取器在 498 条「**词**：」命中中产出的候选几乎全为散文引导词） | 人工：对**核心术语**（双门闩/工作房/写集/交接包/门禁/证据 verdict 等）逐条比对定义句，实测判据=同名术语的括号注与谓词表述一致 |
-| **日期形态与未来日期**（须 ISO；「实测」不得标在未来） | `doc-consistency.sh` 第 8 类 | 机械 |
+| **日期形态与未来日期**（须 ISO；「实测」不得标在未来；未来日期上限＝UTC 今天 +1 天以容忍时区偏移——CI 为 UTC 时钟，作者本机「今天」最多超前 UTC 一天，不设容忍则本地 00:00–07:00 产生的合法日期在 CI 上必红） | `doc-consistency.sh` 第 8 类 + `checker-self-test.sh` M166（注入 UTC 今天 +1 天须放行 / +2 天须报出） | 机械（变异） |
 | **树遍历不得跟随符号链接**（门禁 MUST 限时返回：检出内含链接环时不得无限递归——`glob('**/*', recursive=True)` 默认跟随，实测 rc=124 无判定行；改用 `os.walk(followlinks=False)`） | `checker-self-test.sh` M148（沙箱内造链接环 ⇒ 断言限时返回且通过） | 机械（变异） |
 | **坏输入不得假绿灯**（`preset-declare` 的补丁：含 NUL 的非文本、非空且不可被 YAML 解析 ⇒ `check`/`apply` 一律 rc=2；`apply --append` 曾把声明块追加进损坏文件并报「生效」） | `preset-declare.mjs` 头部守卫（F341） | 机械 |
 | **制品字段模板声称可解析**（凡「`<制品>`（字段模板见 `references/artifacts.md`）」的声称，该制品名 MUST 在 `artifacts.md` 有 `##` 小节；F344 实证：`plan_draft.md` 的字段契约曾悬空，全文仅出现在运行根树状图） | `doc-consistency.sh` 第 10 类子项 | 机械（变异 M150） |
@@ -188,6 +188,8 @@
 | **YAML 解析路径与自定义标签容忍**（无 ruby 主机须与 ruby 路径同结论：按候选链查找 js-yaml、容忍 `!!js` 标签、解析出的 Date 属标量；两路都不可用时报「无法核验」而非「解析失败」） | `checker-self-test.sh` M157（四断言）/ M158（三断言） | 机械（变异） |
 | **必需检查的文档声称 ↔ 作业实际执行**（`CONTRIBUTING.md` 的 CI 门禁表：给出可执行等价命令者，该命令 MUST 真被对应作业执行；声称覆盖 Windows 侧则该作业段内 MUST 出现 ps1 路径；指向电池某项则电池项标题内 MUST 有该词。判据只看正向声称，纯路径提及（「近似项见 …」）不计。F354 实证：`跨平台可移植` 声称「Windows 两侧实现的对等性」并指向电池「跨平台项」，而该作业只扫 `plans/*.sh` 与可执行位、电池亦无此项 ⇒ 平台对等实为人工公约却看似有机械守护） | `doc-consistency.sh` 第 7 类子项 | 机械（变异 M159，四断言：旧文案 ⇒ rc=1 且逐条列出三处不符 / 等价命令不存在 ⇒ rc=1 / 指向电池不存在的项 ⇒ rc=1 / 判据移除 ⇒ 不得再报该消息） |
 | **Dependabot 声明 ↔ 仓库与治理脚本**（声明的 `package-ecosystem` MUST 在仓库内有对应清单——声明而无清单的条目恒不产出 PR；`labels` 引用的标签 MUST 由 `plans/github-setup.sh` 幂等创建——标签不存在时该字段静默失效；`docs/maintenance.md` 的生态清单 MUST 与声明一致。本轮巡检实证：曾声明 `pip` 而仓库无任何 pip 清单且文档声称巡检该生态；`dependencies` 标签长期不存在而治理脚本只创建 `automerge`） | `doc-consistency.sh` 第 7 类子项 | 机械（变异 M160，四断言：注入无清单的生态 ⇒ rc=1 / 标签改为治理脚本未创建者 ⇒ rc=1 / 文档生态改名 ⇒ rc=1 / 判据移除 ⇒ 不得再报该消息） |
+| **写盘护栏拦截层（hooks）行为契约**（`plans/hook-write-scope.py`：denylist 路径作 `write.file_path` ⇒ 退出码 2 且 stderr 含规则名；预设仓库内路径 ⇒ 退出码 0；抹掉阻断分支后该规则名不得再出现——防「护栏空转」。判据权威与层级关系见 `references/file-hygiene.md` §八） | `checker-self-test.sh` M164（三断言：denylist ⇒ rc=2 且含规则名 / 仓库内 ⇒ rc=0 / 抹掉阻断分支 ⇒ 不得再命中该串） | 机械（变异） |
+| **声明生成器的输出完整性**（`plans/preset-declare.mjs emit` 在**管道**（`| cmd`、`$(...)`、子进程采集）下不得被截断——`process.stdout.write` + `process.exit` 会丢弃管道缓冲，截断产物仍是合法 YAML ⇒ 下游静默采用半截声明；F362 实证 65536 B vs 71493 B） | `preset-compat.py` 检查 8（管道字节数须等于文件重定向）+ `checker-self-test.sh` M165（两断言） | 机械（变异） |
 | **工程化入口（Makefile）自述与 CI 关系**（头部声称「本地与 CI 用同一条命令复跑」——实测 CI 全文无 `make` 调用；`make gates` ≠ CI「门禁回归」；`make write-scope` 实参窄于 CI（缺假 HOME 的 `--home`）⇒ 本地绿不等于 CI 绿。已改为实测口径并写明「以 CI 结论为准」） | 无（自然语言声称，不可机械化） | 人工：改动 Makefile/ci.yml 任一侧时逐条比对入口与实参 |
 | **日期时效性**（文档内实测结论是否已过期） | 无 | 人工 |
 | 需求/流程自洽（阶段归属、汇报链、责任席位是否有人） | 部分（A7/结构检查） | 半人工 |

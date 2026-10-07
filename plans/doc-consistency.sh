@@ -45,7 +45,9 @@
 #      零重叠=✗，仅 1 个重叠=ℹ 待人工确认）
 #   10. 章节级引用可解析（`references/x.md「章节名」` 与限定式 `§N` 须在目标文件中存在）
 #   9. 编号引用可解析（D 号须逐条登记；P 号须落在已声明范围/span 内）
-#   8. 日期形态与未来日期（须 YYYY-MM-DD / YYYY-MM；不得出现未来日期——「实测」不能发生在未来）
+#   8. 日期形态与未来日期（须 YYYY-MM-DD / YYYY-MM；不得出现未来日期——「实测」不能发生在未来；
+#      未来日期上限＝UTC 今天 +1 天，容忍时区偏移：作者本机今天可超前 UTC 今天 1 天，而 CI 为 UTC 时钟——
+#      F365 实证：本地 00:00–07:00（UTC+7）产生的合法日期在 CI 上被判未来、PR 假红）
 #   7. 跨文件阈值一致（同一机制在文档/脚本/配置中的数值必须唯一：评分基准与上下限、
 #      retries 扣分与上限、handoff 缺件扣分、巡检周期、收口轮数、证据门退出码；
 #      另含「分支保护必需检查名」：`plans/github-setup.sh` 的 `CHECK_CONTEXTS` ↔
@@ -442,7 +444,7 @@ echo "[7] 跨文件阈值一致（同一机制取值必须唯一）"
 #   BSD grep（macOS）容忍，GNU grep / busybox（Linux、CI）报「Repetition not preceded by valid
 #   expression」⇒ 片段为空 ⇒ 本类退化为「未匹配到取值」的信息行而不判失败（假绿），
 #   且会让存活自检的 M39 变异在 Linux 上失败。新增模式请一律用普通捕获组。
-THRESH='评分基准 base|all|base[：: ]*([0-9]+)
+THRESH='评分基准 base|all|base[：: ]+([0-9]+)
 评分下限 clamp|last|clamp[ ]*0[–—-]([0-9]+)
 retries 单次扣分|all|每次[ ]*[−-]([0-9]+)
 retries 上限扣分|all|上限[ ]*[−-]([0-9]+)
@@ -635,9 +637,14 @@ TODAY=$(date +%F)
 if ! command -v python3 >/dev/null 2>&1; then
   na "日期核验（缺 python3）"
 else
-  DATE_ISSUE=$(python3 - "$TODAY" <<'PYEOF'
+  # F365：未来日期判据 MUST 容忍时区偏移 —— 作者本机「今天」最多可超前 UTC「今天」1 天（UTC+14 时区），
+  #   而 CI 运行器为 UTC 时钟；不设容忍时，本地 00:00–07:00（UTC+7）产生的合法日期在 CI 上必被判未来
+  #   ⇒ 每个这样的 PR 都假红（实测：PR 的「文档一致性」作业在 CI 上 rc=1「未来日期: agent.cordis.yml:2026-10-08」，
+  #   同一提交在本机（UTC+7）rc=0）。上限取 UTC 今天 + 1 天：仍能拦住 2099-01-01 一类真实未来日期。
+  LIMIT=$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc).date()+datetime.timedelta(days=1)).isoformat())")
+  DATE_ISSUE=$(python3 - "$LIMIT" <<'PYEOF'
 import re, subprocess, sys
-today = sys.argv[1]
+limit = sys.argv[1]
 # F299：非 git 工作区（或 git 不可用）时 `git ls-files` **静默返回空** ⇒ 本类空转却输出
 #   「✅ 无未来日期」= 假绿灯（与同脚本类 17 的「ℹ 非 git 工作区…无法核验≠通过」口径不一致）。
 #   改为：git 索引不可用即**回退文件系统遍历**（真核验，非跳过），并由 shell 侧 info 明示回退。
@@ -671,7 +678,7 @@ for f in files:
         if len(p[1]) == 1 or len(p[2]) == 1:
             bad_form.append(f'{f}:{d}')
             continue
-        if d > today:
+        if d > limit:
             future.append(f'{f}:{d}')
 out = []
 if future:
@@ -683,7 +690,7 @@ PYEOF
 )
   DATE_MODE="${DATE_ISSUE%%|*}"; DATE_ISSUE="${DATE_ISSUE#*|}"
   if [ "$DATE_MODE" = walk ]; then info "非 git 工作区：类 8 回退到文件系统遍历核验（已核验，非跳过）"; fi
-  if [ -z "$DATE_ISSUE" ]; then ok "日期形态与新鲜度（ISO 形态；无未来日期；今日 ${TODAY}）"
+  if [ -z "$DATE_ISSUE" ]; then ok "日期形态与新鲜度（ISO 形态；无未来日期（上限 ${LIMIT}＝UTC 今天 +1 天，容忍时区偏移）；今日 ${TODAY}）"
   else bad "日期问题 → ${DATE_ISSUE}"; fi
 fi
 

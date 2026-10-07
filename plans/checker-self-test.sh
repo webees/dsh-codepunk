@@ -151,6 +151,24 @@ check_contains() {   # check_contains <标签> <命令> <必须出现的子串>
 
 FW=$(printf '\357\274\210')   # 全角左括号：载荷用拼接构造，避免本脚本自身被 B1b 误判
 
+# zhcount <文件> <前缀>：取「<前缀>+中文数字+项检查」里的当前中文数字并 +1（取不到或越界则输出空）。
+# 动机（F362，与 M106 的 F298 同族）：变异夹具若**硬编码**被测文案里的计数（如「七项检查」），
+#   计数一旦合法增长（本轮实测：`preset-compat.py` 头部由七项→八项），变异即未落地 ⇒ MUTFAIL
+#   触发第 1148 行**提前 exit 2**，其后全部变异（含 M164）**根本不再执行**——「自检夹具自身脆弱」
+#   被误报成「自检失败」。此处改为按模式取当前值再递增，使夹具不随计数增长而陈旧。
+zhcount() {
+  python3 - "$1" "$2" <<'PYEOF'
+import re, sys
+t = open(sys.argv[1], encoding='utf-8').read()
+m = re.search(re.escape(sys.argv[2]) + r'([一二三四五六七八九十]+)项检查', t)
+if not m:
+    print(''); raise SystemExit(0)
+n = '一二三四五六七八九十'
+i = n.index(m.group(1)[-1])
+print('' if i + 1 >= len(n) else n[i + 1])
+PYEOF
+}
+
 echo "[M110 class 3 术语咨询须「检出但不计失败」（F227）]"
 fresh
 printf '\n> 探针：本行裸用工作区一词。\n' >> "$work/cur/skills/dsh-codepunk-workflow/SKILL.md"
@@ -160,15 +178,22 @@ check_contains "M110 术语咨询须真的检出（特异提示行出现）" "ba
 
 echo "[M111 class 6 头部自称项数须「提示但不计失败」（F227）]"
 fresh
-python3 - "$work/cur/plans/preset-compat.py" <<'PYEOF'
-import sys
-p = sys.argv[1]
+# F362：变异目标串按**当前**计数派生（`zhcount`），不再硬编码「七项检查」——否则计数合法增长后
+#   变异未落地 ⇒ MUTFAIL ⇒ 提前 exit 2（其后变异全不执行）。断言串同样按派生值拼接。
+M111_NEXT="$(zhcount "$work/cur/plans/preset-compat.py" '')"
+[ -n "$M111_NEXT" ] || { printf '  ‼ M111 变异目标串未取到（preset-compat 头部计数文案已变）\n' >&2; MUTFAIL=1; }
+M111_NEW="$(printf '%s项检查' "$M111_NEXT")"
+python3 - "$work/cur/plans/preset-compat.py" "$M111_NEW" <<'PYEOF'
+import re, sys
+p, new = sys.argv[1], sys.argv[2]
 s = open(p, encoding='utf-8').read()
-open(p, 'w', encoding='utf-8').write(s.replace('七项检查', '九项检查', 1))
+n = re.sub(r'[一二三四五六七八九十]+项检查', new, s, count=1)
+assert n != s, 'M111 变异目标串未找到（preset-compat 头部计数文案已变）'
+open(p, 'w', encoding='utf-8').write(n)
 PYEOF
-mutate "preset-compat 头部自称改为九项检查" "$work/cur/plans/preset-compat.py" '九项检查'
+mutate "preset-compat 头部自称改为${M111_NEW}" "$work/cur/plans/preset-compat.py" "$M111_NEW"
 check_rc "M111 注入头部自称项数 → 仍须 rc 0（不计失败）" "bash plans/doc-consistency.sh" 0 ""
-check_contains "M111 头部自称项数须真的提示（特异提示行出现）" "bash plans/doc-consistency.sh 2>&1" "头部称「九项检查」"
+check_contains "M111 头部自称项数须真的提示（特异提示行出现）" "bash plans/doc-consistency.sh 2>&1" "头部称「${M111_NEW}」"
 
 echo "[M107 审计分组计数声称被守护（F226）]"
 fresh
@@ -1550,6 +1575,11 @@ mkdir -p "$work/cur/plans"
 printf 'x = 1\n' > "$work/cur/plans/foo.py.bak"
 mutate "备份后缀 plans/foo.py.bak" "$work/cur/plans/foo.py.bak" '^x = 1$'
 check_rc "M135 plans/foo.py.bak → rc 1 且报「残留」" "bash plans/write-scope-check.sh --repo '$work/cur'" 1 "残留"
+# F364：G1 命名黑名单须覆盖 Python 字节码缓存（目录本身即命中；`.pyc` 亦命中）。
+mkdir -p "$work/cur/plans/__pycache__"
+printf 'x = 1\n' > "$work/cur/plans/__pycache__/mod"
+mutate "字节码缓存目录 plans/__pycache__" "$work/cur/plans/__pycache__/mod" '^x = 1$'
+check_rc "M135-b plans/__pycache__ 残留 → rc 1 且报「残留」" "bash plans/write-scope-check.sh --repo '$work/cur'" 1 "残留"
 
 echo "[M136 豁免登记须被机械采信（--exempt-from：命中降级 INFO，不判 FAIL）]"
 fresh
@@ -2080,6 +2110,81 @@ check_rc "M163-a2 须列出变量名与位置" \
 fresh
 check_rc "M163-b 干净副本须报均被记载（断言非空转）" \
   "bash plans/doc-consistency.sh 2>&1 | grep -qF '外部输入变量均被记载'" 0
+
+echo "[M164 写盘护栏拦截层（hooks）行为契约（轮次 628 接入实测）]"
+# 守护点：`plans/hook-write-scope.py`（PreToolUse 命令钩子；配置 `plans/hooks/hooks.json`，
+#   条目 `agent.cordis.yml` 的 `hooks-write-scope`）。三条断言：
+#   a) denylist 路径作 `write.file_path` ⇒ **退出码 2** 且 stderr 含**规则名**（阻断语义 + 理由可读）；
+#   b) 预设仓库内路径 ⇒ **退出码 0**（放行集不被误拦）；
+#   c) 非空转：抹掉阻断分支（`return EXIT_BLOCK` → `return EXIT_ALLOW`）后，a 的规则名**不得再出现**
+#      ——若仍出现，说明断言命中的是别处的回显而非真实阻断路径（守卫空转）。
+# 夹具纪律（类 14）：denylist 路径与规则名一律**运行时拼接**，不在本文件写出可被本仓守卫命中的字面量；
+#   载荷经 `--fixture <文件>` 传入（避免管道，且 hook 自身以 `-h` 作帮助开关）。
+fresh
+m164_home="$work/cur/.m164home"
+m164_dir="$(printf '%s%s' '.' 'ssh')"
+m164_name="$(printf '%s_%s' 'id' 'ed25519')"
+mkdir -p "$m164_home/$m164_dir"
+m164_path="$m164_home/$m164_dir/$m164_name"
+printf '{"session_id":"m164","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"write","tool_input":{"file_path":"%s"}}' \
+  "$work/cur" "$m164_path" > "$work/cur/m164-deny.json"
+printf '{"session_id":"m164","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"write","tool_input":{"file_path":"%s"}}' \
+  "$work/cur" "$work/cur/plans/hook-write-scope.py" > "$work/cur/m164-allow.json"
+m164_rule="$(printf '%s%s' '凭据' '目录')"
+check_rc "M164-a denylist 路径须阻断（rc=2）" \
+  "HOME='$m164_home' python3 plans/hook-write-scope.py --fixture m164-deny.json 2>&1" 2 "$m164_rule"
+mutate "M164-a 断言依赖的规则名确在 hook 源码内" \
+  "$work/cur/plans/hook-write-scope.py" "$m164_rule"
+check_rc "M164-b 预设仓库内路径须放行（rc=0）" \
+  "HOME='$m164_home' python3 plans/hook-write-scope.py --fixture m164-allow.json 2>&1" 0
+fresh
+sed -i.bak 's/^            return EXIT_BLOCK$/            return EXIT_ALLOW/' "$work/cur/plans/hook-write-scope.py"
+rm -f "$work/cur/plans/hook-write-scope.py.bak"
+mutate_gone "M164-c 阻断分支已被抹掉（源码内不再有 return EXIT_BLOCK）" \
+  "$work/cur/plans/hook-write-scope.py" 'return EXIT_BLOCK'
+check_no_match "M164-c 阻断分支被抹掉 → 不得再命中该规则名（断言非空转）" \
+  "HOME='$m164_home' python3 plans/hook-write-scope.py --fixture m164-deny.json 2>&1" "$m164_rule"
+
+# ── M165：emit 管道完整性（F362：`process.exit` 丢弃管道缓冲致输出截断）──────
+if command -v node >/dev/null 2>&1; then
+  fresh
+  # 源填充至 >64 KiB（管道缓冲），确保截断可被观测（不依赖当前源体积）
+  i=0
+  while [ "$i" -lt 2000 ]; do printf '# filler %s\n' "$i"; i=$((i + 1)); done >> "$work/cur/agent.cordis.yml"
+  m165_cmd='a=$(node plans/preset-declare.mjs emit | wc -c); node plans/preset-declare.mjs emit > "$work/m165.yml"; b=$(wc -c < "$work/m165.yml"); if [ "$a" = "$b" ]; then echo "PIPE_OK a=$a"; else echo "✗ emit 管道截断 a=$a b=$b"; exit 1; fi'
+  check_rc "M165-a emit 管道输出须与文件重定向等长" "$m165_cmd" 0 "PIPE_OK"
+  m165_before=$(grep -c 'process.stdout.write' "$work/cur/plans/preset-declare.mjs" || true)
+  sed -i.bak 's/writeSync(1, renderBlock/process.stdout.write(renderBlock/' "$work/cur/plans/preset-declare.mjs"
+  m165_after=$(grep -c 'process.stdout.write' "$work/cur/plans/preset-declare.mjs" || true)
+  if [ "$m165_after" -gt "$m165_before" ]; then
+    echo "  · M165-b 变异落地（process.stdout.write ${m165_before} → ${m165_after}）"
+  else
+    printf '  ‼ 变异未生效（M165-b：emit 退回异步写）——自检自身问题，非守护问题\n' >&2
+    MUTFAIL=1
+  fi
+  check_rc "M165-b 管道截断须被检出" "$m165_cmd" 1 "管道截断"
+else
+  echo "  ℹ M165 跳过（缺 node）——跳过 ≠ 通过"
+fi
+
+# ── M166：未来日期判据须容忍时区偏移（F365：CI 为 UTC 时钟，作者本地「今天」被判未来 ⇒ 合法 PR 假红）──
+if command -v python3 >/dev/null 2>&1; then
+  fresh
+  # 用**相对当前 UTC 日期**派生边界，避免硬编码日期随时间失效（F300 家族教训）
+  m166_d1=$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc).date()+datetime.timedelta(days=1)).isoformat())")
+  m166_d2=$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc).date()+datetime.timedelta(days=2)).isoformat())")
+  m166_f="$work/cur/skills/dsh-codepunk-workflow/references/standard.md"
+  cp "$m166_f" "$work/m166.orig"
+  printf '\n<!-- 时区边界探针 %s -->\n' "$m166_d1" >> "$m166_f"
+  mutate "M166-a 注入 UTC 今天 +1 天（时区偏移内的合法日期）" "$m166_f" "$m166_d1"
+  check_rc "M166-a 时区偏移内的日期不得判未来" "TZ=UTC bash plans/doc-consistency.sh 2>&1" 0 "无未来日期"
+  cp "$work/m166.orig" "$m166_f"
+  printf '\n<!-- 时区边界探针 %s -->\n' "$m166_d2" >> "$m166_f"
+  mutate "M166-b 注入 UTC 今天 +2 天（真实未来日期）" "$m166_f" "$m166_d2"
+  check_rc "M166-b 超出容忍上限的日期须报未来" "TZ=UTC bash plans/doc-consistency.sh 2>&1" 1 "未来日期: "
+else
+  echo "  ℹ M166 跳过（缺 python3）——跳过 ≠ 通过"
+fi
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2

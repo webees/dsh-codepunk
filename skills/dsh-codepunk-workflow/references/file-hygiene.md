@@ -66,7 +66,7 @@
 
 ### 6.2 黑名单（严禁）
 
-- 工程仓库工作树内的临时/探针命名物：`probe-*`、`patch-*`、`tmp*`、`*.bak`、`*.orig`、`*.rej`、`*.log`、`*.tmp`、`*~`。
+- 工程仓库工作树内的临时/探针命名物：`probe-*`、`patch-*`、`tmp*`、`*.bak`、`*.orig`、`*.rej`、`*.log`、`*.tmp`、`*~`、`__pycache__/`、`*.pyc`（最后两项为 Python 字节码缓存：在仓库内 import 本仓 `plans/*.py` 即生成，`plans/write-scope-check.sh` 的 G1 与电池的杂散检查都会判失败）。
 - `$HOME` 顶层散落脚本/文档/数据（`~/xxx.sh`、`~/xxx.py`、`~/note.md` 等）。
 - 系统目录内自建物：`/usr`、`/opt`、`/etc`、`/Library`、`/Applications`。
 - 在工程目录（预设/项目仓库）内建**沙箱副本** ⇒ 改落运行根或 `$TMPDIR`。
@@ -150,7 +150,8 @@
 
 方案乙（可选加固：部署平面）。在部署环境设 `DSH_PERMISSION_MODE=workspace-write`，使 bundle 层默认值也不再是宽值（依据 `PKG/dsh-base/cordis.patch.yml:232,248`）。
 
-方案丙（可选，彻底禁用写盘工具：宿主侧工具闸门；**默认未挂载**）。在 profile 追加 `hooks-claude-code` 行并配 `hooks.json` 中对 `Write`/`Edit`/`Bash` 的 `PreToolUse` command 钩子，退出码 2 即阻断该次调用（挂载点 `PKG/dsh-hooks-claude-code/lib/index.js:248-257`，拒绝文案 `Error: blocked by PreToolUse hook`，能力自述 `PKG/dsh-hooks-claude-code/README.zh.md:60,157`）。限制：随附所有 bundle 组合均未挂载钩子桥（全树 grep 无命中），且只运行 command 钩子（`http`/`mcp_tool`/`prompt`/`agent` handler 被跳过并告警，`PKG/dsh-hook-protocol/README.zh.md`）。片段全文见调研文件 §三 方案乙。
+方案丙（可选，彻底禁用写盘工具：宿主侧工具闸门；**轮次 628 起本预设已声明**，见 §八）。在 profile 追加 `hooks-claude-code` 行并配 `hooks.json` 中对 `Write`/`Edit`/`Bash` 的 `PreToolUse` command 钩子，退出码 2 即阻断该次调用（挂载点 `PKG/dsh-hooks-claude-code/lib/index.js:248-257`，拒绝文案 `Error: blocked by PreToolUse hook`，能力自述 `PKG/dsh-hooks-claude-code/README.zh.md:60,157`）。限制：随附所有 bundle 组合均未挂载钩子桥（全树 grep 无命中），且只运行 command 钩子（`http`/`mcp_tool`/`prompt`/`agent` handler 被跳过并告警，`PKG/dsh-hook-protocol/README.zh.md`）。片段全文见调研文件 §三 方案乙。
+> **现状（轮次 628）**：本预设已按此方案落地**自有**钩子（预设平面，非用户平面）：`agent.cordis.yml` 的 `- id: hooks-write-scope` + `plans/hooks/hooks.json` + `plans/hook-write-scope.py`，机制、模式、覆盖与缺口见 §八。上段「随附 bundle 未挂载」仍属实——挂载的是**本预设自己声明**的条目。
 
 **生效方式统一为「改配置 → 重启 DSH Desktop → 新会话按新值解析」**：三层都是加载期配置；会话内模式以 `sandbox/mode` 事件记录，重启后回放保留，故旧会话的既有模式不会因重启而自动收敛。
 
@@ -175,3 +176,52 @@
 ### 7.6 收束
 
 宿主层为**辅助**，预设层三层（R17 + 本文件 §六 + `plans/write-scope-check.sh`）为**主**；两者叠加时仍以运行根 `~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/` 为唯一首选落点（§6.1 序 1）。宿主层是「可能多一道拦网」，不得被当作「已经安全」的理由；未启用时（本机现状）与启用后，§6.2 黑名单与 §6.4 越界判据一律照常执行。
+
+## 八、拦截层（hooks）机械护栏（本预设已声明，轮次 628 接入）
+
+> **定位：第三层机械拦网（最内一层）。** 层级关系：**宿主层沙箱**（§七；粒度到会话 cwd + 系统临时区，本机未生效）→ **预设层三层**（R17 人设纪律 + 本文件 §六 判据 + `plans/write-scope-check.sh` **事后**扫描）→ **拦截层 hooks**（本节；**事前**拦截单次工具调用）。
+> 与 §六 的关系：§六 是**判据权威**（白名单优先序与 G1–G3 越界判据），本节是**同一批判据的执行器之一**——只拦「工具调用层」的写入，不新增判据、不放宽判据。
+
+### 8.1 机制与启用方式
+
+| 项 | 内容 |
+|---|---|
+| 钩子桥 | `@deepseek-ai/dsh-hooks-claude-code`（Claude Code 兼容命令钩子；产品挂载点 `tools/pre-execute`） |
+| 预设条目 | `agent.cordis.yml` 的 `- id: hooks-write-scope`（config：`configPath` 指向 `plans/hooks/hooks.json`、`pluginRoot` 指向预设根、`defaultTimeoutMs: 10000`） |
+| 钩子配置 | `plans/hooks/hooks.json`：`PreToolUse` + `matcher: "write\|edit\|bash\|pwsh"` + `type: command` + `python3 "${CLAUDE_PLUGIN_ROOT}/plans/hook-write-scope.py"` + `timeout: 10` |
+| 执行体 | `plans/hook-write-scope.py`（Python 3 标准库；用法 `python3 plans/hook-write-scope.py -h`） |
+| 阻断语义 | 钩子**退出码 2 ⇒ 阻断该次工具调用**，stderr 一行理由回给模型（含模式名、命中的规则名、绝对路径）；退出码 0 ⇒ 放行；其余码＝非阻断错误 |
+| 生效方式 | 改 `agent.cordis.yml` 或 `hooks.json` 后**重启 DSH Desktop**（声明与钩子配置均在进程启动时读取）；**新会话**才按新值解析 |
+| 依据（产品源码） | 阻断映射 `PKG/dsh-hook-protocol/lib/index.js` 的 `parseHookOutput`（`exitCode === 2 ⇒ decision = "block"`，`stderr` 作 `reason`）；桥侧 `PKG/dsh-hooks-claude-code/lib/index.js` 的 `tools/pre-execute` 处理器（`decision === "deny" ⇒ {kind:'deny', reason}`）、`Config` schema（`configPath` 必填）、`${CLAUDE_PLUGIN_ROOT}` 替换与 PreToolUse 载荷构造 |
+
+### 8.2 两种模式
+
+| 模式 | 开关 | 语义 |
+|---|---|---|
+| `deny`（默认） | 无（或 `DSH_CODEPUNK_HOOK_MODE=deny`） | **黑名单阻断**：命中即拦。集合 = §6.2 黑名单的可机械判定部分——系统路径（`/etc`、`/usr`、`/bin`、`/sbin`、`/System`、`/Library`、`/boot`、`/opt`；`/var` **排除** `/var/folders`，即 macOS `TMPDIR` 实际落点）· 凭据目录（`~/.ssh`、`~/.aws`、`~/.gnupg`）· 用户平面 DSH 配置（`~/.dsh/profiles/**`，对应 §7.4 硬规则）· **主目录顶层散落文件**（`$HOME/<名字>` 且非已有目录，对应 G2 判据） |
+| `strict` | `DSH_CODEPUNK_HOOK_MODE=strict` | **白名单放行**：只许预设仓库根、`~/.dsh-codepunk/**`、`${TMPDIR}` 与 `/tmp`、**会话 cwd** 之下的写入，其余一律阻断；黑名单仍优先判定 |
+| 取值非法 | 任意其它值 | 按 `deny` 处理并在 stderr 告警（fail-safe：异常输入不降级为放行） |
+
+**永远放行**（两模式一致）：预设仓库根 · `~/.dsh-codepunk/**` · `${TMPDIR}` 与 `/tmp` · `~/.dsh/.agent-presets/**`。
+**无法判定写入目标时放行**并在 stderr 打一行「未能判定写入目标，按放行处理（护栏为启发式，不是证明）」——**不阻断**，因为误拦会打断正常作业，而判据本身给不出结论时「无法核验」不应伪装成「已阻断」。
+
+### 8.3 覆盖与**不覆盖**（MUST 知悉）
+
+- **覆盖**：`write` / `edit` 的 `file_path`（确定）；`bash` / `pwsh` 命令文本里的**可判定**写入目标——重定向（`>`、`>>`、`2>`）、`tee`/`cp`/`mv`/`install`/`touch`/`mkdir`/`rm`/`truncate`/`ln`/`rsync`/`chmod`/`chown` 的目标位、`sed -i` 末位文件、`dd of=…`，以及 PowerShell 写 cmdlet（`Set-Content`/`Add-Content`/`Out-File`/`New-Item`/`Remove-Item`/`Copy-Item`/`Move-Item`/`Rename-Item`/`Clear-Content`/`Tee-Object` 等）与 `-Path`/`-LiteralPath`/`-Destination`/`-FilePath`/`-OutFile` 具名参数。
+- **不覆盖（启发式局限，护栏不是证明）**：
+  1. **混淆写法规避**——变量拼接、`eval`、`$'\x2f'`、base64 解码后执行、经解释器间接写盘（`python3 -c "open('/etc/x','w')"`）、别名与函数重定义，一律可能绕过。
+  2. **不做符号链接解析**——指向黑名单的链接按字面路径判定（`~/link-to-etc/x` 不会被拦）。
+  3. **只拦工具调用层**——拦不住工具内派生进程的任意写；也不拦读、不拦网络、不拦进程。
+  4. **非沙箱、非安全边界**——它是「就高落点纪律」的机械提醒，不是隔离机制；未命中 ≠ 合规。
+- **与 G1–G3 的分工**：hooks 拦**事前单次调用**（`deny`/`strict` 集合见 §8.2），`plans/write-scope-check.sh` 扫**事后工作树/`$HOME` 顶层/临时根**（G1/G2/G3，命名口径与归属降级见 §6.4）。二者**判据同源**（§6.2/§6.4），但**覆盖面不等价**：hooks 看不到「非工具调用产生」的残留，机械门看不到「已被混淆绕过」的写入 ⇒ **必须并列**，任一在岗都不构成另一的替代。
+
+### 8.4 本层缺口（与 §7.5 并列，各附影响）
+
+| # | 缺口 | 影响 |
+|---|---|---|
+| 1 | 命令文本启发式可被混淆绕过（§8.3 之 1） | 恶意/无意的间接写入不会被拦；仍须靠 §6.4 机械门事后发现 + 审查门 |
+| 2 | 不解析符号链接 | 经链接写黑名单落点不被拦；G1/G2 事后扫描亦按字面路径，二者同盲 |
+| 3 | `matcher` 只覆盖 `write\|edit\|bash\|pwsh` | 其它写型工具（如自定义插件注册的写工具）不在拦截面内；新增写工具须同步 `plans/hooks/hooks.json` 的 matcher |
+| 4 | 会话 cwd 之下的 `$HOME` 顶层例外（`$HOME` 即 cwd 时） | 同 §7.5 缺口 3：此时「顶层散落」判据以 cwd 为根，护栏不判该条；G2 兜底 |
+| 5 | 只在新会话生效 | 已开着的会话在重启前不受新护栏约束（声明与钩子配置均为加载期读取） |
+

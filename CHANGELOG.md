@@ -56,6 +56,29 @@
   电池也没有「跨平台」项 ⇒ 平台对等实为人工公约，读者却以为有机械守护。已改为与实现相符的描述，并在
   `plans/doc-consistency.sh` 新增「必需检查的文档声称 ↔ 作业实际执行」子项 + 永久存活变异（M159）。
 
+- **写盘纪律门漏检 Python 字节码缓存（`__pycache__`/`*.pyc`）**：`plans/write-scope-check.sh` 的 G1 仓库残留
+  按**文件名模式**判定，黑名单未含字节码缓存 ⇒ 在仓库内 import 本仓 `plans/*.py`（本轮实测两次：
+  `hook-write-scope.cpython-314.pyc`、`preset-compat.cpython-314.pyc`）生成的残留**对 G1 不可见**
+  （`--repo .` 仍报「✓ 仓库残留：无」），而它会被 `plans/verify-battery.sh` 的杂散检查判失败 ⇒
+  自检内层电池基线变红、失败原因与书写者无关。已把 `__pycache__`/`*.pyc` 纳入 G1 命名黑名单与
+  §6.2 契约，并在永久存活变异 M135 增一条断言（`plans/__pycache__` 须被判残留）。
+- **声明生成器的 `emit` 在管道下被截断（下游静默采用半截声明）**：`plans/preset-declare.mjs` 的 `emit`
+  用 `process.stdout.write(...)` 紧接 `process.exit(0)`，而 Node 对**管道**是异步写、`exit` 会丢弃未刷出的
+  缓冲 ⇒ `emit | wc -c` 得 65536（文件重定向为 71493），且**截断产物仍是合法 YAML 并含声明 id**，
+  下游（`--patch` 叠加、部署脚本）会静默采用半截声明。已改为同步写 fd 1（`writeSync`），并新增
+  永久存活变异 M165（断言管道字节数 = 文件重定向字节数）+ 组合核验检查 8 的同款断言。
+- **阈值检查把 `base64` 当作评分基准值（假阳性）**：`plans/doc-consistency.sh` 第 7 类的「评分基准 base」
+  正则 `base[：: ]*([0-9]+)` 允许零分隔符 ⇒ 正文中的 `base64` 被抽成基准值 64，与真值 50 冲突并报
+  「评分基准 base 取值不一: 50,64,」⇒ 任何含该词的文档都无法通过门禁。已改为要求至少一个分隔符
+  （`base[：: ]+([0-9]+)`）。
+- **未来日期判据时区相关（合法内容在 CI 上必红）**：`plans/doc-consistency.sh` 第 8 类以 `date +%F`
+  取「今天」并与文档日期做字符串比较，而 CI 运行器为 **UTC** 时钟：作者本机（UTC+7）「今天」在
+  UTC 时钟下尚未到来 ⇒ 本地 00:00–07:00 产生的一切合法日期（如 `retrieved_at: 2026-10-08`）在 CI 上
+  被判「未来日期」，**每个这样的 PR 的「文档一致性」作业都必然失败**（本轮实测：同一提交本机 rc=0、
+  CI rc=1「未来日期: agent.cordis.yml:2026-10-08」）。已把上限改为 **UTC 今天 +1 天**（覆盖 UTC+14
+  时区作者的本机今天；仍拦住远未来日期，例如 2099 年那类），并新增永久存活变异 M166（注入
+  UTC 今天 +1 天须放行、+2 天须报出）。
+
 ### 新增
 
 - **写盘纪律三层强制（硬规则 R17）**：机械门 + 硬规则 + 岗位写域三者同时生效，规定 AI 写入的优先序——运行根 → 授权工作树内该任务的写集路径 → 系统临时目录（次选，用毕即删）→ 总库 `knowledge/`；探针脚本一律落运行根 `logs/`；越界即缺陷并当轮清理。细则见 `skills/dsh-codepunk-workflow/references/file-hygiene.md` 与 `references/roles.md`。
@@ -67,6 +90,8 @@
 - **协作模板与工程化入口**：新增 `.github/` 协作配置（`CODEOWNERS`、Issue 模板、PR 模板、Release 说明模板、Dependabot 更新配置，以及 `codeql.yml`、`scorecard.yml`、`release.yml` 工作流）；新增 `Makefile` 工程化入口（`gates` / `battery` / `selftest` / `write-scope` / `compat` / `mirror` / `clean`）；新增 `.editorconfig` 与 `.pre-commit-config.yaml`；`.gitattributes` 与 `.gitignore` 随新文件同步更新白名单。
 - **合并流脚本 `plans/git-merge-flow.sh`**：把「建分支 → 提交 → 推送 → 开 PR → 以合并提交落地 → 删分支」收成 `start` / `commit` / `pr` / `merge` / `status` 五个动作，其中 `merge` 在删除远端分支前先断言分支顶端确实是合并提交（父数为 2），断言失败即保留分支以便排查。
 - **面向使用者的专题文档**：新增 `docs/` 目录（`architecture.md`、`development.md`、`deployment.md`、`documentation-policy.md`、`naming-conventions.md`、`maintenance.md`、`faq.md` 与 `docs/adr/` 决策记录目录），并与 `README.md` 的文档索引相互引用。
+- **写盘护栏拦截层（hooks，本预设自有声明）**：接入 `@deepseek-ai/dsh-hooks-claude-code` 桥 + 新增 `plans/hook-write-scope.py`（PreToolUse 命令钩子，Python 3 标准库）与 `plans/hooks/hooks.json`（`matcher: write|edit|bash|pwsh`），`agent.cordis.yml` 新增 `- id: hooks-write-scope` 条目（`configPath`/`pluginRoot` 按 `!!js` + `baseUrl` 解析）。默认 `deny` 黑名单阻断（系统路径含 `/var` 但排除 `/var/folders`、凭据目录 `~/.ssh`/`~/.aws`/`~/.gnupg`、`~/.dsh/profiles/**`、主目录顶层散落文件），`DSH_CODEPUNK_HOOK_MODE=strict` 为白名单放行；**钩子退出码 2 即阻断该次工具调用，stderr 作理由回给模型**。定位为「宿主层沙箱 → 预设层三层纪律 → 拦截层 hooks」的最内一层**启发式**拦网（可被混淆绕过、非沙箱），与事后扫描门 `plans/write-scope-check.sh` 并列。层级关系、模式、覆盖与不覆盖、缺口清单见 `references/file-hygiene.md` §八。
+- **运行时检视工具（只读）**：`agent.cordis.yml` 新增 `- id: tool-cordis`（`@deepseek-ai/dsh-tool-cordis`），注册 `cordis_inspect_list` / `cordis_inspect_query`——列出并查询 Host 与 Client 的 Inspect Provider（插件 Config schema、Tool schema、Slot 树等），供写插件/改配置前读精确接口；不能调用业务 Service、不能改运行时。两个工具名已加入共享白名单锚点 `&role-allow`（只读，对所有岗位安全；调研岗内联名单同步）。
 
 ### 变更
 
