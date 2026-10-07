@@ -10,8 +10,10 @@
 #   2. 阶段口径（README 表 = preset.yml 阶段项 = stages.md 阶段号 = 6）
 #   3. 术语咨询（裸用「工作区」列出供人工确认；**咨询不判失败**——矩阵已把术语一致性列为人工项）
 #   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
-#   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`）
+#   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`；子项：外部输入
+#      变量（未赋值或 `${VAR:-默认}` 形式）MUST 被记载于任一 .md 或脚本头部注释块——F358）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）（**仅提示，不计失败**）
+#   25. 同一制品的多处生成器须一致（INDEX 骨架模板：link 与 init 的 heredoc 须逐字节一致——F360）
 #   24. Markdown 表格列数一致（表格行的单元格数 MUST NOT 超过表头——GFM 规范下多余单元格被忽略
 #       ⇒ 内容静默丢失；代码跨度内的 `|` 须转义为 `\|`。行单元格数少于表头则补空单元格，不判失败。
 #       F295 实证：10 行不一致，其中 4 行为代码跨度内未转义 `|`）
@@ -22,6 +24,7 @@
 #   21. 岗位数一致性（`N 岗位` 声称须与配置实况相符：内建 11 + 外部后端 2；出现「13 岗位」的行
 #       须带历史/例外标记——F149 实证：现在时声称「13 岗位全 continuable」属过度声称）
 #   20. 退出码契约实测（探针表：用法/环境错误必须 2——F128/F146 类的契约漂移机械门；
+#       子项：`-h`/`--help` 约定须由**全部运行型脚本**实现，且探针表覆盖全部实现者——F361）
 #       输入不存在、参数非法、坏根等，逐条实跑断言）
 #   19. 硬规则命名空间洁净（`R###`（三位以上）不得出现——`R1–R16` 是硬规则号，轮次引用请写
 #       「轮次 N」，避免同形误读；F144 实证）
@@ -319,6 +322,113 @@ sys.exit(0 if ok else 1)
   RC_UNDECL="$RC_UNDECL $base"
 done
 [ -z "$RC_UNDECL" ] && ok "运行型脚本均声明了退出码" || bad "运行型脚本缺退出码声明:${RC_UNDECL}"
+
+# class 5 子项（F358）：**外部输入变量**（本文件内无赋值，或写成 `${VAR:-默认}` 的覆盖开关）
+#   MUST 被记载——出现在任一 `.md`，或任一 `plans/*` 脚本的**头部注释块**（shebang 后的连续 `#`；
+#   `.py` 的首个 docstring 块；`.mjs` 的首个 `/** … */` 块）。
+#   依据：CONTRIBUTING「声称与实现是否同步——文档、脚本头注释、退出码契约三者一致」；
+#   实证：`plans/git-merge-flow.sh` 的 `$PR_BODY`（PR 正文覆盖）原只在实现里存在、头部与文档零记载。
+ENVDOC=$(python3 <<'PYEOF'
+import io, re, subprocess
+SYS = {"PATH","HOME","PWD","OLDPWD","IFS","SHELL","USER","TMPDIR","LANG","LC_ALL","LC_CTYPE","LC_MESSAGES",
+       "TERM","BASH_SOURCE","LINENO","FUNCNAME","RANDOM","SECONDS","OSTYPE","BASH","SHLVL","PPID","UID","EUID",
+       "BASH_VERSION","BASH_ENV","ENV","REPLY","EDITOR","PAGER","GIT_PAGER","TZ","NO_COLOR","COLUMNS","LINES",
+       "PYTHONIOENCODING","NF","NR","FS","OFS","ORS","RS","FILENAME","FNR","LOGNAME","HOSTNAME","MACHTYPE",
+       "HOSTTYPE","PROGRAMFILES","SystemRoot","COMPUTERNAME","TEMP","TMP","OS","ARCH","SOURCE_DATE_EPOCH",
+       "DOCKER_HOST","CI","GITHUB_ACTIONS","GITHUB_OUTPUT","GITHUB_STEP_SUMMARY","GITHUB_WORKSPACE","RUNNER_OS",
+       "GITHUB_REPOSITORY","GITHUB_SHA","GITHUB_REF","GITHUB_REF_NAME","GITHUB_EVENT_NAME","GITHUB_BASE_REF",
+       "GITHUB_HEAD_REF","GITHUB_TOKEN","GITHUB_ENV","GITHUB_PATH"}
+REF_SH = re.compile(r"\$\{([A-Z][A-Z0-9_]*)(:?[-=+?][^}]*)?\}|\$([A-Z][A-Z0-9_]*)")
+ASSIGN_SH = re.compile(r"(?:^|[;&|(\s])(?:local\s+|readonly\s+|declare\s+-\w+\s+|export\s+)?([A-Z][A-Z0-9_]*)=")
+REF_PY = re.compile(r"os\.environ(?:\.get)?(?:\[|\.get\()?['\"]([A-Z][A-Z0-9_]*)['\"]|os\.getenv\(['\"]([A-Z][A-Z0-9_]*)['\"]")
+REF_MJS = re.compile(r"process\.env\.([A-Z][A-Z0-9_]*)")
+REF_PS = re.compile(r"\$env:([A-Z][A-Z0-9_]*)")
+
+def tracked(pat):
+    out = subprocess.run(["git", "ls-files"], capture_output=True, text=True).stdout
+    return [f for f in out.split("\n") if f and re.search(pat, f)]
+
+def read(p):
+    return io.open(p, encoding="utf-8", errors="replace").read()
+
+def header(text, path):
+    lines = text.split("\n")
+    i = 1 if lines and lines[0].startswith("#!") else 0
+    if path.endswith(".py") and i < len(lines) and lines[i].lstrip()[:3] in ('"""', "'''"):
+        q = lines[i].lstrip()[:3]
+        if q not in lines[i].lstrip()[3:]:
+            j = i + 1
+            while j < len(lines) and q not in lines[j]:
+                j += 1
+            return "\n".join(lines[i:j + 1])
+        return lines[i]
+    if path.endswith(".mjs") and i < len(lines) and lines[i].lstrip().startswith("/**"):
+        j = i
+        while j < len(lines) and "*/" not in lines[j]:
+            j += 1
+        return "\n".join(lines[i:j + 1])
+    out = []
+    while i < len(lines):
+        s = lines[i]
+        if s.strip() == "" or s.lstrip().startswith("#"):
+            out.append(s)
+            i += 1
+        else:
+            break
+    return "\n".join(out)
+
+code = tracked(r"^(plans/.*\.(sh|py|mjs|ps1)|Makefile)$")
+doc_all = "\n".join(read(f) for f in tracked(r"\.md$"))
+head_all = "\n".join(header(read(f), f) for f in code)
+bad = []
+nref = 0
+for f in code:
+    text = read(f)
+    assigns, refs = set(), {}
+    for i, line in enumerate(text.split("\n"), 1):
+        if f.endswith(".py"):
+            for m in REF_PY.finditer(line):
+                n = m.group(1) or m.group(2)
+                if n:
+                    refs.setdefault(n, (False, i))
+        elif f.endswith(".mjs"):
+            for m in REF_MJS.finditer(line):
+                refs.setdefault(m.group(1), (False, i))
+        elif f.endswith(".ps1"):
+            for m in REF_PS.finditer(line):
+                refs.setdefault(m.group(1), (False, i))
+        else:
+            for m in REF_SH.finditer(line):
+                n = m.group(1) or m.group(3)
+                if not n:
+                    continue
+                has_def = bool(m.group(1) and m.group(2) and m.group(2)[0] in "-=?+")
+                old = refs.get(n, (False, i))
+                refs[n] = (old[0] or has_def, i)
+            for m in ASSIGN_SH.finditer(line):
+                assigns.add(m.group(1))
+    for n, (has_def, ln) in refs.items():
+        if n in SYS:
+            continue
+        if not (has_def or n not in assigns):
+            continue
+        nref += 1
+        pat = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(n) + r"(?![A-Za-z0-9_])")
+        if not pat.search(doc_all) and not pat.search(head_all):
+            bad.append("%s:%d:%s" % (f, ln, n))
+if nref == 0:
+    print("NOVAR")
+else:
+    print(",".join(bad[:5]) + ("" if len(bad) <= 5 else " 等共 %d 处" % len(bad)))
+PYEOF
+)
+if [ "$ENVDOC" = "NOVAR" ]; then
+  info "外部输入变量无法核验（未扫到任何变量）——无法核验 ≠ 通过"
+elif [ -z "$ENVDOC" ]; then
+  ok "外部输入变量均被记载（任一 .md 或脚本头部注释块）"
+else
+  bad "外部输入变量未被记载（文档或头部注释块零提及）→ ${ENVDOC}"
+fi
 
 echo "[6] 头部自称项数（仅提示，不计失败——计数口径以实跑输出为准）"
 DOC_CN=$(grep -oE '[一二三四五六七八九十]+项检查' plans/preset-compat.py | head -1)
@@ -1081,8 +1191,10 @@ probe_msg "score 坏根提示"           "bash plans/preset-score.sh --bogus"   
 probe_msg "doc-consistency 坏根提示" "bash plans/doc-consistency.sh --bogus" "预设根不存在" "cd: usage"
 probe_msg "battery 坏根提示"         "bash plans/verify-battery.sh --bogus"  "预设根不存在" "cd: usage"
 # -h/--help 约定：**实现该约定的脚本** MUST 返回 0 并打印头部用法（F153）；
-#   探针覆盖全部实现者（实测 10 个：audit/score/doc-consistency/verify-worktree/link/leak-guard/init/git-merge-flow/github-setup/write-scope-check；
-#   未实现者按用法错误返回 2，另有 4 条坏根提示形状探针）。
+#   探针覆盖全部实现者（F361 后为 **14 个**：audit/score/doc-consistency/verify-worktree/link/
+#   leak-guard/init/git-merge-flow/github-setup/write-scope-check + acceptance-verify/evidence-verify/
+#   checker-self-test/verify-battery；唯 `dsh-codepunk-home.sh` 为纯 source 库，不属 CLI 入口）；
+#   另有 4 条坏根提示形状探针。下方静态子项保证「实现者集合」无遗漏。
 probe_rc 0 "audit -h"           "bash plans/preset-audit.sh -h"
 probe_rc 0 "score -h"           "bash plans/preset-score.sh -h"
 probe_rc 0 "doc-consistency -h" "bash plans/doc-consistency.sh -h"
@@ -1093,7 +1205,25 @@ probe_rc 0 "init -h"            "bash plans/dsh-codepunk-init.sh -h"
 probe_rc 0 "git-merge-flow -h"  "bash plans/git-merge-flow.sh -h"
 probe_rc 0 "github-setup -h"    "bash plans/github-setup.sh -h"
 probe_rc 0 "write-scope -h"     "bash plans/write-scope-check.sh -h"
-RC_DECL=23   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 10 条 -h）；新增探针须同步此值
+# F361（本轮巡检实测）：以下 4 个脚本原无 `-h` 分支（`-h` 被当位置参数，rc=2 且无用法输出），
+#   而本类的注释自述「探针 MUST 覆盖全部实现者」⇒ 判据集合与实现集合脱节（`checker-self-test.sh`
+#   的 M149 甚至把该约定写进了夹具，自身却是缺口）。
+probe_rc 0 "acceptance-verify -h" "bash plans/acceptance-verify.sh -h"
+probe_rc 0 "evidence-verify -h"   "bash plans/evidence-verify.sh -h"
+probe_rc 0 "checker-self-test -h" "bash plans/checker-self-test.sh -h"
+probe_rc 0 "verify-battery -h"    "bash plans/verify-battery.sh -h"
+RC_DECL=27   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 14 条 -h）；新增探针须同步此值
+# F361 静态子项：**每个运行型 `plans/*.sh` 都 MUST 实现 `-h`**——探针表是人工枚举，
+#   新增脚本时极易漏挂（本轮即 4 个实现者不在表内）。此处以源码为准机械核验实现集合。
+RC_HGAP=""
+for f in plans/*.sh; do
+  base=$(basename "$f")
+  case "$base" in dsh-codepunk-home.sh) continue ;; esac   # 纯 source 库：无 $1/$@，不属 CLI 入口
+  # 接受两种书写顺序（`-h|--help` / `--help|-h`）与尾部追加别名（如 `-h|--help|help`）：
+  #   实测 link.sh 用 `--help|-h|"")`、git-merge-flow.sh 用 `-h|--help|help)`。
+  grep -qE '^[[:space:]]*(-h\|--help|--help\|-h)' "$f" || RC_HGAP="${RC_HGAP} ${base}"
+done
+[ -z "$RC_HGAP" ] || bad "运行型脚本未实现 -h/--help 用法约定:${RC_HGAP}"
 if [ "$RC_N" -ne "$RC_DECL" ]; then bad "退出码探针仅执行 ${RC_N}/${RC_DECL} 条（疑似被吞错，无法核验≠通过）"
 elif [ -n "$RC_BAD" ]; then bad "退出码契约漂移 → ${RC_BAD}"
 elif [ "$RC_V" -gt 0 ]; then info "退出码探针 ${RC_N} 条中 ${RC_V} 条因**环境缺口**无法核验（${RC_GAP}）——无法核验≠通过（F180）"
@@ -1282,6 +1412,39 @@ PYEOF
     if [ -n "$TBL_EXCESS" ]; then bad "表格行单元格数超过表头 → ${TBL_EXCESS}"; fi
     if [ -n "$TBL_STRUCT" ]; then bad "表格结构异常（断表）→ ${TBL_STRUCT}"; fi
   fi
+
+echo "[25] 同一制品的多处生成器须一致（INDEX 骨架模板单一来源）"
+# F360（本轮巡检实测）：`plans/dsh-codepunk-link.sh`（INDEX 缺失时自建骨架）与
+#   `plans/dsh-codepunk-init.sh`（总库初始化时写骨架）是**同一制品的两处生成器**，且 init 见
+#   INDEX 已存在即跳过 ⇒ 两者模板不一致时，终态内容取决于「谁先建文件」（顺序① init→register
+#   保留 init 的模板；顺序② register→init 只有 link 的模板）——实测 link 原为 1 行头、init 为 11 行
+#   注释块，同一输入两种顺序终态不同。此处机械核验两处 heredoc 块**逐字节一致**。
+SKEL_ISSUE=$(python3 <<'PYEOF'
+import io, re
+def skel(p):
+    t = io.open(p, encoding="utf-8", errors="replace").read()
+    m = re.search(r"<<'?EOF'\n(.*?)\nEOF\n", t, re.S)
+    if not m or "schema_version: 1" not in m.group(1):
+        return None
+    return m.group(1)
+a = skel('plans/dsh-codepunk-link.sh')
+b = skel('plans/dsh-codepunk-init.sh')
+if a is None or b is None:
+    print('MISSING link=%s init=%s' % (a is None, b is None))
+elif a != b:
+    la, lb = a.split('\n'), b.split('\n')
+    d = [str(i + 1) for i in range(max(len(la), len(lb)))
+         if (la[i] if i < len(la) else None) != (lb[i] if i < len(lb) else None)]
+    print('DRIFT 差异行 %s（link %d 行 / init %d 行）' % (','.join(d[:6]), len(la), len(lb)))
+PYEOF
+)
+if [ -z "$SKEL_ISSUE" ]; then
+  ok "INDEX 骨架模板单一来源：link 与 init 逐字节一致"
+elif [ "${SKEL_ISSUE%% *}" = "MISSING" ]; then
+  info "INDEX 骨架模板无法核验（未定位到含 schema_version 的 heredoc 块）——无法核验 ≠ 通过"
+else
+  bad "INDEX 骨架模板漂移 → ${SKEL_ISSUE}"
+fi
 
 # class 17 子项（F179）：ps1 工作树行尾须为 CRLF（.gitattributes eol=crlf 的落地校验）
 # F335：git 不可用（无 .git / 索引损坏）时原实现**跳过**该类，却仍以 rc=0 与

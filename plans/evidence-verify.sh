@@ -33,6 +33,12 @@ case "$(locale charmap 2>/dev/null)" in
     done ;;
 esac
 
+# F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当位置参数（报「evidence 文件不存在: -h」），
+#   与全仓「实现者 MUST 返回 0 并打印头部用法」的约定（doc-consistency 第 20 类）不符。现补上。
+case "${1:-}" in
+  -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
 if [ $# -lt 1 ]; then
   echo "用法: evidence-verify.sh <evidence.yaml> [交付目录]" >&2
   exit 2                       # 用法错误 = 2（与 acceptance-verify 及全仓约定一致）

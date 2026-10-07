@@ -40,6 +40,12 @@ case "$(locale charmap 2>/dev/null)" in
     done ;;
 esac
 
+# F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当位置参数、只报参数不足，
+#   与全仓「实现者 MUST 返回 0 并打印头部用法」的约定（doc-consistency 第 20 类）不符。现补上。
+case "${1:-}" in
+  -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
 if [ $# -lt 2 ]; then
   echo "用法: acceptance-verify.sh <acceptance.yaml> <交付方 task_id>" >&2
   # F332：交付方原为可选参（`[交付方 task_id]`）⇒ 不传时 ④「签收独立性」整段跳过，工具仍打印

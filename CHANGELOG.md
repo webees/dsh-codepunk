@@ -20,6 +20,23 @@
 
 ### 修复
 
+- **`INDEX.yaml` 权限随执行顺序变化（同输入终态不一致）**：`plans/dsh-codepunk-link.sh` 写回总库索引时用
+  `mktemp` + `mv`，而 macOS 的 `mktemp` 建文件即 0600 ⇒ `register` 跑在 `init` 之后会把 `INDEX.yaml`
+  由 644 **降为 600**（同一输入、两种顺序终态权限不同）。已在写回前记录原 mode、`mv` 后按原 mode 复位
+  （BSD `chmod` 无 `--reference`，故用 `stat -f '%Lp'` / `stat -c '%a'` 双回退）。
+- **`INDEX.yaml` 骨架模板两处不一致（终态取决于谁先建文件）**：`plans/dsh-codepunk-link.sh` 自建索引时写
+  1 行头注释，`plans/dsh-codepunk-init.sh` 写 11 行注释块，且 init 见文件已存在即跳过 ⇒ `init→register`
+  与 `register→init` 两种顺序的终态注释头不同（非注释行一致）。已让 link 侧模板与 init 侧**逐字节一致**，
+  并新增 `plans/doc-consistency.sh` **第 25 类**（同一制品的多处生成器须一致）+ 永久存活变异（M162）。
+- **4 个运行型脚本未实现 `-h`/`--help`**：`acceptance-verify.sh`、`evidence-verify.sh`、
+  `checker-self-test.sh`、`verify-battery.sh` 把 `-h` 当位置参数（报「文件不存在 / 预设根无效」），
+  与全仓「实现者 MUST 返回 0 并打印头部用法」的约定不符（`checker-self-test.sh` 的 M149 甚至把该约定
+  写进了变异夹具，自身却是缺口）。已补齐四个 `-h` 分支，并把第 20 类的探针表由 10 条 `-h` 扩到 14 条，
+  同时新增静态子项「每个运行型脚本都 MUST 实现 `-h`」+ 永久存活变异（M161）。
+- **`PR_BODY` 环境变量未记载**：`plans/git-merge-flow.sh` 的 `pr` 子命令支持 `PR_BODY` 覆盖 PR 正文
+  （实测两次调用正文不同 ⇒ 变量真实生效），但脚本头部与文档零提及（违反 CONTRIBUTING「声称与实现
+  是否同步」）。已记载于脚本头部，并新增 `plans/doc-consistency.sh` 第 5 类子项「外部输入变量须被记载」
+  （任一 `.md` 或脚本头部注释块）+ 永久存活变异（M163）。
 - **Dependabot 声明的生态无对应清单（静默空转）**：`.github/dependabot.yml` 声明 `pip` 生态，而仓库
   没有任何 pip 清单（`plans/*.py` 仅用标准库，`git ls-files` 无 requirements/pyproject/setup/Pipfile/lock），
   该条目**恒不产出 PR**；`docs/maintenance.md` 还声称「每周一巡检 `github-actions` 与 `pip` 两个生态」。

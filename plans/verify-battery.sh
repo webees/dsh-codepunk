@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 完整验证电池（每轮独立可复跑）：评分器 + 审计 + 守卫 + 格式 + 结构 + 健壮性 + E2E + 兼容性
 #
+# 用法: verify-battery.sh [预设根]（`-h`/`--help` 打印本头注；省略预设根时按脚本所在仓）
 # 退出码: 0=实检项全通过（跳过项在结论行列明，不称「满分」）; 1=存在失败项（逐条列出）; 2=用法/环境错误（预设根不存在或非本仓）
 set -u
 
@@ -15,6 +16,11 @@ case "$(locale charmap 2>/dev/null)" in
     for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
       if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
     done ;;
+esac
+# F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当预设根（报「预设根不存在: -h」），
+#   与全仓「实现者 MUST 返回 0 并打印头部用法」的约定（doc-consistency 第 20 类）不符。现补上。
+case "${1:-}" in
+  -h|--help) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT"; exit 2; }
