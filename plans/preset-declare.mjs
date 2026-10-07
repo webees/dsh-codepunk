@@ -395,7 +395,9 @@ if (diffs.length === 0) {
   {
     const wrapIdx = patchLines.findIndex((l) => l.includes(`- id: preset-${ID}`));
     if (wrapIdx >= 0) {
-      const wrapLines = patchLines.slice(wrapIdx, wrapIdx + 8);
+      // F326：窗口须覆盖**整个声明块**——固定 8 行窗口在块内插入注释行（`order:` 被下移）时会误报
+      //   「config.order 缺失（期望 N）」，值其实在位且正确 ⇒ 假红 + 消息失实（独立复核实测）。
+      const wrapLines = patchLines.slice(wrapIdx, span && span.end > wrapIdx ? span.end : wrapIdx + 8);
       const wrap = wrapLines.join('\n');
       const probs = [];
       // F305：包装字段须按 **YAML 语义**比对（解析后取值），不得用文本正则/切片——
