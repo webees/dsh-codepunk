@@ -67,6 +67,19 @@ DSH_CODEPUNK_HOME="$(_resolve_dsh-codepunk_home)"
 DSH_CODEPUNK_INDEX="${DSH_CODEPUNK_INDEX:-$DSH_CODEPUNK_HOME/INDEX.yaml}"
 [ -n "$_DSH_CODEPUNK_INDEX_EXT" ] && DSH_CODEPUNK_INDEX="$_DSH_CODEPUNK_INDEX_EXT"
 
+# ---------- js-yaml 解析路径（F352） ----------
+# 与 preset-declare / verify-battery 同候选链：cwd 式 `require("js-yaml")` 会漏掉**文档化**的安装位置
+# （$DSH_CODEPUNK_TOOLS → ~/.dsh-codepunk/tools → ${DSH_APP_ROOT}），使「按文档装好 js-yaml」的主机
+# 仍降级为「未做解析核验」。成功时打印 js-yaml 包目录，失败返回 1。
+_jy_dir() {
+  local cand
+  for cand in "${DSH_CODEPUNK_TOOLS:-}" "${HOME:-}/.dsh-codepunk/tools" "${DSH_APP_ROOT:-}" \
+              "${DSH_ASAR:+$(dirname "${DSH_ASAR}")}" "${DSH_ASAR:+$(dirname "${DSH_ASAR}")/app}"; do
+    [ -n "$cand" ] && [ -d "$cand/node_modules/js-yaml" ] && { printf '%s\n' "$cand/node_modules/js-yaml"; return 0; }
+  done
+  return 1
+}
+
 # ---------- 路径规范化 ----------
 _norm_path() {
   local p="$1"
@@ -394,10 +407,10 @@ cmd_index() {
     parser="ruby"
     ruby -ryaml -e 'begin; YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; YAML.load_file(ARGV[0]); rescue => e; warn e.message; exit 1; end' \
       "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
-  elif command -v node >/dev/null 2>&1 && node -e 'require("js-yaml")' >/dev/null 2>&1; then
+  elif command -v node >/dev/null 2>&1 && _JY="$(_jy_dir)" && [ -n "$_JY" ]; then
     parser="node"
-    node -e 'const y=require("js-yaml"),fs=require("fs");try{y.load(fs.readFileSync(process.argv[1],"utf8"))}catch(e){console.error(e.message);process.exit(1)}' \
-      "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
+    node -e 'const y=require(process.argv[1]),fs=require("fs");try{y.load(fs.readFileSync(process.argv[2],"utf8"))}catch(e){console.error(e.message);process.exit(1)}' \
+      "$_JY" "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
   else
     printf '%s: ⚠ 未做解析核验（无 ruby/node+js-yaml）——仅完成结构核验\n' "$SCRIPT_NAME" >&2
   fi
@@ -421,17 +434,25 @@ cmd_index() {
       lt = d["last_updated"]
       fail "last_updated 须为标量" if lt.is_a?(Hash) || lt.is_a?(Array)
     ' "$DSH_CODEPUNK_INDEX" 2>&1)" || sem_rc=1
-  elif command -v node >/dev/null 2>&1 && node -e 'require("js-yaml")' >/dev/null 2>&1; then
+  elif command -v node >/dev/null 2>&1 && _JY="$(_jy_dir)" && [ -n "$_JY" ]; then
     sem_msg="$(node -e '
-      const y=require("js-yaml"),fs=require("fs");
-      let d; try { d = y.load(fs.readFileSync(process.argv[1],"utf8")) || {}; } catch(e){ console.log(e.message); process.exit(1); }
+      const y=require(process.argv[1]),fs=require("fs");
+      let d; try { d = y.load(fs.readFileSync(process.argv[2],"utf8")) || {}; } catch(e){ console.log(e.message); process.exit(1); }
+      // F353：与 ruby 路径语义对齐——js-yaml 默认 schema 把 `last_updated: 2026-10-07T…` 解析成
+      //   **Date 对象**，而 ruby 的 Psych 同样给 Time；ruby 侧判据是 `is_a?(Hash)/is_a?(Array)`
+      //   ⇒ Time 属**标量**。node 侧若用 `typeof === "object"` 会把 Date 误判为「非标量」，
+      //   在真实 INDEX 上产生假红（实测「INDEX 语义非法：last_updated 须为标量」）。
+      //   同时按 ruby 口径校准三处边界：projects 允许 null；last_updated 数组亦非法；
+      //   条目值须为映射（nil 允许）。
+      const isPlain=(o)=>o!==null&&typeof o==="object"&&!Array.isArray(o)&&!(o instanceof Date);
+      const isMapOrArr=(o)=>isPlain(o)||Array.isArray(o);
       const bad=(m)=>{console.log(m);process.exit(1);};
-      if (typeof d!=="object"||Array.isArray(d)) bad("顶层须为映射");
-      if (d.schema_version!==undefined && typeof d.schema_version==="object") bad("schema_version 须为标量");
-      if (d.projects!==undefined && (typeof d.projects!=="object"||d.projects===null)) bad("projects 须为映射或条目序列");
-      if (d.projects) for (const k of Object.keys(d.projects)) { const v=d.projects[k]; if (v!==null && (typeof v!=="object"||Array.isArray(v))) bad("projects["+k+"] 须为映射"); }
-      if (d.last_updated!==undefined && typeof d.last_updated==="object") bad("last_updated 须为标量");
-    ' "$DSH_CODEPUNK_INDEX" 2>&1)" || sem_rc=1
+      if (typeof d!=="object"||Array.isArray(d)||d instanceof Date) bad("顶层须为映射");
+      if (d.schema_version!==undefined && isPlain(d.schema_version)) bad("schema_version 须为标量");
+      if (d.projects!==undefined && d.projects!==null && !isMapOrArr(d.projects)) bad("projects 须为映射或条目序列");
+      if (d.projects!==undefined && d.projects!==null) for (const k of Object.keys(d.projects)) { const v=d.projects[k]; if (v!==null && !isPlain(v)) bad("projects["+k+"] 须为映射"); }
+      if (d.last_updated!==undefined && isMapOrArr(d.last_updated)) bad("last_updated 须为标量");
+    ' "$_JY" "$DSH_CODEPUNK_INDEX" 2>&1)" || sem_rc=1
   else
     printf '%s: ⚠ 未做语义核验（无 ruby/node+js-yaml）\n' "$SCRIPT_NAME" >&2
   fi

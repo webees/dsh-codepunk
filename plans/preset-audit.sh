@@ -7,7 +7,11 @@
 #     ② 组标题后的数字（A25/B25/D10/E10/F10）是**分项预算标签**（和为 80，不参与计算），
 #        脚本不做分组评分，判定以逐项 ✅✗ 与总失分项数为准。
 # 退出码: 0=全项达标；1=存在失分项；2=环境/用法错误（预设根不存在等）
-# 依赖: 任选其一做 YAML 解析校验（node+js-yaml / ruby）；均不可用时跳过解析项并告警
+# 依赖: YAML 解析校验任选其一——**ruby 优先**；无 ruby 的主机用 **node+js-yaml**。js-yaml 按候选链
+#   查找：$DSH_CODEPUNK_TOOLS → ~/.dsh-codepunk/tools → $DSH_APP_ROOT → $DSH_ASAR 同级 → 预设根
+#   （与 preset-declare.mjs / verify-battery.sh / dsh-codepunk-link.sh 同链）。node 侧须用**容忍
+#   `!!js` 自定义标签**的 schema（本仓 agent.cordis.yml 含 9 处），否则 js-yaml 抛 unknown tag
+#   而 A1 会被误报为「YAML 解析失败」（把环境缺口说成配置非法）。两路都不可用时如实报「无法核验」。
 # 环境变量: OLD_NAME=<旧名> 时额外做「品牌卫生」回归检查（默认跳过）
 
 set -u
@@ -54,11 +58,29 @@ if command -v ruby >/dev/null 2>&1; then
   #   修法：优先带 aliases: true；Psych 3 不认该关键字（ArgumentError）时回退旧调用。
   ruby -ryaml -e 'begin; d=YAML.load_file("agent.cordis.yml", aliases: true); rescue ArgumentError; d=YAML.load_file("agent.cordis.yml"); end; exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && parse_ok="ok" || parse_ok="fail"
 elif command -v node >/dev/null 2>&1; then
-  node -e 'const p=process.argv[1];const y=require("js-yaml");const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' 2>/dev/null && parse_ok="ok" || parse_ok="fail"   # F214：与 ruby 路径同语义
+  # F351：node 回退分支两处口径修正——
+  #   ① 解析路径须与 preset-declare / verify-battery 同候选链（`$DSH_CODEPUNK_TOOLS` →
+  #      `~/.dsh-codepunk/tools` → `$DSH_APP_ROOT` → `$DSH_ASAR` 邻位 → 预设根）：旧的 cwd 式
+  #      `require("js-yaml")` 会漏掉**文档化**的安装位置，使「按文档装好 js-yaml」的主机仍取不到；
+  #   ② 本仓 `agent.cordis.yml` 含 9 处 `!!js` 自定义标签，js-yaml 默认 schema 抛
+  #      `unknown tag !<tag:yaml.org,2002:js>`（实测 84:50）⇒ 必须带容忍 schema，
+  #      否则**无 ruby 的主机（Windows / 精简镜像）上 A1 恒报「YAML 解析失败」**（把环境缺口
+  #      说成配置非法；实测同环境 `preset-declare.mjs check` 却能正常语义比对）。
+  A1_JY=""
+  for _c in "${DSH_CODEPUNK_TOOLS:-}" "${HOME:-}/.dsh-codepunk/tools" "${DSH_APP_ROOT:-}" \
+            "${DSH_ASAR:+$(dirname "${DSH_ASAR}")}" "$ROOT"; do
+    [ -n "$_c" ] && [ -d "$_c/node_modules/js-yaml" ] && { A1_JY="$_c/node_modules/js-yaml"; break; }
+  done
+  if [ -n "$A1_JY" ]; then
+    node -e 'const y=require(process.argv[1]),fs=require("fs");const s=y.DEFAULT_SCHEMA.extend([new y.Type("tag:yaml.org,2002:js",{kind:"scalar",resolve:()=>true,construct:d=>String(d)})]);const d=y.load(fs.readFileSync("agent.cordis.yml","utf8"),{schema:s});process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' "$A1_JY" 2>/dev/null && parse_ok="ok" || parse_ok="fail"   # F214：与 ruby 路径同语义
+  else
+    parse_ok="noyaml"
+  fi
 fi
 case "$parse_ok" in
   ok)   report "$PASS" "A1 解析 OK" ;;
   fail) report "$FAIL" "A1 YAML 解析失败" ;;
+  noyaml) report "$FAIL" "A1 无法核验（有 node 但候选链内未找到 js-yaml：\$DSH_CODEPUNK_TOOLS / ~/.dsh-codepunk/tools / \$DSH_APP_ROOT）——无法核验 ≠ 通过（装 ruby，或按本文件头注的依赖顺序安装 js-yaml 后重跑）" ;;
   skip) report "$FAIL" "A1 无法核验（无 ruby/node，无法解析 agent.cordis.yml）——无法核验 ≠ 通过（装 ruby 或 node 后重跑）" ;;
 esac
 # A2 岗位 6 维
