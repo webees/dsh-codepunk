@@ -136,9 +136,10 @@ fi   # command -v python3
 
 # ── A3 准确性 ───────────────────────────────────────────────────────────────
 NB=$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')
-# 只在 README 的 benchmarks/ 行上取计数：原文取「首个 ×N」，任何更早出现的 ×N
-# （如目录树里其它条目带计数）都会让本项误判为不准确。
-DOCB=$(grep -E '^\s+benchmarks/' README.md 2>/dev/null | grep -oE '×[0-9]+' | head -1 | tr -d '×')
+# 只在 README 的 benchmarks/ 行上取计数，且与 doc-consistency 第 1 类同一口径（`N 篇`，
+# 前缀 × 可有可无）：曾只认 `×N`，README 改写为「# 基准调研 N 篇」后取值为空 ⇒
+# A3 静默空转（README 声称与实际不符不再扣分）。口径以本行为准，改 README 措辞无需改门禁。
+DOCB=$(grep -E '^\s+benchmarks/' README.md 2>/dev/null | grep -oE '[0-9]+ 篇' | head -1 | grep -oE '[0-9]+')
 [ -n "$DOCB" ] && [ "$DOCB" != "$NB" ] && ded A3 20 "README 声称基准 ×${DOCB}，实测 ${NB}"
 NS=$(ls plans/*.sh 2>/dev/null | wc -l | tr -d ' ')
 DOCS=$(grep -cE '^\s+\S+\.sh\s+#' README.md 2>/dev/null)
@@ -343,8 +344,14 @@ DS=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d 
 # 注册表 schema 合法性（本地总库；不存在则跳过）：能过真实 YAML 解析器 + 键名一致
 IDX="$HOME/.dsh-codepunk/INDEX.yaml"
 if [ -f "$IDX" ] && command -v ruby >/dev/null 2>&1; then
-  ruby -ryaml -e '
-    d = YAML.load_file(ARGV[0])
+  # 跨版本 + 跨 locale 双修（与 link.sh ② 同构）：
+  #   ① Psych 4/5（ruby ≥ 3.1）的 load_file 是 safe_load，INDEX 未加引号的 last_updated 时间戳
+  #      会抛 Psych::DisallowedClass ⇒ 在 Linux 上把「合法注册表」误判为非法；带 permitted_classes
+  #      后由 Psych 3 的 ArgumentError 回退旧调用。
+  #   ② `-E utf-8`：本片段含中文字面量，C/POSIX locale 下（无 UTF-8 locale 的最小容器/CI）
+  #      ruby 以 US-ASCII 读取 `-e` 源码 ⇒ `invalid multibyte char` 编译失败 ⇒ 同一误判。
+  ruby -E utf-8 -ryaml -e '
+    begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end
     raise "顶层非映射" unless d.is_a?(Hash)
     raise "缺 schema_version" unless d.key?("schema_version")
     raise "缺 projects 或非数组" unless d["projects"].is_a?(Array) || d["projects"].nil?

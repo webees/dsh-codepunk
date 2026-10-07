@@ -284,6 +284,10 @@ else info "preset-compat 头部称「${DOC_CN}」；源码输出分支 ${REAL_CN
 
 echo "[7] 跨文件阈值一致（同一机制取值必须唯一）"
 # 每类：<标签>|<正则（须含一个捕获组）>
+# 可移植性（本轮实测）：这些正则经 `grep -E`（POSIX ERE）执行，**不得使用 `(?:…)` 非捕获组**——
+#   BSD grep（macOS）容忍，GNU grep / busybox（Linux、CI）报「Repetition not preceded by valid
+#   expression」⇒ 片段为空 ⇒ 本类退化为「未匹配到取值」的信息行而不判失败（假绿），
+#   且会让存活自检的 M39 变异在 Linux 上失败。新增模式请一律用普通捕获组。
 THRESH='评分基准 base|all|base[：: ]*([0-9]+)
 评分下限 clamp|last|clamp[ ]*0[–—-]([0-9]+)
 retries 单次扣分|all|每次[ ]*[−-]([0-9]+)
@@ -292,7 +296,7 @@ handoff 缺件扣分|last|每缺[ ]*1[ ]*文件[ ]*[−-]([0-9]+)
 巡检周期（轮）|all|每[ ]*([0-9]+)[ ]*轮
 收口轮数|all|([0-9]+)[ ]*轮未交付
 证据门 exit_code|all|exit_code[ ]*[=＝][ ]*([0-9]+)
-SKILL 体积上限（字节）|all|(?:≤|超预算[ ]*)([0-9]{5})
+SKILL 体积上限（字节）|all|(≤|超预算[ ]*)([0-9]{5})
 汇报摘要 token 预算|all|≤[ ]*([0-9]{3,4})[ ]*token
 续行空转阈值（轮）|all|连续[ ]*([0-9]+)[ ]*轮无产出
 并行上限 S|all|S≤([0-9]+)
