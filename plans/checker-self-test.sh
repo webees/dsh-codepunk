@@ -28,6 +28,12 @@ case "$(locale charmap 2>/dev/null)" in
       if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
     done ;;
 esac
+# F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当预设根（报「预设根无效: -h」），
+#   而本脚本的 M149 变异自述「`-h`/`--help` 约定……第 20 类探针 MUST 覆盖全部实现者」——
+#   自身却是缺口（自相矛盾）。现补上。
+case "${1:-}" in
+  -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
 SRC="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 [ -d "$SRC/plans" ] || { echo "✗ 预设根无效: $SRC" >&2; exit 2; }
 FAILED=0
@@ -2028,6 +2034,52 @@ mutate "M160-d 抹掉 Dependabot 判据的消息串" \
 printf '  - package-ecosystem: pip\n' >> "$work/cur/.github/dependabot.yml"
 check_no_match "M160-d 判据被抹掉 → 不得再报该消息（断言非空转）" \
   "bash plans/doc-consistency.sh 2>&1" "Dependabot 配置与仓库/治理脚本不符"
+
+echo "[M161 运行型脚本 MUST 实现 -h/--help（doc-consistency 第 20 类静态子项，本轮巡检实测）]"
+# 守护点：探针表是人工枚举，新增脚本极易漏挂（本轮实测 4 个实现者不在表内）；静态子项以源码为准。
+fresh
+sed -i.bak 's/^  -h|--help) sed -n/  --no-such-flag) sed -n/' "$work/cur/plans/evidence-verify.sh"
+rm -f "$work/cur/plans/evidence-verify.sh.bak"
+mutate "M161-a 抹掉 evidence-verify 的 -h 分支" \
+  "$work/cur/plans/evidence-verify.sh" '\-\-no-such-flag\)'
+check_rc "M161-a 缺 -h 实现须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '未实现 -h/--help 用法约定: evidence-verify.sh'" 0
+fresh
+check_rc "M161-b 干净副本不得报该缺口（断言非空转）" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '未实现 -h/--help 用法约定'" 1
+
+echo "[M162 INDEX 骨架模板单一来源（doc-consistency 第 25 类，本轮巡检实测）]"
+# 守护点：link.sh 与 init.sh 是同一制品（总库 INDEX.yaml 骨架）的两处生成器，
+#   且 init 见文件已存在即跳过 ⇒ 模板不一致时终态取决于「谁先建文件」（F360 实证）。
+fresh
+sed -i.bak 's/^# dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）$/# 骨架模板（变异版）/' \
+  "$work/cur/plans/dsh-codepunk-init.sh"
+rm -f "$work/cur/plans/dsh-codepunk-init.sh.bak"
+mutate "M162-a init 侧骨架头被变异" \
+  "$work/cur/plans/dsh-codepunk-init.sh" '骨架模板（变异版）'
+check_rc "M162-a 骨架漂移须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF 'INDEX 骨架模板漂移'" 0
+fresh
+check_rc "M162-b 干净副本须报单一来源（断言非空转）" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF 'INDEX 骨架模板单一来源'" 0
+
+echo "[M163 外部输入变量须被记载（doc-consistency 第 5 类子项，本轮巡检实测）]"
+# 守护点：未在本文件赋值、或写成 `${VAR:-默认}` 的覆盖开关 MUST 被记载（任一 .md 或头部注释块）。
+# 夹具注意：变量名与 `${…:-…}` 形态 MUST 在运行期拼出——若把该形态逐字写在**本文件**里，
+# 守护会把它当成本文件（`plans/checker-self-test.sh`）的一处「未记载覆盖开关」而误报（实测：
+# 逐字写法使干净副本 rc=1、M163-b 失败），属夹具自伤而非守护缺陷。
+fresh
+m163_var=ZZZ_UNDOCUMENTED_OVERRIDE
+printf '\n# 注入：未记载的覆盖开关\n: "${%s:-x}"\n' "$m163_var" >> "$work/cur/plans/git-merge-flow.sh"
+mutate "M163-a 注入未记载的环境变量覆盖" \
+  "$work/cur/plans/git-merge-flow.sh" 'ZZZ_UNDOCUMENTED_OVERRIDE'
+check_rc "M163-a 未记载变量须被报出" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '外部输入变量未被记载'" 0
+check_rc "M163-a2 须列出变量名与位置" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF 'ZZZ_UNDOCUMENTED_OVERRIDE'" 0
+fresh
+check_rc "M163-b 干净副本须报均被记载（断言非空转）" \
+  "bash plans/doc-consistency.sh 2>&1 | grep -qF '外部输入变量均被记载'" 0
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2

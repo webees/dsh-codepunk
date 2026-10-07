@@ -552,11 +552,24 @@ cmd_register() {
     # F272（独立复核所报，low）：旧实现未检查 `cat >` 的退出码即**无条件**打印「已按骨架创建」⇒
     #   在总库只读/目录不可写时先冒裸 shell 报错（`cat: …: Permission denied`），紧跟一句**与事实相反**
     #   的成功宣告。此处改为：失败即给出可读诊断并以 2 退出，成功才宣告。
-    if cat > "$DSH_CODEPUNK_INDEX" <<EOF
-# dsh-codepunk 全局项目索引（骨架模板；条目由 dsh-codepunk-link register 构建）
+    # F360（本轮巡检实测）：本处骨架**须与 plans/dsh-codepunk-init.sh 的骨架逐字节一致**——
+    #   旧实现只有 1 行头注释，而 init 的骨架是 11 行注释块，且 init 见 INDEX 已存在即跳过
+    #   ⇒ 终态注释头取决于「谁先建文件」（顺序① init→register 保留 11 行头；顺序② register→init
+    #   只有 1 行头）。机械判据见 plans/doc-consistency.sh 第 25 类（两处模板须一致）。
+    if cat > "$DSH_CODEPUNK_INDEX" <<'EOF'
+# =============================================================================
+# dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
+# 条目 schema（骨架期声明；条目本体由 dsh-codepunk-link 的 register 构建）：
+#   project_id:        项目 slug（目录名直用，冲突加路径 hash 后缀）
+#   project_root:      工程根绝对路径（resolve 按此匹配输入路径）
+#   dsh_codepunk_path: 总库托管路径（~/.dsh-codepunk/projects/<id>/，须真实存在）
+#   migrated_at:       迁移完成时间（ISO 8601；未迁移项目为 null）
+#   source:            条目来源：register（或历史 migration-report）
+# 字段名以 dsh-codepunk-link 的校验实现为准（早期骨架注释用 repo_path/status 旧名，已对齐）。
+# 树形约定：projects/<project_id>/runs/<run_id>/…（结构 = 现工程内 .dsh-codepunk/ 内容平移）
+# =============================================================================
 schema_version: 1
 projects: []
-
 last_updated: null
 EOF
     then
@@ -669,12 +682,20 @@ EOF
   #        工具自身靠行级解析才"能用"，属隐式缺陷）。先改为 `projects:` 再追加。
   if grep -qE '^projects:[[:space:]]*\[\][[:space:]]*$' "$DSH_CODEPUNK_INDEX"; then
     tmpf="$(mktemp)"
+    # F359（本轮巡检实测）：macOS `mktemp` 建文件即 0600，`mv` 覆盖后把 INDEX.yaml 从 init
+    #   建库的 644 **降为 600** ⇒ 同一输入、两种顺序（init→register vs register→init）终态
+    #   权限不同（「同输入终态一致」判据被推翻）。写回前记录原 mode，`mv` 后按原 mode 复位；
+    #   不可用 `chmod --reference`（BSD chmod 无该选项）。
+    idx_mode="$(stat -f '%Lp' "$DSH_CODEPUNK_INDEX" 2>/dev/null || stat -c '%a' "$DSH_CODEPUNK_INDEX" 2>/dev/null || echo 644)"
     # F257：`sed` 或 `mv` 失败（如 INDEX 不可写/受限文件系统）时该临时文件会**残留**在 $TMPDIR
     #   （实测失败路径每次泄漏 1 个；成功路径 tmpf 已被 mv 消耗 ⇒ rm 为安全空操作）。
     #   统一在此清理，与全仓 cleanup 口径（trap/显式 rm）一致。
-    sed 's/^projects:[[:space:]]*\[\][[:space:]]*$/projects:/' "$DSH_CODEPUNK_INDEX" > "$tmpf" \
-      && mv "$tmpf" "$DSH_CODEPUNK_INDEX" \
-      || rm -f "$tmpf"
+    if sed 's/^projects:[[:space:]]*\[\][[:space:]]*$/projects:/' "$DSH_CODEPUNK_INDEX" > "$tmpf"; then
+      mv "$tmpf" "$DSH_CODEPUNK_INDEX" || { rm -f "$tmpf"; return 1; }
+      chmod "$idx_mode" "$DSH_CODEPUNK_INDEX" 2>/dev/null || true
+    else
+      rm -f "$tmpf"
+    fi
   fi
 
   # ② 追加条目（先确保文件末尾有换行，防与末行粘行）
