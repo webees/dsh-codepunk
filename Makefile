@@ -22,8 +22,15 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-# 仓库根：由本 Makefile 的绝对路径反推（不写死任何平台路径；macOS/Linux 同构）
-ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+# 仓库根：由本 Makefile 所在目录反推（不写死任何平台路径；macOS/Linux 同构）。
+# F334：原式 `$(dir $(abspath $(lastword $(MAKEFILE_LIST))))` 在**路径含空格**时失效——Make 函数按
+#   空白分词，`$(dir …)` 只取到结果的首个词 ⇒ ROOT 被截断，配方 `cd "$(ROOT)"` 失败并 rc=2
+#   （实测：把本仓克隆到 `…/克隆 空格 é` 后 `make gates` 报
+#   `cd: /Users/…/r612 . é: No such file or directory`、`make: *** [gates] Error 2`），
+#   而同一路径下四道门禁直调 rc 全 0 ⇒ 入口在受支持路径下不可用。
+#   改用 shell 求根：`$(CURDIR)` 由 make 归一化（`make -C <dir>` 会先 chdir），路径只在 shell 层
+#   以引号出现，不经 Make 函数分词；配方内所有 `$(ROOT)` 均已加引号。
+ROOT := $(shell cd "$(CURDIR)" && pwd)
 # 脚本运行期正式位：总库 scripts/ 镜像目录（preset-audit F2 与 preset-score B14 对照此处）
 # F328：总库位置 MUST 采纳文档化变量 DSH_CODEPUNK_HOME（plans/dsh-codepunk-home.sh 导出），
 #   未设时才回退 `$HOME/.dsh-codepunk`——否则自定义总库位置的用户 make mirror 会写错位置。
