@@ -1,0 +1,43 @@
+# ============================================================================
+# Dependabot 自动合并 —— 依赖更新 PR 无需人工逐个处理
+# ----------------------------------------------------------------------------
+# 触发：pull_request_target（在**基线**上下文运行，拿到可写令牌；不检出、不执行
+#       PR 内容，故无代码注入面）。Dependabot 触发的普通 pull_request 工作流只有
+#       只读令牌，无法武装自动合并。
+# 行为：① actor 为 dependabot[bot]，或 ② PR 带 `automerge` 标签 ⇒ 对 PR 执行
+#       `gh pr merge --auto --merge`。GitHub 会在**全部必需检查通过**后自动以
+#       **合并提交**入库（仓库仅允许 merge commit，且必需检查为 strict ⇒ 基线
+#       变化时 GitHub 会先更新分支再重跑检查）。
+# 安全：不使用 `secrets` 之外的输入；不检出代码；标签可由维护者手动施加，
+#       从而对任意 PR 显式开启自动合并。
+# ============================================================================
+name: Dependabot 自动合并
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  arm-auto-merge:
+    name: 武装自动合并
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' ||
+      contains(github.event.pull_request.labels.*.name, 'automerge')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 武装自动合并（等必需检查全绿后由 GitHub 合并）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr merge --auto --merge "$PR"
+          gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest != null' \
+            | grep -qx true || { echo "::error::自动合并未武装成功"; exit 1; }
