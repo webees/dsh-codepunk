@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 完整验证电池（每轮独立可复跑）：评分器 + 审计 + 守卫 + 格式 + 结构 + 健壮性 + E2E + 兼容性
 #
-# 退出码: 0=全项通过; 1=存在失败项（逐条列出）; 2=用法/环境错误（预设根不存在或非本仓）
+# 退出码: 0=实检项全通过（跳过项在结论行列明，不称「满分」）; 1=存在失败项（逐条列出）; 2=用法/环境错误（预设根不存在或非本仓）
 set -u
 
 # F195：本工具多处判据依赖**多字节**模式（占位符、编号、①②③…）。C/POSIX locale 下 BSD 工具链会
@@ -29,6 +29,14 @@ F=0
 p() { printf '  %s %s\n' "$1" "$2"; }
 # 无法核验 ≠ 通过：环境不满足时显式判失败，避免「生产者失败→空值→静默 ✅」
 unverified() { p "✗" "$1（无法核验 ≠ 通过）"; F=1; }
+# F350：跳过登记 —— 「跳过 ≠ 通过」。被跳过的项（缺工具、缺环境变量、递归防护开关）MUST 在结论行
+#   显式列出，否则操作者会把「未核验」读成「满分」（与 F181 确立的原则同源；实证：设
+#   DSH_CODEPUNK_SKIP_SELFTEST=1 时结论行曾仍打印「本轮：全部通过（满分）」）。
+SKIP_N=0; SKIP_LIST=""
+skipnote() {
+  SKIP_N=$((SKIP_N + 1))
+  if [ -n "$SKIP_LIST" ]; then SKIP_LIST="${SKIP_LIST}、${1}"; else SKIP_LIST="$1"; fi
+}
 
 # 1) 15 指标评分
 bash plans/preset-score.sh >/dev/null 2>&1 && p "✅" "15 指标评分 100/100" || { p "✗" "15 指标评分未满分"; F=1; }
@@ -157,7 +165,7 @@ if command -v python3 >/dev/null 2>&1; then
       || { p "✗" "py 语法: $f"; F=1; }
   done
 else
-  p "ℹ" "python3 缺失：跳过 plans/*.py 语法校验"
+  p "ℹ" "python3 缺失：跳过 plans/*.py 语法校验"; skipnote "py 语法（缺 python3）"
 fi
 # mjs：node --check（缺 node 时提示，不判失败）
 if command -v node >/dev/null 2>&1; then
@@ -166,7 +174,7 @@ if command -v node >/dev/null 2>&1; then
     node --check "$f" >/dev/null 2>&1 || { p "✗" "mjs 语法: $f"; F=1; }
   done
 else
-  p "ℹ" "node 缺失：跳过 plans/*.mjs 语法校验"
+  p "ℹ" "node 缺失：跳过 plans/*.mjs 语法校验"; skipnote "mjs 语法（缺 node）"
 fi
 PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
 # F181：按**显式核验计数**构建结论行 —— 未实际核验的类型不得计入「通过」，否则会与「跳过」提示并列误导
@@ -197,7 +205,7 @@ if [ -n "$APPROOT" ] || [ -n "$ASAR" ]; then
     p "✗" "DSH 兼容检查未通过（跑 python3 plans/preset-compat.py 看详情）"; F=1
   fi
 else
-  p "ℹ" "DSH 兼容检查跳过（未设 DSH_APP_ROOT / DSH_ASAR）"
+  p "ℹ" "DSH 兼容检查跳过（未设 DSH_APP_ROOT / DSH_ASAR）"; skipnote "DSH 兼容（未设 DSH_APP_ROOT / DSH_ASAR）"
 fi
 
 # 8b) preset 声明副本漂移（源 agent.cordis.yml ↔ profile patch 内联块）
@@ -215,7 +223,7 @@ if [ -f "$PP" ]; then
       p "✗" "preset 声明副本漂移（跑 node plans/preset-declare.mjs apply）"; F=1
     fi
   else
-    p "ℹ" "声明漂移检查跳过（无 js-yaml）"
+    p "ℹ" "声明漂移检查跳过（无 js-yaml）"; skipnote "声明漂移（无 js-yaml）"
   fi
 fi
 # 9) E2E 沙箱（MUST 密闭）
@@ -255,7 +263,7 @@ rm -rf "$T"
 # 10) 检查器存活自检（变异测试）：在临时副本内注入已知缺陷，断言**对应检查项**必须报错——
 #     专治「守护空转」（F097/F099/F101/F102 一整类：工具不可用/正则不兼容/空值判定致恒判 PASS）。
 if [ "${DSH_CODEPUNK_SKIP_SELFTEST:-0}" = 1 ]; then
-  p "ℹ" "检查器存活自检（已跳过：DSH_CODEPUNK_SKIP_SELFTEST=1——递归防护）"
+  p "ℹ" "检查器存活自检（已跳过：DSH_CODEPUNK_SKIP_SELFTEST=1——递归防护）"; skipnote "检查器存活自检（递归防护）"
 elif [ -x plans/checker-self-test.sh ] || [ -f plans/checker-self-test.sh ]; then
   # F182：变异数从自检脚本**派生**（曾硬编码「6 项」，而自检已增至 76 项 → 低报核验范围）
   # 与 doc-consistency 的「自检变异项」口径**一致**：唯一 M 号数（含断言/注释中的引用）
@@ -282,4 +290,10 @@ else
 fi
 
 echo
-[ "$F" -eq 0 ] && { echo "  本轮：全部通过（满分）"; exit 0; } || { echo "  本轮：存在失败项"; exit 1; }
+if [ "$F" -eq 0 ] && [ "$SKIP_N" -eq 0 ]; then
+  echo "  本轮：全部通过（满分）"; exit 0
+fi
+if [ "$F" -eq 0 ]; then
+  echo "  本轮：实检项全部通过（跳过 ${SKIP_N} 项未核验：${SKIP_LIST}）——跳过 ≠ 通过"; exit 0
+fi
+echo "  本轮：存在失败项"; exit 1

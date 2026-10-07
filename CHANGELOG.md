@@ -39,6 +39,7 @@
 
 ### 修复
 
+- **验证电池的跳过项被计入「满分」**：设 `DSH_CODEPUNK_SKIP_SELFTEST=1`（自检递归防护开关），或环境缺 `DSH_APP_ROOT` / `js-yaml` 时，`plans/verify-battery.sh` 仍打印「本轮：全部通过（满分）」并以 0 退出——与本文件自身 F181 确立的「未实际核验的类型不得计入通过」相悖，操作者会把「未核验」读成「满分」。现改为**跳过登记**：因缺工具 / 缺环境变量 / 递归防护开关而跳过的项一律在结论行列明（「本轮：实检项全部通过（跳过 N 项未核验：…）——跳过 ≠ 通过」），仅当无跳过项时才打印「全部通过（满分）」；退出码契约不变（0 = 实检项全通过）。F350 实证（永久存活变异 M156）。
 - **证据 `log_ref` 无交付目录包含性判据**：绝对路径（`/etc/hosts`）、`..` 逃逸与指向交付目录外的符号链接均得 `verdict=PASS`——「防假通过门」的 ②③ 对本次交付不成立。`plans/evidence-verify.sh` 增包含性判据（解析后须位于交付目录内）+ 永久存活变异 M154。
 - **分支保护必需检查名无任何机械守护（改名即静默失配、PR 永久阻塞）**：`main` 的 ruleset 按**上下文名**匹配必需检查，名字来自 `.github/workflows/ci.yml` 各作业的 `name`，声明侧却在 `plans/github-setup.sh` 的 `CHECK_CONTEXTS`——两者无门禁比对。实测把四个作业名各加 `-v2` 后 `doc-consistency.sh` 仍 rc=0（四门禁全绿），而 ruleset 的必需检查将**永不出现** ⇒ 所有 PR 永久阻塞且无告警。现 `doc-consistency.sh` 第 7 类增子项：`CHECK_CONTEXTS` ↔ `ci.yml` 作业名 ↔ `docs/maintenance.md` 的提及三方一致；`docs/maintenance.md` 补名映射与改名后果说明。F347 实证（永久存活变异 M153）。
 
