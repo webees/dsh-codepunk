@@ -1603,6 +1603,24 @@ printf '#!/usr/bin/env bash\necho foreign\n' > "$work/tmp137/probe-foreign-x.sh"
 mutate "非契约命名空间同形条目 probe-foreign-x.sh" "$work/tmp137/probe-foreign-x.sh" 'echo foreign'
 check_rc "M137 对照：非契约命名空间同形条目 ⇒ rc 0 且含「归属不明」" \
   "TMPDIR='$work/tmp137' bash plans/write-scope-check.sh --repo '$work/cur' --tmp" 0 "归属不明"
+# M142（F331）：自签判据须**不区分大小写**——交付方 task-a 的签收方写 Task-A MUST 仍判自签。
+#   红证（退回旧实现）：区分大小写的子串包含 ⇒ 该夹具 verdict=PASS（自签被改大小写绕过）。
+mkdir -p "$work/acc142"
+printf 'task_id: task-a\naccepted_by:\n  - "Task-A"\naccepted_at: 2026-10-07T10:00:00+07:00\n' > "$work/acc142/case.yaml"
+mutate "自签签收方改大小写 Task-A（F331 修复存活）" "$work/acc142/case.yaml" 'Task-A'
+check_rc "M142 自签改大小写 → 仍判自签" \
+  "bash plans/acceptance-verify.sh '$work/acc142/case.yaml' task-a 2>&1" 1 "自签"
+# M142 对照：真正的独立签收方（大小写无关的不同 id）MUST 仍通过（防误报）。
+printf 'task_id: task-a\naccepted_by:\n  - "docs-lead@task-b"\naccepted_at: 2026-10-07T10:00:00+07:00\n' > "$work/acc142/indep.yaml"
+mutate "独立签收方 docs-lead@task-b" "$work/acc142/indep.yaml" 'docs-lead@task-b'
+check_rc "M142 对照：独立签收方 ⇒ 通过（不误报）" \
+  "bash plans/acceptance-verify.sh '$work/acc142/indep.yaml' task-a 2>&1" 0 "verdict=PASS"
+# M143（F332）：缺交付方 task_id MUST 判 rc=2 并显式说明「无法核验」——不得打印 PASS 声称已校验独立性。
+mkdir -p "$work/acc143"
+printf 'task_id: task-a\naccepted_by:\n  - "task-a"\naccepted_at: 2026-10-07T10:00:00+07:00\n' > "$work/acc143/self.yaml"
+mutate "自签夹具（缺交付方场景）" "$work/acc143/self.yaml" '"task-a"'
+check_rc "M143 缺交付方 → rc 2 且报无法核验" \
+  "bash plans/acceptance-verify.sh '$work/acc143/self.yaml' 2>&1" 2 "未提供交付方"
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2

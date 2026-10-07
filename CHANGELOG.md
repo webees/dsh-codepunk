@@ -41,6 +41,8 @@
 
 - **依赖更新自动合并的两条路径与自证判据**：对已可合并（`mergeStateStatus=CLEAN`）的 PR 武装自动合并会被 GitHub 拒绝（`Pull request is in clean status`），而武装成功后若立即可合并，GitHub 会当场合并并使 `autoMergeRequest` 变 `null` ⇒ 原自证判据误报失败。现改为「已可合并即直接以合并提交入库；否则武装，命中该错误时回退直接合并」，自证判据取「已武装**或**已合并」。见 `.github/workflows/dependabot-auto-merge.yml`。
 - **`automerge` 标签路径可用**：工作流触发事件补 `labeled`（此前打标签不会触发），并由 `plans/github-setup.sh` 幂等创建该标签（此前仓库中不存在）。
+- **签收门自签判据不区分大小写**：`plans/acceptance-verify.sh` 原以区分大小写的子串判断「签收方是否为交付方」，交付方 `task-a` 的签收方写 `Task-A` 即判通过 ⇒ 自签可被改大小写绕过。现比较前统一去首尾空白并转小写。
+- **签收门交付方参数改为必填**：该参原为可选，不传时独立性整段跳过却仍打印「PASS: 结构合法且签收独立」（声称已校验而实际未校验）。现缺交付方 ⇒ rc=2 并显式提示「无法核验 ≠ 通过」。
 - **治理脚本覆盖自动合并能力**：`plans/github-setup.sh` 的仓库元数据期望、比对字段与请求体三处纳入 `allow_auto_merge=true`，最终回读新增该字段与标签校验（此前关闭该能力不会被脚本发现）。
 
 ---
