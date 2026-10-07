@@ -13,6 +13,12 @@
 *.yaml text eol=lf
 *.md   text eol=lf
 
+# 解释器脚本与构建入口：同样恒 LF —— CRLF 会破坏 shebang（node/python 脚本在 Linux 上
+#   「bad interpreter」）以及 make 的配方解析（bash 收到带 \r 的命令行 ⇒ command not found）。
+*.mjs    text eol=lf
+*.py     text eol=lf
+Makefile text eol=lf
+
 # 二进制：不做行尾转换
 *.png  binary
 *.jpg  binary

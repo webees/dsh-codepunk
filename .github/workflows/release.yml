@@ -1,0 +1,68 @@
+# ============================================================================
+# dsh-codepunk 发布 —— push 标签 v* 触发，Release 正文取自 CHANGELOG.md 对应版本段
+# ----------------------------------------------------------------------------
+# 设计要点:
+#   ① 正文唯一来源是 CHANGELOG.md 的对应版本段（不手写、不猜）；抽取规则：
+#      从匹配 `## [v]X.Y.Z…` 的标题行之后，取到下一个 `## ` 标题之前。
+#   ② 版本段缺失或 CHANGELOG.md 不存在时**不中止发布**，而是回退到
+#      .github/release_note_template.md 生成骨架正文并打 ::warning:: ——
+#      「发布可用」优先于「正文完美」，但缺口必须显式暴露（不静默）。
+#   ③ 权限最小化：contents: write 仅此工作流需要（创建 Release）。
+# ============================================================================
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 生成 Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: 检出仓库（含标签历史）
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 从 CHANGELOG.md 抽取版本段（缺失则回退模板）
+        id: notes
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          ver="${tag#v}"
+          out="$RUNNER_TEMP/release-notes.md"
+          : > "$out"
+          if [ -f CHANGELOG.md ]; then
+            awk -v ver="$ver" '
+              $0 ~ "^##[[:space:]]+\\[?v?" ver "\\]?([[:space:]]|$)" { hit = 1; next }
+              hit && /^##[[:space:]]/ { exit }
+              hit { print }
+            ' CHANGELOG.md > "$out" || true
+          else
+            echo "::warning::仓库缺 CHANGELOG.md，本次 Release 正文回退到 .github/release_note_template.md"
+          fi
+          if [ ! -s "$out" ]; then
+            echo "::warning::CHANGELOG.md 未找到版本段 ${ver}（标签 ${tag}），正文回退到模板骨架"
+            body="$(cat .github/release_note_template.md)"
+            printf '%s\n\n完整差异：%s/%s/compare/%s...%s\n' "$body" \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$(git describe --tags --abbrev=0 "${tag}^" 2>/dev/null || echo main)" "$tag" > "$out"
+          fi
+          echo "正文行数: $(wc -l < "$out")"
+          echo "body_path=$out" >> "$GITHUB_OUTPUT"
+
+      - name: 发布 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: ${{ steps.notes.outputs.body_path }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: true

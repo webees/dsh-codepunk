@@ -156,7 +156,10 @@ grep -qE "D087[^|]*现行实现" "$REF/standard.md" 2>/dev/null && ded A3 25 "D0
 PARSE="skip"
 if command -v ruby >/dev/null 2>&1; then
   # F215：两路径谓词须**语义一致**（与 preset-audit 的 F214 同族）——统一为「name 为**非空字符串**」。
-  ruby -ryaml -e 'd=YAML.load_file("agent.cordis.yml"); exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && PARSE="ok" || PARSE="fail"
+  # F309：同 preset-audit A1 —— Psych 4/5（ruby >= 3.1）默认禁用别名，本仓配置的
+  #   YAML 锚点会让 YAML.load_file 抛 Psych::AliasesNotEnabled ⇒ 跨版本修法：先带
+  #   aliases: true，Psych 3 不认该关键字时回退旧调用。
+  ruby -ryaml -e 'begin; d=YAML.load_file("agent.cordis.yml", aliases: true); rescue ArgumentError; d=YAML.load_file("agent.cordis.yml"); end; exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && PARSE="ok" || PARSE="fail"
 elif command -v node >/dev/null 2>&1 && [ -d "$HOME/.dsh-codepunk/tools/node_modules/js-yaml" ]; then
   node -e 'const y=require(process.env.HOME+"/.dsh-codepunk/tools/node_modules/js-yaml");const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' 2>/dev/null && PARSE="ok" || PARSE="fail"   # F215：与 ruby 路径同语义
 fi
