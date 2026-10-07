@@ -69,6 +69,21 @@ function schemaFor(yaml) {
   return yaml.DEFAULT_SCHEMA.extend([jsScalar]);
 }
 
+// F349（无 js-yaml 的降级模式）：取**首个有效行**判定文档根结构——`- ` 开头为块序列（本工具的追加前提），
+//   其余（`key:` 映射 / `[...]`/`{...}` 流式）一律视为不兼容。仅用于拒答，不用于通过。
+function textRootKind(text) {
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/\s+$/, '');
+    const t = line.trim();
+    if (t === '' || t.startsWith('#') || t === '---' || t.startsWith('%')) continue;
+    if (/^\s/.test(line)) continue;                    // 缩进行属上一结构，不作根判定
+    if (/^-(\s|$)/.test(t)) return 'seq';
+    if (/^[[{]/.test(t)) return 'flow';
+    return 'map';
+  }
+  return 'empty';
+}
+
 // ── 参数 ────────────────────────────────────────────────────────────────────
 // 布尔开关（不吞下一个 token）；其余 --key 需要取值，缺失即报错，避免误吞后续选项。
 const FLAGS = new Set(['append']);
@@ -298,16 +313,43 @@ if (patchText.includes('\0')) {
   die(`profile patch 含 NUL 字节（非文本文件）：${PATCH}`
       + '——无法核验其 YAML 结构，拒绝读写（无法核验 ≠ 通过；请从备份重建）');
 }
-{
-  const probeYaml = loadYaml();
-  if (probeYaml && patchText.trim() !== '') {
-    try {
-      probeYaml.load(patchText, { schema: schemaFor(probeYaml) });
-    } catch (e) {
-      const msg = (e && e.message) ? String(e.message).split('\n')[0] : String(e);
-      die(`profile patch 不是合法 YAML（${msg}）：${PATCH}`
-          + '——追加/比对都会在损坏文件上给出假绿灯；请先修复或从备份重建再重试（本工具不擅自改写坏文件）');
-    }
+const probeYaml = loadYaml();
+if (probeYaml && patchText.trim() !== '') {
+  let rootVal;
+  try {
+    rootVal = probeYaml.load(patchText, { schema: schemaFor(probeYaml) });
+  } catch (e) {
+    const msg = (e && e.message) ? String(e.message).split('\n')[0] : String(e);
+    die(`profile patch 不是合法 YAML（${msg}）：${PATCH}`
+        + '——追加/比对都会在损坏文件上给出假绿灯；请先修复或从备份重建再重试（本工具不擅自改写坏文件）');
+  }
+  // F349：**根结构前置校验**。profile patch 约定为序列（`- id: …` / `- insert: …`；见本文件头注与
+  //   产品自带 patch）。旧实现只看「能否解析」：根为**映射**的补丁被追加 `- insert:` 项后，顶层同时出现
+  //   映射与序列 ⇒ 产出**非法 YAML**，而工具仍打印「✅ 生效」并提示重启 DSH（operator 拿到坏补丁）。
+  if (rootVal !== null && !Array.isArray(rootVal)) {
+    const kind = (typeof rootVal === 'object') ? '映射' : typeof rootVal;
+    die(`profile patch 根节点不是序列（当前为${kind}）：${PATCH}`
+        + '——追加/替换声明块要求顶层为 `- id: …` / `- insert: …` 列表；'
+        + '否则产物的顶层会同时含映射与序列而无法解析（请先改为序列结构）');
+  }
+}
+if (!probeYaml && patchText.trim() !== '') {
+  // 降级模式（无 js-yaml）：仍须拒答不兼容根结构，否则「追加后产物无法解析」照旧发生。
+  const kind = textRootKind(patchText);
+  if (kind === 'map' || kind === 'flow') {
+    die(`profile patch 根节点不是序列（当前为${kind === 'flow' ? '流式集合' : '映射'}，文本判定）：${PATCH}`
+        + '——追加/替换声明块要求顶层为 `- id: …` / `- insert: …` 列表；'
+        + '否则产物的顶层会同时含映射与序列而无法解析（请先改为序列结构）');
+  }
+  // 含文档分隔符时追加会产出**多文档** YAML，而降级模式无法复核产物 ⇒ 拒答。
+  //   首行 `---` 作为文档起始合法，其余 `---` 与任意 `...`（文档结束符）均为不安全信号。
+  const sigLines = patchText.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l) => l.trim() !== '');
+  const seps = sigLines.filter((l) => l.trim() === '---' || l.trim() === '...');
+  const leadingSep = sigLines.length > 0 && sigLines[0].trim() === '---' ? 1 : 0;
+  if (seps.length - leadingSep > 0) {
+    die(`profile patch 含文档分隔符（\`---\`/\`...\`）：${PATCH}`
+        + '——追加会产出多文档 YAML，而当前环境缺 js-yaml 无法复核产物（无法核验 ≠ 通过）；'
+        + '请安装 js-yaml（见本文件头注的依赖发现顺序）后重试');
   }
 }
 // 重复声明检测（F302）：同一 id 出现多处时产品注册行为未定义，且本工具既不改也不报 ⇒ 先显式拒绝（无法核验 ≠ 通过）。
@@ -345,6 +387,23 @@ if (action === 'apply') {
     // F203：写入失败（如只读文件/只读挂载/权限不足）不得抛裸堆栈——给清晰消息并按契约用环境错误码 2
     console.error(`✗ 无法写入 profile patch：${_p}（${_c}：${_m}）——请检查文件权限或只读挂载`);
     process.exit(2);
+  }
+  // F349（写后自校验）：写前守卫只保证**输入**可解析、前置校验只覆盖根结构；产物本身仍须复核。
+  //   不合规则从刚写的备份**回滚**并以 2 拒答——绝不让「✅ 生效」指向一个产品读不了的补丁。
+  if (probeYaml) {
+    try {
+      probeYaml.load(readFileSync(PATCH, 'utf8'), { schema: schemaFor(probeYaml) });
+    } catch (e) {
+      const msg = (e && e.message) ? String(e.message).split('\n')[0] : String(e);
+      try {
+        copyFileSync(backup, PATCH);
+        console.error(`  ↩︎ 已回滚：${PATCH} ← ${backup}`);
+      } catch (e2) {
+        console.error(`  ✗ 回滚失败（${e2 && e2.message ? e2.message : e2}）——请手工从 ${backup} 恢复`);
+      }
+      die(`写出自校验失败（${msg}）：${PATCH}`
+          + '——本工具不产出无法解析的 profile patch（无法核验 ≠ 通过）');
+    }
   }
   console.log(`  ✅ 已用源${span ? '重写' : '追加'}声明块：${ID}`);
   console.log(`     备份：${backup}`);
