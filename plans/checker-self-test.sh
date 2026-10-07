@@ -1632,6 +1632,33 @@ mutate "Makefile 根推导（含空格路径，F334 修复存活）" "$work/spac
 check_rc "M144 含空格路径下 make -n gates 的 cd 目标须为完整路径" \
   "make -C '$work/space dir' -n gates 2>&1 | grep -qF '/space dir\" || exit 2' && echo M144-OK" 0 "M144-OK"
 
+# M145（F335）：无 git 环境（无 `.git`）下 class 17 的 ps1 行尾子项 MUST **回退文件系统字节核验**，
+#   不得跳过——原实现跳过却仍 rc=0 且收尾「无硬性不一致（24 类检查）」＝环境导致的假绿灯。
+echo "[M145 class 17 ps1 行尾在无 git 环境下须回退核验（F335）]"
+fresh_nogit
+python3 - "$work/cur/plans/windows/dsh-codepunk-home.ps1" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+b = io.open(p, 'rb').read()
+c = b.replace(b'\r\n', b'\n')
+if c == b:
+    raise SystemExit('变异未落地：目标文件本无 CRLF')   # 自检自身问题，不得静默（不用 sys.exit(N)，避免与退出码契约混淆）
+io.open(p, 'wb').write(c)
+PYEOF
+mutate_gone "ps1 行尾 CRLF 被抹为 LF（无 git 环境）" "$work/cur/plans/windows/dsh-codepunk-home.ps1" "$(printf '\r')"
+check_rc "M145 无 git 环境 ps1 裸 LF → rc 1 且由回退核验报出" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "文件系统字节核验"
+# 对照：同一沙箱内恢复 CRLF 后，回退分支须判合格（防「回退分支恒报错」的空转守护）
+python3 - "$work/cur/plans/windows/dsh-codepunk-home.ps1" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+b = io.open(p, 'rb').read()
+c = b.replace(b'\n', b'\r\n').replace(b'\r\r\n', b'\r\n')
+io.open(p, 'wb').write(c)
+PYEOF
+check_contains "M145 对照：恢复 CRLF 后回退核验判合格（非恒真报错）" \
+  "bash plans/doc-consistency.sh 2>&1" "ps1 行尾均为 CRLF（文件系统字节核验）"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

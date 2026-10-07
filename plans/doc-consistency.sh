@@ -1059,11 +1059,29 @@ PYEOF
   fi
 
 # class 17 子项（F179）：ps1 工作树行尾须为 CRLF（.gitattributes eol=crlf 的落地校验）
+# F335：git 不可用（无 .git / 索引损坏）时原实现**跳过**该类，却仍以 rc=0 与
+#   「无硬性不一致（24 类检查）」收尾 ⇒ 环境导致**假绿灯**（与 F299 同类）。改为**回退文件系统
+#   字节核验**（真核验，非跳过）：逐个 ps1 读原始字节，出现**裸 LF**（前一个字节不是 CR）即不合格。
 if git rev-parse --git-dir >/dev/null 2>&1; then
   EOLBAD=$(git ls-files --eol plans/windows/ 2>/dev/null | awk '$2 != "w/crlf" {print $NF}' | tr '\n' ' ')
   [ -z "$EOLBAD" ] && ok "ps1 工作树行尾均为 CRLF（eol=crlf 落地）" || bad "ps1 工作树行尾非 CRLF: ${EOLBAD}"
 else
-  info "非 git 工作区，跳过 ps1 行尾校验——无法核验≠通过（同 F180 口径）"
+  EOLBAD=$(python3 - <<'PYEOF'
+import glob
+bad = []
+for p in sorted(glob.glob('plans/windows/*.ps1')):
+    try:
+        b = open(p, 'rb').read()
+    except OSError:
+        bad.append(p.split('/')[-1] + '（不可读）')
+        continue
+    if b'\n' in b.replace(b'\r\n', b''):   # 剥掉合法 CRLF 后仍有 LF ⇒ 存在裸 LF
+        bad.append(p.split('/')[-1])
+print(' '.join(bad))
+PYEOF
+)
+  info "非 git 工作区：ps1 行尾回退到文件系统字节核验（已核验，非跳过）"
+  [ -z "$EOLBAD" ] && ok "ps1 行尾均为 CRLF（文件系统字节核验）" || bad "ps1 工作树行尾非 CRLF（文件系统字节核验）: ${EOLBAD}"
 fi
 
 echo
