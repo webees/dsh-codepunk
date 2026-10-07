@@ -1622,6 +1622,16 @@ mutate "自签夹具（缺交付方场景）" "$work/acc143/self.yaml" '"task-a"
 check_rc "M143 缺交付方 → rc 2 且报无法核验" \
   "bash plans/acceptance-verify.sh '$work/acc143/self.yaml' 2>&1" 2 "未提供交付方"
 
+# M144（F334）：Makefile 的根推导 MUST 在**含空格路径**下仍成立——否则配方 `cd "$(ROOT)"` 被截断、rc=2。
+#   红证（退回旧式 `$(dir $(abspath $(lastword $(MAKEFILE_LIST))))`）：`make -n gates` 打印的 cd 目标只剩路径首词。
+mkdir -p "$work/space dir"
+cp Makefile "$work/space dir/"
+mutate "Makefile 根推导（含空格路径，F334 修复存活）" "$work/space dir/Makefile" '^ROOT := '
+# 判据用**路径后缀**而非绝对前缀：macOS 上 `$TMPDIR` 常经 `/var` 符号链接，`pwd` 归一化为
+#   `/private/var/...`，绝对前缀比对会因绑定路径差异误红（本轮实测）。
+check_rc "M144 含空格路径下 make -n gates 的 cd 目标须为完整路径" \
+  "make -C '$work/space dir' -n gates 2>&1 | grep -qF '/space dir\" || exit 2' && echo M144-OK" 0 "M144-OK"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
