@@ -1813,6 +1813,21 @@ mutate "真未知顶层键夹具" "$f346_hub/INDEX.yaml" '^foo: bar'
 check_rc "M152-e 真未知顶层键仍失败（不放过真错）" \
   "$F346_ENV bash plans/dsh-codepunk-link.sh index 2>&1" 1 "未知顶层键"
 
+# M153（F347）：分支保护必需检查名失配（ruleset 按上下文名匹配 ⇒ 改名后该检查永不出现、PR 永久阻塞）。
+# 变异在**副本**内改 `.github/workflows/ci.yml` 的作业名；子断言 b 覆盖文档侧漏提。
+echo "[M153 分支保护必需检查名一致性（F347）]"
+fresh
+sed -i.bak -E 's/^    name: 门禁回归$/    name: 门禁回归-v2/' "$work/cur/.github/workflows/ci.yml"
+rm -f "$work/cur/.github/workflows/ci.yml.bak"
+mutate "ci.yml 作业名改名（模拟重构）" "$work/cur/.github/workflows/ci.yml" '^    name: 门禁回归-v2$'
+check_rc "M153-a 作业改名 → doc-consistency 失败（缺/多同时报出）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "必需检查名不一致"
+sed -i.bak 's/检查名由/检查名定义自/' "$work/cur/docs/maintenance.md"
+rm -f "$work/cur/docs/maintenance.md.bak"
+mutate "docs/maintenance.md 抹掉检查名提及" "$work/cur/docs/maintenance.md" '检查名定义自'
+check_no_match "M153-b 文档漏提检查名 → 不得仍报「必需检查名一致」" \
+  "bash plans/doc-consistency.sh 2>&1" "必需检查名一致（脚本"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

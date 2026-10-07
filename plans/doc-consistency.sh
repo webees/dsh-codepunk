@@ -44,7 +44,10 @@
 #   9. 编号引用可解析（D 号须逐条登记；P 号须落在已声明范围/span 内）
 #   8. 日期形态与未来日期（须 YYYY-MM-DD / YYYY-MM；不得出现未来日期——「实测」不能发生在未来）
 #   7. 跨文件阈值一致（同一机制在文档/脚本/配置中的数值必须唯一：评分基准与上下限、
-#      retries 扣分与上限、handoff 缺件扣分、巡检周期、收口轮数、证据门退出码）
+#      retries 扣分与上限、handoff 缺件扣分、巡检周期、收口轮数、证据门退出码；
+#      另含「分支保护必需检查名」：`plans/github-setup.sh` 的 `CHECK_CONTEXTS` ↔
+#      `.github/workflows/ci.yml` 的作业 `name` ↔ `docs/maintenance.md` 的提及——
+#      ruleset 按**上下文名**匹配，作业改名后该检查永不出现 ⇒ PR 永久阻塞且无门禁可见；F347 实证）
 #
 # 计数一律**静态**取（不实跑子工具，避免环境依赖与递归）。
 # 用法: doc-consistency.sh [预设根]
@@ -361,6 +364,36 @@ while IFS='|' read -r label mode pat; do
     bad "${label} 取值不一: ${vals}（同一机制必须唯一）"
   fi
 done <<<"$THRESH"
+
+# 分支保护必需检查名（F347）：脚本声明 ↔ 工作流作业名 ↔ 维护文档提及
+# ruleset 的 required_status_checks 按**上下文名**匹配：作业改名后该检查永不出现 ⇒ PR 永久阻塞，
+# 且改名不会让任何既有门禁失败（实测：四个作业名各加 -v2 后本脚本仍 rc=0）。改名属常见重构动作。
+CI_YML=".github/workflows/ci.yml"
+MAINT_DOC="docs/maintenance.md"
+if [ -f plans/github-setup.sh ] && [ -f "$CI_YML" ]; then
+  WANT_CTX=$(grep -oE '^CHECK_CONTEXTS=\(.*\)' plans/github-setup.sh | sed -E 's/^CHECK_CONTEXTS=\(//; s/\)$//')
+  GOT_CTX=$(grep -E '^    name: ' "$CI_YML" | sed -E 's/^    name: //')
+  if [ -z "$WANT_CTX" ] || [ -z "$GOT_CTX" ]; then
+    info "必需检查名未取到（脚本或工作流结构已变，需人工确认）——无法核验≠通过"
+  else
+    MISS_CTX=$(printf '%s\n' "$WANT_CTX" | tr ' ' '\n' | grep . | while read -r w; do
+                 printf '%s\n' "$GOT_CTX" | grep -qxF "$w" || printf '%s ' "$w"; done)
+    EXTRA_CTX=$(printf '%s\n' "$GOT_CTX" | grep . | while read -r g; do
+                 printf '%s\n' "$WANT_CTX" | tr ' ' '\n' | grep -qxF "$g" || printf '%s ' "$g"; done)
+    UNDOC_CTX=""
+    if [ -f "$MAINT_DOC" ]; then
+      UNDOC_CTX=$(printf '%s\n' "$WANT_CTX" | tr ' ' '\n' | grep . | while read -r w; do
+                    grep -qF "$w" "$MAINT_DOC" || printf '%s ' "$w"; done)
+    fi
+    if [ -z "$MISS_CTX$EXTRA_CTX$UNDOC_CTX" ]; then
+      ok "分支保护必需检查名一致（脚本 ↔ ci.yml 作业名 ↔ docs/maintenance.md）：$(printf '%s' "$WANT_CTX" | tr ' ' ',')"
+    else
+      bad "必需检查名不一致: 工作流缺[${MISS_CTX}] 工作流多[${EXTRA_CTX}] 文档未提[${UNDOC_CTX}]（ruleset 按上下文名匹配 ⇒ 改名后必需检查永不出现、PR 永久阻塞）"
+    fi
+  fi
+else
+  info "必需检查名核验跳过（缺 plans/github-setup.sh 或 ${CI_YML}）——无法核验≠通过"
+fi
 
 echo "[8] 日期形态与未来日期"
 TODAY=$(date +%F)
