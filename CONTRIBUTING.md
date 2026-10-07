@@ -143,7 +143,7 @@ PR 描述请按 `.github/pull_request_template.md` 逐项填写——该模板�
 |---|---|---|
 | `门禁回归` | 完整验证电池：评分、审计、格式与卫生、结构性检查、脚本语法、端到端 | `bash plans/verify-battery.sh` |
 | `存活自检` | 变异测试：注入已知缺陷，断言对应守护必须报错 | `bash plans/checker-self-test.sh` |
-| `跨平台可移植` | POSIX 与 Windows 两侧实现的对等性、语法与行尾策略 | `bash plans/verify-battery.sh` 的跨平台项 |
+| `跨平台可移植` | `plans/*.sh` 的**可执行代码**内 GNU/BSD 专有写法（无兜底即失败）、CRLF、TAB 缩进、可执行位；**不核验** sh↔ps1 平台对等（那是 5.1 的人工 MUST；ps1 语法校验在 `门禁回归` 的电池第 7 项） | 无单命令等价（判据内联在 `ci.yml` 的静态扫描步骤）；近似项见 `plans/preset-score.sh` 的 B10 跨平台性 |
 | `文档一致性` | 文档「声称 ↔ 实现」逐类核对 | `bash plans/doc-consistency.sh` |
 
 本地跑绿不等于 CI 必绿（环境差异、行尾策略、可选依赖都会造成差异）：**以 CI 结论为准**，CI 红时先在本地复现，再改代码或判据，不要重跑碰运气。

@@ -99,7 +99,8 @@
 
 | 项 | 现状 | 说明 |
 |---|---|---|
-| 更新来源 | Dependabot（`.github/dependabot.yml`） | 每周一巡检 `github-actions` 与 `pip` 两个生态 |
+| 更新来源 | Dependabot（`.github/dependabot.yml`） | 每周一巡检 `github-actions` 生态；**只声明仓库真实存在的生态**——仓库无任何 pip 清单（`plans/*.py` 仅用标准库），故不声明 `pip`：声明而无对应清单的条目恒不产出 PR，属静默空转（`doc-consistency.sh` 第 7 类机械核验「声明 ↔ 清单」） |
+| 依赖 PR 标签 | `labels: [dependencies]` | 由 `plans/github-setup.sh` 幂等创建（与 `automerge` 同一模式）：标签不存在时该字段静默失效，故治理脚本须覆盖 `dependabot.yml` 引用的每个标签（`doc-consistency.sh` 第 7 类机械核验） |
 | 分组策略 | minor/patch 归组为单个 PR；major 单独成 PR | 降噪，同时让破坏性变更逐个可评 |
 | 自动合并 | 已启用（`.github/workflows/dependabot-auto-merge.yml`） | 触发事件含 `opened`/`synchronize`/`reopened`/`ready_for_review`/`labeled`；条件＝PR 作者为 `dependabot[bot]`，**或** PR 带 `automerge` 标签（该标签由 `plans/github-setup.sh` 幂等创建，仓库设置 `allow_auto_merge=true` 同由其治理） |
 | 合并口径 | 仅 `--merge`（合并提交） | 与仓库设置一致（squash / rebase 已关闭，main 受 ruleset 保护） |

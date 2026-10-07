@@ -19,8 +19,12 @@
 #      required_approving_review_count=0、dismiss_stale_reviews_on_push=true）+
 #      required_status_checks（strict；门禁回归/存活自检/跨平台可移植/文档一致性）；
 #      **不启用** required_linear_history（保留合并提交）
-#   ④ 自动合并标签「automerge」: 幂等创建（缺失即建）。带该标签的 PR 由
-#      .github/workflows/dependabot-auto-merge.yml 自动合并；标签缺失时该路径静默失效
+#   ④ 自动化标签（`.github/dependabot.yml` 与自动合并工作流引用的标签）: 幂等创建
+#      （缺失即建）。「automerge」＝带该标签的 PR 由
+#      .github/workflows/dependabot-auto-merge.yml 自动合并；「dependencies」＝
+#      Dependabot PR 的 `labels` 字段引用。标签缺失时对应路径/字段**静默失效**
+#      ⇒ 本脚本是这两个标签的唯一供给方（doc-consistency.sh 第 7 类机械核验
+#      「dependabot.yml 引用的标签 ↔ 本脚本的标签清单」）
 # 幂等: 每步先 GET 比对，再 PATCH/PUT/POST；已存在的 ruleset 按原 id 更新（id 不变）
 # 退出码: 0=全部应用且校验通过；1=未完全应用或校验不符（含 required_status_checks 被 GitHub 以 422 拒绝，已写入其余规则、待 CI 首跑后重跑本脚本）；2=环境或用法错误（无 gh、未登录、参数错）
 # 依赖: gh（GitHub CLI，已登录）；写操作需该账号对本仓有 admin 权限
@@ -36,6 +40,8 @@ TOPICS=(deepseek-harness multi-agent ai-agents orchestration code-review preset 
 CHECK_CONTEXTS=(门禁回归 存活自检 跨平台可移植 文档一致性)
 AUTOMERGE_LABEL="automerge"
 LABEL_JSON='{"name":"automerge","color":"0e8a16","description":"带此标签的 PR 由 dependabot-auto-merge.yml 自动合并（必需检查全绿后以合并提交入库）"}'
+DEPS_LABEL="dependencies"
+DEPS_LABEL_JSON='{"name":"dependencies","color":"0366d6","description":"依赖更新 PR 标签（.github/dependabot.yml 的 labels 字段引用；缺失时该字段静默失效）"}'
 DRY=0
 
 say() { printf '%s\n' "$*"; }
@@ -248,13 +254,24 @@ else
   [ "$DRY" = 1 ] || say "已创建：标签「${AUTOMERGE_LABEL}」"
 fi
 
+step "⑤ 依赖 PR 标签「${DEPS_LABEL}」"
+api_get "repos/${SLUG}/labels/${DEPS_LABEL}" '.name'
+if [ "$API_RC" = 0 ] && [ "$API_OUT" = "$DEPS_LABEL" ]; then
+  say "无变化：标签「${DEPS_LABEL}」（存在 ⇒ dependabot.yml 的 labels 字段生效）"
+else
+  say "创建：标签「${DEPS_LABEL}」"
+  api_write POST "repos/${SLUG}/labels" "$DEPS_LABEL_JSON"
+  [ "$API_RC" = 0 ] || fail1 "创建标签「${DEPS_LABEL}」失败: ${API_OUT}"
+  [ "$DRY" = 1 ] || say "已创建：标签「${DEPS_LABEL}」"
+fi
+
 if [ "$DRY" = 1 ]; then
   say ""
   say "（--dry-run：未改动远端，跳过最终校验）"
   exit 0
 fi
 
-step "⑤ 最终校验（GET 回读）"
+step "⑥ 最终校验（GET 回读）"
 api_get "repos/${SLUG}" "$REPO_FIELDS"
 [ "$API_RC" = 0 ] || fail1 "回读仓库元数据失败: ${API_OUT}"
 printf '%s\n' "$API_OUT" | sed 's/^/  /'
@@ -275,6 +292,9 @@ printf '%s\n' "$API_OUT" | sed 's/^/    · /'
 api_get "repos/${SLUG}/labels/${AUTOMERGE_LABEL}" '.name'
 [ "$API_RC" = 0 ] || fail1 "回读标签「${AUTOMERGE_LABEL}」失败: ${API_OUT}"
 say "  自动合并标签: ${API_OUT}"
+api_get "repos/${SLUG}/labels/${DEPS_LABEL}" '.name'
+[ "$API_RC" = 0 ] || fail1 "回读标签「${DEPS_LABEL}」失败: ${API_OUT}"
+say "  依赖 PR 标签: ${API_OUT}"
 api_get "repos/${SLUG}/rulesets/${RS_ID}" "$RS_FIELDS"
 [ "$API_RC" = 0 ] || fail1 "回读 ruleset 参数失败: ${API_OUT}"
 RS_READBACK="$API_OUT"
@@ -287,7 +307,7 @@ if [ "$DEGRADED" = 1 ]; then
   exit 1
 fi
 if [ "$RS_READBACK" = "$WANT_RS" ]; then
-  say "结论：全部应用并校验通过（仓库元数据（含 allow_auto_merge）+ topics + 标签「${AUTOMERGE_LABEL}」+ ruleset「${RS_NAME}」）"
+  say "结论：全部应用并校验通过（仓库元数据（含 allow_auto_merge）+ topics + 标签「${AUTOMERGE_LABEL}」「${DEPS_LABEL}」+ ruleset「${RS_NAME}」）"
   exit 0
 fi
 say "结论：校验不符 —— ruleset 参数与期望不一致（见上，重跑本脚本）"

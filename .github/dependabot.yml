@@ -1,11 +1,16 @@
 # ============================================================================
-# Dependabot —— 依赖更新（GitHub Actions 与 pip 两条生态）
+# Dependabot —— 依赖更新（GitHub Actions 生态）
 # ----------------------------------------------------------------------------
 # 设计要点:
-#   ① 每周一检一次，两个生态分开成组：minor/patch 合并成单个 PR（降噪），
-#      major 不并入组 ⇒ 单独成 PR，便于逐个人工评估破坏性变更。
+#   ① 每周一检一次：minor/patch 合并成单个 PR（降噪），major 不并入组 ⇒
+#      单独成 PR，便于逐个人工评估破坏性变更。
 #   ② open-pull-requests-limit 限 5：避免一次涌出十几个 PR 淹没评审队列。
-#   ③ 提交信息沿用仓库的约定式前缀（chore(ci) / chore(deps)）。
+#   ③ 提交信息沿用仓库的约定式前缀（chore(ci)）。
+#   ④ 只声明**仓库真实存在**的生态：声明而仓库无对应清单（如 pip）的条目
+#      恒不产出 PR，属静默空转。新增生态时须同时落清单，并由
+#      `plans/doc-consistency.sh` 第 7 类的 Dependabot 子项机械核验。
+#   ⑤ labels 引用的标签由 `plans/github-setup.sh` 幂等创建（标签不存在时
+#      该字段静默失效）。
 # ============================================================================
 version: 2
 updates:
@@ -23,26 +28,6 @@ updates:
       - dependencies
     groups:
       github-actions-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
-
-  - package-ecosystem: pip
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:00"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "chore(deps)"
-    labels:
-      - dependencies
-    groups:
-      pip-minor-patch:
         patterns:
           - "*"
         update-types:
