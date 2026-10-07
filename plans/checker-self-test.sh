@@ -1073,6 +1073,37 @@ PYEOF
   mutate "包装块内插入注释行" "$work/patch139c.yml" '块内注释（语义不变）'
   check_rc "M139 块内注释 → 不得误报 config.order 缺失" "node plans/preset-declare.mjs check --patch '$work/patch139c.yml' 2>&1" 0 "语义一致"
 fi
+echo "[M140 docs/ 内引用不存在的 plans 脚本（F327：工具存在性域扩展的修复存活）]"
+fresh
+printf '\n见 `plans/no-such-script.sh`。\n' >> "$work/cur/docs/faq.md"
+mutate "docs 内引用不存在的 plans 脚本" "$work/cur/docs/faq.md" 'plans/no-such-script.sh'
+check_rc "M140 docs 内死引用 → 第 4 类报缺脚本" "bash plans/doc-consistency.sh 2>&1" 1 "文档提到但不存在的脚本"
+echo "[M141 allow 名单连字符工具名不得静默漏检（F329：提取字符类收窄致假通过）]"
+fresh
+if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
+  printf '  ℹ M141 跳过（未设 DSH_APP_ROOT，无法核验安装真实性；属环境受限）\n'
+else
+  cat > "$work/inject141.py" <<'PYEOF'
+import io, sys
+p, name = sys.argv[1], sys.argv[2]
+L = io.open(p, encoding='utf-8').read().split('\n')
+ai = next(i for i, l in enumerate(L) if '&role-allow' in l)
+ii = next(i for i, l in enumerate(L) if 'allow:' in l and '!!js' in l and i != ai)
+def add(line):
+    s = line.rstrip(); tail = ''
+    if s.endswith('"'):
+        s, tail = s[:-1].rstrip(), '"'
+    core = s[:-1].rstrip()
+    core = core + (',' if core.endswith(("'", '"')) else '')
+    return core + "'%s']" % name + tail
+L[ai], L[ii] = add(L[ai]), add(L[ii])
+io.open(p, 'w', encoding='utf-8').write('\n'.join(L))
+PYEOF
+  python3 "$work/inject141.py" "$work/cur/agent.cordis.yml" 'no-such-tool-zz'
+  mutate "锚点与内联同时注入不存在的连字符工具名" "$work/cur/agent.cordis.yml" 'no-such-tool-zz'
+  check_rc "M141 连字符未知名 → compat 检查 4 报无注册来源" \
+    "DSH_APP_ROOT=\"$DSH_APP_ROOT\" python3 plans/preset-compat.py . 2>&1" 1 "无注册来源"
+fi
 echo "[M52 accepted_by 流式数组（F171 修复存活）]"
 fresh
 mkdir -p "$work/acc"

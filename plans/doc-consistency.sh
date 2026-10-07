@@ -206,15 +206,18 @@ if [ "$BARE" = 0 ]; then ok "无裸用「工作区」"
 else info "裸用「工作区」${BARE} 处（含「工作区检查点/工作区治理/术语对照」等合法用法，请人工确认是否易与「工作房」混淆）"; fi
 
 echo "[4] 工具存在性"
+# F327：扫描域原先只含 SKILL / references / README / CONTRIBUTING，**不含 docs/**（开源规格化时新增 9 篇，
+#   内有 90+ 处 `plans/...` 引用）⇒ 通过消息「文档提到的 plans 脚本均存在」属**过度声称**，且
+#   `docs/documentation-policy.md` 的占位路径 `plans/xxx.sh` 无任何机械门可发现。故扩展域并写明域。
 MISS=""
-for f in "$SKILL" "$REF"/*.md README.md CONTRIBUTING.md; do
+for f in "$SKILL" "$REF"/*.md README.md CONTRIBUTING.md docs/*.md docs/*/*.md; do
   [ -f "$f" ] || continue
   case "$f" in */benchmarks/*) continue ;; esac
   for s in $(grep -oE 'plans/[a-z0-9._-]+\.(sh|py|mjs)' "$f" 2>/dev/null | sed 's#plans/##' | sort -u); do
     [ -f "plans/$s" ] || [ -f "plans/windows/$s" ] || MISS="$MISS $(basename "$f"):$s"
   done
 done
-[ -z "$MISS" ] && ok "文档提到的 plans 脚本均存在" || bad "文档提到但不存在的脚本:${MISS}"
+[ -z "$MISS" ] && ok "文档提到的 plans 脚本均存在（域：SKILL / references / README / CONTRIBUTING / docs）" || bad "文档提到但不存在的脚本:${MISS}"
 
 echo "[5] 退出码契约"
 # F231：**空输入守卫** —— plans 下无可检脚本时，下方两处循环均不执行 ⇒ 两个判据都会**恒真通过**（0 脚本 ⇒ 「无违规」）。

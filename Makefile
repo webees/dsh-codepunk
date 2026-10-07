@@ -25,9 +25,14 @@ SHELL := /bin/bash
 # 仓库根：由本 Makefile 的绝对路径反推（不写死任何平台路径；macOS/Linux 同构）
 ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 # 脚本运行期正式位：总库 scripts/ 镜像目录（preset-audit F2 与 preset-score B14 对照此处）
-HUB := $(HOME)/.dsh-codepunk/scripts
-# 本仓运行根（临时产物）
+# F328：总库位置 MUST 采纳文档化变量 DSH_CODEPUNK_HOME（plans/dsh-codepunk-home.sh 导出），
+#   未设时才回退 `$HOME/.dsh-codepunk`——否则自定义总库位置的用户 make mirror 会写错位置。
+HUB_ROOT := $(if $(DSH_CODEPUNK_HOME),$(DSH_CODEPUNK_HOME),$(HOME)/.dsh-codepunk)
+HUB := $(HUB_ROOT)/scripts
+# 仓库内临时目录（.gitignore 已忽略；正式临时物按写盘纪律应落总库 tmp/，见 references/file-hygiene.md §六）
 RUN_TMP := $(ROOT)/tmp
+# 总库临时目录（各轮沙箱落点；clean 亦须清理此处，否则「以为已清而实际未清」）
+HUB_TMP := $(HUB_ROOT)/tmp
 
 .PHONY: help gates selftest battery write-scope compat mirror clean
 
@@ -40,7 +45,7 @@ help:
 	@printf '%s\n' '  write-scope  写盘纪律门（--repo . --tmp）'
 	@printf '%s\n' '  compat       组合 ↔ DSH 安装兼容核验（需 DSH_APP_ROOT 或 DSH_ASAR）'
 	@printf '%s\n' '  mirror       把 plans/*.sh 与 plans/*.py 安装到总库并逐文件 cmp -s 校验'
-	@printf '%s\n' '  clean        清理本仓运行根 tmp/'
+	@printf '%s\n' '  clean        清理仓库临时目录与总库临时目录（tmp/；不动总库 tools/）'
 	@printf '%s\n' '' '例: make gates' '    make compat DSH_APP_ROOT=<解包后的 app 目录>'
 
 # ── 门禁：文档一致性 + 预设审计 + 15 指标评分 + 泄露防护 ────────────────────
@@ -96,7 +101,13 @@ mirror:
 	printf '镜像: %s 个文件与源副本逐字节一致（install -m 755 + cmp -s）\n' "$$n"; \
 	exit $$rc
 
-# ── 清理本仓运行根 tmp/ ────────────────────────────────────────────────────
+# ── 清理仓库临时目录与总库临时目录（tmp/；不动总库 tools/ 工具安装位）────────────────
 clean:
 	rm -rf -- "$(RUN_TMP)"; \
-	printf '已清理运行根 tmp/: %s\n' "$(RUN_TMP)"
+	printf '已清理仓库临时目录: %s\n' "$(RUN_TMP)"; \
+	if [ -d "$(HUB_TMP)" ]; then \
+	  rm -rf -- "$(HUB_TMP)"; \
+	  printf '已清理总库临时目录: %s\n' "$(HUB_TMP)"; \
+	else \
+	  printf '总库临时目录不存在，跳过: %s\n' "$(HUB_TMP)"; \
+	fi

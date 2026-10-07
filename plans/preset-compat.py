@@ -246,6 +246,11 @@ def main() -> int:
 
     # 7) allow 名单的每个名字必须在安装内有注册来源（F021 类缺陷的机械防线：
     #    写了当前平台不存在的全局工具名 → restrict() 直接抛错、该岗全部派遣失败）
+    # F329：两侧提取的字符类**不得收窄**——工具名允许连字符/点/大写（如 `code-search`、`a.b`），
+    #   原字符类 `[a-z_][a-z0-9_]*` 会把这类名字**静默丢弃**，永不进入校验集合：若某个不存在的
+    #   连字符名同时写在锚点与内联名单里，本检查会 rc=0 宣称兼容，而产品 `tools.restrict()` 在挂载
+    #   时抛 `names unknown global tool`（`<app>/node_modules/@deepseek-ai/dsh-tools/lib/index.js:2908`）
+    #   ⇒ 该岗全部派遣失败。故名单侧用 `[^']+`（引号内即名字），注册侧放宽到字母数字/点/连字符/下划线。
     import re as _re2
     _lines7 = combo.read_text(encoding="utf-8").splitlines()
     allow_names = set()
@@ -255,7 +260,7 @@ def main() -> int:
             for elem in body.split(','):
                 # 平台三元里 `?` 之前是判据（如 'win32'），不是工具名，只取 `?` 之后的分支
                 part = elem.split('?', 1)[1] if '?' in elem else elem
-                allow_names |= set(_re2.findall(r"'([a-z_][a-z0-9_]*)'", part))
+                allow_names |= {n.strip() for n in _re2.findall(r"'([^']+)'", part) if n.strip()}
     reg = set()
     _nm = os.path.join(app, "node_modules", SCOPE)
     for pkg in os.listdir(_nm) if os.path.isdir(_nm) else []:
@@ -265,7 +270,7 @@ def main() -> int:
         for fn in os.listdir(libd):
             if fn.endswith('.js'):
                 try:
-                    reg |= set(_re2.findall(r'name:\s*"([a-z][a-z0-9_]{1,40})"',
+                    reg |= set(_re2.findall(r'name:\s*"([A-Za-z][A-Za-z0-9._-]{0,40})"',
                                            open(os.path.join(libd, fn), encoding='utf-8', errors='ignore').read()))
                 except OSError:
                     pass
