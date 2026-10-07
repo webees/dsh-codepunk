@@ -39,6 +39,8 @@
 
 ### 修复
 
+- **制品字段模板声称悬空**：`SKILL.md` 的 ① 阶段写明「产 `plan_draft.md` + `goal.yaml`（字段模板见 `references/artifacts.md`）」，但 `artifacts.md` 全文只在运行根树状图里出现过 `plan_draft.md` 一次——该制品的字段契约**无处可查**。现补 `## plan_draft.md（① 需求草案；与 goal.yaml 同批产出）` 小节（字段模板 + `assumption`/`open_question` 标记约定 + D034/D035 硬约束）。
+- **制品字段模板声称无机械监督**：第 10 类原只校验 `references/<名称>.md「章节名」` 与限定式 `§N` 两类引用，「`<制品>`（字段模板见 `references/artifacts.md`）」这一族悬空时无告警。现第 10 类增子项：声称有字段模板的制品名 MUST 在 `artifacts.md` 有 `##` 小节（永久存活变异 M150）。
 - **退出码声明要求可被注释散文规避**：`doc-consistency.sh` 第 5 类的库脚本豁免原为 `grep -qE '\bsource\b'`——任何含「source」一词的 `.sh` 一律豁免，注释与规则文本即可触发（`doc-consistency.sh` 因自身规则文本而**自我豁免**、`verify-battery.sh` 因注释含该词而豁免、`dsh-codepunk-link.sh` 为运行型 CLI 却因加载路径常量被豁免），致三者长期无头部退出码声明、`实现退出码 ⊆ 声明码集` 判据对其恒空转。现取消该启发式：豁免只剩 home 脚本特例与「无显式退出调用」，并为三个脚本补上头部退出码声明。
 - **`docs/**` 计数声称无机械监督且已陈旧**：第 1 类的计数域原只到 README，开源规格化引入的 `docs/` 无任何计数守护 ⇒ `docs/development.md`、`docs/architecture.md`、`docs/naming-conventions.md` 长期声称「137 项变异（M1–M137）」而实现已 146。现将「实现派生量」的声称域扩到 `README.md` + `docs/**`（同实现值、同族写法，域与覆盖范围写在结论里），并同步更正上述计数。
 - **兼容性文档的产品源码行号引用漂移**：`references/file-hygiene.md` 的 3 处引用按旧版本行号，实测已失准——`SANDBOX_MODES` 由 `:35-39` → `:26-30`、用户平面 `permission` 区块由 `:168-181` → `:216-229`、`defaultPreset` 由 `:181` → `:229`（声称内容仍成立，故内容类检查无法发现）。现更正行号，并新增「行号引用规则（MUST）」：引用一律附符号名检索式，核验以符号名检索为准。

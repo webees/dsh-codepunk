@@ -503,15 +503,31 @@ for f in files:
         # 标题可写作「## 3.1 …」或「## §3.1 …」（实测两种并存）
         if not re.search(r'^#{2,4} §?' + re.escape(num) + r'(?:\.|\s|$)', body, re.M):
             badB.append(f'{os.path.basename(f)}→§{num}@{os.path.basename(tp)}')
+# F344：制品「字段模板见 `references/artifacts.md`」的声称 MUST 在 artifacts.md 有对应小节——
+#   否则该制品的字段契约悬空（实测：SKILL 的 `plan_draft.md` 曾指向 artifacts.md，而后者只在运行根树状图里出现该名）。
+artdoc = open(f'{S}/references/artifacts.md', encoding='utf-8', errors='ignore').read()
+art_heads = re.findall(r'^#{2,4}\s*([^\n]+)$', artdoc, re.M)
+badC = []
+for f in sorted(set(files + glob.glob(f'{S}/references/*.md'))):
+    try:
+        t = open(f, encoding='utf-8', errors='replace').read()
+    except OSError:
+        continue
+    for m in re.finditer(r'`([a-z_]+\.(?:yaml|md))`[^\n]{0,60}?字段模板见\s*`?references/artifacts\.md', t):
+        name = m.group(1)
+        if not any(name in h for h in art_heads):
+            badC.append(f'{os.path.basename(f)}→{name}')
 out = []
 if badA:
     out.append('章节名未找到: ' + ', '.join(badA[:3]))
 if badB:
     out.append('§ 指向不存在: ' + ', '.join(badB[:3]))
+if badC:
+    out.append('制品字段模板悬空: ' + ', '.join(badC[:3]))
 print('; '.join(out))
 PYEOF
 )
-  if [ -z "$SEC_ISSUE" ]; then ok "章节级引用均可解析（章节名 + 限定式 §）"
+  if [ -z "$SEC_ISSUE" ]; then ok "章节级引用均可解析（章节名 + 限定式 § + 制品字段模板）"
   else bad "章节级引用问题 → ${SEC_ISSUE}"; fi
 fi
 
