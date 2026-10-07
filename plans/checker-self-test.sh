@@ -1752,6 +1752,36 @@ mutate "artifacts.md 的 plan_draft.md 小节标题改名" \
 check_rc "M150 制品字段模板悬空 → doc-consistency 须报章节级引用问题" \
   "bash plans/doc-consistency.sh 2>&1" 1 "制品字段模板悬空"
 
+# M151（F345）：散落根判据收窄 + 默认根解析——只有**与本主仓库共享 git 目录**的散落 worktree
+#   判 FAIL；散落根内的无关仓库（别人的项目 / 主仓的克隆）只报 INFO。实测：旧实现把桌面上的
+#   无关仓库一律判 FAIL（本机 6 个无关项目被误报），而文档化落点从不被扫描。
+echo "[M151 散落根判据收窄与默认根解析（F345）]"
+fresh
+wt2_main="$work/wt2/main"; wt2_scan="$work/wt2/scan"
+rm -rf "$work/wt2"; mkdir -p "$wt2_main" "$wt2_scan"
+( cd "$wt2_main" && git init -q . && git config user.email t@t && git config user.name t \
+  && : > f.txt && git add f.txt && git commit -qm init ) >/dev/null 2>&1
+# ① 散落根内的无关仓库（与主仓库无共享 git 目录）⇒ 不得判 FAIL，须报 INFO
+( cd "$wt2_scan" && mkdir -p unrelated-proj && cd unrelated-proj \
+  && git init -q . && git config user.email t@t && git config user.name t \
+  && : > u.txt && git add u.txt && git commit -qm x ) >/dev/null 2>&1
+check_rc "M151-a 散落根内无关仓库 → 只报 INFO 不判 FAIL" \
+  "SCAN_ROOT='$wt2_scan' bash plans/verify-worktree.sh '$wt2_main' 2>&1" 0 "不计 FAIL"
+# ② 主仓库的克隆（非 worktree）⇒ 同样只报 INFO
+( git clone -q "$wt2_main" "$wt2_scan/clone-of-main" ) >/dev/null 2>&1
+check_rc "M151-b 主仓库克隆（非 worktree）→ 只报 INFO" \
+  "SCAN_ROOT='$wt2_scan' bash plans/verify-worktree.sh '$wt2_main' 2>&1" 0 "不计 FAIL"
+# ③ 真散落 worktree（共享 git 目录）⇒ 必须判 FAIL
+( cd "$wt2_main" && git worktree add -q "$wt2_scan/stray-room" -b stray2 ) >/dev/null 2>&1
+check_rc "M151-c 本主仓库的散落 worktree → 失败" \
+  "SCAN_ROOT='$wt2_scan' bash plans/verify-worktree.sh '$wt2_main' 2>&1" 1 "散落 worktree"
+# ④ 默认根解析：未设 SCAN_ROOT 时 DSH_CODEPUNK_WORKTREES（总库 worktrees）优先于桌面候选
+#   （先摘掉 ③ 的登记，否则第 2 项「列表干净」会把退出码抬到 1，掩盖默认根解析的断言）
+( cd "$wt2_main" && git worktree remove --force "$wt2_scan/stray-room" ) >/dev/null 2>&1
+mkdir -p "$work/wt2/hubwt"
+check_rc "M151-d 未设 SCAN_ROOT → 优先扫 DSH_CODEPUNK_WORKTREES" \
+  "env -u SCAN_ROOT DSH_CODEPUNK_WORKTREES='$work/wt2/hubwt' bash plans/verify-worktree.sh '$wt2_main' 2>&1" 0 "扫描 .*hubwt"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
