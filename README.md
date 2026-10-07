@@ -206,6 +206,7 @@ node ps-validate.mjs <预设根>/plans/windows/*.ps1   # 校验器本体在 plan
   workflows/
     ci.yml
     codeql.yml
+    dependabot-auto-merge.yml
     release.yml
     scorecard.yml
   CODEOWNERS
