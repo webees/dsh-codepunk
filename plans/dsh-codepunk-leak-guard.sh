@@ -244,7 +244,14 @@ case "$MODE" in
     scan_stream "tracked-tree" "$CONTENT"
     ;;
   history)
-    CONTENT=$(git log -20 --format='%s%n%b' 2>/dev/null; git log -20 -p -U0 2>/dev/null | grep '^+' | grep -v '^+++')
+    # 轮次 605（F321）：**git 尾注（trailer）中的邮箱属结构化提交元数据，非隐私泄漏**——机器人与 DCO 签名
+    #   （`Signed-off-by: <机器人> <<地址>>` 形态）会命中通用「邮箱形态」模式，导致**一切带尾注签名的
+    #   提交/PR 被永久阻断**（实测：Dependabot 的 5 个依赖更新 PR 在 rebase 后仍全红，失败步骤＝电池的
+    #   「守卫 --history」）。此处**只屏蔽尾注行内的地址**（其余内容仍全量扫描，以免连凭据/路径类泄漏
+    #   一并豁免）；真泄漏在文件内容与提交主题中仍会被拦截。注意：本注释内不得书写可命中的地址字面样例
+    #   （tree 扫描会读到本文件自身 ⇒ 自锁）。
+    TRAILER_MASK='s/^((Signed-off-by|Co-authored-by|Reviewed-by|Tested-by|Acked-by|Reported-by|Suggested-by):[^<]*<)[^>]*@[^>]*>/\1redacted>/'
+    CONTENT=$( { git log -20 --format='%s%n%b' 2>/dev/null | sed -E "$TRAILER_MASK"; git log -20 -p -U0 2>/dev/null | grep '^+' | grep -v '^+++'; } )
     [ -z "$CONTENT" ] && { echo "✓ 近 20 提交无可扫描内容"; exit 0; }
     scan_stream "history(近20提交)" "$CONTENT"
     ;;
