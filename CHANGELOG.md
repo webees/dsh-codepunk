@@ -41,6 +41,7 @@
 
 - **依赖更新自动合并的两条路径与自证判据**：对已可合并（`mergeStateStatus=CLEAN`）的 PR 武装自动合并会被 GitHub 拒绝（`Pull request is in clean status`），而武装成功后若立即可合并，GitHub 会当场合并并使 `autoMergeRequest` 变 `null` ⇒ 原自证判据误报失败。现改为「已可合并即直接以合并提交入库；否则武装，命中该错误时回退直接合并」，自证判据取「已武装**或**已合并」。见 `.github/workflows/dependabot-auto-merge.yml`。
 - **`automerge` 标签路径可用**：工作流触发事件补 `labeled`（此前打标签不会触发），并由 `plans/github-setup.sh` 幂等创建该标签（此前仓库中不存在）。
+- **无 `.git` 环境下 ps1 行尾校验被跳过而整体仍报「无硬性不一致」**：`doc-consistency.sh` 第 17 类的 ps1 工作树行尾（`eol=crlf` 落地）子项原先在 git 不可用时只打印跳过说明却仍以 rc=0 收尾，环境缺陷可整体假绿灯；现改为回退**文件系统字节核验**（剥离合法 CRLF 后仍有裸 LF 即判不合格），并按类 8 口径打印「已核验，非跳过」。
 - **`make` 入口在含空格路径下不可用**：`Makefile` 的仓库根推导原用 `$(dir $(abspath $(lastword $(MAKEFILE_LIST))))`，Make 函数按空白分词 ⇒ 路径含空格时 `ROOT` 只取到首个词，配方 `cd "$(ROOT)"` 失败并 rc=2（克隆到 `…/克隆 空格 é` 后 `make gates` 报 `cd: …/r612 . é: No such file or directory`，而同一路径下四道门禁直调 rc 全 0）。现改为 `$(shell cd "$(CURDIR)" && pwd)`（直接调用与 `make -C <dir>` 均正确，路径只在 shell 层加引号出现）。
 - **签收门自签判据不区分大小写**：`plans/acceptance-verify.sh` 原以区分大小写的子串判断「签收方是否为交付方」，交付方 `task-a` 的签收方写 `Task-A` 即判通过 ⇒ 自签可被改大小写绕过。现比较前统一去首尾空白并转小写。
 - **签收门交付方参数改为必填**：该参原为可选，不传时独立性整段跳过却仍打印「PASS: 结构合法且签收独立」（声称已校验而实际未校验）。现缺交付方 ⇒ rc=2 并显式提示「无法核验 ≠ 通过」。
