@@ -291,6 +291,25 @@ if (action === 'emit') {
 if (!existsSync(PATCH)) die(`profile patch 不存在：${PATCH}`);
 const patchText = readFileSync(PATCH, 'utf8');
 const patchLines = patchText.split('\n');
+// F341：既有补丁若是**非文本**或**不可解析的 YAML**，`apply --append` 会把声明块静默追加到损坏文件末尾
+//   （产物仍无法被产品加载）却报「生效」；`check` 又只比对声明块文本 ⇒ 两者皆假绿灯。
+//   此处先做机械守卫：非文本一律拒答；可解析性在 js-yaml 可用时校验（无法核验 ≠ 通过）。
+if (patchText.includes('\0')) {
+  die(`profile patch 含 NUL 字节（非文本文件）：${PATCH}`
+      + '——无法核验其 YAML 结构，拒绝读写（无法核验 ≠ 通过；请从备份重建）');
+}
+{
+  const probeYaml = loadYaml();
+  if (probeYaml && patchText.trim() !== '') {
+    try {
+      probeYaml.load(patchText, { schema: schemaFor(probeYaml) });
+    } catch (e) {
+      const msg = (e && e.message) ? String(e.message).split('\n')[0] : String(e);
+      die(`profile patch 不是合法 YAML（${msg}）：${PATCH}`
+          + '——追加/比对都会在损坏文件上给出假绿灯；请先修复或从备份重建再重试（本工具不擅自改写坏文件）');
+    }
+  }
+}
 // 重复声明检测（F302）：同一 id 出现多处时产品注册行为未定义，且本工具既不改也不报 ⇒ 先显式拒绝（无法核验 ≠ 通过）。
 const declCount = patchText.split(`id: preset-${ID}`).length - 1;
 if (declCount > 1) {

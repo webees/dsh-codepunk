@@ -376,9 +376,15 @@ r = subprocess.run(['git', 'ls-files'], capture_output=True, text=True)
 files = r.stdout.split() if r.returncode == 0 else []
 mode = 'git'
 if not files:
-    import glob
-    files = [f for f in glob.glob('**/*', recursive=True)
-             if f.endswith(('.md', '.yml')) and '/.git/' not in f and not f.startswith('.git/')]
+    import os
+    # F339：glob('**/*', recursive=True) 默认**跟随符号链接** ⇒ 检出内含链接环（自引用目录、指向祖先的链接、
+    #   构建产物链接农场）时无限递归、门禁**永不返回**（实测 rc=124，无判定行）；os.walk 默认 followlinks=False。
+    files = []
+    for _dp, _dns, _fns in os.walk('.'):
+        _dns[:] = [d for d in _dns if d != '.git']
+        for _fn in _fns:
+            if _fn.endswith(('.md', '.yml')):
+                files.append(os.path.relpath(os.path.join(_dp, _fn), '.'))
     mode = 'walk'
 files = [f for f in files if f.endswith(('.md', '.yml')) and '/benchmarks/' not in f]
 bad_form, future = [], []
@@ -995,7 +1001,7 @@ TBL_ISSUE=$(python3 <<'PYEOF'
 #   standard.md:29 分隔行后空行 ⇒ GFM 整表不成立，表体渲染为字面管道文本）。
 # 新口径（分隔行驱动）：仅当某行**紧邻**一个列数相符的分隔行时才成立表头；围栏按字符+长度配对；
 #   排除缩进代码块；空行即断表；另新增两条结构性判据（表头↔分隔行列数、分隔行后紧跟空行）。
-import glob, re
+import glob, os, re
 
 def strip_bq(s):
     while True:
@@ -1026,7 +1032,15 @@ def is_delim(s):
     return all(re.fullmatch(r':?-+:?', c.strip()) for c in t.strip('|').split('|') if c.strip())
 
 excess, struct = [], []
-for f in sorted(glob.glob('**/*.md', recursive=True)):
+# F339：同 class 8 —— glob('**/*.md', recursive=True) 默认跟随符号链接 ⇒ 链接环下无限递归（门禁永不返回）；
+#   改用 os.walk（followlinks=False，默认不进入符号链接目录）。
+_md_files = []
+for _dp, _dns, _fns in os.walk('.'):
+    _dns[:] = [d for d in _dns if d != '.git']
+    for _fn in _fns:
+        if _fn.endswith('.md'):
+            _md_files.append(os.path.relpath(os.path.join(_dp, _fn), '.'))
+for f in sorted(_md_files):
     if '/.git/' in f or f.startswith('.git/'):
         continue
     lines = open(f, encoding='utf-8', errors='replace').read().split('\n')

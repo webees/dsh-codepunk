@@ -193,9 +193,17 @@ SZ=$(wc -c < "$SKILL" | tr -d ' ')
 #   而应与套件其它工具一致地标注「无法核验 ≠ 通过」并给出扣分理由。
 if command -v python3 >/dev/null 2>&1; then
 DUPSEG=$(python3 - <<'PYEOF2'
-import glob, io
+import io, os
 seen = {}
-for fp in glob.glob("**/*.md", recursive=True):
+# F339：glob("**/*.md", recursive=True) 默认跟随符号链接 ⇒ 检出含链接环时无限递归、评分门永不返回
+#   （实测 rc=124）；改用 os.walk（followlinks=False）。
+_md = []
+for _dp, _dns, _fns in os.walk("."):
+    _dns[:] = [d for d in _dns if d != ".git"]
+    for _fn in _fns:
+        if _fn.endswith(".md"):
+            _md.append(os.path.relpath(os.path.join(_dp, _fn), "."))
+for fp in _md:
     if "/.git/" in fp: continue
     try: lines = io.open(fp, encoding="utf-8", errors="replace").read().splitlines()
     except OSError: continue

@@ -1706,6 +1706,16 @@ mutate "把 docs/development.md 的变异项数改为 999" "$work/cur/docs/devel
 check_rc "M147 docs/ 陈旧计数 → class 1 扩域判失败" \
   "bash plans/doc-consistency.sh 2>&1" 1 "docs/ 计数声称陈旧"
 
+# M148（F339）：门禁的树遍历 MUST NOT 跟随符号链接——`glob('**/*', recursive=True)` 默认跟随，
+#   检出内含链接环（自引用目录/指向祖先的链接）时无限递归、门禁**永不返回**（实测 rc=124，无判定行）。
+#   变异＝沙箱内造自引用链接环；断言＝门禁仍**限时返回**且判定通过（124/超时即失败）。
+echo "[M148 符号链接环不得使门禁无限递归（F339）]"
+fresh
+ln -s . "$work/cur/loop_self" && ln -s ../cur "$work/cur/loop_up"
+[ -L "$work/cur/loop_self" ] || { echo "  ✗ M148 变异未落地：链接环未创建"; MUTFAIL=1; }
+check_rc "M148 链接环下 doc-consistency 仍限时返回且通过（不得 rc=124）" \
+  "timeout 90 bash plans/doc-consistency.sh 2>&1" 0 "无硬性不一致"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
