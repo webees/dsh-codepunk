@@ -1038,6 +1038,22 @@ PYEOF
   mutate "篡改包装顶层 name" "$work/patch51t.yml" '@deepseek-ai/dsh-agent-preset-x'
   check_rc "M51 包装 name 漂移 → check 报漂移" "node plans/preset-declare.mjs check --patch '$work/patch51t.yml' 2>&1" 1 "声明包装漂移"
 fi
+echo "[M138 声明包装 config.order 漂移（F325：check 增比 order 的修复存活）]"
+fresh
+if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
+  printf '  ℹ M138 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）\n'
+else
+  : > "$work/patch138.yml"
+  node plans/preset-declare.mjs apply --patch "$work/patch138.yml" --append >/dev/null 2>&1 || true
+  python3 - "$work/patch138.yml" "$work/patch138t.yml" <<'PYEOF'
+import sys
+s, d = sys.argv[1], sys.argv[2]
+t = open(s, encoding='utf-8').read()
+open(d, 'w', encoding='utf-8').write(t.replace('        order: 5', '        order: 9', 1))
+PYEOF
+  mutate "篡改包装 config.order" "$work/patch138t.yml" 'order: 9'
+  check_rc "M138 包装 order 漂移 → check 报漂移" "node plans/preset-declare.mjs check --patch '$work/patch138t.yml' 2>&1" 1 "config.order"
+fi
 echo "[M52 accepted_by 流式数组（F171 修复存活）]"
 fresh
 mkdir -p "$work/acc"
