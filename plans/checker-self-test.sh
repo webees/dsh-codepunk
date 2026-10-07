@@ -1054,6 +1054,25 @@ PYEOF
   mutate "篡改包装 config.order" "$work/patch138t.yml" 'order: 9'
   check_rc "M138 包装 order 漂移 → check 报漂移" "node plans/preset-declare.mjs check --patch '$work/patch138t.yml' 2>&1" 1 "config.order"
 fi
+echo "[M139 包装块内注释不得误报缺失（F326：固定 8 行窗口假红）]"
+fresh
+if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
+  printf '  ℹ M139 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）\n'
+else
+  : > "$work/patch139.yml"
+  node plans/preset-declare.mjs apply --patch "$work/patch139.yml" --append >/dev/null 2>&1 || true
+  python3 - "$work/patch139.yml" "$work/patch139c.yml" <<'PYEOF'
+import sys
+s, d = sys.argv[1], sys.argv[2]
+L = open(s, encoding='utf-8').read().split('\n')
+i = next(k for k, l in enumerate(L) if l.strip() == 'config:')
+ind = L[i][:len(L[i]) - len(L[i].lstrip())]
+L[i + 1:i + 1] = [ind + '# 块内注释（语义不变）', ind + '# 第二行', ind + '# 第三行', ind + '# 第四行']
+open(d, 'w', encoding='utf-8').write('\n'.join(L))
+PYEOF
+  mutate "包装块内插入注释行" "$work/patch139c.yml" '块内注释（语义不变）'
+  check_rc "M139 块内注释 → 不得误报 config.order 缺失" "node plans/preset-declare.mjs check --patch '$work/patch139c.yml' 2>&1" 0 "语义一致"
+fi
 echo "[M52 accepted_by 流式数组（F171 修复存活）]"
 fresh
 mkdir -p "$work/acc"
