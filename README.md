@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-2.0.17-blue.svg)](skills/dsh-codepunk-workflow/references/harness-alignment.md)
 [![Gates](https://img.shields.io/badge/quality%20gates-doc--consistency%20rc%3D0%20%C2%B7%20score%2015%2F15-brightgreen.svg)](plans/verify-battery.sh)
-[![PR merge](https://img.shields.io/badge/%E5%90%88%E5%B9%B6%E6%B5%81-PR%20merge%20commit%20%C2%B7%20%E7%A6%81%E7%9B%B4%E6%8E%A8%20main-blueviolet.svg)](CONTRIBUTING.md)
+[![Merge flow](https://img.shields.io/badge/merge%20flow-PR%20%2B%20merge%20commit%20%C2%B7%20no%20direct%20push-blueviolet.svg)](CONTRIBUTING.md)
 
 ## 目录
 

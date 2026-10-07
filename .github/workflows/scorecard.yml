@@ -38,7 +38,10 @@ jobs:
           persist-credentials: false
 
       - name: 运行 Scorecard 分析
-        uses: ossf/scorecard-action@v2
+        # 本 action **没有**浮动主版本标签 `@v2`：首次运行实测 `##[error]Unable to resolve action
+        # ossf/scorecard-action@v2, unable to find version v2`（其仓库只发布 v2.x.y）。故钉最新 v2 补丁版，
+        # 后续升级交给 Dependabot（github-actions 生态已覆盖本仓）。
+        uses: ossf/scorecard-action@v2.4.4
         with:
           results_file: results.sarif
           results_format: sarif

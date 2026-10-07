@@ -7,7 +7,7 @@
 case "$(locale charmap 2>/dev/null)" in
   UTF-8|utf8|UTF8) ;;
   *)
-    for _l in en_US.UTF-8 UTF-8; do
+    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
       if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
     done ;;
 esac
