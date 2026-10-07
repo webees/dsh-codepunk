@@ -39,6 +39,7 @@
 
 ### 修复
 
+- **INDEX 顶格块序列被误判为非法，登记链在真实总库整体失效**：`plans/dsh-codepunk-link.sh` 的结构守卫把 `projects:` 下**顶格**书写的序列项（`- project_id: …`，YAML 允许序列与键同列——迁移与早期写入器产出的形态）当成「未知顶层键」，于是 `index` 报「结构非法」并建议「从备份恢复」（该文件其实可被 YAML 正常解析），`register` 追加被回滚。现两处守卫（`index` ① 与写入前 python 守卫）均容忍顶格序列项及 `---`/`...` 文档标记；追加条目**沿用既有缩进风格**（顶格索引继续写顶格），否则追加的缩进条目会成为映射值下的嵌套序列、被写入后校验判为非法 YAML 而回滚。真错（未知顶层键）仍失败（永久存活变异 M152，五断言）。
 - **散落根判据把无关仓库判为失败，而文档化落点从不被扫描**：`plans/verify-worktree.sh` 的默认散落根只认桌面候选（`~/Desktop` / `~/桌面`），且目录直扫项对散落根内**任何** git 仓库一律判 FAIL——实测在开发机上把桌面里 6 个与本预设无关的仓库全部报为「散落 git 仓库/worktree」，检查永久失败；同时仓内文档化的 worktree 落点 `~/.dsh-codepunk/worktrees/<task_id>/` 从不进入扫描（漏检）。现默认根解析顺序改为 `SCAN_ROOT` > `DSH_CODEPUNK_WORKTREES`（总库 `worktrees/`）> `DESKTOP` > 桌面候选，且目录直扫项收窄为「仅与本主仓库共享 git 目录（`git rev-parse --git-common-dir`）的散落 worktree 判 FAIL，其它 git 仓库只报 INFO」（永久存活变异 M151，四断言）。`README.md` 门禁表的解析顺序与判据同步改写（原文声称「未设则跳过该项扫描」与实现不符）。
 - **制品字段模板声称悬空**：`SKILL.md` 的 ① 阶段写明「产 `plan_draft.md` + `goal.yaml`（字段模板见 `references/artifacts.md`）」，但 `artifacts.md` 全文只在运行根树状图里出现过 `plan_draft.md` 一次——该制品的字段契约**无处可查**。现补 `## plan_draft.md（① 需求草案；与 goal.yaml 同批产出）` 小节（字段模板 + `assumption`/`open_question` 标记约定 + D034/D035 硬约束）。
 - **制品字段模板声称无机械监督**：第 10 类原只校验 `references/<名称>.md「章节名」` 与限定式 `§N` 两类引用，「`<制品>`（字段模板见 `references/artifacts.md`）」这一族悬空时无告警。现第 10 类增子项：声称有字段模板的制品名 MUST 在 `artifacts.md` 有 `##` 小节（永久存活变异 M150）。

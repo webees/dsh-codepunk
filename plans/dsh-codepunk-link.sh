@@ -370,13 +370,17 @@ cmd_index() {
     printf '%s: INDEX 未初始化：%s 不存在\n' "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX" >&2
     return 1
   fi
-  # ① 结构核验（无依赖）：顶层只允许 schema_version / projects / last_updated
+  # ① 结构核验（无依赖）：顶层只允许 schema_version / projects / last_updated。
+  #   顶格的块序列项（`- project_id: …`）是 **合法 YAML**——`projects:` 的序列允许与键同列，
+  #   迁移/早期写入器产出的 INDEX 即为该形态（实测：真实总库 24 条目顶格，source: migration-report）。
+  #   旧实现把这类行一律当「未知顶层键」⇒ index/register 全部 rc=1 并建议「从备份恢复」，
+  #   而文件本身可被 YAML 解析器正常读取（误导性建议 + 整条登记链失效）。
   local stray
   stray="$(grep -nE '^[^ \t#]' "$DSH_CODEPUNK_INDEX" 2>/dev/null \
-           | grep -vE '^[0-9]+:(schema_version|projects|last_updated):|^[0-9]+:(---|\.\.\.)$' | head -3)"
+           | grep -vE '^[0-9]+:(schema_version|projects|last_updated):|^[0-9]+:(---|\.\.\.)$|^[0-9]+:- ' | head -3)"
   if [ -n "$stray" ]; then
     printf '%s: INDEX 结构非法（未知顶层键）：%s\n' "$SCRIPT_NAME" "$(printf '%s' "$stray" | tr '\n' ' ')" >&2
-    printf '%s: 合法顶层键仅 schema_version / projects / last_updated；请修复或从备份恢复\n' "$SCRIPT_NAME" >&2
+    printf '%s: 合法顶层键仅 schema_version / projects / last_updated（projects 下的序列项可顶格写作「- 」）；请修复或从备份恢复\n' "$SCRIPT_NAME" >&2
     return 1
   fi
   # ② 解析核验（与 preset-audit 同链：ruby 优先、node+js-yaml 回退）；损坏文件 MUST 报错而非当空表
@@ -655,16 +659,28 @@ EOF
   # ② 追加条目（先确保文件末尾有换行，防与末行粘行）
   [ -n "$(tail -c1 "$DSH_CODEPUNK_INDEX" 2>/dev/null)" ] && printf '\n' >> "$DSH_CODEPUNK_INDEX"
   local line
+  # 列表缩进风格自适应（F346）：INDEX 可能由迁移/早期写入器产出**顶格**序列项
+  #   （`projects:` 与 `- project_id:` 同列——合法 YAML）。追加 MUST 沿用既有风格：
+  #   在顶格列表后追加「2 空格缩进」的条目会使其成为映射值下的嵌套序列 ⇒ 真实解析器
+  #   报非法 YAML（实测：真总库 24 条目顶格 ⇒ register 每次「写入后校验失败
+  #   （INDEX 非法 YAML）」并回滚，登记功能整体失效）。无既有条目时沿用骨架的 2 空格。
+  local IND="  " _ind_first
+  if grep -qE '^-[[:space:]]*project_id:' "$DSH_CODEPUNK_INDEX" 2>/dev/null; then
+    IND=""
+  elif grep -qE '^[[:space:]]+-[[:space:]]*project_id:' "$DSH_CODEPUNK_INDEX" 2>/dev/null; then
+    _ind_first="$(grep -m1 -E '^[[:space:]]+-[[:space:]]*project_id:' "$DSH_CODEPUNK_INDEX" | sed 's/-.*$//')"
+    [ -n "$_ind_first" ] && IND="$_ind_first"
+  fi
   # 注：run-lead 裁决（字段冲突）——INDEX 条目标准 5 字段：
   #     project_id / project_root / dsh_codepunk_path / migrated_at / source；
   #     骨架扩展字段 repo_path/readme_marker/status 由 run-lead 合并时统一修订，register 不写；
   #     dsh_codepunk_path = 总库托管路径（D072）。2026-09-05 修正：原「默认 = project_root」
   #     会让 resolve 把工程目录当总库、把运行状态写进工程造成污染，现改为总库真实路径。
-  line="  - project_id: $id
-    project_root: $target
-    dsh_codepunk_path: $hosted
-    migrated_at: null
-    source: register"
+  line="${IND}- project_id: $id
+${IND}  project_root: $target
+${IND}  dsh_codepunk_path: $hosted
+${IND}  migrated_at: null
+${IND}  source: register"
   # 失败时只回显异常末行（错误类型 + errno），避免整段 traceback 淹没真正的失败原因；
   # 需要完整回溯时设 DSH_CODEPUNK_DEBUG=1。
   PYERR="$(mktemp)"
@@ -672,14 +688,18 @@ EOF
 import sys, re
 f, line = sys.argv[1], sys.argv[2]
 lines = open(f, encoding='utf-8').read().split('\n')
-# 结构守卫：projects 键之后只允许出现「缩进的条目行」或 last_updated——
+# 结构守卫：projects 键之后只允许出现「缩进的条目行」「顶格的序列项」或 last_updated——
 # 其它顶层键若夹在列表中，先前的「就地插在 last_updated 之前」写法会把条目
 # 落到列表之外，产出非法 YAML（实测事故：INDEX 曾因此损坏，真实解析器拒读）。
+# 顶格序列项（`- project_id: …`）属合法 YAML（迁移/早期写入器形态，见 cmd_index ①），
+# 旧实现把它当未知顶层键 ⇒ register 在真实总库上直接失败。
 lu = [l for l in lines if re.match(r'^last_updated:', l)]
 stray = [
     l for l in lines
     if l.strip() and not l.startswith((' ', '\t', '#'))
     and not re.match(r'^(schema_version|projects|last_updated):', l)
+    and not re.match(r'^-(\s|$)', l)
+    and not re.match(r'^(---|\.\.\.)$', l)
 ]
 if stray:
     sys.stderr.write('INDEX 含未知顶层键：' + ', '.join(stray) + '\n')

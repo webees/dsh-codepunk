@@ -1782,6 +1782,37 @@ mkdir -p "$work/wt2/hubwt"
 check_rc "M151-d 未设 SCAN_ROOT → 优先扫 DSH_CODEPUNK_WORKTREES" \
   "env -u SCAN_ROOT DSH_CODEPUNK_WORKTREES='$work/wt2/hubwt' bash plans/verify-worktree.sh '$wt2_main' 2>&1" 0 "扫描 .*hubwt"
 
+# M152（F346）：INDEX 顶格块序列项（`projects:` 与 `- project_id:` 同列——迁移/早期写入器形态，
+#   合法 YAML）不得被结构守卫当成「未知顶层键」；追加 MUST 沿用既有缩进风格，否则追加的
+#   缩进条目成为映射值下的嵌套序列 ⇒ 真实解析器判非法 YAML、写入被回滚（实测：真总库
+#   24 条目顶格 ⇒ index/register 双双 rc=1，登记功能整体失效，且提示「从备份恢复」为误导）。
+echo "[M152 INDEX 顶格序列项容忍与缩进风格保持（F346）]"
+fresh
+f346_hub="$work/f346/hub"; rm -rf "$work/f346"
+mkdir -p "$f346_hub/projects/demo" "$f346_hub/proj-src/demo" "$f346_hub/proj-src/demo2"
+{
+  printf -- '---\nschema_version: 1\nprojects:\n'
+  printf -- '- project_id: demo\n'
+  printf -- '  project_root: "%s/proj-src/demo"\n' "$f346_hub"
+  printf -- '  dsh_codepunk_path: "%s/projects/demo"\n' "$f346_hub"
+  printf -- "  migrated_at: '2026-08-24T08:00:00Z'\n  source: migration-report\n"
+  printf -- 'last_updated: 2026-10-07 13:01:10.000000000 +07:00\n'
+} > "$f346_hub/INDEX.yaml"
+mutate "顶格序列项夹具" "$f346_hub/INDEX.yaml" '^- project_id: demo'
+F346_ENV="DSH_CODEPUNK_HOME='$f346_hub' DSH_CODEPUNK_INDEX='$f346_hub/INDEX.yaml'"
+check_rc "M152-a 顶格 INDEX → index 通过" \
+  "$F346_ENV bash plans/dsh-codepunk-link.sh index 2>&1" 0 "1 ok, 0 fail"
+check_rc "M152-b 顶格 INDEX → register 成功（写入后校验通过）" \
+  "$F346_ENV bash plans/dsh-codepunk-link.sh register -y '$f346_hub/proj-src/demo2' demo2 2>&1" 0 "已注册"
+check_rc "M152-c 追加沿用顶格风格（无缩进）" \
+  "grep -cE '^- project_id: demo2' '$f346_hub/INDEX.yaml'" 0
+check_rc "M152-d 追加后条目齐、无空悬" \
+  "$F346_ENV bash plans/dsh-codepunk-link.sh index 2>&1" 0 "2 ok, 0 fail"
+printf -- 'foo: bar\n' >> "$f346_hub/INDEX.yaml"
+mutate "真未知顶层键夹具" "$f346_hub/INDEX.yaml" '^foo: bar'
+check_rc "M152-e 真未知顶层键仍失败（不放过真错）" \
+  "$F346_ENV bash plans/dsh-codepunk-link.sh index 2>&1" 1 "未知顶层键"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
