@@ -4,10 +4,16 @@
 # 触发：pull_request_target（在**基线**上下文运行，拿到可写令牌；不检出、不执行
 #       PR 内容，故无代码注入面）。Dependabot 触发的普通 pull_request 工作流只有
 #       只读令牌，无法武装自动合并。
-# 行为：① actor 为 dependabot[bot]，或 ② PR 带 `automerge` 标签 ⇒ 对 PR 执行
-#       `gh pr merge --auto --merge`。GitHub 会在**全部必需检查通过**后自动以
-#       **合并提交**入库（仓库仅允许 merge commit，且必需检查为 strict ⇒ 基线
-#       变化时 GitHub 会先更新分支再重跑检查）。
+# 行为：① actor 为 dependabot[bot]，或 ② PR 带 `automerge` 标签（该标签由
+#       plans/github-setup.sh 幂等创建）⇒ 分两条路径：
+#         · 已可合并（mergeStateStatus=CLEAN）⇒ 直接以**合并提交**入库；
+#         · 否则武装自动合并（`gh pr merge --auto --merge`），GitHub 在**全部必需
+#           检查通过**后自动以合并提交入库（仓库仅允许 merge commit，必需检查为
+#           strict ⇒ 基线变化时 GitHub 会先更新分支再重跑检查）。
+# 实测注意（2026-10 于探测仓复现）：对「已 clean」的 PR 调 enablePullRequestAutoMerge
+#       会被 GitHub 拒绝（`Pull request is in clean status`）；而对可立即合并的 PR
+#       武装成功后，GitHub 会**当场合并**，此时 `autoMergeRequest` 变为 null。
+#       故自证判据为「已武装 **或** 已合并」，否则会误报失败。
 # 安全：不使用 `secrets` 之外的输入；不检出代码；标签可由维护者手动施加，
 #       从而对任意 PR 显式开启自动合并。
 # ============================================================================
@@ -15,7 +21,7 @@ name: Dependabot 自动合并
 
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
 
 permissions:
   contents: write
@@ -38,6 +44,31 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.html_url }}
         run: |
-          gh pr merge --auto --merge "$PR"
-          gh pr view "$PR" --json autoMergeRequest --jq '.autoMergeRequest != null' \
-            | grep -qx true || { echo "::error::自动合并未武装成功"; exit 1; }
+          set -uo pipefail
+          st="$(gh pr view "$PR" --json state,mergeStateStatus --jq '.state + " " + .mergeStateStatus')"
+          state="${st%% *}"; ms="${st##* }"
+          echo "PR 状态=${state} mergeStateStatus=${ms}"
+          if [ "$state" = "MERGED" ]; then
+            echo "已合并，无需处理"; exit 0
+          fi
+          if [ "$ms" = "CLEAN" ] || [ "$ms" = "HAS_HOOKS" ]; then
+            echo "→ 立即可合并：直接以合并提交入库"
+            gh pr merge "$PR" --merge
+            exit 0
+          fi
+          if out="$(gh pr merge "$PR" --auto --merge 2>&1)"; then
+            printf '%s\n' "$out"
+          else
+            printf '%s\n' "$out"
+            if printf '%s' "$out" | grep -q 'clean status'; then
+              echo "→ 命中 clean status：回退为直接合并"
+              gh pr merge "$PR" --merge
+            else
+              echo "::error::自动合并武装失败"
+              exit 1
+            fi
+          fi
+          ok="$(gh pr view "$PR" --json autoMergeRequest,state \
+                --jq '(.autoMergeRequest != null) or (.state == "MERGED")')"
+          echo "自证（已武装或已合并）=${ok}"
+          [ "$ok" = "true" ] || { echo "::error::自动合并未生效"; exit 1; }

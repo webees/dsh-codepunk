@@ -9,7 +9,9 @@
 # 应用内容:
 #   ① 仓库元数据: description（中文，取自 preset.yml/README 的定位）/ homepage /
 #      delete_branch_on_merge=true / has_discussions=true / allow_squash_merge=false /
-#      allow_rebase_merge=false / allow_merge_commit=true（**只允许合并提交**）
+#      allow_rebase_merge=false / allow_merge_commit=true（**只允许合并提交**）/
+#      allow_auto_merge=true（依赖更新 PR 的自动合并能力，见 ④ 与
+#      .github/workflows/dependabot-auto-merge.yml）
 #   ② topics: deepseek-harness, multi-agent, ai-agents, orchestration, code-review,
 #      preset, workflow-automation, chinese
 #   ③ ruleset「保护 main」: deletion + non_fast_forward + pull_request
@@ -17,6 +19,8 @@
 #      required_approving_review_count=0、dismiss_stale_reviews_on_push=true）+
 #      required_status_checks（strict；门禁回归/存活自检/跨平台可移植/文档一致性）；
 #      **不启用** required_linear_history（保留合并提交）
+#   ④ 自动合并标签「automerge」: 幂等创建（缺失即建）。带该标签的 PR 由
+#      .github/workflows/dependabot-auto-merge.yml 自动合并；标签缺失时该路径静默失效
 # 幂等: 每步先 GET 比对，再 PATCH/PUT/POST；已存在的 ruleset 按原 id 更新（id 不变）
 # 退出码: 0=全部应用且校验通过；1=未完全应用或校验不符（含 required_status_checks 被 GitHub 以 422 拒绝，已写入其余规则、待 CI 首跑后重跑本脚本）；2=环境或用法错误（无 gh、未登录、参数错）
 # 依赖: gh（GitHub CLI，已登录）；写操作需该账号对本仓有 admin 权限
@@ -30,6 +34,8 @@ SLUG="${REPO_SLUG:-webees/dsh-codepunk}"
 DESCRIPTION="${REPO_DESCRIPTION:-多智能体开发流程预设（DeepSeek Harness）：六阶段闭环、双门闩、实现三角、goal 自动续行}"
 TOPICS=(deepseek-harness multi-agent ai-agents orchestration code-review preset workflow-automation chinese)
 CHECK_CONTEXTS=(门禁回归 存活自检 跨平台可移植 文档一致性)
+AUTOMERGE_LABEL="automerge"
+LABEL_JSON='{"name":"automerge","color":"0e8a16","description":"带此标签的 PR 由 dependabot-auto-merge.yml 自动合并（必需检查全绿后以合并提交入库）"}'
 DRY=0
 
 say() { printf '%s\n' "$*"; }
@@ -81,8 +87,8 @@ diff_lines() { # diff_lines <期望> <当前>：打印逐行差异（可读，�
     | sed -e 's/^</  期望 /' -e 's/^>/  当前 /' || true
 }
 
-REPO_FIELDS='"description\t\(.description // "")\nhomepage\t\(.homepage // "")\nallow_merge_commit\t\(.allow_merge_commit)\nallow_squash_merge\t\(.allow_squash_merge)\nallow_rebase_merge\t\(.allow_rebase_merge)\ndelete_branch_on_merge\t\(.delete_branch_on_merge)\nhas_discussions\t\(.has_discussions)"'
-WANT_REPO="$(printf 'description\t%s\nhomepage\t%s\nallow_merge_commit\ttrue\nallow_squash_merge\tfalse\nallow_rebase_merge\tfalse\ndelete_branch_on_merge\ttrue\nhas_discussions\ttrue' "$DESCRIPTION" "$HOMEPAGE")"
+REPO_FIELDS='"description\t\(.description // "")\nhomepage\t\(.homepage // "")\nallow_merge_commit\t\(.allow_merge_commit)\nallow_squash_merge\t\(.allow_squash_merge)\nallow_rebase_merge\t\(.allow_rebase_merge)\ndelete_branch_on_merge\t\(.delete_branch_on_merge)\nhas_discussions\t\(.has_discussions)\nallow_auto_merge\t\(.allow_auto_merge)"'
+WANT_REPO="$(printf 'description\t%s\nhomepage\t%s\nallow_merge_commit\ttrue\nallow_squash_merge\tfalse\nallow_rebase_merge\tfalse\ndelete_branch_on_merge\ttrue\nhas_discussions\ttrue\nallow_auto_merge\ttrue' "$DESCRIPTION" "$HOMEPAGE")"
 REPO_JSON="$(cat <<JSON
 {
   "description": "${DESCRIPTION}",
@@ -91,7 +97,8 @@ REPO_JSON="$(cat <<JSON
   "allow_squash_merge": false,
   "allow_rebase_merge": false,
   "delete_branch_on_merge": true,
-  "has_discussions": true
+  "has_discussions": true,
+  "allow_auto_merge": true
 }
 JSON
 )"
@@ -230,13 +237,24 @@ else
   fi
 fi
 
+step "④ 自动合并标签「${AUTOMERGE_LABEL}」"
+api_get "repos/${SLUG}/labels/${AUTOMERGE_LABEL}" '.name'
+if [ "$API_RC" = 0 ] && [ "$API_OUT" = "$AUTOMERGE_LABEL" ]; then
+  say "无变化：标签「${AUTOMERGE_LABEL}」（存在 ⇒ 打此标签的 PR 会被自动合并）"
+else
+  say "创建：标签「${AUTOMERGE_LABEL}」"
+  api_write POST "repos/${SLUG}/labels" "$LABEL_JSON"
+  [ "$API_RC" = 0 ] || fail1 "创建标签「${AUTOMERGE_LABEL}」失败: ${API_OUT}"
+  [ "$DRY" = 1 ] || say "已创建：标签「${AUTOMERGE_LABEL}」"
+fi
+
 if [ "$DRY" = 1 ]; then
   say ""
   say "（--dry-run：未改动远端，跳过最终校验）"
   exit 0
 fi
 
-step "④ 最终校验（GET 回读）"
+step "⑤ 最终校验（GET 回读）"
 api_get "repos/${SLUG}" "$REPO_FIELDS"
 [ "$API_RC" = 0 ] || fail1 "回读仓库元数据失败: ${API_OUT}"
 printf '%s\n' "$API_OUT" | sed 's/^/  /'
@@ -254,9 +272,13 @@ api_get "repos/${SLUG}/rulesets/${RS_ID}" '.rules[].type'
 [ "$API_RC" = 0 ] || fail1 "回读 ruleset 规则失败: ${API_OUT}"
 say "  ruleset id=${RS_ID} 规则类型:"
 printf '%s\n' "$API_OUT" | sed 's/^/    · /'
+api_get "repos/${SLUG}/labels/${AUTOMERGE_LABEL}" '.name'
+[ "$API_RC" = 0 ] || fail1 "回读标签「${AUTOMERGE_LABEL}」失败: ${API_OUT}"
+say "  自动合并标签: ${API_OUT}"
 api_get "repos/${SLUG}/rulesets/${RS_ID}" "$RS_FIELDS"
 [ "$API_RC" = 0 ] || fail1 "回读 ruleset 参数失败: ${API_OUT}"
-printf '%s\n' "$API_OUT" | sed 's/^/  /'
+RS_READBACK="$API_OUT"
+printf '%s\n' "$RS_READBACK" | sed 's/^/  /'
 
 say ""
 if [ "$DEGRADED" = 1 ]; then
@@ -264,8 +286,8 @@ if [ "$DEGRADED" = 1 ]; then
   say "      待 CI 首次运行产出上述检查名后，重跑本脚本即可补齐（重跑幂等）。"
   exit 1
 fi
-if [ "$API_OUT" = "$WANT_RS" ]; then
-  say "结论：全部应用并校验通过（仓库元数据 + topics + ruleset「${RS_NAME}」）"
+if [ "$RS_READBACK" = "$WANT_RS" ]; then
+  say "结论：全部应用并校验通过（仓库元数据（含 allow_auto_merge）+ topics + 标签「${AUTOMERGE_LABEL}」+ ruleset「${RS_NAME}」）"
   exit 0
 fi
 say "结论：校验不符 —— ruleset 参数与期望不一致（见上，重跑本脚本）"
