@@ -55,6 +55,6 @@ jobs:
           retention-days: 5
 
       - name: 上传 SARIF 到代码扫描
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
