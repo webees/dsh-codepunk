@@ -1887,6 +1887,72 @@ mutate "电池结论行的跳过标注被抹掉" "$work/cur/plans/verify-battery
 check_no_match "M156-b 标注被抹掉 → 不得再报「跳过 ≠ 通过」（断言非空转）" \
   "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "跳过 ≠ 通过"
 
+# ---------------------------------------------------------------------------
+# M157 / M158：**无 ruby 主机**上的 YAML 解析路径（F351 / F352 / F353）
+#   本仓默认走 ruby（Psych）；node 回退分支只在**没有 ruby 的主机**上生效，而自检环境
+#   通常有 ruby ⇒ 该分支长期**不可达**（这正是它带缺陷存在多轮的原因）。故此处用「工具农场」
+#   （/usr/bin 与 /bin 全量符号链接，**减去 ruby**，再补 git/node/python3 的真实路径）模拟
+#   无 ruby 主机，并用**桩 js-yaml**（`DEFAULT_SCHEMA.extend`/`Type`/`load`，按环境变量
+#   返回不同结构）验证：①候选链解析 ②`!!js` 容忍 schema ③解析结果的类型判定（Date 属标量）。
+#   桩目录经 `DSH_CODEPUNK_TOOLS` 显式提供 ⇒ 不受真实 `~/.dsh-codepunk/tools` 内容影响。
+# ---------------------------------------------------------------------------
+echo "[M157 无 ruby 主机的 A1 解析路径（F351）]"
+farm_noruby="$work/farm-noruby"
+mkdir -p "$farm_noruby"
+for _d in /usr/bin /bin; do
+  for _s in "$_d"/*; do
+    _b="${_s##*/}"
+    [ "$_b" = ruby ] && continue
+    [ -e "$farm_noruby/$_b" ] || ln -s "$_s" "$farm_noruby/$_b" 2>/dev/null
+  done
+done
+for _t in git node python3; do
+  _rp="$(command -v "$_t" 2>/dev/null || true)"
+  [ -n "$_rp" ] && ln -sf "$_rp" "$farm_noruby/$_t" 2>/dev/null
+done
+m157_tools="$work/m157tools/node_modules/js-yaml"
+mkdir -p "$m157_tools" "$work/m157empty" "$work/m157home"
+printf '%s\n' '{"name":"js-yaml","main":"index.js"}' > "$work/m157tools/node_modules/js-yaml/package.json"
+printf '%s\n' 'module.exports={DEFAULT_SCHEMA:{extend:function(){return module.exports.DEFAULT_SCHEMA;}},Type:function(){},load:function(){if(process.env.STUB_INDEX==="bad")return {schema_version:"1",projects:{},last_updated:{a:1}};if(process.env.STUB_INDEX)return {schema_version:"1",projects:{},last_updated:new Date()};if(process.env.STUB_A1==="bad")return [{name:""}];var a=[],i;for(i=0;i<17;i++)a.push({name:"role"+i});return a;}};' \
+  > "$m157_tools/index.js"
+if [ ! -x "$farm_noruby/bash" ] || [ ! -e "$farm_noruby/node" ]; then
+  printf '  ℹ M157/M158 跳过：本机无法构造「有 node 但无 ruby」的 PATH 农场\n'
+else
+  check_rc "M157-a 无 ruby + 候选链内有 js-yaml ⇒ A1 报「解析 OK」（修复前：解析失败）" \
+    "PATH='$farm_noruby' DSH_CODEPUNK_TOOLS='$work/m157tools' bash plans/preset-audit.sh 2>&1 | grep -qF 'A1 解析 OK'" 0
+  check_rc "M157-b 无 ruby + 无 js-yaml ⇒ 报「无法核验」而非「解析失败」" \
+    "env -u DSH_APP_ROOT -u DSH_ASAR HOME='$work/m157home' DSH_CODEPUNK_TOOLS='$work/m157empty' PATH='$farm_noruby' bash plans/preset-audit.sh 2>&1 | grep -qF 'A1 无法核验（有 node 但候选链内未找到 js-yaml'" 0
+  check_no_match "M157-b2 不得把环境缺口报成「A1 YAML 解析失败」" \
+    "env -u DSH_APP_ROOT -u DSH_ASAR HOME='$work/m157home' DSH_CODEPUNK_TOOLS='$work/m157empty' PATH='$farm_noruby' bash plans/preset-audit.sh 2>&1" "A1 YAML 解析失败"
+  check_rc "M157-c 桩返回非法结构 ⇒ 真损坏仍报「解析失败」（判据未被放宽）" \
+    "STUB_A1=bad PATH='$farm_noruby' DSH_CODEPUNK_TOOLS='$work/m157tools' bash plans/preset-audit.sh 2>&1 | grep -qF 'A1 YAML 解析失败'" 0
+  sed -i.bak 's/有 node 但候选链内未找到 js-yaml/（候选链判据已移除）/' "$work/cur/plans/preset-audit.sh"
+  rm -f "$work/cur/plans/preset-audit.sh.bak"
+  mutate_gone "preset-audit 抹掉候选链判据消息" "$work/cur/plans/preset-audit.sh" '有 node 但候选链内未找到 js-yaml'
+  check_no_match "M157-d 判据移除 → 不得再报该消息（断言非空转）" \
+    "env -u DSH_APP_ROOT -u DSH_ASAR HOME='$work/m157home' DSH_CODEPUNK_TOOLS='$work/m157empty' PATH='$farm_noruby' bash plans/preset-audit.sh 2>&1" "有 node 但候选链内未找到 js-yaml"
+fi
+
+echo "[M158 无 ruby 主机的 INDEX 语义类型判定（F352 / F353）]"
+if [ ! -x "$farm_noruby/bash" ] || [ ! -e "$farm_noruby/node" ]; then
+  printf '  ℹ M158 跳过：同 M157 的环境前提不成立\n'
+else
+  mkdir -p "$work/m158"
+  printf 'schema_version: "1"\nprojects: {}\nlast_updated: "2026-10-08T00:00:00+07:00"\n' > "$work/m158/INDEX.yaml"
+  # 桩 js-yaml 解析出的 `last_updated` 为 **Date**（真 js-yaml 默认 schema 的行为）：ruby 侧
+  # 同样给 Time，而 ruby 判据是 `is_a?(Hash)/is_a?(Array)` ⇒ Date 属标量，不得判非法。
+  check_no_match "M158-a 无 ruby：解析出的 Date 不得被判「须为标量」（F353 假红）" \
+    "STUB_INDEX=date PATH='$farm_noruby' DSH_CODEPUNK_TOOLS='$work/m157tools' DSH_CODEPUNK_INDEX='$work/m158/INDEX.yaml' bash plans/dsh-codepunk-link.sh index 2>&1" "last_updated 须为标量"
+  check_rc "M158-b 无 ruby：真非法（映射）仍报「INDEX 语义非法」" \
+    "STUB_INDEX=bad PATH='$farm_noruby' DSH_CODEPUNK_TOOLS='$work/m157tools' DSH_CODEPUNK_INDEX='$work/m158/INDEX.yaml' bash plans/dsh-codepunk-link.sh index 2>&1 | grep -qF 'last_updated 须为标量'" 0
+  # 变异须保持 JS 语法（直接删 `!(o instanceof Date)` 会留下 `&&;` ⇒ 语法错，判据以另一种方式消失）
+  sed -i.bak 's/!(o instanceof Date)/true/' "$work/cur/plans/dsh-codepunk-link.sh"
+  rm -f "$work/cur/plans/dsh-codepunk-link.sh.bak"
+  mutate_gone "link 的 isPlain 去掉 Date 豁免" "$work/cur/plans/dsh-codepunk-link.sh" '!\(o instanceof Date\)'
+  check_rc "M158-c 去掉 Date 豁免 → Date 被误判（断言非空转）" \
+    "STUB_INDEX=date PATH='$farm_noruby' DSH_CODEPUNK_TOOLS='$work/m157tools' DSH_CODEPUNK_INDEX='$work/m158/INDEX.yaml' bash plans/dsh-codepunk-link.sh index 2>&1 | grep -qF 'last_updated 须为标量'" 0
+fi
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
