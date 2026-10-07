@@ -1875,6 +1875,18 @@ mutate_gone "preset-declare 抹掉根结构判据消息" "$work/cur/plans/preset
 check_no_match "M155-f 判据移除 → 不得再报「根节点不是序列」（断言非空转）" \
   "node plans/preset-declare.mjs apply --patch '$f349_d/map.yml' --append 2>&1" "根节点不是序列"
 
+echo "[M156 电池跳过项不得计入「满分」（F350）]"
+fresh
+check_rc "M156-a 跳过模式结论行须列出跳过项且不称满分" \
+  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" 0 "跳过 ≠ 通过"
+check_no_match "M156-a2 跳过模式不得出现「全部通过（满分）」" \
+  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "全部通过（满分）"
+sed -i.bak 's/跳过 ≠ 通过/（标注已移除）/' "$work/cur/plans/verify-battery.sh"
+rm -f "$work/cur/plans/verify-battery.sh.bak"
+mutate "电池结论行的跳过标注被抹掉" "$work/cur/plans/verify-battery.sh" '（标注已移除）'
+check_no_match "M156-b 标注被抹掉 → 不得再报「跳过 ≠ 通过」（断言非空转）" \
+  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "跳过 ≠ 通过"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1
