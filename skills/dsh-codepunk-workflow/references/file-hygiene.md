@@ -107,21 +107,26 @@
 
 ### 7.1 词汇与可写白名单（宿主事实）
 
-- **沙箱三值封闭词汇**：`read-only` / `workspace-write` / `danger-full-access`，定义于 `PKG/dsh-sandbox-policy/lib/index.js:35-39`（`const SANDBOX_MODES = [ "read-only", "workspace-write", "danger-full-access" ]`），运行时会校验取值；策略插件仅两个配置键（`mode` 默认 `read-only`、`workspaceRoot` 默认 `process.cwd()`，见 `PKG/dsh-sandbox-policy/README.zh.md:47-48` 与 schema `PKG/dsh-sandbox-policy/lib/index.js:97-104`），**无 `allowWrite`/`writePaths`/`denyWrite` 类扩展**。
+- **沙箱三值封闭词汇**：`read-only` / `workspace-write` / `danger-full-access`，定义于 `PKG/dsh-sandbox-policy/lib/index.js` 的 `const SANDBOX_MODES = [ "read-only", "workspace-write", "danger-full-access" ]`（DSH 2.0.17 实测于 `:26-30`；**行号随产品版本漂移**——旧稿写 `:35-39`，2.0.17 起该区间已是 `setSandboxMode` 的 JSDoc，故核验一律按符号名检索：`grep -n 'SANDBOX_MODES' <该文件>`），运行时会校验取值；策略插件仅两个配置键（`mode` 默认 `read-only`、`workspaceRoot` 默认 `process.cwd()`，见 `PKG/dsh-sandbox-policy/README.zh.md:47-48` 与 schema `PKG/dsh-sandbox-policy/lib/index.js:97-104`），**无 `allowWrite`/`writePaths`/`denyWrite` 类扩展**。
 - **宿主可写白名单仅三处**：会话 cwd（不可变）、`/tmp`、`os.tmpdir()`——推导函数 `PKG/dsh-sandbox/lib/index.js:166-174` 的 `writableRoots()`：`if (policy.mode !== "workspace-write") return []; return [...new Set([policy.workspaceRoot, "/tmp", tmpdir()].map(canonicalPath))]`；`read-only` 下白名单为空集。
 - **越界由宿主直接拒绝**：文件侧抛结构化错误，关键错误串 **`FS_SANDBOX_DENIED`**（`PKG/dsh-fs-sandbox/lib/index.js:157-164`）；bash/pwsh 与文件系统两族共用同一策略（`PKG/dsh-base/cordis.patch.yml:226-243`、`:518-519`）。
 - **审批只挡升权，不挡常规写**：`workspace-write` 内的正常写不触发审批；模型须用 `sandbox_permissions` + `justification` 重试一次更宽模式，经 `ask` 审批（`PKG/dsh-tool-fs/lib/index.js:1111-1147`）；应答者缺失即拒绝式关闭（`PKG/dsh-user-approval/README.zh.md:36,46`）。
 
 ### 7.2 声明层级（谁能改、改的是哪一层）
 
+> **行号引用规则（MUST）**：本节所有 `<文件>:<行号>` 均为**定位辅助**，其有效性绑定当时的 DSH 与用户平面版本。
+> 引用 MUST 同时给出**符号名检索式**；核验与引用一律以符号名检索为准，行号仅作快速跳转。
+> 依据：本轮巡检实测 3 处漂移（`SANDBOX_MODES` 由 `:35-39` → `:26-30`；用户平面 `permission` 区块由 `:168-181` → `:216-229`；
+> `defaultPreset` 由 `:181` → `:229`）——产品升级或用户平面编辑后行号必然失准，而**声称内容本身仍成立**，故漂移不会被内容类检查捕获。
+
 | 层级 | 落点（文件:行号） | 效果与范围 |
 |---|---|---|
 | 部署平面 | `PKG/dsh-base/cordis.patch.yml:229-233` | `mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'`；`workspaceRoot: !!js process.cwd()`；环境变量同时决定沙箱模式与审批策略（`:232`、`:248`）；影响所有新会话 |
-| 用户平面 | `PROF/cordis.patch.yml:168-181` | id 定向覆盖层（语法自述见 `:1-4`：top-level YAML array of loader patch entries，允许 `!!js`）；声明 `permission` 预设表与 `defaultPreset`；对**新会话**机械生效 |
+| 用户平面 | `PROF/cordis.patch.yml:216-229` | id 定向覆盖层（语法自述见 `:1-4`：top-level YAML array of loader patch entries，允许 `!!js`）；声明 `permission` 预设表与 `defaultPreset`；对**新会话**机械生效。**核验方式**：`grep -n 'id: permission' <该文件>`（行号随用户平面编辑漂移——2026-10 实测该区块已从旧稿所记 `:168-181` 移至 `:216-229`） |
 | 会话级 | `PKG/dsh-sandbox-policy/lib/index.js:40` 的 `setSandboxMode()` | `function setSandboxMode(session, mode) { session.append("sandbox/mode", { mode }); }`；用户入口为 `/permission` 命令或 UI 控件（`PKG/dsh-permission-presets/README.zh.md:50`）；只影响当前会话，重启后按事件回放保留 |
 | 解析优先级 | `PKG/dsh-sandbox-policy/lib/index.js:141-146` 的 `resolve()` | `request.mode ?? overrideOf(session) ?? defaultMode`；工作根恒取会话不可变 cwd（`session?.header.cwd`）；预设平面不宜作强制点（`PRESET/agent.cordis.yml:6` 自述沙箱归宿主平面） |
 
-**本机现状（MUST 知悉）**：用户平面 `PROF/cordis.patch.yml:181` 的 `defaultPreset: danger-full-access` ⇒ **本会话无任何宿主写盘限制**，与运行时上下文自述一致（「Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.」）。故 §6.1 白名单与 §6.4 机械门当前**是唯一在岗的写盘约束**。
+**本机现状（MUST 知悉）**：用户平面 `PROF/cordis.patch.yml:229` 的 `defaultPreset: danger-full-access`（核验式：`grep -n 'defaultPreset' <该文件>`）⇒ **本会话无任何宿主写盘限制**，与运行时上下文自述一致（「Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.」）。故 §6.1 白名单与 §6.4 机械门当前**是唯一在岗的写盘约束**。
 
 ### 7.3 可直接照抄的启用片段（**须重启 DSH Desktop 生效**）
 

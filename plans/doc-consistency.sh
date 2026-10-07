@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # doc-consistency.sh —— 文档「声称 ↔ 实现」一致性核对（补覆盖矩阵的首要空档）
+#
+# 退出码: 0=无硬性不一致（各检查类全通过）; 1=存在不一致（逐条列出）; 2=用法/环境错误（预设根不存在或不可读）
 # -----------------------------------------------------------------------------
 # 覆盖矩阵（references/skill-governance.md）把「文档声称 ↔ 实现」列为无机械检查的首要空档——
 # 历次审计中该类最高产（F077/F082/F083/F088/F090/F092/F093）。本脚本固化其中可机械化的部分：
@@ -147,6 +149,29 @@ cmp_num "验证电池项数" "$(grep -cE '^# [0-9]+\)' plans/verify-battery.sh)"
 #   判据：实现侧派生（`probe_rc`/`probe_msg` 调用数）↔ `skill-governance.md` 治理表声称的「**N 条探针**」。
 cmp_num "治理表探针数" "$(grep -cE '^probe_rc |^probe_msg ' plans/doc-consistency.sh)" \
         "$(grep -oE '\*\*[0-9]+ 条探针\*\*' skills/dsh-codepunk-workflow/references/skill-governance.md | grep -oE '[0-9]+')"
+# F338：开源规格化引入 `docs/**` 后，其**计数声称**不在任何门禁域（本类此前只扫 README）⇒
+#   `docs/development.md` 与 `docs/architecture.md` 长期声称「137 项变异（M1–M137）」，实现已 146（陈旧计数）。
+#   现把「实现派生量」的声称域扩到 README + docs/**，判据沿用**同一实现值**（变异项数 / 电池主检项数），
+#   只识别 docs 实际使用的写法（`N 项变异` / `N 项**已知缺陷` / `N 项**电池` / `N 项，一次跑完` / `N 项**：`），
+#   域与覆盖范围明写在结论里（避免再次过度声称——F294/F327 同族教训）。
+MUT_N="$(grep -oE 'M[0-9]+' plans/checker-self-test.sh | sort -u | wc -l | tr -d ' ')"
+BAT_MAIN="$(grep -cE '^# [0-9]+\)' plans/verify-battery.sh)"
+DOC_CN_BAD=""
+DOC_CN_HITS=0
+for _f in docs/*.md docs/*/*.md; do
+  [ -f "$_f" ] || continue
+  for _v in $(grep -oE '[0-9]+ 项(\*\*)?(变异|已知缺陷)' "$_f" | grep -oE '^[0-9]+'); do
+    DOC_CN_HITS=$((DOC_CN_HITS + 1))
+    [ "$_v" = "$MUT_N" ] || DOC_CN_BAD="$DOC_CN_BAD ${_f}:变异=${_v}(实况 ${MUT_N})"
+  done
+  for _v in $(grep -oE '[0-9]+ 项(\*\*)?(电池|：|，一次跑完)' "$_f" | grep -oE '^[0-9]+'); do
+    DOC_CN_HITS=$((DOC_CN_HITS + 1))
+    [ "$_v" = "$BAT_MAIN" ] || DOC_CN_BAD="$DOC_CN_BAD ${_f}:电池=${_v}(实况 ${BAT_MAIN})"
+  done
+done
+if [ -n "$DOC_CN_BAD" ]; then bad "docs/ 计数声称陈旧:${DOC_CN_BAD}"
+elif [ "$DOC_CN_HITS" -eq 0 ]; then info "docs/ 未出现可识别的计数声称（域：docs/**；写法 N 项变异/已知缺陷/电池/：/，一次跑完）"
+else ok "docs/ 计数声称与实现一致（命中 ${DOC_CN_HITS} 处；域 docs/**，仅识别该族写法）"; fi
 
 # F255：README 与 fidelity-gate.py 均声称保护闸为「14 类」，但**无任何工具**核验该计数
 #   （battery「11 项」/ mutations「126 项」已由上方 cmp_num 守护 ⇒ 覆盖不对称：增删 PATTERNS 会静默漂移）。
@@ -273,7 +298,12 @@ except Exception:
 ok = any(("退出码" in l) and ("=" in l) and any(c.isdigit() for c in l) for l in head)
 sys.exit(0 if ok else 1)
 ' "$f" && continue   # F192：同上，避免多字节 grep 参数在 C locale 下失效
-  case "$f" in *.sh) grep -qE '\bsource\b|^\s*\.\s' "$f" 2>/dev/null && continue ;; esac  # F187：库脚本豁免**仅限 .sh**（.py/.mjs 里的 source 字样会误豁免）
+  # F336：旧判据为 `grep -qE '\bsource\b|^\s*\.\s'`——对**任意**含 `source` 一词的 .sh 一律豁免，
+  #   注释散文即可触发（实证：doc-consistency.sh 因自身 class 5 规则文本含「source」而**自我豁免**；
+  #   verify-battery.sh 因 `:221` 注释含「source 它」而豁免；link.sh 为运行型 CLI 却因加载常量被豁免）。
+  #   由此三者长期无退出码声明，且上方「实现用到的退出码 ⊆ 头部契约」判据对其恒空转。
+  #   现**取消 source 启发式**：豁免只剩 home 脚本特例与下方「无显式退出调用」——
+  #   「加载了别的脚本」不等于「纯库脚本」，判据须以**是否可运行**（有无显式退出调用）为准。
   grep -qE 'exit [0-9]|sys\.exit\(|process\.exit\(' "$f" 2>/dev/null || continue   # F187：非「运行型」（无显式退出调用）豁免
   RC_UNDECL="$RC_UNDECL $base"
 done
