@@ -5,12 +5,15 @@
 # 用法:
 #   verify-worktree.sh [主仓库路径] [--quiet]
 #   主仓库：位置参数优先，其次环境变量 MAIN_REPO；两者都没有则报用法错误退出
-#   散落根：由环境变量 SCAN_ROOT 指定（未设或其目录不存在 ⇒ 跳过第 1 项扫描并 WARN，属无桌面环境正常态）——F278 补文档
+#   散落根：解析优先级 SCAN_ROOT > DSH_CODEPUNK_WORKTREES（总库 worktrees，即文档化落点
+#     ~/.dsh-codepunk/worktrees/）> DESKTOP > 平台候选（Desktop / 桌面）；均不存在 ⇒ 跳过第 1 项
+#     扫描并 WARN（无桌面环境属正常态）——F278 补文档
 #   主仓库归位工程根尚未执行时，脚本接受主仓库留在现位的 WARN（不判 FAIL，
 #   归位由 run-lead 另行排期；结尾给出建议命令供执行时对照）。
 #
 # 检查（acceptance 3）:
-#   1) 散落根不再出现任何散落 worktree（git 仓库目录，主仓库自身除外）
+#   1) 散落根不再出现本主仓库的散落 worktree（与主仓库共享 git common dir 的目录）；
+#      散落根内的**其它** git 仓库只报 INFO，不计 FAIL
 #   2) 主仓库 `git worktree list` 干净：除主仓库外无任何其他 worktree
 #   附加: 主仓库若仍在散落根 → WARN（归位待 run-lead 排期）
 #
@@ -40,11 +43,14 @@ if [ -z "$MAIN" ]; then
   exit 2
 fi
 # 散落根（scatter root）：worktree 不应散落的位置。
-#   解析优先级：SCAN_ROOT > DESKTOP > 平台候选（Desktop / 桌面）；
+#   解析优先级：SCAN_ROOT > DSH_CODEPUNK_WORKTREES（总库 worktrees，即仓内文档化的
+#   落点 ~/.dsh-codepunk/worktrees/<task_id>/）> DESKTOP > 平台候选（Desktop / 桌面）；
 #   全部不存在时不判 FAIL（优雅降级为 WARN），因为无桌面环境的机器属正常情形。
-SCAN_ROOT="${SCAN_ROOT:-${DESKTOP:-}}"
+#   （实测定型：旧默认只认桌面候选，导致文档化落点从不被扫描、而桌面上的**无关**仓库
+#     被一律判 FAIL；详见 README 门禁表与 references/file-hygiene.md §6.1 白名单第 2 序。）
+SCAN_ROOT="${SCAN_ROOT:-${DSH_CODEPUNK_WORKTREES:-${DESKTOP:-}}}"
 if [ -z "$SCAN_ROOT" ]; then
-  for cand in "$HOME/Desktop" "$HOME/桌面"; do
+  for cand in "$HOME/.dsh-codepunk/worktrees" "$HOME/Desktop" "$HOME/桌面"; do
     [ -d "$cand" ] && { SCAN_ROOT="$cand"; break; }
   done
 fi
@@ -55,6 +61,16 @@ QUIET=0
 # 物理路径（解析符号链接）：macOS `/var`→`/private/var` 等场景必须归一后比较，
 #   否则 git 返回的物理路径与逻辑路径永不相等，比较静默失效。
 phys() { if [ -d "$1" ]; then (cd "$1" 2>/dev/null && pwd -P) || printf '%s' "$1"; else printf '%s' "$1"; fi; }
+
+# git common dir 归一：主 worktree 返回相对路径（`.git`），链接 worktree 返回绝对路径
+#   ⇒ 统一拼成绝对路径再 phys，否则两者永不相等、判据静默失效（实测 git 2.54）。
+common_of() { # $1 = 仓库目录
+  local c
+  c="$(git -C "$1" rev-parse --git-common-dir 2>/dev/null)" || return 1
+  [ -n "$c" ] || return 1
+  case "$c" in /*) ;; *) c="$1/$c" ;; esac
+  phys "$c"
+}
 
 say()    { [ "$QUIET" -eq 1 ] || printf '%s\n' "$*"; }
 warn()   { printf 'WARN: %s\n' "$*" >&2; }
@@ -108,18 +124,26 @@ while IFS= read -r line; do
   esac
 done < <(git -C "$MAIN_ABS" worktree list --porcelain 2>/dev/null)
 
-# 1b. 兜底：散落根下任意目录若是 git 仓库且非主仓库 → FAIL
+# 1b. 兜底：散落根下任意目录若是 git 仓库且非主仓库。
+#   判据收窄（实测定型）：只有**本主仓库的 worktree**（与该主仓库共享 git common dir）才算
+#   「散落 worktree」判 FAIL；与本预设无关的其它 git 仓库只报 INFO，不计 FAIL——否则任何
+#   开发机桌面上放着别的项目时该检查永久 FAIL，而本仓文档化的落点反而漏检。
+MAIN_COMMON="$(common_of "$MAIN_ABS")"
 for entry in "$SCAN_ROOT"/*; do
   [ -d "$entry" ] || continue
   [ "$(basename "$entry")" = "$MAIN_BASE" ] && continue
   [ -e "$entry/.git" ] || continue
   tl="$(phys "$(git -C "$entry" rev-parse --show-toplevel 2>/dev/null)")" || continue
-  if [ "$tl" = "$(phys "$entry")" ]; then
-    fail "散落 git 仓库/worktree 在散落根（目录直扫）: $entry"
+  [ "$tl" = "$(phys "$entry")" ] || continue
+  entry_common="$(common_of "$entry")"
+  if [ -n "$MAIN_COMMON" ] && [ "$entry_common" = "$MAIN_COMMON" ]; then
+    fail "散落 worktree 在散落根（目录直扫，与本主仓库共享 git 目录）: $entry"
     SCATTER=1
+  else
+    say "  INFO: 散落根内的其它 git 仓库（非本主仓库的 worktree，不计 FAIL）: $entry"
   fi
 done
-[ "$SCATTER" -eq 0 ] && say "  PASS: 散落根无散落 worktree"
+[ "$SCATTER" -eq 0 ] && say "  PASS: 散落根无本主仓库的散落 worktree"
 fi
 
 # --- 2. 主仓库 worktree 列表干净 ------------------------------------------
