@@ -60,7 +60,7 @@ dsh-codepunk 是 DeepSeek Harness 上的**多智能体开发流程预设**，由
 | `plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性 **24 类**（计数声称、阶段口径、编号与章节引用可解析、状态机自洽、日期形态、表格列数等） | 0 一致 / 1 有不一致 / 2 环境或用法错误 |
 | `plans/dsh-codepunk-leak-guard.sh` | 泄露防护门（`--staged` / `--tree` / `--history` / `--msg` / `--install-hook` / `--list`） | 0 通过 / 1 命中阻断 / 2 用法或环境错误 |
 | `plans/write-scope-check.sh` | 写盘纪律门 G1 仓库残留 / G2 主目录散落 / G3 临时目录残留；`--exempt-from` 读台账豁免 | 0 通过 / 1 发现越界 / 2 无法核验或用法错 |
-| `plans/evidence-verify.sh` · `plans/acceptance-verify.sh` | 证据机械校验（`verdict=PASS` 才算过）与签收结构 + 独立性校验（自签一律不合规） | 0 通过 / 1 未过 / 2 用法或文件缺失 |
+| `plans/evidence-verify.sh` · `plans/acceptance-verify.sh` | 证据机械校验（`verdict=PASS` 才算过）与签收结构 + 独立性校验（自签一律不合规，比较不区分大小写；**必须传入交付方 `task_id`**，否则 rc=2 不判通过） | 0 通过 / 1 未过 / 2 用法或文件缺失、或未提供交付方 |
 | `plans/fidelity-gate.py` | 语义保护闸（`snapshot` / `verify`，**14 类**语义项比对；受检范围 `.md` / `.yml` / `.sh` / `.ps1`） | 0 零丢失 / 1 检出丢失 / 2 缺参数或未知模式 |
 | `plans/preset-compat.py` · `plans/preset-declare.mjs` · `plans/ps-validate.mjs` | 组合 ↔ DSH 安装兼容核验 / 声明副本漂移 / PowerShell 语法（可选依赖） | 0 通过 / 1 有问题 / 2 无法定位 DSH 安装或参数错误 |
 | `plans/verify-worktree.sh` · `plans/dsh-codepunk-init.sh` · `plans/dsh-codepunk-link.sh` | 工作树落点纪律 / 总库骨架与工具脚本镜像 / 项目↔总库关联解析 | 0 通过 / 1 有缺失或越界 / 2 环境或用法错 |

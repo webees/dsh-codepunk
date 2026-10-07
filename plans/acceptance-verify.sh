@@ -3,8 +3,8 @@
 # acceptance-verify.sh —— 签收文件校验器（D069 实现 · 防假通过的机械门 S2）
 # -----------------------------------------------------------------------------
 # 用法：
-#   bash acceptance-verify.sh <acceptance.yaml> [交付方 task_id]
-# 退出码：0=结构合法且签收独立 · 1=不合规（列出问题） · 2=用法/文件缺失
+#   bash acceptance-verify.sh <acceptance.yaml> <交付方 task_id>
+# 退出码：0=结构合法且签收独立 · 1=不合规（列出问题） · 2=用法/文件缺失或未提供交付方
 #
 # 依据：
 #   artifacts.md D069「schema 强约束」：acceptance.yaml 结构与 evidence.yaml 同理，
@@ -20,7 +20,9 @@
 #   ② accepted_by 必填且为**数组**（至少 1 项；不能写成标量）
 #   ③ accepted_at 必填且可解析为 ISO 8601
 #   ④ 签收独立性：签收方不得等于**或包含**交付方 task_id —— **自签一律判不合规，与 note 无关**
-#      （F268：实现见 :116/:121，无例外分支）；签收方出现 run-lead/技术统筹（run-lead 兼任）字样
+#      （F268：实现见 :116/:121，无例外分支）；**比较不区分大小写并去首尾空白**（F331：原实现为
+#      区分大小写的子串包含 ⇒ 交付方 `task-a` 的签收方写 `Task-A` 即判通过，自签可被改大小写绕过）；
+#      签收方出现 run-lead/技术统筹（run-lead 兼任）字样
 #      且**非**自签时，note 必须非空（记明由 run-lead 签收的原因，:122/:123）
 #   ⑤ note 若出现「不可用/缺席」类表述但为空则告警（不判失败）
 # =============================================================================
@@ -38,12 +40,18 @@ case "$(locale charmap 2>/dev/null)" in
     done ;;
 esac
 
-if [ $# -lt 1 ]; then
-  echo "用法: acceptance-verify.sh <acceptance.yaml> [交付方 task_id]" >&2
+if [ $# -lt 2 ]; then
+  echo "用法: acceptance-verify.sh <acceptance.yaml> <交付方 task_id>" >&2
+  # F332：交付方原为可选参（`[交付方 task_id]`）⇒ 不传时 ④「签收独立性」整段跳过，工具仍打印
+  #   「PASS: 结构合法且签收独立」——**声称已校验独立性而实际未校验**（违反本仓「无法核验 ≠ 通过」）。
+  #   现改必填：缺交付方 ⇒ rc=2（与 leak-guard 缺 HOME、preset-declare 缺 DSH_APP_ROOT 同口径）。
+  if [ $# -eq 1 ]; then
+    echo "✗ 未提供交付方 task_id ⇒ 无法校验签收独立性（无法核验 ≠ 通过）" >&2
+  fi
   exit 2                       # 与全仓约定一致：用法/文件缺失 = 2
 fi
 ACC="$1"
-DELIVERER="${2:-}"
+DELIVERER="$2"
 
 [ -f "$ACC" ] || { echo "❌ [fetch] acceptance 文件不存在: $ACC"; exit 2; }
 
@@ -115,7 +123,7 @@ m_note = re.search(r'^note:\s*"?([^"\n]*)"?', src, re.M)
 if m_note:
     note = m_note.group(1).strip()
 for s in signers:
-    if deliverer and deliverer in s:
+    if deliverer and deliverer.strip().lower() in s.strip().lower():   # F331：不区分大小写（改大小写不得绕过自签判据）
         problems.append(f"④ 自签：签收方 {s} 即交付方 {deliverer}（无独立签收；无下游时改由 docs-lead 签）")
     if "run-lead" in s and not note:
         problems.append(f"④ 签收方 {s}（run-lead）但 note 为空——run-lead 签收 MUST 在 note 记明原因"

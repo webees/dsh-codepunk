@@ -153,11 +153,11 @@ flowchart LR
 | `plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=15 项全满分；1=存在未满分项；2=环境或用法错误 |
 | `plans/preset-audit.sh` | 5 组 rubric 审计（配置/手册/调研/文档/工具层；否决式计分：零失分即满分） | 0=全项达标；1=存在失分项；2=预设根不存在 |
 | `plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性核对（24 类：计数声称 · 阶段口径 · 工具存在性 · 退出码契约 · 编号可解析 · 章节引用 · 退出码实测 · 表格列数等） | 0=一致；1=存在不一致；2=环境或用法错误 |
-| `plans/checker-self-test.sh` | 检查器存活自检（变异测试）：沙箱副本内注入 **141 项**已知缺陷，断言对应检查项必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境或自检问题 |
+| `plans/checker-self-test.sh` | 检查器存活自检（变异测试）：沙箱副本内注入 **143 项**已知缺陷，断言对应检查项必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境或自检问题 |
 | `plans/preset-declare.mjs` | preset 声明块生成与校验（`emit` / `check` / `apply`；源 `agent.cordis.yml` ↔ profile patch 内联副本语义比对） | 0=一致或成功；1=确认漂移；2=环境或参数错误 |
 | `plans/preset-compat.py` | 组合与当前 DeepSeek Harness 安装的兼容核验（插件包存在 · 配置键被接受 · group 隔离与锚点顺序 · allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
 | `plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 证据机械校验（防假通过门）：`task_id` · `command` · `exit_code=0` · `log_ref` 齐备 + 证据 `id` 去重 + 时间序（`validated_at` 须晚于交付目录 mtime） | 0=通过（verdict=PASS）；1=未过；2=用法或文件缺失 |
-| `plans/acceptance-verify.sh <acceptance.yaml> [交付方 task_id]` | 签收机械校验：`task_id` · `accepted_by[]` · `accepted_at` 齐备 + 签收独立性（自签一律不合规） | 0=合规；1=不合规；2=用法或文件缺失 |
+| `plans/acceptance-verify.sh <acceptance.yaml> <交付方 task_id>` | 签收机械校验：`task_id` · `accepted_by[]` · `accepted_at` 齐备 + 签收独立性（自签一律不合规，**比较不区分大小写**；缺交付方 ⇒ 无法核验 ≠ 通过） | 0=合规；1=不合规；2=用法或文件缺失、或未提供交付方 |
 | `plans/write-scope-check.sh [--repo <路径>] [--home] [--tmp] [--home-all]` | 写盘纪律门：仓库残留（含未跟踪文件）· 主目录顶层散落 · 临时目录双根残留；`--exempt-from` 读运行根豁免登记 | 0=通过；1=发现越界；2=无法核验或用法错误 |
 | `plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门：禁词与敏感形态留在本地，推送前守卫；`--install-hook` 安装 pre-commit · pre-push · commit-msg 钩子 | 0=通过；1=命中并阻断；2=用法或环境错误 |
 | `plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸：改文件前存快照、改后逐项比对（**14 类**：编号 · 约束词 · 阈值 · 路径 · 工具名 · 代码标识 · 文件名 · 全大写常量 · URL · 证据标记 · 日期等），防压缩丢语义 | 0=零丢失；1=检出丢失；2=缺参数或未知模式、无快照 |
