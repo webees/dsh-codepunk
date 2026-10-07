@@ -378,10 +378,15 @@ cmd_index() {
     return 1
   fi
   # ② 解析核验（与 preset-audit 同链：ruby 优先、node+js-yaml 回退）；损坏文件 MUST 报错而非当空表
+  # 跨版本可移植（Psych 4/5 = ruby ≥ 3.1，Ubuntu 24.04 自带 3.2）：`YAML.load_file` 已改为
+  #   safe_load，INDEX 里未加引号的 `last_updated` 时间戳会被判为「未许可的 Time」并抛
+  #   Psych::DisallowedClass ⇒ 本核验在 Linux 上恒失败（macOS 的 Psych 3.1 走 unsafe_load，故不暴露）。
+  #   修法：先带 permitted_classes: [Time]，Psych 3 不认该关键字（ArgumentError）时回退旧调用——
+  #   与 agent.cordis.yml 锚点的 aliases 修法同构，macOS 行为不变。
   local parse_rc=0 parser=""
   if command -v ruby >/dev/null 2>&1; then
     parser="ruby"
-    ruby -ryaml -e 'begin; YAML.load_file(ARGV[0]); rescue => e; warn e.message; exit 1; end' \
+    ruby -ryaml -e 'begin; YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; YAML.load_file(ARGV[0]); rescue => e; warn e.message; exit 1; end' \
       "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
   elif command -v node >/dev/null 2>&1 && node -e 'require("js-yaml")' >/dev/null 2>&1; then
     parser="node"
@@ -399,8 +404,8 @@ cmd_index() {
   #    空骨架放行，随后 register 会据错模型覆盖注册表 → 真实登记项丢失。此处按同一解析链核验类型。
   local sem_rc=0 sem_msg=""
   if command -v ruby >/dev/null 2>&1; then
-    sem_msg="$(ruby -ryaml -e '
-      d = YAML.load_file(ARGV[0])
+    sem_msg="$(ruby -E utf-8 -ryaml -e '
+      begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end   # Psych 4/5 见 ② 的说明
       d = {} if d.nil?
       fail "顶层须为映射" unless d.is_a?(Hash)
       fail "schema_version 须为标量" if d.key?("schema_version") && d["schema_version"].is_a?(Hash)
@@ -699,8 +704,8 @@ PYEOF
   fi
   # 写入后校验：真实 YAML 解析器必须能读（防「行级解析自洽但 YAML 非法」长期潜伏）
   if command -v ruby >/dev/null 2>&1; then
-    if ! ruby -ryaml -e '
-d = YAML.load_file(ARGV[0])
+    if ! ruby -E utf-8 -ryaml -e '
+begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end   # Psych 4/5 见 ② 的说明
 raise "顶层非映射" unless d.is_a?(Hash)
 raise "projects 非数组" unless d["projects"].is_a?(Array)
 ' "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1; then

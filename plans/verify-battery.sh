@@ -226,12 +226,22 @@ T=$(mktemp -d)
 IDX_BEFORE=$( [ -f "$REAL_INDEX" ] && { cksum "$REAL_INDEX" 2>/dev/null | awk '{print $1"-"$2}'; } || echo "absent" )
 ( unset DSH_CODEPUNK_INDEX DSH_CODEPUNK_PROJECTS DSH_CODEPUNK_SCRIPTS DSH_CODEPUNK_WORKTREES DSH_CODEPUNK_TOOLS
   export DSH_CODEPUNK_HOME="$T/hub"
-  bash plans/dsh-codepunk-init.sh >/dev/null 2>&1
-  mkdir -p "$T/p" && printf -- '---\ndsh-codepunk: e2e\n---\n' > "$T/p/README.md"
-  bash plans/dsh-codepunk-link.sh register -y "$T/p" e2e >/dev/null 2>&1
-  bash plans/dsh-codepunk-link.sh resolve "$T/p" >/dev/null 2>&1
-  ruby -ryaml -e "d=YAML.load_file('$T/hub/INDEX.yaml'); exit(d['projects'].is_a?(Array) && d['projects'].size==1 ? 0 : 1)" 2>/dev/null
-) && p "✅" "E2E（init→register→resolve，YAML 合法；沙箱密闭）" || { p "✗" "E2E 失败"; F=1; }
+  # 逐步记录到日志文件（变量 E2E_LOG）：先前各步都以 >/dev/null 2>&1 吞掉输出，CI 上本项失败时日志里
+  # 只有一行「E2E 失败」，无法定位是哪一步（无法核验≠通过）；失败时打印日志尾若干行。
+  E2E_LOG="$T/e2e.log"
+  echo "[1/5] init" >>"$E2E_LOG"
+  bash plans/dsh-codepunk-init.sh >>"$E2E_LOG" 2>&1 || { echo "步骤失败：init" >>"$E2E_LOG"; exit 1; }
+  echo "[2/5] 造工程" >>"$E2E_LOG"
+  { mkdir -p "$T/p" && printf -- '---\ndsh-codepunk: e2e\n---\n' > "$T/p/README.md"; } >>"$E2E_LOG" 2>&1 || { echo "步骤失败：造工程" >>"$E2E_LOG"; exit 1; }
+  echo "[3/5] register" >>"$E2E_LOG"
+  bash plans/dsh-codepunk-link.sh register -y "$T/p" e2e >>"$E2E_LOG" 2>&1 || { echo "步骤失败：register" >>"$E2E_LOG"; exit 1; }
+  echo "[4/5] resolve" >>"$E2E_LOG"
+  bash plans/dsh-codepunk-link.sh resolve "$T/p" >>"$E2E_LOG" 2>&1 || { echo "步骤失败：resolve" >>"$E2E_LOG"; exit 1; }
+  echo "[5/5] INDEX 结构断言" >>"$E2E_LOG"
+  # Psych 4/5（ruby ≥ 3.1）：INDEX 的 last_updated 时间戳在 safe_load 下抛 DisallowedClass ⇒
+  #   先带 permitted_classes: [Time]，Psych 3 不认该关键字时回退旧调用（与 link.sh ② 同构）。
+  ruby -ryaml -e "begin; d=YAML.load_file('$T/hub/INDEX.yaml', permitted_classes: [Time], aliases: true); rescue ArgumentError; d=YAML.load_file('$T/hub/INDEX.yaml'); end; exit(d['projects'].is_a?(Array) && d['projects'].size==1 ? 0 : 1)" >>"$E2E_LOG" 2>&1 || { echo "步骤失败：INDEX 结构断言" >>"$E2E_LOG"; exit 1; }
+) && p "✅" "E2E（init→register→resolve，YAML 合法；沙箱密闭）" || { p "✗" "E2E 失败"; tail -n 6 "$T/e2e.log" 2>/dev/null | sed 's/^/      /'; F=1; }
 IDX_AFTER=$( [ -f "$REAL_INDEX" ] && { cksum "$REAL_INDEX" 2>/dev/null | awk '{print $1"-"$2}'; } || echo "absent" )
 if [ "$IDX_BEFORE" = "$IDX_AFTER" ]; then
   p "✅" "E2E 未污染真实总库（INDEX 校验和不变）"

@@ -1,0 +1,379 @@
+# ============================================================================
+# dsh-codepunk CI —— 合并门（四个必需状态检查）
+# ----------------------------------------------------------------------------
+# 设计要点:
+#   ① 四个 job 的 name 就是分支保护里的 required_status_checks 上下文串
+#      （门禁回归 / 存活自检 / 跨平台可移植 / 文档一致性，见 plans/github-setup.sh）。
+#      改 name 等于让分支保护失效——改动前必须先同步该脚本并重跑它。
+#   ② 退出码语义（全仓统一）: 0=通过 · 1=失败 · 2=无法核验/用法错。
+#      「无法核验 ≠ 通过」⇒ 本工作流只把 0 当通过，2 同样判红；每步显式打印 rc 与期望值。
+#   ③ 门禁的 F2（plans ↔ ~/.dsh-codepunk/scripts 同步）与 B14 依赖本地总库，
+#      而 runner 是全新 HOME ⇒ 先跑 plans/dsh-codepunk-init.sh 建总库，再跑审计/评分。
+#      写盘纪律门（write-scope-check.sh）相反——它扫 $HOME 顶层，必须用**干净临时 HOME**。
+#   ④ 快检查在前、长跑（电池/自检）在后：早期失败省额度，失败点一眼可见。
+# ============================================================================
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# 同一 PR/分支的新推送取消旧跑：门禁结论只对应最新提交，也避免额度浪费
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: 门禁回归
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: 检出仓库（完整历史：门禁含历史/标签类扫描项）
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 装配 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 系统依赖（shellcheck / ruby 按需安装）
+        run: |
+          set -euo pipefail
+          command -v shellcheck >/dev/null 2>&1 || { sudo apt-get update -qq; sudo apt-get install -y -qq shellcheck; }
+          command -v ruby >/dev/null 2>&1 || { sudo apt-get update -qq; sudo apt-get install -y -qq ruby; }
+          shellcheck --version | sed -n '2,3p'
+          ruby -v
+          python3 -V
+
+      - name: Python 语法（py_compile，字节码写临时目录不污染工作区）
+        run: |
+          set -euo pipefail
+          PYTHONPYCACHEPREFIX="$RUNNER_TEMP/pycache" python3 -m py_compile plans/*.py
+          echo "py_compile 通过：$(ls plans/*.py | wc -l) 个文件"
+
+      - name: Shell 语法与静态检查（bash -n + shellcheck 错误级）
+        run: |
+          set -euo pipefail
+          for f in plans/*.sh; do bash -n "$f"; done
+          echo "bash -n 通过：$(ls plans/*.sh | wc -l) 个脚本"
+          # 仅错误级判红；提示/警告级只计数打印（历史存量提示不作为门禁，避免假拒绝）
+          shellcheck --severity=error plans/*.sh
+          n=$(shellcheck --format=gcc plans/*.sh 2>/dev/null | wc -l || true)
+          echo "shellcheck：错误级 0 项；提示/警告级 ${n} 项（不判红）"
+
+      - name: 安装 PowerShell 校验器依赖（tree-sitter，见 README「PowerShell 校验」）
+        run: |
+          set -euo pipefail
+          # verify-battery.sh 内嵌调用 checker-self-test.sh，而后者 M122 硬性要求
+          # ps-validate.mjs 真能跑（缺依赖时它报「缺依赖」而非「N 个文件未校验」⇒ 断言失败）；
+          # 装上后 verify-battery 的 PS 语法项也从「ℹ 跳过」变为真实核验。按 README 同一配方安装。
+          mkdir -p "$HOME/.dsh-codepunk/tools"
+          cd "$HOME/.dsh-codepunk/tools"
+          [ -f package.json ] || npm init -y >/dev/null
+          npm i --no-audit --no-fund --loglevel=error tree-sitter tree-sitter-powershell
+          node "$GITHUB_WORKSPACE/plans/ps-validate.mjs" "$GITHUB_WORKSPACE"/plans/windows/*.ps1
+
+      - name: 建立本地总库（plans → ~/.dsh-codepunk/scripts）
+        run: |
+          set +e
+          bash plans/dsh-codepunk-init.sh
+          rc=$?
+          set -e
+          echo "dsh-codepunk-init rc=$rc（期望 0）"
+          [ "$rc" = 0 ] || { echo "::error::dsh-codepunk-init rc=$rc（期望 0）——无总库时 F2/B14 不可核验"; exit 1; }
+
+      - name: 门禁 preset-audit.sh
+        run: |
+          set +e
+          bash plans/preset-audit.sh "$GITHUB_WORKSPACE"
+          rc=$?
+          set -e
+          echo "preset-audit rc=$rc（期望 0；1=失分项，2=无法核验，均判红）"
+          [ "$rc" = 0 ] || { echo "::error::preset-audit rc=$rc（期望 0）"; exit 1; }
+
+      - name: 门禁 preset-score.sh
+        run: |
+          set +e
+          bash plans/preset-score.sh "$GITHUB_WORKSPACE"
+          rc=$?
+          set -e
+          echo "preset-score rc=$rc（期望 0；1=未满分，2=无法核验，均判红）"
+          [ "$rc" = 0 ] || { echo "::error::preset-score rc=$rc（期望 0）"; exit 1; }
+
+      - name: 门禁 write-scope-check.sh（干净临时 HOME）
+        run: |
+          set -euo pipefail
+          # 本门扫 $HOME 顶层与临时根顶层，必须给一个干净 HOME，否则宿主残留会误判。
+          # 用确定性目录 + mkdir -p，不用 mktemp 的 X 模板：仓库 A2「占位残留」判据把
+          # mktemp 的 X 模板序列当作占位符文本，写在工作流里同样会被扣分。
+          WSHOME="$RUNNER_TEMP/gate-write-scope-home"; mkdir -p "$WSHOME"
+          WSTMP="$RUNNER_TEMP/gate-write-scope-tmp"; mkdir -p "$WSTMP"   # 本门要求 TMPDIR 可达，否则 rc=2
+          set +e
+          HOME="$WSHOME" TMPDIR="$WSTMP" bash plans/write-scope-check.sh --repo . --home --tmp
+          rc=$?
+          set -e
+          echo "write-scope-check rc=$rc（期望 0；1=越界，2=无法核验，均判红）"
+          [ "$rc" = 0 ] || { echo "::error::write-scope-check rc=$rc（期望 0）"; exit 1; }
+
+      - name: 门禁 dsh-codepunk-leak-guard.sh
+        run: |
+          set +e
+          # 禁词表在 ~/.dsh-codepunk/denylist.txt，runner 上缺失属正常：仍有通用模式（绝对路径/凭据/邮箱）把关
+          bash plans/dsh-codepunk-leak-guard.sh --tree
+          rc=$?
+          set -e
+          echo "leak-guard rc=$rc（期望 0；1=命中泄露，2=无法核验，均判红）"
+          [ "$rc" = 0 ] || { echo "::error::leak-guard rc=$rc（期望 0）"; exit 1; }
+
+      - name: 门禁 verify-battery.sh（长跑）
+        timeout-minutes: 20
+        run: |
+          set +e
+          bash plans/verify-battery.sh "$GITHUB_WORKSPACE"
+          rc=$?
+          set -e
+          echo "verify-battery rc=$rc（期望 0；1=存在失败项，2=无法核验，均判红）"
+          [ "$rc" = 0 ] || { echo "::error::verify-battery rc=$rc（期望 0）"; exit 1; }
+
+  self-test:
+    name: 存活自检
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 装配 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 系统依赖（ruby：YAML 解析判据）
+        run: |
+          set -euo pipefail
+          command -v ruby >/dev/null 2>&1 || { sudo apt-get update -qq; sudo apt-get install -y -qq ruby; }
+          ruby -v
+
+      - name: 安装 PowerShell 校验器依赖（tree-sitter，见 README「PowerShell 校验」）
+        run: |
+          set -euo pipefail
+          # 并非可选：preset-score/verify-battery 缺校验器时只 ℹ 跳过，而本 job 跑的
+          # checker-self-test.sh 的 M122 硬性要求 ps-validate.mjs 真能跑（缺依赖时它报
+          # 「缺依赖」而非「N 个文件未校验」⇒ 该变异断言失败）。按 README 的同一配方安装。
+          mkdir -p "$HOME/.dsh-codepunk/tools"
+          cd "$HOME/.dsh-codepunk/tools"
+          [ -f package.json ] || npm init -y >/dev/null
+          npm i --no-audit --no-fund --loglevel=error tree-sitter tree-sitter-powershell
+          node "$GITHUB_WORKSPACE/plans/ps-validate.mjs" "$GITHUB_WORKSPACE"/plans/windows/*.ps1
+
+      - name: 变异自检 checker-self-test.sh（断言 rc=0 且末行含「自检通过」）
+        timeout-minutes: 25
+        run: |
+          set +e
+          bash plans/checker-self-test.sh 2>&1 | tee "$RUNNER_TEMP/checker-self-test.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "checker-self-test rc=$rc（期望 0）"
+          [ "$rc" = 0 ] || { echo "::error::checker-self-test rc=$rc（期望 0）"; exit 1; }
+          last="$(tail -n 1 "$RUNNER_TEMP/checker-self-test.log")"
+          echo "末行: $last"
+          case "$last" in
+            *自检通过*) echo "末行含「自检通过」——变异全数被捕获" ;;
+            *) echo "::error::末行未出现「自检通过」: $last"; exit 1 ;;
+          esac
+
+  portability:
+    name: 跨平台可移植
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 装配 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 静态扫描（GNU/BSD 专有写法、CRLF、TAB 缩进）
+        run: |
+          python3 - <<'PY'
+          # 在 plans/*.sh 的**可执行代码**里找 GNU/BSD 专有写法；注释与字符串字面量内的
+          # 命中不算（那多半是检测针/变异载荷的文本，例如 preset-score 的 B10 判据自带这些字面）。
+          # 判违规条件：构造出现 且 无兜底。兜底 = 代码内存在同名封装 token
+          # （sed_i / stat_z / readlink_f / md5_q / grep_p / date_r），或同一逻辑行（反斜杠
+          # 续行合并后）内有 `||` 备用分支——与 preset-score B10 的豁免口径同构。
+          import glob
+          import sys
+
+          NEEDLES = [
+              ("sed -i ''", "sed_i ", "BSD 专有 sed -i ''（GNU sed 语义不同）"),
+              ("stat -f%z", "stat_z ", "BSD 专有 stat -f%z（GNU 为 stat -c%s）"),
+              ("readlink -f", "readlink_f ", "GNU 专有 readlink -f（BSD readlink 无 -f）"),
+              ("md5 -q", "md5_q ", "BSD 专有 md5 -q（GNU 为 md5sum）"),
+              ("grep -P", "grep_p ", "GNU 专有 grep -P（BSD grep 无 PCRE）"),
+              ("date -r", "date_r ", "BSD 专有 date -r（GNU 为 date -d @）"),
+          ]
+
+          def scan_line(line):
+              """剥除注释与字符串字面量，返回 (code, mask)。
+
+              code 中字符串/注释内容替换为空格；mask[i] 为 True 表示该字符位于字符串或注释内。
+              """
+              code, mask = [], []
+              state, prev, i, n = "code", "", 0, len(line)
+
+              def emit(ch, hidden):
+                  code.append(" " if hidden else ch)
+                  mask.append(hidden)
+
+              while i < n:
+                  ch = line[i]
+                  if state == "code":
+                      if ch == "\\" and i + 1 < n:
+                          emit(ch, False)
+                          emit(line[i + 1], False)
+                          prev, i = line[i + 1], i + 2
+                          continue
+                      if ch == "'":
+                          state = "single"
+                          emit(ch, True)
+                      elif ch == '"':
+                          state = "double"
+                          emit(ch, True)
+                      elif ch == "#" and (prev == "" or prev in " \t;|&("):
+                          while i < n:
+                              emit(line[i], True)
+                              i += 1
+                          break
+                      else:
+                          emit(ch, False)
+                  elif state == "single":
+                      if ch == "'":
+                          state = "code"
+                      emit(ch, True)
+                  else:  # double
+                      if ch == "\\" and i + 1 < n:
+                          emit(ch, True)
+                          emit(line[i + 1], True)
+                          i += 2
+                          continue
+                      if ch == '"':
+                          state = "code"
+                      emit(ch, True)
+                  prev, i = ch, i + 1
+              return "".join(code), mask
+
+          def logical_lines(text):
+              """按反斜杠续行合并为逻辑行，返回 (起始行号, 原文, 代码文本)。"""
+              result, raw_buf, code_buf, start = [], [], [], 0
+              for idx, raw in enumerate(text.splitlines(), start=1):
+                  code, _ = scan_line(raw)
+                  if not raw_buf:
+                      start = idx
+                  cont = code.rstrip().endswith("\\")
+                  raw_buf.append(raw)
+                  code_buf.append(code[:-1] if cont else code)
+                  if not cont:
+                      result.append((start, " ".join(raw_buf), " ".join(code_buf)))
+                      raw_buf, code_buf = [], []
+              if raw_buf:
+                  result.append((start, " ".join(raw_buf), " ".join(code_buf)))
+              return result
+
+          files = sorted(glob.glob("plans/*.sh"))
+          if not files:
+              print("✗ 未找到 plans/*.sh（工作目录错误？）", file=sys.stderr)
+              sys.exit(2)
+          bad = []
+          for path in files:
+              data = open(path, "rb").read()
+              if b"\r" in data:
+                  bad.append(f"{path}: CRLF/裸 CR 行尾（仓库统一 LF）")
+              text = data.decode("utf-8", "replace")
+              for idx, raw in enumerate(text.splitlines(), start=1):
+                  if raw.startswith("\t"):
+                      bad.append(f"{path}:{idx}: TAB 缩进（统一空格缩进）")
+              all_code = " ".join(scan_line(raw)[0] for raw in text.splitlines())
+              for needle, token, why in NEEDLES:
+                  if token in all_code:      # 文件内已有封装 ⇒ 视为已兜底
+                      continue
+                  for lineno, raw, code in logical_lines(text):
+                      start = raw.find(needle)
+                      if start < 0:
+                          continue
+                      mask = scan_line(raw)[1]
+                      if start < len(mask) and mask[start]:
+                          continue           # 命中在字符串/注释内 ⇒ 检测针文本，不算用法
+                      if "||" in code:
+                          continue           # 同行备用分支即兜底
+                      bad.append(f"{path}:{lineno}: {why}，且无兜底")
+          print(f"扫描 {len(files)} 个 plans/*.sh")
+          for b in bad:
+              print(f"  ✗ {b}")
+          if bad:
+              print(f"✗ 跨平台可移植：{len(bad)} 处不合规")
+              sys.exit(1)
+          print("✓ 跨平台可移植：无 GNU/BSD 专有未兜底写法、无 CRLF、无 TAB 缩进")
+          PY
+
+      - name: 可执行位（plans/*.sh 全部 test -x）
+        run: |
+          set -euo pipefail
+          bad=0
+          for f in plans/*.sh; do
+            if [ ! -x "$f" ]; then echo "  ✗ 缺可执行位: $f"; bad=$((bad + 1)); fi
+          done
+          n=$(ls plans/*.sh | wc -l)
+          if [ "$bad" -gt 0 ]; then
+            echo "::error::plans/*.sh 有 $bad 个缺可执行位（共 $n 个）"
+            exit 1
+          fi
+          echo "plans/*.sh 全部可执行（$n 个）"
+
+  docs:
+    name: 文档一致性
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 装配 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 门禁 doc-consistency.sh（断言 rc=0 且输出含「无硬性不一致」）
+        run: |
+          set +e
+          bash plans/doc-consistency.sh "$GITHUB_WORKSPACE" 2>&1 | tee "$RUNNER_TEMP/doc-consistency.log"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "doc-consistency rc=$rc（期望 0；1=存在硬性不一致，2=无法核验，均判红）"
+          [ "$rc" = 0 ] || { echo "::error::doc-consistency rc=$rc（期望 0）"; exit 1; }
+          if grep -q "无硬性不一致" "$RUNNER_TEMP/doc-consistency.log"; then
+            echo "输出含「无硬性不一致」"
+          else
+            echo "::error::输出未出现「无硬性不一致」"
+            exit 1
+          fi

@@ -1,0 +1,28 @@
+# dsh-codepunk —— EditorConfig
+# 分工：.gitattributes 管**入库与检出**的换行；本文件管**编辑器写入**的换行、缩进与末尾空白。
+# 两者口径一致（仓库内统一 LF；.ps1 工作树 CRLF），CI 在 Ubuntu 上按同一规则检出。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# POSIX shell 与 Python 的公共基线：2 空格
+[*.{sh,py}]
+indent_size = 2
+
+# Python：4 空格（PEP 8）；后置小节优先，覆盖上一节
+[*.py]
+indent_size = 4
+
+# PowerShell：仓库约定工作树为 CRLF（与 .gitattributes 的 *.ps1 检出策略一致，避免假 diff）
+[*.ps1]
+end_of_line = crlf
+
+# Makefile：缩进必须是制表符（make 语法硬要求，空格会被判为分隔错误）
+[Makefile]
+indent_style = tab

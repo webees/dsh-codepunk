@@ -3,21 +3,42 @@
 
 !.gitignore
 !.gitattributes
+!.editorconfig
 !LICENSE
 !README.md
 !CONTRIBUTING.md
+!CHANGELOG.md
+!SECURITY.md
+!CODE_OF_CONDUCT.md
+!SUPPORT.md
+!GOVERNANCE.md
+!Makefile
 !agent.cordis.yml
 !preset.yml
 !plans/
 !plans/**
 !skills/
 !skills/**
+!.github/
+!.github/**
+!docs/
+!docs/**
+!.pre-commit-config.yaml
 
 # Python 缓存（F266）：上方的 `!plans/**` 会反向放行 `plans/__pycache__/`，而**在 plans/ 内跑门禁**即会
 #   生成 `plans/__pycache__/*.pyc` ⇒ 被 `preset-score` 的 B14 判为「工作区未跟踪项（可能杂散）」并扣 10 分
 #   （工具自身运行污染工作区）。此处在其**之后**追加反向忽略（gitignore 后置规则优先）。
 __pycache__/
 *.pyc
+
+# 运行产物（本地/CI 运行期生成，一律不入仓）：位于全部白名单之后 ⇒ 后置规则优先，
+#   即使被上方 `!` 反向放行（如 logs/ 落在 plans/ 内）也仍然忽略。
+logs/
+tmp/
+*.out
+*.log
+node_modules/
+.dsh-codepunk-*
 
 # macOS
 .DS_Store

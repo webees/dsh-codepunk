@@ -1,0 +1,41 @@
+# dsh-codepunk —— pre-commit 配置（可选的本地提交前检查；权威门禁仍是 Makefile / plans/）
+#
+# 与仓库**既有 git 钩子**的共存方式：
+#   · plans/dsh-codepunk-init.sh --install-hook 会在本地生成 .git/hooks/{pre-commit,commit-msg,pre-push}
+#     （pre-commit 调 leak-guard --staged）。三者均为本地生成物，不入库。
+#   · `pre-commit install` 不删除既有钩子：它把既有 pre-commit 改存为 pre-commit.legacy，
+#     新钩子先跑本配置，随后链式执行 .legacy ⇒ 两条链同时生效，任一失败即阻断提交。
+#   · 因此本文件只声明**提交前**检查（含 leak-guard 与 doc-consistency 的本地 hook），
+#     不重复实现既有 commit-msg / pre-push 的语义，避免同一判据两处维护而漂移。
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: mixed-line-ending
+
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        files: ^plans/.*\.sh$
+        args: [--severity=error]
+
+  - repo: local
+    hooks:
+      - id: leak-guard
+        name: leak-guard（泄露防护门，扫暂存内容）
+        entry: bash plans/dsh-codepunk-leak-guard.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: doc-consistency
+        name: doc-consistency（文档声称 ↔ 实现一致性）
+        entry: bash plans/doc-consistency.sh
+        language: system
+        pass_filenames: false
+        always_run: true

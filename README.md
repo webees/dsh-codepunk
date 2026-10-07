@@ -1,249 +1,322 @@
-# dsh-codepunk · 多智能体开发流程预设
+# dsh-codepunk
+
+**运行于 DeepSeek Harness 的多智能体开发流程预设**——主会话担任工程主责并编排岗位子代理，把工程从需求推进到交付：**六阶段闭环、证据驱动、可审计、可恢复、持续进化**。
+
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-2.0.17-blue.svg)](skills/dsh-codepunk-workflow/references/harness-alignment.md)
+[![Gates](https://img.shields.io/badge/quality%20gates-doc--consistency%20rc%3D0%20%C2%B7%20score%2015%2F15-brightgreen.svg)](plans/verify-battery.sh)
+[![PR merge](https://img.shields.io/badge/%E5%90%88%E5%B9%B6%E6%B5%81-PR%20merge%20commit%20%C2%B7%20%E7%A6%81%E7%9B%B4%E6%8E%A8%20main-blueviolet.svg)](CONTRIBUTING.md)
+
+## 目录
+
+- [定位](#定位)
+- [不适合什么](#不适合什么)
+- [快速开始](#快速开始)
+- [流程总览（六阶段闭环）](#流程总览六阶段闭环)
+- [核心机制](#核心机制)
+- [质量门禁与自检](#质量门禁与自检)
+- [平台支持](#平台支持)
+- [目录结构](#目录结构)
+- [文档索引](#文档索引)
+- [参与共建](#参与共建)
+- [许可与安全](#许可与安全)
+
+---
 
 ## 定位
 
-**dsh-codepunk** 是运行于 DeepSeek Harness 的多智能体开发流程预设（官方「创造模式」产品形态：user preset + skill + 团队编排三层）：以**六阶段闭环**编排一组固定角色子代理，将工程从需求推进到交付——并行、可审计、持续进化；goal 自动续行 / skill 渐进披露 / subagent / sandbox-approval 均基于官方机制（见 benchmarks/deepseek-harness-study.md）。
+**dsh-codepunk** 是一套「把 AI 开发过程机械化」的多智能体流程预设：主会话是**工程主责（run-lead）· 技术统筹（tpm）· 会话调度（sess-mgr）**，它不联网、不写业务代码，而是派出固定岗位的**子代理**，以公文驱动（简报 → 交接包 → 证据 → 签收）推进工程。
 
-主会话兼任 **工程主责（run-lead）· 技术统筹（tpm）· 会话调度（sess-mgr）** 三席，不联网、不写业务码；派遣**实现三角**与**职能岗**子代理，以公文驱动（简报 → 交接包 → 证据 → 签收）推进工程。工程目录零污染，运行状态统一存于用户级总库 `~/.dsh-codepunk/`（总库语义）。
+适合的场景：
+
+1. **需求到交付要留痕的工程**：每个 chunk 走「规划 → 招聘 → 并行开发 → 审查门 → 交接签收 → 合并门」，每一步都有可机械核验的产物。
+2. **多任务可并行、又需要隔离**：每个 task 一个三人小组，在独立封闭工作房推进，互相不污染。
+3. **长时间、跨会话的推进**：goal 自动续行让子代理回报自动递送主管，断点可恢复，客户端重启不丢进度。
+4. **要持续变好的流程**：评分与知识库跨组沉淀，下一轮按硬信号重新招聘与规划。
+5. **想参照一套已落地的多智能体工程规范**：硬规则、检查器矩阵、防幻觉与反循环纪律都在仓内可读。
+
+角色一览（完整人设与写域见 [references/roles.md](skills/dsh-codepunk-workflow/references/roles.md)）：
+
+| 席层 | 岗位 | 说明 |
+|---|---|---|
+| 主会话 | 工程主责 run-lead · 技术统筹 tpm · 会话调度 sess-mgr | 编排、门禁、终裁；不联网、不写业务码 |
+| 实现三角 | 小队主责 squad-lead · 软件开发 engineer · 测试验证 sdet | 每 task 一组，真招聘，独立工作房并行 |
+| 职能岗 | 产品策划 · 行业分析（唯一联网）· 软件架构 · 代码勘察 · 人才主责 · 文档主责 · 知识库 | 需求澄清、分块、招聘、简报与归档 |
+| 门禁岗 | 代码审查 code-review · 发布执行 release-eng · 流程审计 proc-audit | 审查门、合并门、红灯上报 |
+
+## 不适合什么
+
+1. **不适合当一键脚手架**：它编排的是「流程与席位」，不是某个技术栈的代码模板；业务代码由你的工程仓库承担。
+2. **不适合单点小改**：改一行文案、修一个错别字，直接改更快——本流程的门禁与证据成本高于收益。
+3. **不适合无人监督的高风险操作**：破坏性操作、预算越界走人在环熔断；生产发布与密钥管理不在本预设职责内。
+4. **不适合需要沙箱安全的场景**：画布工具权限是机械强制的（`restrict` 真移除工具），但**文件写集是约定强制**（人设自律 + 审查门 `diff ⊆ write_paths` + 工作房隔离），不是安全沙箱。
+5. **不适合把它当作官方产品**：本预设是社区流程方案，随 DeepSeek Harness 版本演进，兼容性以仓库内实测记录为准。
+
+## 快速开始
+
+前置：DeepSeek Harness（本仓实测应用版本 2.0.17，兼容核验见 [references/harness-alignment.md](skills/dsh-codepunk-workflow/references/harness-alignment.md)）；macOS 或 Linux 用 bash 工具链，Windows 用 pwsh（见「平台支持」）。
+
+**第一步：把预设源文件落位**（唯一权威副本；完整安装说明见 [docs/deployment.md](docs/deployment.md)）：
+
+```bash
+mkdir -p "$HOME/.dsh/.agent-presets/dsh-codepunk" && cp -R agent.cordis.yml preset.yml skills "$HOME/.dsh/.agent-presets/dsh-codepunk/"
+```
+
+**第二步：生成 preset 声明并注入 profile patch**（DeepSeek Harness 自 0.1.7 起不再扫描 `~/.dsh/.agent-presets/<id>/`，必须以声明行注入，否则会话恢复时报 `Unknown agent preset: dsh-codepunk`）：
+
+```bash
+# 首次安装追加声明块（自动备份）；已安装过改用不带 --append 的 apply
+DSH_PROFILE_PATCH=~/.dsh/profiles/desktop/cordis.patch.yml node plans/preset-declare.mjs apply --append
+node plans/preset-declare.mjs check   # 校验内联副本未漂移（漂移即非零退出并列出差异）
+```
+
+声明在**进程启动时读取**，改动后需重启 DeepSeek Harness 生效。
+
+**第三步：同步工具脚本到总库正式位**（运行期执行的是总库副本，升级预设后必做）：
+
+```bash
+bash plans/dsh-codepunk-init.sh          # 幂等：同步到 ~/.dsh-codepunk/scripts/
+bash plans/dsh-codepunk-init.sh --check  # 只检查缺失/过期，不写盘
+```
+
+**第四步：注册工程并装载总库路径常量**：
+
+```bash
+dsh-codepunk-link register <工程根> <project_id>   # 首次：登记工程 ↔ 总库项目
+dsh-codepunk-link resolve <工程根>                 # 之后：解析出 project_id 与总库托管路径
+source ~/.dsh-codepunk/dsh-codepunk-home.sh        # 导出 DSH_CODEPUNK_HOME / PROJECTS / INDEX
+```
+
+**第五步：开工**——主会话加载 `dsh-codepunk-workflow` skill 后逐阶段推进。开工五件事（每次新 run 或新会话都必须做，细则见 `skills/dsh-codepunk-workflow/references/stages.md`）：
+
+1. **关联项目**：`dsh-codepunk-link resolve <工程根路径>`；未注册先 `register`。
+2. **装载路径常量**：`source ~/.dsh-codepunk/dsh-codepunk-home.sh`。
+3. **建运行根**：在总库内建 `projects/<project_id>/runs/<run_id>/`；**工程目录保持纯净**（运行状态一律不落工程仓库）。运行根 `README.md` 必带 `write_scope:` 写盘台账段。
+4. **启动自检与子代理恢复**：列出可续聊子代理，与 spawn 登记表逐行比对，找出中断席并读断点续行（不重跑整轮）。
+5. **定时巡检与状态清单**：按「查 → 比 → 续 → 写」闭环刷新 `agents.yaml`，防中断席长期失联。
+
+自证环境（三条命令应全绿，退出码契约见下表）：
+
+```bash
+bash plans/preset-score.sh        # 15 指标评分：期望 15/15 全满分
+bash plans/preset-audit.sh        # 5 组 rubric 审计：期望 总分 100/100
+bash plans/verify-battery.sh      # 完整验证电池：单命令复跑全部验证
+```
 
 ---
 
 ## 流程总览（六阶段闭环）
 
-| # | 阶段 | 工作 | 参与 | 关键产物 |
-|---|---|---|---|---|
-| 1️⃣ | **需求确认** | 用户提需求 → 工程主责主持对话，产品策划澄清口径，行业分析实时联网检索 → 与用户逐项确认后 active | 工程主责 · 产品策划 · 行业分析 | `goal.yaml`（用户确认后 active） |
-| 2️⃣ | **规划与组队** | 工程主责定研发计划与用人标准 → 文档小组组简报 → 人才主责真招聘三人小组 → 双门闩批准后开工 | 工程主责 · 技术统筹 · 文档小组 · 人才主责 · 软件架构 | `chunks.yaml` · `brief/` · `staffing/` |
-| 3️⃣ | **多小组并行开发** | 每 task 一组三人小组（小队主责+开发+测试），在独立封闭工作房并行推进、互不干扰；并行上限按 scale（S≤1 / M≤3 / L≤6） | 实现三角（每 task 一组） | 各工作房交付 · `progress/` |
-| 4️⃣ | **巡检与交接** | 小队主责巡检本组进度、组织闭环；审查门核验 diff ⊆ 写集；交接包齐全后接收方签收 | 小队主责 · 代码审查 · 接收方 | `handoff/` · `acceptance.yaml` |
-| 5️⃣ | **解散与评分** | 签收后各组就地解散，人事单元按证据/状态/交接等硬信号评分沉淀 | 人才主责 | `scores.yaml` · 人事档案 |
-| 6️⃣ | **再规划** | 工程主责+技术统筹综合各组成果、评分与知识库，规划新一轮 → 重新招聘 → 执行 | 工程主责 · 技术统筹 | 新一轮 `chunks.yaml` |
-
-```text
-需求 → 规划 → 招聘 → 并行开发 → 交接 → 评分 → 再规划 ♻️
-```
-
-> 阶段 ⑤ 附**合并门**：串行合并、按依赖拓扑逐个进行；evidence+门禁齐并经 `approvals/merge.yaml` 批准，未完成不合并。
-
----
-
-## 编制结构
-
-每个 task 由「实现三角」落地交付，由「职能岗」提供支撑；岗位以 emoji 统一标识，职责与边界对齐表述。
-
-### 实现三角（每 task 一组，真招聘）
-
-| 席位 | 职责 | 边界 |
-|---|---|---|
-| 🎯 小队主责 squad-lead | 对齐目标 · 拆解步骤 · 组织闭环 · 巡检进度 · 组织交接 | 不代写业务代码主体 · 不代验收 |
-| 🛠 开发 engineer | 在写集内实现 · 产出清晰交付与清单 | 只改写集 · 不得自行合并主干 |
-| 🧪 测试 sdet | 按 acceptance 验收 · 产出证据 · 不合格打回 | 只跑允许命令 · 不伪造证据 |
-
-### 职能岗 / 辅助编制
-
-| 岗位 | 职责 |
-|---|---|
-| 📚 文档小组 docs | 组装/校对/下发简报 · 汇总交接统一口径 · 归档记忆 · 优化角色提示词 |
-| 🔍 行业分析 ind-res | 配合需求对话联网检索 · 协助数据整理 · 资料经工程主责审核后下发（**唯一联网岗**） |
-| 🗄 知识库 knowledge | 沉淀评分/交接/调研成果 · 为招聘、规划、提示词优化提供依据 |
-| 💡 产品策划 pm | 需求澄清 · 验收口径 · 质量与优先级把关 |
-| 🏗 软件架构 sys-arch | 勘察分块 · 写集与依赖设计 |
-| 🔎 代码勘察 scout | 仓库勘察 · 模块与依赖盘点（供分块用） |
-| 👥 人才主责 people | 真招聘三人小组 · 解散评分沉淀 |
-| 🚦 流程审计 proc-audit | 对照流程查合规 · 偏离即红灯上报 |
-| 🧐 代码审查 code-review | 审查门：diff 合规 · acceptance 符合 · 缺陷拦回 |
-| 🚀 发布执行 release-eng | 合并门：串行合并 · 拓扑排序 · 门禁齐备放行 |
-
----
-
-## 质量控制
-
-- **双门闩（R1）**：工作简报批准 ∧ 用工批准，缺一不得开启实现组。
-- **审查门（R8）**：交接/合并前 diff ⊆ 写集 + 审查清单 + 审查记录；L/高风险强制独立代码审查。
-- **合并门（R9）**：串行合并、按拓扑、证据+门禁齐、`approvals/merge.yaml`；未完成不合并。
-- **文件纪律（R13/R14）**：内容归什么域就写什么域——预设自身的调研/基准进 `benchmarks/`，工程业务进总库项目目录；接收产出时复核归属域与实际落位一致，防漂移传播。
-- **goal 自动续行（R10）**：create 即 armed，子代理完成 → 主管自动消化 → 实时规划；resume/fork 后需 `update_goal resume` 重武装。
-
----
-
-## 快速开始
-
-### 安装 / 挂载（DSH ≥ 0.1.7）
-
-`dsh-agent-preset-registry` 自 DSH 0.1.7 起**不再扫描** `~/.dsh/.agent-presets/<id>/`：注册表既不扫描目录，也不接受 preset 路径。自定义预设必须以 `@deepseek-ai/dsh-agent-preset` 声明行的形式注入 profile，否则引用该预设的会话恢复时报 `Unknown agent preset: dsh-codepunk`。
-
-**① 落位源文件（唯一权威）**：
-
-```bash
-DST="$HOME/.dsh/.agent-presets/dsh-codepunk"
-mkdir -p "$DST"
-cp -R agent.cordis.yml preset.yml skills "$DST/"
-```
-
-**② 生成声明块并注入 profile patch**（`<profile>` 通常为 `desktop`）：
-
-```bash
-# 首次安装：把声明块追加进 profile patch（自动备份）
-DSH_PROFILE_PATCH="$HOME/.dsh/profiles/<profile>/cordis.patch.yml" \
-  node plans/preset-declare.mjs apply --append
-
-# 已安装过：源改动后用源重写内联副本（自动备份）
-node plans/preset-declare.mjs apply
-```
-
-**②-b 同步工具脚本到总库正式位**（升级预设后 MUST；运行期用的是总库副本）：
-
-```bash
-# 从仓内运行（幂等）：把 plans/*.{sh,py,mjs} 与 plans/windows/*.ps1 同步到 ~/.dsh-codepunk/scripts/
-bash plans/dsh-codepunk-init.sh
-
-# 只检查是否有缺失/过期（不写盘，非零退出即需同步）
-bash plans/dsh-codepunk-init.sh --check
-```
-
-> 说明：总库副本是**运行期实际执行**的脚本（如 `~/.dsh-codepunk/scripts/evidence-verify.sh`），
-> 故每次拉取新版本后都要跑一次上面的同步；从总库自身的副本运行只会提示「请改用仓内副本」，
-> 不会自我复制。
-
-**③ 校验内联副本未漂移**（改源后必须复跑；`verify-battery.sh` 已内置该项）：
-
-```bash
-node plans/preset-declare.mjs check    # 漂移即非零退出并列出差异路径
-```
-
-- 同一份组合存在两处表示：`agent.cordis.yml`（源，权威）与 profile patch 内的 `plugins:` 内联副本（进程实读）。**副本由源生成，勿手改**；两处一致性由 `preset-declare.mjs check` 语义比对保证。
-- 内联副本有一处必要适配：`customSkillDirs` 的 `new URL('skills/', baseUrl)` 在 profile 上下文中 `baseUrl` 指向 profile 目录，须改写为回到预设目录的相对路径——`preset-declare.mjs` 生成时自动处理，`check` 比对时自动归一。
-- 目录结构必须含 `agent.cordis.yml`（组合：persona + 工具 + realm）与 `skills/`（playbook）；`preset.yml` 为可选展示描述。
-- `plans/` 工具脚本为源副本，不随预设复制；运行期装配与正式位（`~/.dsh-codepunk/scripts/`）见流程手册 `SKILL.md` §1.2。
-- 声明在**进程启动时读取**，改动后须重启 DSH Desktop 生效。
-- **解包布局**：DSH 2.0.10 仍为 `app.asar` 打包，2.0.12 起改为解包 `Contents/Resources/app/`（实测：2.0.10 可解析 asar 头部索引，2.0.12 起该文件不存在）。本仓所有依赖 DSH 安装位置的检查一律取环境变量（`DSH_APP_ROOT` 或 `DSH_ASAR`、`DSH_PROFILE_PATCH`），不硬编码任何平台路径，两种布局都支持。
-- 挂载校验：`dsh-agent-presets` 对组合做形状检查（顶层列表 + 每行有 `name` + group 递归），并用 `entryListSchema`（含 `!!js`）解析；格式/语义错误会标记为 broken roster row。
-
-### 运行引导（工程主责）
-
-1. 开工前**必须加载 `dsh-codepunk-workflow` skill** 并按 `SKILL.md` 执行。
-2. **开工五件事**（SKILL.md §1.1）：
-   ```bash
-   dsh-codepunk-link resolve <工程根>            # ① 关联项目（未注册先 register）
-   source ~/.dsh-codepunk/dsh-codepunk-home.sh   # ② 装载路径常量
-   mkdir -p ~/.dsh-codepunk/projects/<id>/runs/<run_id>/   # ③ 建运行根（总库内）
-   ```
-   知识库位于总库对应项目目录；**工程目录保持纯净（零运行状态残留）**。
-3. **开工第一步用 `create_goal` 建 active goal**（自动续行/自动递送）；resume/fork 后先 `get_goal` 检查激活态，非 armed 就 `update_goal resume` 重武装——否则子代理结算通知会堆积为排队消息、需手动递送。
-4. 逐阶段推进；sponsor 确认一律走 `ask_user_question`（你 → 人类），不经子代理中转。
-
----
-
-## 平台支持（macOS / Linux / Windows）
-
-| 平台 | Agent shell | 工具脚本 | 说明 |
+| # | 阶段 | 工作 | 关键产物 |
 |---|---|---|---|
-| macOS | bash | `plans/*.sh` | 开箱可用（bash 3.2+ / BSD 工具链） |
-| Linux | bash | `plans/*.sh` | 可用（GNU 工具链；脚本内已做 BSD/GNU 自适应） |
-| Windows | pwsh | `plans/windows/*.ps1` | 预设在该平台禁用 bash 工具、启用 pwsh 工具（与官方预设同款门控） |
+| 1️⃣ | **需求确认** | 工程主责主持对话，产品策划澄清口径，行业分析实时检索；与用户逐项确认后置 active | `goal.yaml`（用户确认后 active） |
+| 2️⃣ | **规划与组队** | 分块 → 文档小组组装简报 → 人才主责真招聘三人小组 → **双门闩**批准后开工 | `chunks.yaml` · `brief/` · `staffing/` |
+| 3️⃣ | **多小组并行开发** | 每 task 一组三人小组，在独立封闭工作房并行推进；并行上限 S≤1 / M≤3 / L≤6 | 各工作房交付 · `progress/` |
+| 4️⃣ | **巡检与交接** | 小队主责组织闭环；证据门 → 代码审查门（`diff ⊆ write_paths`）→ 交接包齐全 → 接收方签收 | `reviews/` · `handoff/` · `acceptance.yaml` |
+| 5️⃣ | **解散与评分** | 签收后各组就地解散，按 evidence/status/handoff/ack/retries 等硬信号评分沉淀；**后段为串行合并门** | `scores.yaml` · `approvals/merge.yaml` |
+| 6️⃣ | **再规划** | 综合各组成果、评分与知识库，修订招聘标准与提示词 → 重新招聘 → 执行 | 新一轮 `chunks.yaml` |
 
-Windows 上从仓内运行一次 `pwsh -File plans/windows/dsh-codepunk-init.ps1` 即把 `.ps1` 同步到 `%USERPROFILE%\.dsh-codepunk\scripts\`（幂等；`-Check` 只报缺失/过期），随后以 pwsh 调用：
-
-```powershell
-. "$HOME\.dsh-codepunk\dsh-codepunk-home.ps1"        # 装载路径常量
-pwsh -File dsh-codepunk-init.ps1                     # 建总库骨架
-pwsh -File dsh-codepunk-link.ps1 resolve <工程根>     # 关联项目
-pwsh -File dsh-codepunk-leak-guard.ps1 -Tree         # 推送前守卫
+```mermaid
+flowchart LR
+  A["① 需求确认"] --> B["② 规划与组队"]
+  B --> C["③ 并行开发"]
+  C --> D["④ 巡检与交接"]
+  D --> E["⑤ 解散与评分"]
+  E --> F["⑤ 后段·合并门"]
+  F --> G["⑥ 再规划"]
+  G --> B
 ```
 
-两套实现语义等价（resolve 三态路由、INDEX 字段约定、退出码一致）。Windows 版当前覆盖
-**home / init / link / leak-guard** 四个核心脚本；`preset-audit`、`evidence-verify`、`acceptance-verify`、
-`verify-worktree` 仍为 POSIX 版，Windows 上经 Git Bash 或 WSL 调用（属一次性迁移与运维场景，
-非日常流程必需）。
+阶段逐步动作（派遣对象、产物字段、门禁细节）见 `skills/dsh-codepunk-workflow/references/stages.md`；产物字段见 [references/artifacts.md](skills/dsh-codepunk-workflow/references/artifacts.md)。
 
-换行策略见 `.gitattributes`：仓库内统一 LF，`.ps1` 检出为 CRLF。
+## 核心机制
 
-ℹ **输出标记约定（F223）**：`.ps1` 侧刻意以 ASCII `v` / `x` 代替 POSIX 侧的 `✓` / `✗`（如 `v 泄露防护门：通过…`、`Write-Error "x …"`），以减少 Windows 控制台/编码差异带来的风险 —— **请勿「顺手统一」为 `✓/✗`**。两栈各自内部自洽：POSIX 用 `✓/✗/ℹ`，Windows 用 `v/x`；退出码约定两栈一致（`0`=通过 / `1`=质量失败 / `2`=环境或用法错误）。
-
-## 质量工具（可复跑）
-
-| 命令 | 作用 | 退出码 |
+| 机制 | 一句话 | 参考文档 |
 |---|---|---|
-| `bash plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=全满分；1=有失分项；2=环境/用法错误 |
-| `bash plans/preset-audit.sh` | 5 组 rubric 审计（配置/手册/调研/文档/工具层；**否决式计分**：零失分即 100/100） | 0=全达标；1=有失分项；2=预设根不存在 |
-| `bash plans/verify-battery.sh` | 完整验证电池（**11 项**：15 指标评分 / 5 组审计 / 泄露防护门三模式 / 格式与卫生 / 物理杂散 / 结构 / 脚本语法与健壮性 / DSH 兼容性 / E2E 沙箱 / 检查器存活自检 / 文档声称一致性；另含**目录树一致**、**声明漂移**、**E2E 与总库无污染**等子检），一次跑完 | 0=全通过；1=存在失败项；2=无法进入预设根 |
-| `node plans/preset-declare.mjs check` | preset 声明副本漂移校验（源 `agent.cordis.yml` ↔ profile patch 内联块，语义比对） | 0=一致；1=确认漂移；2=参数错误，或缺 js-yaml 时「无法判定」（设 `DSH_APP_ROOT` 可启用语义核验）（缺 js-yaml 时降级比对） |
-| `python3 plans/preset-compat.py` | 组合与当前 DSH 安装的兼容核验（插件包存在 / 配置键被插件接受 / group 隔离与锚点顺序 / allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
-| `bash plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 证据机械校验（D069 防假通过门）：`task_id`/`command`/`exit_code=0`/`log_ref` 齐备 + 证据 `id` 去重 + **时间序（`validated_at` 必须晚于交付目录 mtime；不满足即 ❌ 计入 FAIL）**；未提供交付目录时该腿以「**无法核验 ≠ 通过**」的 WARN 呈现并**不影响**其余判据；**verdict=PASS 才算过** | 0=通过（verdict=PASS）；1=未过；2=用法/文件缺失 |
-| `bash plans/acceptance-verify.sh <acceptance.yaml> [交付方 task_id]` | 签收文件机械校验（D069）：`task_id`/`accepted_by[]`/`accepted_at` 齐备 + 签收独立性（**自签一律不合规，与 `note` 无关**；签收方出现 run-lead/技术统筹字样且非自签时 `note` 须记原因） | 0=合规；1=不合规；2=用法/文件缺失 |
-| `bash plans/doc-consistency.sh` | 文档**声称 ↔ 实现**一致性（计数声称 / 阶段口径 / 工具存在性 / 退出码契约；**咨询/仅提示类不计失败**）——此类含：术语咨询、头部自称项数、**正则未匹配（表述漂移）**、**语义弱重叠**、**环境缺口**（如缺校验器、非 git 仓库跳过 ps1 行尾）等，输出中以 `ℹ` 显式标注，凡属「无法核验」者必写「**无法核验 ≠ 通过**」；故「无硬性不一致」指其余硬性判据 | 0=一致；1=存在不一致；2=环境/用法错误 |
-| `bash plans/checker-self-test.sh` | 检查器**存活自检**（变异测试）：沙箱副本内注入 **137 项**已知缺陷（M1–M137），断言**对应检查项**必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境/自检问题 |
-| `bash plans/write-scope-check.sh [--repo <路径>] [--home] [--tmp] [--home-all] [--exempt-from <文件>]` | 写盘纪律门（R17）：G1 仓库残留（**含未跟踪文件**，排除 `.git/`）/ G2 主目录顶层散落 / G3 临时目录顶层残留（`${TMPDIR:-/tmp}` **与** `/tmp` 双根，同目录按物理路径去重；**判定只认本契约命名空间**——仅条目名以 `dsh-codepunk-` 开头者判 FAIL，其余同形条目降级 INFO「归属不明」，**不改判、不影响退出码**）；默认等价 `--repo . --tmp`（未给模式参数时含临时目录扫描）；`--home-all` 的脚本/文档类清单为 INFO，**不判失败**；`--exempt-from` 读运行根 `README.md` 的 `write_scope.exempt:` 登记，把与登记项**相等**、或**位于某登记项之内**（＝登记项为命中路径的**祖先目录**，如登记 `plans` 覆盖 `plans/keep-me.bak`）的命中降级为 INFO（**不判失败**；登记写法相对/`./x`/尾斜杠/绝对等价），文件不可读⇒2（无法核验 ≠ 通过） | 0=通过；1=发现越界；2=无法核验或用法错 |
-| `bash plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门（禁词留本地；`--install-hook` 装 pre-commit + pre-push + commit-msg） | 0=通过；1=命中并阻断；2=用法/环境错误 |
-| `python3 plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸——改文件前存快照（**14 类**：编号（D/R/P）/约束词/阈值/路径/工具名/代码标识/文件名/全大写常量/URL/证据标记/日期/star 数），改后逐项比对 | 0=零丢失；1=检出丢失；2=缺参数/未知模式/无快照；**受检范围**：仅 `.md`/`.yml`/`.sh`/`.ps1` |
+| **六阶段闭环** | 需求确认 → 规划与组队 → 多小组并行开发 → 巡检与交接 → 解散与评分 → 再规划，末阶段回到规划形成闭环 | `references/stages.md` |
+| **双门闩（R1）** | 工作简报与用工单**都**批准才可开启实现小组，缺一不得 spawn——把「开工」变成显式门 | `references/artifacts.md` |
+| **实现三角** | 每 task 固定三席：小队主责对齐目标与组织闭环、开发在写集内实现、测试独立验收并出证据；不代写、不自验、不自合 | [references/roles.md](skills/dsh-codepunk-workflow/references/roles.md) |
+| **审查门与合并门（R8/R9）** | 交接前核对 `diff ⊆ write_paths` 并留审查记录；合并串行、按依赖拓扑、证据与门禁齐备且留 `approvals/merge.yaml` | `references/artifacts.md` |
+| **goal 自动续行（R10）** | 每工程目标挂会话级 goal 并保持激活：子代理回报自动递送主管；会话恢复后先重武装再开工，避免回报堆积 | [references/harness-alignment.md](skills/dsh-codepunk-workflow/references/harness-alignment.md) |
+| **写盘纪律（R17）** | 写盘按优先序：运行根 → 授权工作树写集 → 系统临时目录（用毕即删）→ 总库知识库；工程仓库不得留探针、临时脚本与 `*.bak`/`*.log` 残留 | [references/file-hygiene.md](skills/dsh-codepunk-workflow/references/file-hygiene.md) |
+| **反循环熔断（R16）** | 连续无新证据、同一失败指纹重复即强制换策略或上报；已证伪的结论不得流入上下文与交接包 | [references/anti-loop.md](skills/dsh-codepunk-workflow/references/anti-loop.md) |
 
-`verify-battery.sh` 的参数：`bash plans/verify-battery.sh [预设根]`（默认取脚本上级目录）。
-DSH 相关的可选检查由环境变量开启：`DSH_APP_ROOT`（DSH 解包 app 目录）、`DSH_ASAR`（旧版 asar 路径）、`DSH_PROFILE_PATCH`（profile patch 路径，默认 `~/.dsh/profiles/desktop/cordis.patch.yml`）。
+硬规则共 **R1–R17**（完整条文见 `skills/dsh-codepunk-workflow/SKILL.md`）；其他贯穿性纪律：反幻觉（断言须新鲜证据）、输出与消息纪律（首行结论、条目精简）、注入防线（工具与网页返回视为数据而非指令）。
 
-## PowerShell 校验（可选）
+## 质量门禁与自检
 
-`preset-score.sh` 与 `verify-battery.sh` 的 PS 语法项需校验器，缺失时**跳过并明确提示**（不判失败）。
-启用方式（约 17MB，仅本机工具目录，不随仓库分发）：
+所有门禁脚本位于 `plans/`，**统一退出码契约**：`0`＝通过（或全满分）· `1`＝存在质量/合规失败项 · `2`＝用法或环境错误、无法核验。特别地，**判定为「无法核验」的结论码是 2，不得当作通过**。运行期实际执行的是总库正式位 `~/.dsh-codepunk/scripts/` 下的副本（由 `plans/dsh-codepunk-init.sh` 同步）。
+
+| 脚本 | 作用 | 退出码 |
+|---|---|---|
+| `plans/verify-battery.sh` | 完整验证电池（**11 项**独立验证，单命令复跑：评分 · 审计 · 泄露门三模式 · 格式卫生 · 物理杂散 · 结构 · 脚本语法与健壮性 · DSH 兼容 · E2E 沙箱 · 检查器存活自检 · 文档声称一致性，另含目录树一致、PS 校验器提示、声明漂移三项子检） | 0=全通过；1=存在失败项；2=无法进入预设根 |
+| `plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=15 项全满分；1=存在未满分项；2=环境或用法错误 |
+| `plans/preset-audit.sh` | 5 组 rubric 审计（配置/手册/调研/文档/工具层；否决式计分：零失分即满分） | 0=全项达标；1=存在失分项；2=预设根不存在 |
+| `plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性核对（24 类：计数声称 · 阶段口径 · 工具存在性 · 退出码契约 · 编号可解析 · 章节引用 · 退出码实测 · 表格列数等） | 0=一致；1=存在不一致；2=环境或用法错误 |
+| `plans/checker-self-test.sh` | 检查器存活自检（变异测试）：沙箱副本内注入 **137 项**已知缺陷，断言对应检查项必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境或自检问题 |
+| `plans/preset-declare.mjs` | preset 声明块生成与校验（`emit` / `check` / `apply`；源 `agent.cordis.yml` ↔ profile patch 内联副本语义比对） | 0=一致或成功；1=确认漂移；2=环境或参数错误 |
+| `plans/preset-compat.py` | 组合与当前 DeepSeek Harness 安装的兼容核验（插件包存在 · 配置键被接受 · group 隔离与锚点顺序 · allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
+| `plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 证据机械校验（防假通过门）：`task_id` · `command` · `exit_code=0` · `log_ref` 齐备 + 证据 `id` 去重 + 时间序（`validated_at` 须晚于交付目录 mtime） | 0=通过（verdict=PASS）；1=未过；2=用法或文件缺失 |
+| `plans/acceptance-verify.sh <acceptance.yaml> [交付方 task_id]` | 签收机械校验：`task_id` · `accepted_by[]` · `accepted_at` 齐备 + 签收独立性（自签一律不合规） | 0=合规；1=不合规；2=用法或文件缺失 |
+| `plans/write-scope-check.sh [--repo <路径>] [--home] [--tmp] [--home-all]` | 写盘纪律门：仓库残留（含未跟踪文件）· 主目录顶层散落 · 临时目录双根残留；`--exempt-from` 读运行根豁免登记 | 0=通过；1=发现越界；2=无法核验或用法错误 |
+| `plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门：禁词与敏感形态留在本地，推送前守卫；`--install-hook` 安装 pre-commit · pre-push · commit-msg 钩子 | 0=通过；1=命中并阻断；2=用法或环境错误 |
+| `plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸：改文件前存快照、改后逐项比对（**14 类**：编号 · 约束词 · 阈值 · 路径 · 工具名 · 代码标识 · 文件名 · 全大写常量 · URL · 证据标记 · 日期等），防压缩丢语义 | 0=零丢失；1=检出丢失；2=缺参数或未知模式、无快照 |
+| `plans/verify-worktree.sh` | 工作房（worktree）落点纪律核验：散落目录与登记残留对照，给回收建议 | 0=全部通过；1=存在失败项；2=用法或环境错误 |
+| `plans/github-setup.sh` | GitHub 仓库治理幂等应用（仓库元数据、合并方式与 `main` 分支保护） | 0=全部应用并校验通过；1=未完全应用或校验不符；2=环境或用法错误 |
+| `plans/git-merge-flow.sh` | 特性分支流程助手（建分支 → 提交 → 推送 → 开 PR → 合并提交 → 删分支，合并方式固定为 merge commit） | 0=成功；1=业务前置不满足；2=用法或环境错误 |
+
+补充说明：
+
+1. `bash plans/verify-battery.sh [预设根]` 一次跑完 14 项独立验证（11 主检 + 3 子检），根参数默认取脚本上级目录；DSH 相关可选检查由环境变量开启：`DSH_APP_ROOT`（解包 app 目录）、`DSH_ASAR`（旧 asar 路径）、`DSH_PROFILE_PATCH`（profile patch 路径）。
+2. **无法核验 ≠ 通过**：环境缺口（缺校验器、非 git 工作区等）会以 `⚠`／`ℹ` 显式标注，绝不静默变绿。
+3. 门禁脚本自身也被检查：`checker-self-test.sh` 用变异注入验证「检查项真的会失败」，避免守护空转。
+
+### PowerShell 校验（可选）
+
+`preset-score.sh` 与 `verify-battery.sh` 的 PowerShell 语法项需要校验器，缺失时跳过并明确提示（不判失败）。启用方式（约 17MB，仅本机工具目录，不随仓库分发）：
 
 ```bash
 mkdir -p ~/.dsh-codepunk/tools && cd ~/.dsh-codepunk/tools
 npm init -y && npm i tree-sitter tree-sitter-powershell
-# 校验器本体：plans/fidelity-gate.py 同目录另附 ps-validate.mjs（或用 PWSH_VALIDATOR 指向自备实现）
-node ps-validate.mjs <预设根>/plans/windows/*.ps1
+node ps-validate.mjs <预设根>/plans/windows/*.ps1   # 校验器本体在 plans/ps-validate.mjs
 ```
 
-亦可用环境变量指向自备校验器：`PWSH_VALIDATOR=/path/to/validate.mjs`。
+也可用环境变量指向自备实现：`PWSH_VALIDATOR=/path/to/validate.mjs`。
+
+## 平台支持
+
+| 平台 | Agent shell | 工具脚本 | 说明 |
+|---|---|---|---|
+| macOS | bash | `plans/*.sh` | 开箱可用（bash 3.2+ 与 BSD 工具链） |
+| Linux | bash | `plans/*.sh` | 可用（GNU 工具链；脚本内已做 BSD/GNU 自适应） |
+| Windows | pwsh | `plans/windows/*.ps1` | 预设在该平台禁用 bash 工具、启用 pwsh 工具；从仓内跑一次初始化脚本即把 `.ps1` 同步到总库 |
+
+两套实现语义等价（关联解析三态路由、索引字段约定、退出码一致）。Windows 侧当前覆盖**总库初始化 · 工程关联 · 泄露防护门 · 路径常量**四个核心脚本，其余核验类脚本经 Git Bash 或 WSL 调用。
+
+输出标记约定：Windows 侧刻意以 ASCII `v` / `x` 代替 POSIX 侧的 `✓` / `✗`，以减少控制台编码差异带来的风险，**请勿顺手统一**；退出码约定两栈一致。换行策略见 `.gitattributes`：仓库内统一 LF，`.ps1` 检出为 CRLF。
 
 ## 目录结构
 
 ```text
-agent.cordis.yml                    # 组合：persona + 工具 + realm（AGENT-PLANE）
-preset.yml                          # 预设描述（roster 展示）
-README.md                           # 本说明（向使用者）
-CONTRIBUTING.md                     # 贡献指南（向贡献者）
-LICENSE                             # MIT
-.gitattributes                      # 换行策略（仓库内 LF；.ps1 检出 CRLF）
-.gitignore                          # 白名单式忽略（运行状态不入仓）
-plans/                              # 工具脚本源副本（运行期正式位见 SKILL.md §1.2）
-  dsh-codepunk-home.sh              # 共享路径常量（source 载入；init 会安装到总库根并前置 PATH）
-  dsh-codepunk-link.sh              # 项目↔总库关联解析（resolve / index / register）
-  dsh-codepunk-init.sh              # 总库骨架幂等初始化
-  verify-worktree.sh                # worktree 落点纪律核验
-                                    #   环境变量 SCAN_ROOT = 散落根（未设或不存在 ⇒ 跳过第 1 项扫描并 WARN）；MAIN_REPO 可替代位置参数
-  evidence-verify.sh                # 证据机械校验器（D069：防假通过门 S1）
-  acceptance-verify.sh              # 签收机械校验器（D069：结构 + 签收独立性，S2）
-  doc-consistency.sh                # 文档声称↔实现一致性（计数/阶段口径/工具存在性/退出码契约）
-  write-scope-check.sh              # 写盘纪律门（G1 仓库残留 / G2 主目录散落 / G3 临时双根残留（仅 `dsh-codepunk-*` 判红，他人同形条目 INFO「归属不明」）/ 豁免登记 --exempt-from；R17）
-  checker-self-test.sh              # 检查器存活自检（变异测试：137 项注入缺陷（M1–M137）须被对应守护捕获）
-  preset-audit.sh                   # 预设质量审计（5 组 rubric；否决式：零失分即满分）
-  dsh-codepunk-leak-guard.sh        # 泄露防护门（D091：推送前守卫，禁词留本地）
-  preset-score.sh                   # 15 指标评分器（策略/质量/准确性/规范性/精简度 + 10 项扩展）
-  verify-battery.sh                 # 完整验证电池（14 项独立验证，单命令复跑）
-  preset-declare.mjs                # preset 声明块生成/校验（emit / check / apply；DSH ≥0.1.7 注册模型）
-  preset-compat.py                  # 组合↔DSH 安装兼容核验（插件包 / 配置键 / 隔离形态）
-  fidelity-gate.py                  # 语义保护闸（压缩前快照 / 压缩后比对，防语义丢失）
-  ps-validate.mjs                   # PowerShell 语法校验器（可选；依赖 tree-sitter，见「PowerShell 校验」节）
+.github/                            # 协作模板与 CI 配置（issue 模板、PR 模板、工作流）
+  ISSUE_TEMPLATE/
+    bug_report.yml
+    config.yml
+    feature_request.yml
+  workflows/
+    ci.yml
+    codeql.yml
+    release.yml
+    scorecard.yml
+  CODEOWNERS
+  dependabot.yml
+  pull_request_template.md
+  release_note_template.md
+docs/                               # 面向使用者的专题文档（见「文档索引」）
+  adr/
+    0001-record-architecture-decisions.md
+  architecture.md
+  deployment.md
+  development.md
+  documentation-policy.md
+  faq.md
+  licensing.md
+  maintenance.md
+  naming-conventions.md
+plans/                              # 工具脚本源副本（运行期正式位在总库 scripts/）
   windows/                          # Windows 原生（PowerShell）等价实现
     dsh-codepunk-home.ps1           # 共享路径常量（点源载入）
-    dsh-codepunk-init.ps1           # 总库骨架（-Check 只断言）
-    dsh-codepunk-link.ps1           # 关联解析（resolve / index / register）
-    dsh-codepunk-leak-guard.ps1     # 泄露防护门（-Tree / -History / -InstallHook / -List）
-skills/dsh-codepunk-workflow/       # 流程 playbook（skill）
-  SKILL.md                          # 流程权威正文（六阶段 + 硬规则 R1–R17 + D 决策号）
-  references/                       # 按需参考 ×19 篇（核心：roles/artifacts/knowledge/standard；逐篇见 SKILL §6）
-  benchmarks/                       # 基准调研 ×18 篇（决策号来源与实战取证；逐篇清单见 references/learned-skills.md「溯源档案」）
+    dsh-codepunk-init.ps1           # 总库骨架与脚本同步
+    dsh-codepunk-leak-guard.ps1     # 泄露防护门
+    dsh-codepunk-link.ps1           # 工程与总库关联解析
+  acceptance-verify.sh              # 签收机械校验器
+  checker-self-test.sh              # 检查器存活自检（变异测试）
+  doc-consistency.sh                # 文档声称与实现一致性核对
+  dsh-codepunk-home.sh              # 共享路径常量（source 载入）
+  dsh-codepunk-init.sh              # 总库骨架幂等初始化与脚本同步
+  dsh-codepunk-leak-guard.sh        # 泄露防护门（推送前守卫）
+  dsh-codepunk-link.sh              # 工程与总库关联解析
+  evidence-verify.sh                # 证据机械校验器
+  fidelity-gate.py                  # 语义保护闸（快照与比对）
+  git-merge-flow.sh                 # 特性分支流程助手（分支到合并提交）
+  github-setup.sh                   # GitHub 仓库治理幂等应用
+  preset-audit.sh                   # 5 组 rubric 质量审计
+  preset-compat.py                  # 组合与 DSH 安装兼容核验
+  preset-declare.mjs                # preset 声明块生成与校验
+  preset-score.sh                   # 15 指标评分器
+  ps-validate.mjs                   # PowerShell 语法校验器（可选依赖）
+  verify-battery.sh                 # 完整验证电池：单命令复跑全部验证
+  verify-worktree.sh                # 工作房落点纪律核验
+  write-scope-check.sh              # 写盘纪律门
+skills/
+  dsh-codepunk-workflow/            # 流程 playbook（skill）
+    SKILL.md                        # 流程权威正文（六阶段 + 硬规则 R1–R17）
+.editorconfig
+.gitattributes                      # 换行策略：仓库内 LF，.ps1 检出 CRLF
+.gitignore                          # 白名单式忽略（运行状态一律不入仓）
+.pre-commit-config.yaml
+agent.cordis.yml                    # 组合：persona + 工具 + realm（预设的权威定义）
+CHANGELOG.md
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md                     # 贡献指南（面向贡献者）
+GOVERNANCE.md
+LICENSE                             # 许可（MIT）
+Makefile
+preset.yml                          # 预设描述（名册展示用元数据）
+README.md                           # 本说明（面向使用者）
+SECURITY.md
+SUPPORT.md
 ```
 
-用户级总库 `~/.dsh-codepunk/`：`INDEX.yaml`（项目注册表）、`dsh-codepunk-home.sh`（路径常量）、`projects/<id>/`（各项目全部 run 记忆与知识库）。
+按需层（随工艺增长，见 `skills/dsh-codepunk-workflow/`）：
 
----
+```text
+  benchmarks/                       # 基准调研 18 篇（决策依据与实战取证）
+  references/                       # 按需参考 19 篇（岗位、产物、阶段、纪律、兼容）
+```
+
+用户级总库 `~/.dsh-codepunk/`：`INDEX.yaml`（工程注册表）、`dsh-codepunk-home.sh`（路径常量）、`scripts/`（运行期脚本正式位）、`projects/<id>/`（各工程全部 run 记忆与知识库）。**工程目录始终保持纯净**——运行状态、记忆与知识库全在总库内。
+
+## 文档索引
+
+仓库内文档按三层组织：**首页**（本文件）、**专题文档**（`docs/`）、**流程参考**（`skills/dsh-codepunk-workflow/references/`）。
+
+| 文档 | 面向 | 内容 |
+|---|---|---|
+| `README.md` | 使用者 | 定位、快速开始、机制概览、门禁、目录与索引 |
+| `CONTRIBUTING.md` | 贡献者 | 维护公约、提 PR 门槛、提交信息约定、提交前检查清单 |
+| `SECURITY.md` | 使用者与安全研究者 | 漏洞报告渠道、支持范围、披露流程 |
+| `CHANGELOG.md` | 使用者 | 版本演进与破坏性变更记录 |
+| `docs/` 专题文档（9 篇） | 使用者 | `architecture.md`（六阶段与门禁的架构说明）· `deployment.md`（安装、部署与升级）· `development.md`（开发环境与改码流程）· `documentation-policy.md`（文档规范与机械门覆盖）· `faq.md`（常见问题与排障）· `maintenance.md`（日常维护与兼容核验）· `naming-conventions.md`（命名约定）· `licensing.md`（许可与公开性）· `adr/0001-record-architecture-decisions.md`（架构决策记录） |
+| `skills/dsh-codepunk-workflow/SKILL.md` | 主会话（工程主责） | 流程权威正文：六阶段步骤与硬规则全文 |
+| `skills/dsh-codepunk-workflow/references/` | 主会话与岗位席 | 按需参考手册：`stages.md` · `roles.md` · `artifacts.md` · `knowledge.md` · `standard.md`（编号释义）· `file-hygiene.md` · `anti-loop.md` · `output-discipline.md` · `harness-alignment.md` · `skill-governance.md` 等 |
+| `skills/dsh-codepunk-workflow/benchmarks/` | 维护者 | 决策号来源与外部基准调研（含检索日与出处） |
+
+## 参与共建
+
+流程：**特性分支 → Pull Request → 合并提交（merge commit）**。`main` 受保护，**不接受直接推送**；每处改动都要在 PR 描述或提交信息里说明目的、影响面与验证方式。
+
+1. 从 `main` 切出特性分支，例如 `git switch -c feat/your-topic`。
+2. 按 `CONTRIBUTING.md` 的**维护公约要点**改动，重点是**平台对等（MUST）**：`plans/*.sh` 与 `plans/windows/*.ps1` 是同一套工具的两份实现，改动任一侧必须同步另一侧同等语义（命令名、参数、退出码、输出格式一致）。
+3. 提交前逐项过**提交前检查清单**，并本地跑一遍门禁：`bash plans/verify-battery.sh`（或至少 `bash plans/doc-consistency.sh` 与 `bash plans/preset-score.sh`）。
+4. 提交信息沿用仓内约定的 Conventional-Commits 风格、**正文用中文**，并写清验证命令与结果。
+5. 开 PR：描述里给出改动目的、影响面、验证证据；CI 与审查通过后以**合并提交**并入 `main`（保留完整历史，便于追溯）。
+6. 涉及行为变更时同步更新 `README.md` 与 `CHANGELOG.md`——文档与实现的一致性由 `plans/doc-consistency.sh` 机械核验。
+
+完整门槛与清单见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## 许可与安全
+
+- **许可**：MIT，见 [LICENSE](LICENSE)。
+- **安全**：漏洞报告渠道与披露流程见 `SECURITY.md`；本仓自身的泄露防护门为 `plans/dsh-codepunk-leak-guard.sh`（禁词与敏感形态留在本地，推送前阻断）。
+- **变更日志**：版本演进与破坏性变更见 `CHANGELOG.md`。
+- **兼容性声明**：本预设随 DeepSeek Harness 演进；应用版本兼容核验与破坏性变更适配记录见 `skills/dsh-codepunk-workflow/references/harness-alignment.md`。
 
 ## 维护公约（改动前必读）
 
-- **Host/Agent 平面边界**：服务注册不进本预设；需要 `isolate` realm 的行必须放在带 `isolate:` 的 group 内。改动前对照 `editing-cordis-compositions` skill。
-- **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点 `&role-allow`（调研岗唯一例外，内联追加 `web_search, web_fetch`）。allow 是**全关只放行**列表，未列入的工具一律不可见。新增岗位/工具须同步锚点；allow 只能列当前 DSH 实例已挂载的全局工具名——名字不存在会在 spawn 时随 `tools.restrict()` 直接 throw（fail-closed）。`report` 是延续子代理注册在自身层的汇报工具，不受过滤，**切勿列入 allow**。
-- **画布工具权限是机械强制**（restrict 真移除工具）；**文件写集是约定强制**（人设自律 + 审查门 diff ⊆ 写集 + worktree 隔离），不是沙箱。
-- **编号可解析**：`Pxx` / `D0xx` 一律以 `references/standard.md` 为唯一释义；禁止引入该文件之外的任何外部编号引用。
-- **文件归宿（R13）**：预设自身的资料（开源基准、流程改进）存本预设 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写入任何工程目录；各 run 的 `research/briefs/` 只放该工程业务调研。
-- **产出归位复核（R14）**：接收子代理产出时核对内容归属域与实际落位一致；错位立即移出并核销引用，不让漂移文件跨 run 传播。
-- **官方版本漂移监控**：DeepSeek Harness 为 developer preview（官方承诺 breaking changes）；每大 run 前 `npm view @deepseek-ai/dsh version` + 扫 GitHub releases，机制变更对照 `benchmarks/deepseek-harness-study.md` §0.0 对齐表。
+1. **Host / Agent 平面边界**：服务注册不进本预设；需要 `isolate` realm 的行必须放在带 `isolate:` 的 group 内。
+2. **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点（调研岗唯一例外，内联追加检索工具）。allow 是「全关只放行」列表，未列入的工具一律不可见；新增岗位或工具须同步锚点，且只能列当前实例已挂载的全局工具名。
+3. **强制层级要分清**：画布工具权限是机械强制（`restrict` 真移除工具）；文件写集是约定强制（人设自律 + 审查门 `diff ⊆ write_paths` + 工作房隔离），不是沙箱。
+4. **编号可解析**：内部编号一律以 `skills/dsh-codepunk-workflow/references/standard.md` 为唯一释义，禁止引入该文件之外的编号引用。
+5. **文件归宿**：预设自身的资料（开源基准、流程改进）存 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写入任何工程目录；各 run 的 `research/briefs/` 只放该工程业务调研。接收子代理产出时复核归属域与实际落位一致。
+6. **官方版本漂移监控**：DeepSeek Harness 仍是开发者预览，机制变更对照 `references/harness-alignment.md` 的对齐表执行。
