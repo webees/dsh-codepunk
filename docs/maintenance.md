@@ -101,9 +101,10 @@
 |---|---|---|
 | 更新来源 | Dependabot（`.github/dependabot.yml`） | 每周一巡检 `github-actions` 与 `pip` 两个生态 |
 | 分组策略 | minor/patch 归组为单个 PR；major 单独成 PR | 降噪，同时让破坏性变更逐个可评 |
-| 自动合并 | 已启用（`.github/workflows/dependabot-auto-merge.yml`） | 触发条件＝PR 作者为 `dependabot[bot]`，**或** PR 带 `automerge` 标签 |
+| 自动合并 | 已启用（`.github/workflows/dependabot-auto-merge.yml`） | 触发事件含 `opened`/`synchronize`/`reopened`/`ready_for_review`/`labeled`；条件＝PR 作者为 `dependabot[bot]`，**或** PR 带 `automerge` 标签（该标签由 `plans/github-setup.sh` 幂等创建，仓库设置 `allow_auto_merge=true` 同由其治理） |
 | 合并口径 | 仅 `--merge`（合并提交） | 与仓库设置一致（squash / rebase 已关闭，main 受 ruleset 保护） |
 | 生效前提 | 4 项必需检查全绿（strict） | 基线变化时 GitHub 先更新分支并重跑检查，再自动合并 |
+| 两条路径 | ① `mergeStateStatus=CLEAN` ⇒ 工作流直接合并；② 否则武装自动合并 | 实测：对已 clean 的 PR 调 `enablePullRequestAutoMerge` 会被 GitHub 拒绝（`Pull request is in clean status`）；武装成功后若立即可合并，GitHub 会当场合并而 `autoMergeRequest` 变 null ⇒ 自证判据取「已武装 **或** 已合并」 |
 
 - 人工介入点：需要评估的 major 变更——去掉 `automerge` 标签或直接关闭 PR 即可阻止自动合并；已武装的自动合并可用 `gh pr merge --disable-auto <PR>` 撤回。
 - 自动化工作流用 `pull_request_target` 触发（基线上下文、可写令牌），**不检出、不执行 PR 内容**，因此不引入代码注入面；这是 Dependabot 触发的 `pull_request` 工作流只有只读令牌所必需的写法。
