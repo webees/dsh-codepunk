@@ -65,6 +65,7 @@ metadata:
    - **动作**：每次巡检执行「查→比→续→写」闭环：`list_agents` 查实测态 → 对照清单找 `expected: active` 但非 running 的中断席 → 读断点 `send_message` 续行 → **写回** `agents.yaml`（`status`/`last_seen`/`last_checkpoint_at`/`note`；**取值与触发条件见 `references/artifacts.md`「状态迁移主体」表**——如中断席写 `interrupted`、授权唤醒后续行写 `recovered`、不可恢复写 `failed`）。`status: done` 的席跳过。
 
 > 第 3 项的写盘纪律细则见 `references/file-hygiene.md` §六/§七 与 `references/roles.md`「各岗位写域（MUST）」；硬规则为 R17（`references/standard.md` D098）。
+> **写盘护栏的机械拦截层见 `references/file-hygiene.md` §八（hooks）**：本预设已声明 `hooks-write-scope`（`plans/hooks/hooks.json` + `plans/hook-write-scope.py`），在工具调用前按 `deny`（黑名单，默认）或 `strict`（白名单）阻断越界写入（钩子退出码 2 即阻断，stderr 作理由回给模型）。它是**启发式拦网**（可被混淆绕过、非沙箱），与 `plans/write-scope-check.sh` 的事后扫描并列，不构成替代。
 
 ### 1.2 运行根结构（速记）
 
@@ -175,7 +176,7 @@ metadata:
 
 ## 6. 参考文件（按需读取）
 
-`references/roles.md` `references/stages.md` `references/artifacts.md`（产物模板 goal/chunks/brief/staffing/handoff/evidence/acceptance/scores）`references/knowledge.md` `references/standard.md` `references/output-discipline.md`（D074/D075/D076/D077）`references/harness-alignment.md` `references/anti-hallucination-rules.md`（D077）`references/model-routing.md`（D078）`references/rate-limit-adaptation.md`（D086）`references/file-hygiene.md`（D079）`references/anti-overengineering.md`（D081/YAGNI）`references/diagram-guide.md`（D082）`references/skill-governance.md`（D083）`references/prompt-injection-rules.md`（D084）`references/model-fallback.md`（D089/D090）`references/memory-enhancement.md`（D085）`references/learned-skills.md`。**R17 写盘纪律细则**见 `references/file-hygiene.md`「写盘白名单与越界判据」；机械门 `plans/write-scope-check.sh`。反循环细则与阈值见 `references/anti-loop.md`。
+`references/roles.md` `references/stages.md` `references/artifacts.md`（产物模板 goal/chunks/brief/staffing/handoff/evidence/acceptance/scores）`references/knowledge.md` `references/standard.md` `references/output-discipline.md`（D074/D075/D076/D077）`references/harness-alignment.md` `references/anti-hallucination-rules.md`（D077）`references/model-routing.md`（D078）`references/rate-limit-adaptation.md`（D086）`references/file-hygiene.md`（D079）`references/anti-overengineering.md`（D081/YAGNI）`references/diagram-guide.md`（D082）`references/skill-governance.md`（D083）`references/prompt-injection-rules.md`（D084）`references/model-fallback.md`（D089/D090）`references/memory-enhancement.md`（D085）`references/learned-skills.md`。**R17 写盘纪律细则**见 `references/file-hygiene.md`「写盘白名单与越界判据」；机械门 `plans/write-scope-check.sh`（事后扫描）与**拦截层** `plans/hook-write-scope.py`（事前阻断，见该文件 §八「拦截层（hooks）机械护栏」）。反循环细则与阈值见 `references/anti-loop.md`。
 
 ## 7. 开源基准借鉴（benchmark note）
 

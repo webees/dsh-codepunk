@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """preset-compat —— 核对组合与当前 DSH 安装的兼容性（可复跑，随 DSH 升级执行）。
 
-七项检查（全部基于实测事实，不做版本号猜测）：
+八项检查（全部基于实测事实，不做版本号猜测）：
   1. 引用的插件包存在        —— 组合里每个 `@deepseek-ai/<pkg>` 是否在该 DSH 安装内
   2. 配置键被插件接受        —— 键要么在插件 `Config` schema 内声明，要么被插件源码消费
   3. 组/隔离形态合法        —— 顶层条目均为列表行，`group: true` 的服务行落在 `isolate` 域内
@@ -10,6 +10,12 @@
   5. 锚点顺序              —— `&role-allow` 定义须早于任何 `*role-allow` 别名（YAML 硬要求）
   6. allow 名单一致性       —— 研究岗内联名单 = 角色锚点名单 + {web_search, web_fetch}
   7. agentOptions 覆盖面（信息行）—— 统计未显式声明路由的岗位数（默认继承父会话路由，非缺陷）
+  8. 声明块可被产品 CLI 组合    —— 用 2.0.17 的 `--dump-config` / `--dump-config-schema` 把
+                                  `plans/preset-declare.mjs emit` 的声明块叠加到产品自带 profile 上：
+                                  组合须 rc=0 且产物含本预设条目，且不得引入新的诊断类别。
+                                  边界（实测）：组合成功证明「YAML 可解析 + patch/insert 可组合 +
+                                  条目被 loader 接受」，**不证明插件可解析或可挂载**（把插件名改成
+                                  不存在的包，`--dump-config` 仍 rc=0）；坏 YAML 则 rc=1。
 
 DSH 安装位置由环境变量给出（不硬编码平台路径）：
   DSH_APP_ROOT   解包后的 app 目录（0.1.7 起的布局；插件在 `<root>/node_modules/@deepseek-ai/`）
@@ -40,7 +46,10 @@ except Exception:
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 SCOPE = "@deepseek-ai"
@@ -312,6 +321,106 @@ def main() -> int:
             print("  ✗ allow 名单一致性")
         else:
             print("  ✅ allow 名单一致性（内联 = 角色 + web_search/web_fetch）")
+
+    # 8) 声明块可被产品 CLI 组合（2.0.17 的 `--dump-config` / `--dump-config-schema`）
+    #    边界（实测，MUST 知悉）：组合成功只证明「YAML 可解析 + patch/insert 结构可组合 + 条目被产品
+    #    loader 接受」；**不证明插件可解析或可挂载**——把插件名改成不存在的包，`--dump-config` 仍 rc=0；
+    #    坏 YAML 则 rc=1（`failed to parse …`）。诊断比对按「消息类别」（`[/N]` 索引归一化），
+    #    因为叠加声明会使索引整体位移，而产品自带 profile 本身也会产生 carrier 类诊断。
+    cli = app / "node_modules" / "@deepseek-ai" / "dsh" / "lib" / "bin.js"
+    declare = root / "plans" / "preset-declare.mjs"
+    node = shutil.which("node")
+    prof = next(
+        (p for p in ("web", "headless") if (Path.home() / ".dsh" / "profiles" / p).is_dir()),
+        None,
+    )
+    why = []
+    if not cli.is_file():
+        why.append(f"未找到 DSH CLI（{cli}）")
+    if not declare.is_file():
+        why.append(f"未找到 {declare}")
+    if node is None:
+        why.append("缺 node")
+    if prof is None:
+        why.append("缺可检视 profile（~/.dsh/profiles/web|headless）")
+    if why:
+        print(f"  ℹ 声明块可被产品 CLI 组合：无法核验（{'；'.join(why)}）——无法核验 ≠ 通过")
+    else:
+        def run_cli(extra, timeout=180):
+            try:
+                p = subprocess.run(
+                    [node, str(cli), "--profile", prof] + extra,
+                    capture_output=True, text=True, timeout=timeout, cwd=str(root),
+                )
+                return p.returncode, p.stdout, p.stderr
+            except Exception as exc:  # 超时或启动失败：按 rc=124 处理，不当作通过
+                return 124, "", f"{type(exc).__name__}: {exc}"
+
+        tmpd = tempfile.mkdtemp(prefix="preset-compat-")
+        patch = Path(tmpd) / "declaration.yml"
+        try:
+            # 管道采集（capture_output）与文件重定向各跑一次：二者字节数必须相等，
+            # 否则说明 emit 在管道下被截断（F362：Node `process.exit` 丢弃管道缓冲）。
+            emit = subprocess.run(
+                [node, str(declare), "emit"], capture_output=True, text=True, timeout=180,
+                cwd=str(root),
+            )
+            with open(patch, "w", encoding="utf-8") as fh:
+                emit_file = subprocess.run(
+                    [node, str(declare), "emit"], stdout=fh, stderr=subprocess.PIPE,
+                    text=True, timeout=180, cwd=str(root),
+                )
+        except Exception as exc:
+            emit = None
+            emit_file = None
+            print(f"  ℹ 声明块可被产品 CLI 组合：无法核验（emit 失败：{exc}）——无法核验 ≠ 通过")
+        if emit is not None and emit_file is not None:
+            pipe_len = len(emit.stdout.encode("utf-8"))
+            file_len = patch.stat().st_size
+            if pipe_len != file_len:
+                fails.append(
+                    f"emit 输出在管道下被截断（管道 {pipe_len} B / 文件重定向 {file_len} B）"
+                    "——`process.exit` 会丢弃管道缓冲（F362）"
+                )
+            preset_id = "dsh-codepunk"
+            try:
+                m = re.search(r"^name:\s*(\S+)", (root / "preset.yml").read_text(encoding="utf-8"), re.M)
+                if m:
+                    preset_id = m.group(1).strip().strip("'\"")
+            except Exception:
+                pass
+            base_rc, base_out, base_err = run_cli(["--dump-config"])
+            rc, out, err = run_cli(["--patch", str(patch), "--dump-config"])
+            marker = f"id: preset-{preset_id}"
+            ok = emit.returncode == 0 and emit_file.returncode == 0 and rc == 0 and marker in out
+            if not ok:
+                first = ((err or out).strip().splitlines() or [""])[0]
+                fails.append(
+                    f"声明块未能被产品组合（emit_rc={emit.returncode} dump_rc={rc}）：{first[:120]}"
+                )
+
+            def kinds(text):
+                return {
+                    re.sub(r"\[/\d+\]", "[/N]", ln).strip()
+                    for ln in text.splitlines()
+                    if ln.startswith("dsh:")
+                }
+
+            newk = []
+            if base_rc != 124:
+                s_base = run_cli(["--dump-config-schema"])
+                s_ours = run_cli(["--patch", str(patch), "--dump-config-schema"])
+                if s_base[0] != 124 and s_ours[0] != 124:
+                    newk = sorted(kinds(s_ours[2]) - kinds(s_base[2]))
+                    if newk:
+                        fails.append("声明块引入新的诊断类别：" + " | ".join(newk))
+                else:
+                    print("  ℹ 诊断类别比对：无法核验（--dump-config-schema 未完成）——无法核验 ≠ 通过")
+            print(
+                f"  {'✅' if ok and not newk else '✗'} 声明块可被产品 CLI 组合"
+                f"（{prof} profile；组合成功不证明插件可解析/可挂载）"
+            )
+            shutil.rmtree(tmpd, ignore_errors=True)
 
     print(f"\n  DSH 安装：{app}")
     print(f"  条目 {len(entries)} 行；引用插件 {len(pkgs)} 个")

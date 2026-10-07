@@ -153,12 +153,13 @@ flowchart LR
 | `plans/preset-score.sh` | 15 指标评分（策略/质量/准确性/规范性/精简度 + 一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性），每项独立 100 分门槛 | 0=15 项全满分；1=存在未满分项；2=环境或用法错误 |
 | `plans/preset-audit.sh` | 5 组 rubric 审计（配置/手册/调研/文档/工具层；否决式计分：零失分即满分）；YAML 解析优先 ruby，无 ruby 时用 node+js-yaml（候选链查找、容忍 `!!js` 标签） | 0=全项达标；1=存在失分项；2=预设根不存在 |
 | `plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性核对（25 类：计数声称 · 阶段口径 · 工具存在性 · 退出码契约 · 编号可解析 · 章节引用 · 退出码实测 · 表格列数 · 制品生成器一致 · 外部输入变量记载等） | 0=一致；1=存在不一致；2=环境或用法错误 |
-| `plans/checker-self-test.sh` | 检查器存活自检（变异测试）：沙箱副本内注入 **163 项**已知缺陷，断言对应检查项必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境或自检问题 |
+| `plans/checker-self-test.sh` | 检查器存活自检（变异测试）：沙箱副本内注入 **166 项**已知缺陷，断言对应检查项必须报错——专治「守护空转」 | 0=全部捕获；1=有守护未捕获；2=环境或自检问题 |
 | `plans/preset-declare.mjs` | preset 声明块生成与校验（`emit` / `check` / `apply`；源 `agent.cordis.yml` ↔ profile patch 内联副本语义比对） | 0=一致或成功；1=确认漂移；2=环境或参数错误 |
 | `plans/preset-compat.py` | 组合与当前 DeepSeek Harness 安装的兼容核验（插件包存在 · 配置键被接受 · group 隔离与锚点顺序 · allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
 | `plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 证据机械校验（防假通过门）：`task_id` · `command` · `exit_code=0` · `log_ref` 齐备且位于交付目录内（绝对路径与 `..`/符号链接逃逸判 FAIL）+ 证据 `id` 去重 + 时间序（`validated_at` 须晚于交付目录 mtime） | 0=通过（verdict=PASS）；1=未过；2=用法或文件缺失 |
 | `plans/acceptance-verify.sh <acceptance.yaml> <交付方 task_id>` | 签收机械校验：`task_id` · `accepted_by[]` · `accepted_at` 齐备 + 签收独立性（自签一律不合规，**比较不区分大小写**；缺交付方 ⇒ 无法核验 ≠ 通过） | 0=合规；1=不合规；2=用法或文件缺失、或未提供交付方 |
 | `plans/write-scope-check.sh [--repo <路径>] [--home] [--tmp] [--home-all]` | 写盘纪律门：仓库残留（含未跟踪文件）· 主目录顶层散落 · 临时目录双根残留；`--exempt-from` 读运行根豁免登记 | 0=通过；1=发现越界；2=无法核验或用法错误 |
+| `plans/hook-write-scope.py`（钩子执行体；配置 `plans/hooks/hooks.json`，条目 `hooks-write-scope`） | **写盘护栏拦截层**（PreToolUse 命令钩子，本预设已声明）：`write`/`edit` 取 `file_path`、`bash`/`pwsh` 按命令文本启发式抽取写入目标；默认 `deny` 黑名单阻断（系统路径 / 凭据目录 / `~/.dsh/profiles/**` / 主目录顶层散落文件），`DSH_CODEPUNK_HOOK_MODE=strict` 为白名单放行（预设仓库根 / `~/.dsh-codepunk/**` / `${TMPDIR}` 与 `/tmp` / 会话 cwd）；启发式拦网、非沙箱，与 `write-scope-check.sh` 并列 | 0=放行（含无法判定目标）；2=阻断（stderr 即理由，回给模型） |
 | `plans/dsh-codepunk-leak-guard.sh --tree` | 泄露防护门：禁词与敏感形态留在本地，推送前守卫；`--install-hook` 安装 pre-commit · pre-push · commit-msg 钩子 | 0=通过；1=命中并阻断；2=用法或环境错误 |
 | `plans/fidelity-gate.py snapshot` / `verify` | 语义保护闸：改文件前存快照、改后逐项比对（**14 类**：编号 · 约束词 · 阈值 · 路径 · 工具名 · 代码标识 · 文件名 · 全大写常量 · URL · 证据标记 · 日期等），防压缩丢语义 | 0=零丢失；1=检出丢失；2=缺参数或未知模式、无快照 |
 | `plans/verify-worktree.sh [主仓库路径] [--quiet]`（散落根解析顺序：`SCAN_ROOT` > `DSH_CODEPUNK_WORKTREES`（总库 `worktrees/`，即文档化落点）> `DESKTOP` > 桌面候选；全部不存在则跳过该项扫描并 WARN。仅与本主仓库共享 git 目录的散落 worktree 判失败，散落根内其它 git 仓库只报 INFO） | 工作房（worktree）落点纪律核验：散落目录与登记残留对照，给回收建议 | 0=全部通过；1=存在失败项；2=用法或环境错误 |
@@ -225,6 +226,8 @@ docs/                               # 面向使用者的专题文档（见「文
   maintenance.md
   naming-conventions.md
 plans/                              # 工具脚本源副本（运行期正式位在总库 scripts/）
+  hooks/                            # 拦截层钩子配置（Claude Code 兼容；由 hooks 桥读取）
+    hooks.json                      # PreToolUse 钩子：write/edit/bash/pwsh → 写盘护栏脚本
   windows/                          # Windows 原生（PowerShell）等价实现
     dsh-codepunk-home.ps1           # 共享路径常量（点源载入）
     dsh-codepunk-init.ps1           # 总库骨架与脚本同步
@@ -241,6 +244,7 @@ plans/                              # 工具脚本源副本（运行期正式位
   fidelity-gate.py                  # 语义保护闸（快照与比对）
   git-merge-flow.sh                 # 特性分支流程助手（分支到合并提交）
   github-setup.sh                   # GitHub 仓库治理幂等应用
+  hook-write-scope.py               # 写盘护栏钩子（PreToolUse：deny/strict 两模式）
   preset-audit.sh                   # 5 组 rubric 质量审计
   preset-compat.py                  # 组合与 DSH 安装兼容核验
   preset-declare.mjs                # preset 声明块生成与校验
@@ -272,7 +276,7 @@ SUPPORT.md
 按需层（随工艺增长，见 `skills/dsh-codepunk-workflow/`）：
 
 ```text
-  benchmarks/                       # 基准调研 18 篇（决策依据与实战取证）
+  benchmarks/                       # 基准调研 19 篇（决策依据与实战取证）
   references/                       # 按需参考 19 篇（岗位、产物、阶段、纪律、兼容）
 ```
 
@@ -317,7 +321,8 @@ SUPPORT.md
 
 1. **Host / Agent 平面边界**：服务注册不进本预设；需要 `isolate` realm 的行必须放在带 `isolate:` 的 group 内。
 2. **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点（调研岗唯一例外，内联追加检索工具）。allow 是「全关只放行」列表，未列入的工具一律不可见；新增岗位或工具须同步锚点，且只能列当前实例已挂载的全局工具名。
-3. **强制层级要分清**：画布工具权限是机械强制（`restrict` 真移除工具）；文件写集是约定强制（人设自律 + 审查门 `diff ⊆ write_paths` + 工作房隔离），不是沙箱。
+3. **强制层级要分清**：画布工具权限是机械强制（`restrict` 真移除工具）；文件写集是**约定强制为主**（人设自律 + 审查门 `diff ⊆ write_paths` + 工作房隔离），另有**拦截层**机械拦网 `plans/hook-write-scope.py`（PreToolUse 钩子，启发式、非沙箱，见 `references/file-hygiene.md` §八）与**事后**扫描门 `plans/write-scope-check.sh`；两者都不等价于沙箱。
 4. **编号可解析**：内部编号一律以 `skills/dsh-codepunk-workflow/references/standard.md` 为唯一释义，禁止引入该文件之外的编号引用。
 5. **文件归宿**：预设自身的资料（开源基准、流程改进）存 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写入任何工程目录；各 run 的 `research/briefs/` 只放该工程业务调研。接收子代理产出时复核归属域与实际落位一致。
 6. **官方版本漂移监控**：DeepSeek Harness 仍是开发者预览，机制变更对照 `references/harness-alignment.md` 的对齐表执行。
+7. **新增插件行的路径解析**：一律用 `!!js` + `baseUrl`（预设根）解析相对路径，照 `skill-filesystem` 的写法；钩子/声明类条目改动后须**重启 DSH Desktop** 生效（声明与钩子配置均在进程启动时读取）。

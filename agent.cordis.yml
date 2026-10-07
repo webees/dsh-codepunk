@@ -265,7 +265,11 @@
         toolFilter:
           # 与岗位组同基线：默认全关，只放行 shell/文件/检索/作业/todo/skill 与父向汇报。
           # 目的：通用委派孩子不得默认拿到 web/ask_user/goal/编排委托类工具（R2 与单一派遣入口纪律）。
-          allow: &role-allow !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill', 'send_message']"
+          # 2026-10-08（轮次 628）：追加 `cordis_inspect_list` / `cordis_inspect_query`
+          #   ——`@deepseek-ai/dsh-tool-cordis` 的**只读**运行时检视工具（列/查 Host 与 Client 的
+          #   Inspect Provider：插件 Config schema、Tool schema、Slot 树等；**不能**调用业务 Service、
+          #   不能改运行时），故对所有岗位安全，与只读检索工具同列。
+          allow: &role-allow !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill', 'send_message', 'cordis_inspect_list', 'cordis_inspect_query']"
         # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
         #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
         #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
@@ -436,7 +440,7 @@
         # 唯一保留 web 工具的岗位：allow = 基础工具集 + web_search/web_fetch。
         # 其余岗位（&role-allow）默认无 web。
         toolFilter:
-          allow: !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill', 'web_search', 'web_fetch', 'send_message']"
+          allow: !!js "[process.platform === 'win32' ? 'pwsh' : 'bash', 'read', 'write', 'edit', 'read_image', 'glob', 'grep', 'job_list', 'job_output', 'job_kill', 'todo_write', 'skill', 'web_search', 'web_fetch', 'send_message', 'cordis_inspect_list', 'cordis_inspect_query']"
         persona: |-
           语言：思考与回复一律中文、简洁无废话。**消息（D075）：首行=结论、编号≤5、禁寒暄、首末行双读。**
           你是行业分析：联网检索外部资料（行业、规范、版本、最佳实践），产出带来源的调研简报。
@@ -670,3 +674,36 @@
 # 交付物声明：让主会话把产出文件标记为最终交付（present 工具）。
 - id: present
   name: '@deepseek-ai/dsh-tool-present'
+
+# ── 运行时检视（只读） ──────────────────────────────────────────────────
+
+# `@deepseek-ai/dsh-tool-cordis` 注册两个**只读**工具：`cordis_inspect_list`（列 Host 与 Client
+# 已知的全部 Inspect Provider 及其只读方法）与 `cordis_inspect_query`（按平台/提供者/方法查询，
+# 如插件 Config schema、Tool schema、Slot 树）。用途：写插件或改配置前先读**精确**接口，
+# 而不是猜名字（产品工具描述原文："Call this Tool before writing or configuring a plugin"）。
+# 边界（产品自述）：不能调用业务 Service 方法、不能修改运行时；Host 查询本地执行，Client 查询
+# 需浏览器应答，超时即报失败。
+# 注册形态：工具注册进宿主 `tools` 注册表，其 Inspect Provider 由宿主平面
+# `@deepseek-ai/dsh-cordis-host-runner` 每进程注册一次（`./host` 导出），故本行无配置、无需隔离域
+# （条目级本地隔离域反而会遮蔽宿主提供者——与 `tool-fs` / `tool-jobs` 同理）。
+- id: tool-cordis
+  name: '@deepseek-ai/dsh-tool-cordis'
+
+# ── 拦截层：写盘护栏（hooks） ───────────────────────────────────────────
+
+# `@deepseek-ai/dsh-hooks-claude-code`：Claude Code 兼容命令钩子桥。挂载后在 `tools/pre-execute`
+# 跑 PreToolUse 钩子；**退出码 2 ⇒ 阻断该次工具调用，stderr 作为理由回给模型**
+# （`dsh-hook-protocol/lib/index.js` 的 `parseHookOutput`；桥映射为 `{kind:'deny', reason}`）。
+# 本预设用它接入 `plans/hook-write-scope.py`：机械写盘护栏（黑名单阻断 / strict 白名单），
+# 与既有 `plans/write-scope-check.sh`（事后扫描）互补，是「宿主层沙箱 → 预设层三层纪律 →
+# 拦截层 hooks」的最内一层机械拦网。判据、模式与启发式局限见
+# `skills/dsh-codepunk-workflow/references/file-hygiene.md` §六/§八。
+# 路径解析照本文件 `skill-filesystem` 的 `!!js` + `baseUrl` 惯例（预设根即 `baseUrl`，
+# 故无论装于何处都能解析）；`pluginRoot` 供钩子命令里的 `${CLAUDE_PLUGIN_ROOT}` 替换。
+# 注：`configPath` 指向的 hooks.json 属**预设仓库**内文件，改后须重启 DSH Desktop 生效。
+- id: hooks-write-scope
+  name: '@deepseek-ai/dsh-hooks-claude-code'
+  config:
+    configPath: !!js "process.getBuiltinModule('node:url').fileURLToPath(new URL('plans/hooks/hooks.json', baseUrl))"
+    pluginRoot: !!js "process.getBuiltinModule('node:url').fileURLToPath(baseUrl)"
+    defaultTimeoutMs: 10000
