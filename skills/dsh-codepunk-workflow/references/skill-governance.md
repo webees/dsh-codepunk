@@ -176,6 +176,7 @@
 | **日期形态与未来日期**（须 ISO；「实测」不得标在未来） | `doc-consistency.sh` 第 8 类 | 机械 |
 | **树遍历不得跟随符号链接**（门禁 MUST 限时返回：检出内含链接环时不得无限递归——`glob('**/*', recursive=True)` 默认跟随，实测 rc=124 无判定行；改用 `os.walk(followlinks=False)`） | `checker-self-test.sh` M148（沙箱内造链接环 ⇒ 断言限时返回且通过） | 机械（变异） |
 | **坏输入不得假绿灯**（`preset-declare` 的补丁：含 NUL 的非文本、非空且不可被 YAML 解析 ⇒ `check`/`apply` 一律 rc=2；`apply --append` 曾把声明块追加进损坏文件并报「生效」） | `preset-declare.mjs` 头部守卫（F341） | 机械 |
+| **制品字段模板声称可解析**（凡「`<制品>`（字段模板见 `references/artifacts.md`）」的声称，该制品名 MUST 在 `artifacts.md` 有 `##` 小节；F344 实证：`plan_draft.md` 的字段契约曾悬空，全文仅出现在运行根树状图） | `doc-consistency.sh` 第 10 类子项 | 机械（变异 M150） |
 | **日期时效性**（文档内实测结论是否已过期） | 无 | 人工 |
 | 需求/流程自洽（阶段归属、汇报链、责任席位是否有人） | 部分（A7/结构检查） | 半人工 |
 

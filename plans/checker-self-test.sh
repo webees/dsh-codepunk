@@ -1734,6 +1734,24 @@ mutate "write-scope-check.sh 的 -h 分支改为 exit 2" "$work/cur/plans/write-
 check_rc "M149 实现者的 -h 回归 → doc-consistency 须报退出码契约漂移" \
   "bash plans/doc-consistency.sh 2>&1" 1 "退出码契约漂移"
 
+# M150（F344）：制品「字段模板见 `references/artifacts.md`」的声称 MUST 在 artifacts.md 有对应小节——
+#   实测：SKILL 的 `plan_draft.md` 曾指向 artifacts.md，而后者只在运行根树状图里出现该名（字段契约悬空）。
+echo "[M150 制品字段模板声称须有对应小节（F344）]"
+fresh
+python3 - "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '## plan_draft.md（① 需求草案；与 `goal.yaml` 同批产出）'
+new = '## 需求草案（①；与 `goal.yaml` 同批产出）'
+assert old in s, 'M150 变异目标行未找到'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+PYEOF
+mutate "artifacts.md 的 plan_draft.md 小节标题改名" \
+  "$work/cur/skills/dsh-codepunk-workflow/references/artifacts.md" '## 需求草案（①；与 `goal.yaml` 同批产出）'
+check_rc "M150 制品字段模板悬空 → doc-consistency 须报章节级引用问题" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "制品字段模板悬空"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

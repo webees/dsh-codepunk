@@ -30,6 +30,23 @@ created_at: "…"
 > `blocked`（外部阻塞/halt）时 MUST NOT 新 spawn。
 > **`cancelled` 的主体与条件**：仅当**发起人撤回/需求作废**时，由 run-lead 在 `goal.yaml` 记 `status: cancelled` + 时刻与缘由；**平台 goal 动作集只有 `edit/pause/resume/complete/blocked`——无 `cancel`**，故取消**不在平台侧置态**，只在本文件留痕并停止续行（与「`blocked` 须人类发起解除」同源：终止权归人类）。
 
+## plan_draft.md（① 需求草案；与 `goal.yaml` 同批产出）
+
+落项目根 `~/.dsh-codepunk/projects/<project_id>/plan_draft.md`（与 `goal.yaml` 同级，见 §1.2）。**字段模板**（未覆盖项 MUST 显式标记，不得静默省略）：
+
+```yaml
+title: <一句话转述的诉求（不改写范围）>
+sponsor_intent: <发起人原话要点；与 title 不同时以本节为准>
+scope_in: [<纳入范围项>]
+scope_out: [<明确排除项>]
+assumptions: [<未确认但按默认推进的假设——sponsor 可否决>]      # 标记：assumption
+open_questions: [<必须由发起人回答才能进 ② 的问题>]              # 标记：open_question
+acceptance_draft: [<验收口径草案；active 时并入 goal.yaml 的 product_acceptance[]>]
+risks: [<已知风险与外部依赖>]
+```
+
+> 硬约束：`open_questions` 非空 或 `acceptance_draft` 空 ⇒ MUST NOT 进 ②（D034）；`active` 前须经发起人确认并记 `goal.yaml` 的 `user_confirmed_at`（D035）。
+
 ## chunks.yaml（②）
 
 ```yaml
