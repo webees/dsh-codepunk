@@ -420,6 +420,18 @@ if (diffs.length === 0) {
       const idSemantic = wrapDoc && wrapDoc.config && typeof wrapDoc.config.id === 'string' ? wrapDoc.config.id === ID : null;
       const idOk = idSemantic !== null ? idSemantic : new RegExp('^\\s*id:\\s*' + ID + '\\s*$', 'm').test(wrap);
       if (!idOk) probs.push('config.id 与期望不一致');
+      // F325：包装 `config.order` 亦须比对——生成侧 `apply` 写 order（renderBlock），校验侧此前只比
+      //   name / config.id，实测副本 `order: 9`（期望 5）时 check 仍报「语义一致」而 apply 会改写
+      //   ⇒ 校验漏项、漂移可静默通过。口径与 apply 一致：期望值取 ORDER（CLI 默认 5）。
+      let orderVal = null;
+      if (wrapDoc && wrapDoc.config && wrapDoc.config.order !== undefined && wrapDoc.config.order !== null) {
+        orderVal = String(wrapDoc.config.order);
+      } else {
+        const orderLine = wrapLines.find((l) => l.trimStart().startsWith('order:'));
+        if (orderLine) orderVal = orderLine.slice(orderLine.indexOf(':') + 1).trim();
+      }
+      if (orderVal === null) probs.push(`config.order 缺失（期望 ${ORDER}）`);
+      else if (orderVal !== String(ORDER)) probs.push(`config.order 与期望不一致（当前 ${orderVal}，期望 ${ORDER}）`);
       if (probs.length) {
         console.log('  ✗ 声明包装漂移：' + probs.join('；') + '（修复：node plans/preset-declare.mjs apply）');
         process.exit(1);
