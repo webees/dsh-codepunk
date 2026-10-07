@@ -39,6 +39,7 @@
 
 ### 修复
 
+- **证据 `log_ref` 无交付目录包含性判据**：绝对路径（`/etc/hosts`）、`..` 逃逸与指向交付目录外的符号链接均得 `verdict=PASS`——「防假通过门」的 ②③ 对本次交付不成立。`plans/evidence-verify.sh` 增包含性判据（解析后须位于交付目录内）+ 永久存活变异 M154。
 - **分支保护必需检查名无任何机械守护（改名即静默失配、PR 永久阻塞）**：`main` 的 ruleset 按**上下文名**匹配必需检查，名字来自 `.github/workflows/ci.yml` 各作业的 `name`，声明侧却在 `plans/github-setup.sh` 的 `CHECK_CONTEXTS`——两者无门禁比对。实测把四个作业名各加 `-v2` 后 `doc-consistency.sh` 仍 rc=0（四门禁全绿），而 ruleset 的必需检查将**永不出现** ⇒ 所有 PR 永久阻塞且无告警。现 `doc-consistency.sh` 第 7 类增子项：`CHECK_CONTEXTS` ↔ `ci.yml` 作业名 ↔ `docs/maintenance.md` 的提及三方一致；`docs/maintenance.md` 补名映射与改名后果说明。F347 实证（永久存活变异 M153）。
 
 - **INDEX 顶格块序列被误判为非法，登记链在真实总库整体失效**：`plans/dsh-codepunk-link.sh` 的结构守卫把 `projects:` 下**顶格**书写的序列项（`- project_id: …`，YAML 允许序列与键同列——迁移与早期写入器产出的形态）当成「未知顶层键」，于是 `index` 报「结构非法」并建议「从备份恢复」（该文件其实可被 YAML 正常解析），`register` 追加被回滚。现两处守卫（`index` ① 与写入前 python 守卫）均容忍顶格序列项及 `---`/`...` 文档标记；追加条目**沿用既有缩进风格**（顶格索引继续写顶格），否则追加的缩进条目会成为映射值下的嵌套序列、被写入后校验判为非法 YAML 而回滚。真错（未知顶层键）仍失败（永久存活变异 M152，五断言）。

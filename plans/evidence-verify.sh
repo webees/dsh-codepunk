@@ -8,7 +8,9 @@
 #
 # 对 sdet 产出的 evidence.yaml 做四条机械断言（任一 FAIL 即打回）：
 #   ① command 可执行性：非 N/A 命令须以真实可执行前缀开头，且不得含描述性文本
-#   ② log_ref 文件真实存在（相对路径以交付目录为基）
+#   ② log_ref 文件真实存在（相对路径以交付目录为基）；**绝对路径、或解析后逃出交付目录的引用
+#      （`..` 组合、指向交付目录外的符号链接）一律判 FAIL**——F348：否则 `log_ref: /etc/hosts`
+#      亦得 verdict=PASS，「防假通过门」的 ②③ 对本次交付不成立；未提供交付目录时不判包含性（记 ⑤ 未检）
 #   ① task_id 必填、evidence id 唯一（D069 结构强约束）
 #   ③ exit_code 必须为 0（非 0 即判 FAIL：证据门定义是「成功命令 + exit_code=0 + log 引用」）
 #   ④ validated_at 晚于交付目录 mtime（R12 数值断言，替代 LLM 目测）
@@ -99,6 +101,11 @@ if TIME_CHECKED:
     else:
         problems.append("④ 缺 validated_at（R12 必填）")
 
+def _inside(path, base):
+    # F348：包含性判据——解析后的真实路径 MUST 位于交付目录内（交付目录本身视为在内）。
+    return path == base or path.startswith(base + os.sep)
+
+
 # 提取每条 evidence 的 command/log_ref/exit_code（逐行解析，稳健）
 entries = []
 cur = None
@@ -162,10 +169,18 @@ for e in entries:
             cands.insert(0, os.path.join(delivery, "evidence", "logs", base_log.lstrip("logs/")))
         # F279：log_ref 语义是**日志文件**；旧实现用 os.path.exists ⇒ 指向**目录**亦算「存在」⇒ 假通过。
         _dirhits = [c for c in cands if os.path.isdir(c)]
-        if _dirhits:
+        _filehits = [c for c in cands if os.path.isfile(c)]
+        # F348：旧实现用 os.path.isfile 直通 ⇒ `log_ref: /etc/hosts`、`../<交付目录外>`、指向交付目录外的
+        #   符号链接**均 verdict=PASS**——②③ 对「本次交付」不成立，与「防假通过门」的声称不符。
+        if os.path.isabs(base_log):
+            problems.append(f"② log_ref 为绝对路径（MUST 为交付目录内的相对路径）: {log_s}")
+        elif _dirhits:
             problems.append(f"⑤ log_ref 指向目录（须为日志文件）: {_dirhits[0]}")
-        elif not any(os.path.isfile(c) for c in cands):
+        elif not _filehits:
             problems.append(f"[{evid}] log_ref 文件不存在: {log_s}")
+        elif delivery and not _inside(os.path.realpath(_filehits[0]), os.path.realpath(delivery)):
+            problems.append(f"② log_ref 指向交付目录之外（证据与本次交付无绑定）: {log_s}"
+                            f"（解析后 {os.path.realpath(_filehits[0])}）")
     # ③ exit_code 必须为 0（D074「command + exit_code=0 + log_ref」是证据门的定义；
     #    非 0 表示命令未成功，不得作为通过性证据。原先仅对「非常见值」告警、不判失败，
     #    使失败命令也能拿到 verdict=PASS → 合并门前置失效。）
