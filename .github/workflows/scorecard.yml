@@ -33,7 +33,7 @@ jobs:
       id-token: write
     steps:
       - name: 检出仓库（不留凭据）
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -48,13 +48,13 @@ jobs:
           publish_results: true
 
       - name: 归档 SARIF（原始证据）
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scorecard-results
           path: results.sarif
           retention-days: 5
 
       - name: 上传 SARIF 到代码扫描
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif

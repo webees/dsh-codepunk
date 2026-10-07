@@ -28,7 +28,7 @@ jobs:
       contents: write
     steps:
       - name: 检出仓库（含标签历史）
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -59,7 +59,7 @@ jobs:
           echo "body_path=$out" >> "$GITHUB_OUTPUT"
 
       - name: 发布 Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: ${{ github.ref_name }}
           body_path: ${{ steps.notes.outputs.body_path }}
