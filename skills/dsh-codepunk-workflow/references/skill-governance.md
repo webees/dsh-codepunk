@@ -163,7 +163,7 @@
 | 跨文件同机制**阈值一致**（证据门 exit_code / 评分 base·clamp / retries / handoff 缺件 / 巡检周期 / 收口轮数） | `doc-consistency.sh` 第 7 类 | 机械 |
 | benchmarks **间结论一致**（同一外部来源在不同简报中的机制描述是否矛盾） | 无（**实测不可机械化**：按来源聚合行内数字的扫描输出以 D 号/日期/无关量为主，无判据价值） | 人工：对跨 ≥2 简报的来源做**定向机制比对**（实测判据=同一来源的分许可/分组件表述须互补而非互斥，如 caveman 的 MIT 部分与 BSL 部分） |
 | 文档**声称 ↔ 实现**（计数/阶段口径/工具存在性/退出码契约） | `doc-consistency.sh` 第 1–6 类 | 机械 |
-| **退出码契约实测**（用法/环境错误必须返回 2；**31 条探针**实跑 = 9 条用法/环境错 + 4 条坏根提示形状 + 18 条 `-h`〔域＝`plans/` 下全部可执行入口 `.sh`/`.py`/`.mjs`，纯 source 库除外〕；另有探针计数守卫防吞错，以及「每个运行型入口都 MUST 实现 `-h`/`--help`」的静态子项——F361 实证 4 个 `.sh` 实现者曾不在探针表内，F366 实证 4 个 `.py`/`.mjs` 入口曾**整体不在域内**） | `doc-consistency.sh` 第 20 类 | 机械 |
+| **退出码契约实测**（用法/环境错误必须返回 2；**32 条探针**实跑 = 9 条用法/环境错 + 4 条坏根提示形状 + 19 条 `-h`〔域＝`plans/` 下全部可执行入口 `.sh`/`.py`/`.mjs`，纯 source 库除外〕；另有探针计数守卫防吞错，以及「每个运行型入口都 MUST 实现 `-h`/`--help`」的静态子项——F361 实证 4 个 `.sh` 实现者曾不在探针表内，F366 实证 4 个 `.py`/`.mjs` 入口曾**整体不在域内**） | `doc-consistency.sh` 第 20 类 | 机械 |
 | **移植对等性**（4 对 sh↔ps1：关键词白名单 + leak-guard 通用模式签名双向对等；ps1 工作树行尾 CRLF 落地校验在**无 git 环境回退文件系统字节核验**——F335） | `doc-consistency.sh` 第 17 类 | 机械 |
 | **pwsh 钩子参数语法**（Windows 侧生成钩子不得用 `$1` 等 PS 不支持的位置参数语法） | `doc-consistency.sh` 第 18 类 | 机械 |
 | **硬规则命名空间洁净**（禁三位以上 R 号；轮次引用写「轮次 N」） | `doc-consistency.sh` 第 19 类 | 机械 |
@@ -185,6 +185,7 @@
 | **外部输入变量须被记载**（未在本文件赋值、或写成 `${VAR:-默认}` 的覆盖开关 MUST 出现在任一 `.md` 或脚本**头部注释块**〔`#` 块 / `.py` docstring / `.mjs` JSDoc〕；F358 实证：`git-merge-flow.sh` 的 `PR_BODY` 曾只在实现里存在） | `doc-consistency.sh` 第 5 类子项 | 机械 |
 | **声明写入的原子性**（`preset-declare.mjs apply` 写用户平面补丁 MUST 原子替换：同目录临时文件 + `renameSync`，并保留原权限位；就地 `writeFileSync` 先截断 ⇒ 并发读者可见 0 字节、SIGKILL 后留下不可用 profile，而写后自校验的回滚只在正常路径执行；F380 实证：5 ms 采样读到 size=0、受控 A/B 修复前 0 字节 / rc=2、修复后字节与权限不变 / rc=1） | `checker-self-test.sh` M174（以「inode 是否变更」为可确定观测的原子性不变量；2 断言） | 机械（变异） |
 | **hooks 覆盖清单与实现同域**（`references/file-hygiene.md` §8.3 承诺的每种写盘形态 MUST 真被抽取器覆盖；F381 实证：只认「裸 `-i `」，`-i.bak`/`-i''`/`--in-place`/`--in-place=.bak`/`perl -i`/`>|` 静默放行） | `hook-write-scope.py` 抽取器 + `checker-self-test.sh` M175（3 断言） | 机械（变异） |
+| **巡检名册字段契约（D095/D099）**（运行根 `agents.yaml` 的 `patrol_log` 每条 MUST 齐备 `round`/`at`/`note` 且非空，`round` 唯一且为整数，巡检轮次须在台账中有行，升序排序后相邻间隔 ≤ N〔默认 5〕；F382 实证：旧形态 `{round, checked, result}` 实测 34 条缺 `at`、35 条缺 `note`，而全仓无任何机械门检视该契约——`write-scope-check.sh --run-root` 只验 `write_scope:` 段） | `plans/patrol-check.sh --run-root` + 存活变异 `checker-self-test.sh` M176（3 断言：合规名册 rc=0 / 缺 `at` rc=1 / 判据短路后不得再报——证明非空转） | 机械（变异） |
 | **术语一致性**（含「工作房」vs「工作区」消歧） | 无（**实测不可机械化**：简单抽取器在 498 条「**词**：」命中中产出的候选几乎全为散文引导词） | 人工：对**核心术语**（双门闩/工作房/写集/交接包/门禁/证据 verdict 等）逐条比对定义句，实测判据=同名术语的括号注与谓词表述一致 |
 | **日期形态与未来日期**（须 ISO；「实测」不得标在未来；未来日期上限＝UTC 今天 +1 天以容忍时区偏移——CI 为 UTC 时钟，作者本机「今天」最多超前 UTC 一天，不设容忍则本地 00:00–07:00 产生的合法日期在 CI 上必红） | `doc-consistency.sh` 第 8 类 + `checker-self-test.sh` M166（注入 UTC 今天 +1 天须放行 / +2 天须报出） | 机械（变异） |
 | **树遍历不得跟随符号链接**（门禁 MUST 限时返回：检出内含链接环时不得无限递归——`glob('**/*', recursive=True)` 默认跟随，实测 rc=124 无判定行；改用 `os.walk(followlinks=False)`） | `checker-self-test.sh` M148（沙箱内造链接环 ⇒ 断言限时返回且通过） | 机械（变异） |

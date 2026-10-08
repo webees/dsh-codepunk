@@ -340,6 +340,8 @@ patrol_every_n_rounds: 5             # 定时巡检间隔（默认 5 轮，可�
 
 > **写入约束（MUST，D099）**：本文件是**机器可读**清单，写入后 MUST 立即用**严格解析器**回读校验：`node -e "require('<DSH 安装根>/node_modules/js-yaml').load(require('fs').readFileSync('<path>','utf8'))"` ——js-yaml v4 默认**拒绝重复键**，而 `ruby -ryaml`（Psych）**不报重复键**（实测：条目下同时存在两个 `at`/两个 `note` 时 Psych 静默取后者、js-yaml 报 `duplicated mapping key`）⇒ 巡检写回把新条目插在上一轮条目的字段之前这类错位，只有严格解析器能发现。另 MUST 逐条核对**字段归属**（每个 `round` 条目须齐备 `round`/`at`/`note`，不得把上一轮的字段留在新条目之下），并比对关键字段长度：自由文本值（`result` / `note`）若含裸半角冒号加空格 ⇒ YAML **语法错误**（整文件不可解析）；若含**空格 + 半角井号** ⇒ 该值被当作注释**静默截断**（实测：同一条 `result` 源 536 字，写入后仅解析出 325 字）。两者均须改用全角冒号 / 全角井号，或把值加引号。校验命令不得只做 grep——**行存在 ≠ 可解析**。
 
+> **机械门**：`plans/patrol-check.sh --run-root <运行根> [--ledger <台账>] [--max-gap N]` —— 逐条核验 `patrol_log` 的 `round`/`at`/`note` 齐备（字段缺失或值为空即报）、`round` 唯一且为整数、给了 `--ledger` 时每个巡检轮次在台账中有行、升序排序后相邻轮次间隔 ≤ N（默认 5）；退出码 0/1/2（0=全部合规 / 1=契约违规并逐条列出 / 2=用法或环境错误，无法核验 ≠ 通过）。
+
 ```yaml
 policy:                              # 反循环策略段（细则见 references/anti-loop.md；无该段时按 SKILL R16 默认执行）
   no_new_evidence_steps: 3           # 连续 N 步无新证据 ⇒ 强制输出「当前假设/已证伪项/下一步不同做法」

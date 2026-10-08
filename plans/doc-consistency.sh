@@ -1251,8 +1251,8 @@ probe_msg "score 坏根提示"           "bash plans/preset-score.sh --bogus"   
 probe_msg "doc-consistency 坏根提示" "bash plans/doc-consistency.sh --bogus" "预设根不存在" "cd: usage"
 probe_msg "battery 坏根提示"         "bash plans/verify-battery.sh --bogus"  "预设根不存在" "cd: usage"
 # -h/--help 约定：**实现该约定的脚本** MUST 返回 0 并打印头部用法（F153）；
-#   探针覆盖全部实现者（F361 后为 **14 个**：audit/score/doc-consistency/verify-worktree/link/
-#   leak-guard/init/git-merge-flow/github-setup/write-scope-check + acceptance-verify/evidence-verify/
+#   探针覆盖全部实现者（F361 后为 **15 个**：audit/score/doc-consistency/verify-worktree/link/
+#   leak-guard/init/git-merge-flow/github-setup/write-scope-check/patrol-check + acceptance-verify/evidence-verify/
 #   checker-self-test/verify-battery；唯 `dsh-codepunk-home.sh` 为纯 source 库，不属 CLI 入口）；
 #   另有 4 条坏根提示形状探针。下方静态子项保证「实现者集合」无遗漏。
 probe_rc 0 "audit -h"           "bash plans/preset-audit.sh -h"
@@ -1265,6 +1265,7 @@ probe_rc 0 "init -h"            "bash plans/dsh-codepunk-init.sh -h"
 probe_rc 0 "git-merge-flow -h"  "bash plans/git-merge-flow.sh -h"
 probe_rc 0 "github-setup -h"    "bash plans/github-setup.sh -h"
 probe_rc 0 "write-scope -h"     "bash plans/write-scope-check.sh -h"
+probe_rc 0 "patrol-check -h"    "bash plans/patrol-check.sh -h"
 # F361（本轮巡检实测）：以下 4 个脚本原无 `-h` 分支（`-h` 被当位置参数，rc=2 且无用法输出），
 #   而本类的注释自述「探针 MUST 覆盖全部实现者」⇒ 判据集合与实现集合脱节（`checker-self-test.sh`
 #   的 M149 甚至把该约定写进了夹具，自身却是缺口）。
@@ -1279,7 +1280,7 @@ probe_rc 0 "fidelity-gate -h"    "timeout 60 python3 plans/fidelity-gate.py -h"
 probe_rc 0 "preset-compat -h"    "timeout 60 python3 plans/preset-compat.py -h"
 probe_rc 0 "preset-declare -h"   "timeout 60 node plans/preset-declare.mjs -h"
 probe_rc 0 "ps-validate -h"      "timeout 60 node plans/ps-validate.mjs -h"
-RC_DECL=31   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 18 条 -h）；新增探针须同步此值
+RC_DECL=32   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 19 条 -h）；新增探针须同步此值
 # F361 静态子项：**每个运行型入口都 MUST 实现 `-h`**——探针表是人工枚举，
 #   新增脚本时极易漏挂（本轮即 4 个实现者不在表内）。此处以源码为准机械核验实现集合。
 # F366 起域扩为 `plans/` 下全部可执行入口（纯 source 库除外）——否则 `.py`/`.mjs` 永不在域。

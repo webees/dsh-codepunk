@@ -2458,6 +2458,38 @@ mutate "M175-b 变异（把 \`-i\` 后缀判据收窄回字母）" \
 check_no_match "M175-b 后缀判据收窄后 \`sed -i.bak\` 不得再被阻断（证明该覆盖非空转）" \
   "python3 plans/hook-write-scope.py --fixture m175-sed.json 2>&1" "$m175_rule"
 
+echo "[M176 巡检名册字段契约（F382：每条须齐备 \`round\`/\`at\`/\`note\`）]"
+# 契约：references/artifacts.md 的 D095/D099 要求运行根 `agents.yaml` 的 `patrol_log` 每条齐备
+#   `round`/`at`/`note`（旧形态 `{round, checked, result}` 缺 at/note 却无任何机械门）。
+#   判据实现：plans/patrol-check.sh --run-root（字段齐备 / 唯一 / 间隔 ≤ N）。
+fresh
+m176_rr="$work/runroot"
+mkdir -p "$m176_rr"
+cat > "$m176_rr/agents.yaml" <<'YAML'
+run_id: run-m176
+patrol_every_n_rounds: 5
+patrol_log:
+  - round: 10
+    at: "2026-10-08T00:00:00Z"
+    note: "巡检：夹具 A（list_agents ⇒ 无中断席）"
+  - round: 15
+    at: "2026-10-08T00:05:00Z"
+    note: "巡检：夹具 B（list_agents ⇒ 无中断席）"
+seats: []
+YAML
+check_rc "M176-a 合规名册须通过（rc=0）" \
+  "bash plans/patrol-check.sh --run-root \"$m176_rr\"" 0 "巡检名册合规"
+sed -i.bak '/^    at: /d' "$m176_rr/agents.yaml"; rm -f "$m176_rr/agents.yaml.bak"
+mutate_gone "M176-b 删除型变异落地（夹具内 \`at\` 字段已消失）" "$m176_rr/agents.yaml" '^    at: '
+check_rc "M176-b 缺 \`at\` 须被报出（rc=1）" \
+  "bash plans/patrol-check.sh --run-root \"$m176_rr\"" 1 "缺 at"
+# 非空转证明：把「缺 at」判据行短路（`[ -n \"\$v_at\" ]` → `true`）⇒ 同一夹具不得再报该消息。
+sed -i.bak 's|\[ -n "\$v_at" \]|true  # F382-MUT|' "$work/cur/plans/patrol-check.sh"
+rm -f "$work/cur/plans/patrol-check.sh.bak"
+mutate "M176-c 变异（缺 at 判据被短路）" "$work/cur/plans/patrol-check.sh" 'F382-MUT'
+check_no_match "M176-c 判据短路后不得再报「缺 at」（证明该判据非空转）" \
+  "bash plans/patrol-check.sh --run-root \"$m176_rr\"" "缺 at"
+
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
 #   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。
