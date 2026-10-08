@@ -34,6 +34,22 @@ esac
 #   而本脚本的 M149 变异自述「`-h`/`--help` 约定……第 20 类探针 MUST 覆盖全部实现者」——
 #   自身却是缺口（自相矛盾）。现补上。
 SKIPPED=0      # F374：**跳过**计数（环境受限而未执行的变异）——结论行 MUST 据实报告覆盖
+# F406（环境前提预检，与 F404/F405 同族）：本套件多处变异经 `node plans/preset-declare.mjs` /
+#   `node plans/ps-validate.mjs` 施加与断言。缺 `node` 时这些断言以 **rc=127** 收场并报
+#   「变异未生效（…自检自身问题，非守护问题）」⇒ 触发终局 MUTFAIL 门 ⇒ 整轮**假失败**，
+#   且诊断把操作者引向「自检脚本问题」而非「环境缺 node」（误导）。
+#   实测（R646 首跑日志 logs/selftest-r646.log）：持久 shell 重置后 PATH 不含 /opt/homebrew/bin
+#   ⇒ M51 / M138 / M139 三条 ‼ + rc=127 + 终局 `✗ 自检失败：有变异未生效`。
+#   ⇒ 显式预检，缺失即判 rc=2 并给出真实原因（无法核验 ≠ 通过；缺依赖不是守护缺陷）。
+#   注：预检 MUST 在 `-h`/`--coverage-echo` 等**无副作用钩子之后**（帮助与钩子不得要求 node，
+#   否则 doc-consistency 第 5 类的退出码契约 `-h ⇒ rc=0` 会漂移——实测本预检放在参数处理之前时该门即报
+#   `退出码契约漂移 → checker-self-test -h(rc=2,want=0)`）。
+has_deps() {
+  for _t in node python3 bash; do
+    command -v "$_t" >/dev/null 2>&1 || return 1
+  done
+  return 0
+}
 # F374 配套：跳过节统一走本助手（计数 + 统一措辞）；`跳过 ≠ 通过` 防止读者把跳过当已验证。
 skip() { SKIPPED=$((SKIPPED + 1)); case "$1" in *"跳过 ≠ 通过"*) printf '  ℹ %s\n' "$1" ;; *) printf '  ℹ %s（跳过 ≠ 通过）\n' "$1" ;; esac; }
 # F374：结论行实现（主路径与 `--coverage-echo` 测试钩子**共用**，避免钩子测的是另一份逻辑）。
@@ -54,6 +70,13 @@ case "${1:-}" in
 esac
 SRC="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 [ -d "$SRC/plans" ] || { echo "✗ 预设根无效: $SRC" >&2; exit 2; }
+# F406 环境前提预检（见上方注释）：放在帮助/钩子之后、真正执行变异之前。
+if ! has_deps; then
+  for _t in node python3 bash; do
+    command -v "$_t" >/dev/null 2>&1 || printf '✗ 缺少自检依赖 %s ⇒ 无法核验 ≠ 通过（环境缺依赖，非守护缺陷；请把其所在目录加入 PATH）\n' "$_t" >&2
+  done
+  exit 2
+fi
 FAILED=0
 ASSERT_N=0     # F190：断言**实际执行**计数（与调用点数比对，防助手缺失致变异静默空转）
 MUTFAIL=0
@@ -2796,6 +2819,46 @@ mkdir -p "$m192_dir/sub/__pycache__" && printf 'x' > "$m192_dir/sub/__pycache__/
 check_rc "M192-c 退化为只扫顶层后同夹具须复现假通过（证明递归扫描非空转）" \
   "bash plans/write-scope-check.sh --run-root \"$m192_dir\" 2>&1" 0 "含子目录"
 rm -rf "$m192_dir/sub"
+fresh
+
+# ── M193：解析依赖缺失时门禁 MUST 显式失败（F405）──────────────────────────────
+#   机理：leak-guard 的禁词归一管道 `sed … | awk 'length($0)>=3' | sort -u` 在缺 awk 时得空串 ⇒
+#   25 条禁词被静默归零，门仍打印「✓ 泄露防护门：通过（禁词 0 条 + 通用模式 5 类）」rc=0。
+#   断言：a) 完好版 + 无 awk 的 PATH ⇒ rc=2 含「缺少必需工具 awk」；
+#        b) 仅删预检、保留不变量 ⇒ rc=2 含「归一管道失效」（两层守护各自非空转）；
+#        c) 两层都删 ⇒ 复现假绿 rc=0 含「禁词 0 条」（证明守护确为唯一拦截者）。
+mkdir -p "$work/bin-noawk"
+for _t in bash sh git grep sed sort uniq wc tr head tail cut cat locale mktemp stat basename dirname python3 rm; do
+  _p="$(command -v "$_t" 2>/dev/null)" || continue
+  [ -n "$_p" ] && ln -sf "$_p" "$work/bin-noawk/$_t"
+done
+if [ -x "$work/bin-noawk" ] && [ ! -e "$work/bin-noawk/awk" ]; then
+  fresh
+  # F407（本轮自检实测）：夹具 MUST 自带**禁词源**——不变量是「源非空而归一后为空」，
+  #   而本套件 `export HOME="$SANDBOX"`（第 106 行）⇒ 沙箱 HOME 下无 `~/.dsh-codepunk/denylist.txt`，
+  #   `DENY_RAW` 恒空 ⇒ 不变量**不可达** ⇒ M193-b 在沙箱内假失败（实测 rc=0 而非 2），
+  #   而操作者在真 HOME 下手跑同一变异却得 rc=2（本机 denylist.txt 非空）——即夹具依赖宿主环境。
+  #   ⇒ 三断言统一显式传 `DSH_CODEPUNK_DENYLIST`（脚本第 109 行的正式输入通道），与宿主 HOME 无关。
+  _denyenv='DSH_CODEPUNK_DENYLIST="leakwordalpha:leakwordbeta"'
+  check_rc "M193-a 解析依赖缺失（PATH 无 awk）须 rc=2（无法核验 ≠ 通过）" \
+    "env -i PATH=\"$work/bin-noawk\" HOME=\"$HOME\" $_denyenv \"$work/bin-noawk/bash\" plans/dsh-codepunk-leak-guard.sh --tree" 2 \
+    "缺少必需工具 awk"
+  fresh
+  sed -i.bak '/^for _t in git awk sed sort grep cut; do/,/^done$/d' "$work/cur/plans/dsh-codepunk-leak-guard.sh"
+  rm -f "$work/cur/plans/dsh-codepunk-leak-guard.sh.bak"
+  mutate_gone "M193-b 删除型变异（仅移除依赖预检，保留不变量）" "$work/cur/plans/dsh-codepunk-leak-guard.sh" '缺少必需工具'
+  check_rc "M193-b 预检移除后不变量须独立拦截（rc=2 含「归一管道失效」）" \
+    "env -i PATH=\"$work/bin-noawk\" HOME=\"$HOME\" $_denyenv \"$work/bin-noawk/bash\" plans/dsh-codepunk-leak-guard.sh --tree" 2 \
+    "归一管道失效"
+  sed -i.bak '/^# F405 不变量/,/^fi$/d' "$work/cur/plans/dsh-codepunk-leak-guard.sh"
+  rm -f "$work/cur/plans/dsh-codepunk-leak-guard.sh.bak"
+  mutate_gone "M193-c 删除型变异（再移除不变量）" "$work/cur/plans/dsh-codepunk-leak-guard.sh" '归一管道失效'
+  check_rc "M193-c 两层守护都移除后同环境须复现假绿 rc=0（证明守护非空转）" \
+    "env -i PATH=\"$work/bin-noawk\" HOME=\"$HOME\" $_denyenv \"$work/bin-noawk/bash\" plans/dsh-codepunk-leak-guard.sh --tree" 0 \
+    "禁词 0 条"
+else
+  echo "  ℹ M193 跳过（无法构造无 awk 的影子 PATH）——跳过 ≠ 通过"
+fi
 fresh
 
 

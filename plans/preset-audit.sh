@@ -45,6 +45,14 @@ fi
 PASS="✅"; FAIL="✗"; LOSE=0
 report() { echo "  [$1] $2"; if [ "$1" = "$FAIL" ]; then LOSE=$((LOSE+1)); fi; return 0; }
 
+# F405（依赖预检，MUST）：判据的计数/裁剪管道依赖下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」
+#   （rc=2），绝不静默降级为通过 —— 实证：B5 的 `git grep -ic … | awk '{s+=$2}'` 在缺 awk 时得空值，
+#   `${N:-0}` 归零 ⇒ 报「B5 全仓零旧名」通过，而旧名实际存在（影子 PATH 实测 rc=0 + 100/100）。
+for _t in git awk sed grep cut tr; do
+  command -v "$_t" >/dev/null 2>&1 \
+    || { echo "✗ 缺少必需工具 ${_t} ⇒ 无法核验 ≠ 通过（rc=2）" >&2; exit 2; }
+done
+
 echo "===== dsh-codepunk 预设审计 ====="
 echo "[组A 配置层 25]"
 # A1 解析合法

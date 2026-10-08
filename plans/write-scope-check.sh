@@ -32,6 +32,8 @@
 #                    备份/临时命名物与编译缓存（`*.bak` / `*.bak-*` / `*~` / `*.orig` / `*.rej` / `*.tmp` /
 #                    `*.swp` / `__pycache__` / `*.pyc`）——否则该取值与实况不符（R17/§6.2 黑名单；
 #                    声称不可核验时 MUST 判失败）。递归扫描需要 `find`，缺 `find` ⇒ exit 2。
+#                    该模式的 `write_scope:` 段抽取依赖 `awk`/`sed`/`grep`/`head`/`tr`，缺任一个 ⇒
+#                    exit 2（F405：否则空值会被判成「段缺失」，保守但把操作者引向错误原因）。
 #                    运行根或 README 缺失 ⇒ exit 2（无法核验 ≠ 通过）；段缺失/缺键/取值非法/判据 h 命中 ⇒ exit 1。
 #     --quiet        静默通过行；失败行与结论仍输出
 #     -h, --help     显示本用法
@@ -116,6 +118,15 @@ if [ -n "${RUN_ROOT}" ]; then
   [ -d "${RUN_ROOT}" ] || fatal "运行根不存在或不是目录: ${RUN_ROOT}"
   RR_README="${RUN_ROOT}/README.md"
   [ -f "${RR_README}" ] || fatal "运行根缺 README.md: ${RR_README}（R17 要求其中含 write_scope: 段）"
+  # F405（诊断准确性；与 preset-audit/preset-score/leak-guard/verify-battery 同族）：
+  #   下方 awk 抽取与 sed 归一是**解析依赖**。缺失时 BLK/CS 为空 ⇒ 门**保守地**判失败，但报出的是
+  #   「运行根 README 缺 write_scope: 段」，把操作者引向错误方向（实证：影子 PATH 去掉 awk 后
+  #   rc=1 且报「缺 write_scope: 段」，而该运行根 README 实况合规、正常环境下 rc=0）。
+  #   ⇒ 显式预检，给出真实原因（无法核验 ≠ 通过，rc=2）。
+  for _t in awk sed grep head tr; do
+    command -v "$_t" >/dev/null 2>&1 \
+      || fatal "缺少必需工具 ${_t} ⇒ 无法核验 ≠ 通过（rc=2）"
+  done
   BLK="$(awk '
     /^write_scope:[ \t]*$/ { inblk=1; print; next }
     inblk && /^[A-Za-z_][A-Za-z0-9_]*:/ { exit }

@@ -33,6 +33,13 @@ fi
 
 F=0
 p() { printf '  %s %s\n' "$1" "$2"; }
+# F405（依赖预检，MUST）：本电池的指纹/枚举管道依赖下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」
+#   （rc=2），绝不静默降级为通过 —— 实证：缺 awk 时 `cksum … | awk '{print $1"-"$2}'` 双双得空值
+#   ⇒ IDX_BEFORE == IDX_AFTER ⇒ 报「✅ E2E 未污染真实总库（INDEX 校验和不变）」的**空值假通过**。
+for _t in git awk sed grep cksum mktemp tr wc; do
+  command -v "$_t" >/dev/null 2>&1 \
+    || { echo "✗ 缺少必需工具 ${_t} ⇒ 无法核验 ≠ 通过（rc=2）" >&2; exit 2; }
+done
 # 无法核验 ≠ 通过：环境不满足时显式判失败，避免「生产者失败→空值→静默 ✅」
 unverified() { p "✗" "$1（无法核验 ≠ 通过）"; F=1; }
 # F350：跳过登记 —— 「跳过 ≠ 通过」。被跳过的项（缺工具、缺环境变量、递归防护开关）MUST 在结论行
