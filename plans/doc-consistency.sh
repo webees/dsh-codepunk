@@ -1588,7 +1588,7 @@ PYEOF
   [ -z "$EOLBAD" ] && ok "ps1 行尾均为 CRLF（文件系统字节核验）" || bad "ps1 工作树行尾非 CRLF（文件系统字节核验）: ${EOLBAD}"
 fi
 
-echo "[27] 产品/用户平面行号引用可核验（锚点须落在引用区间；单引用行机械核验）"
+echo "[27] 产品/用户平面行号引用可核验（PROF 禁写行号；锚点须落在引用区间）"
 # F390/F391：`references/file-hygiene.md` 的「行号引用规则（MUST）」原以「引用 MUST 同时给出符号名检索式」
 #   声称，但实测 13 处行号引用仅 3 处附检索式、且该类声称无任何门禁（同 F294/F315/F327/F338/F347 家族）。
 #   本轮实测另证两处行号漂移：`PROF/cordis.patch.yml` 的 permission 区块（旧稿 `:216-229`）与 `defaultPreset`
@@ -1596,6 +1596,11 @@ echo "[27] 产品/用户平面行号引用可核验（锚点须落在引用区�
 #   但门禁此前无从发现。口径（与 `tools/cite-anchor.py` 一致）：仅判同行**单处**引用——有检索式者首命中行须落在
 #   引用区间内（不设容差），无检索式者反引号内符号名须在区间内出现一次；缺 `DSH_APP_ROOT`/`DSH_ASAR`、
 #   目标文件不存在（如 CI 无私用用户平面）记无法核验，不判失败。
+# F392（medium）：同轮合并后复跑问出**第四次漂移**——该区块由 `:217-230` 漂到 `:205-218`、`defaultPreset`
+#   由 `:230` 漂到 `:218`，且**非人工编辑**：`~/.dsh/profiles/desktop/cordis.patch.yml` 的 mtime 与漂移同刻，
+#   即 DSH Desktop 会自行重写用户平面（模型目录等）⇒ 对用户平面写行号在结构上必然失准（同一轮内即失效，
+#   merge 后 main 的文档门因此转红）。故新增子判据：`PROF/<路径>:<数字>` 一律判失败（用户平面 MUST 以符号锚点定位，
+#   不写行号）；`PKG/`（产品源码，随版本升级才变）仍按原口径核验。
 CITE_ISSUE=$(python3 <<'PYEOF'
 import glob, os, re
 CITE_RE = re.compile(r"(?P<pre>PKG|PROF)/(?P<path>[A-Za-z0-9._/-]+):(?P<start>\d+)(?:-(?P<end>\d+))?(?P<extra>,\d+)?")
@@ -1607,11 +1612,14 @@ home = os.environ.get('HOME')
 bases = {'PKG': os.path.join(app, 'node_modules', '@deepseek-ai') if app else None,
          'PROF': os.path.join(home, '.dsh', 'profiles', 'desktop') if home else None}
 docs = sorted(glob.glob('skills/*/references/*.md')) + sorted(glob.glob('docs/*.md')) + sorted(glob.glob('docs/*/*.md'))
+PROF_LINE_RE = re.compile(r"PROF/[A-Za-z0-9._/-]+:\d+")
 bad = []
 for doc in docs:
     with open(doc, encoding='utf-8', errors='replace') as fh:
         dlines = fh.read().split('\n')
     for i, line in enumerate(dlines, start=1):
+        for pl in PROF_LINE_RE.finditer(line):
+            bad.append('%s:%d %s 用户平面引用不得写行号（应用会重写该文件，行号必失准）' % (doc, i, pl.group(0)))
         found = list(CITE_RE.finditer(line))
         if len(found) != 1:
             continue
@@ -1647,7 +1655,7 @@ for doc in docs:
 print(', '.join(bad[:4]) + ('' if len(bad) <= 4 else ' 等共 %d 处' % len(bad)))
 PYEOF
 )
-if [ -z "$CITE_ISSUE" ]; then ok "产品/用户平面行号引用的锚点均落在引用区间（单引用行机械核验；无法核验者不判失败）"
+if [ -z "$CITE_ISSUE" ]; then ok "产品/用户平面行号引用的锚点均落在引用区间（用户平面不写行号；单引用行机械核验；无法核验者不判失败）"
 else bad "行号引用锚点未落在引用区间 → ${CITE_ISSUE}"; fi
 
 echo
@@ -1675,6 +1683,27 @@ done
 if [ -n "$DOC_CLS_BAD" ]; then bad "doc 类数声称陈旧:${DOC_CLS_BAD}"
 elif [ "$DOC_CLS_HITS" -eq 0 ]; then info "未出现 doc 类数声称（域：README + docs/**；写法：doc-consistency 同行 N 类）"
 else ok "doc 类数声称与实现一致（命中 ${DOC_CLS_HITS} 处，实际 ${NCLASS} 类）"; fi
+# F393：保真闸的语义项类数声称（实现派生量＝`plans/fidelity-gate.py` 的 `PATTERNS` 键数）。
+#   与上一条同族但**另一实现、另一实况值**（doc 类数 27 ↔ 保真类数 14），且两者在文档里写法同形（「N 类」），
+#   此前只有 doc 类数入域 ⇒ 保真类数无核验。实证（本轮）：计数同步若只按「**N 类**」在文件级替换，
+#   会误伤相邻的保真行——README 的「**14 类**」被改成 27 类而**四门禁全绿**，文档静默说谎。
+FIDCLS=$(grep -cE "^    '[^']+':" plans/fidelity-gate.py 2>/dev/null || true)
+FID_BAD=""; FID_HITS=0
+if [ -z "$FIDCLS" ] || [ "$FIDCLS" -eq 0 ] 2>/dev/null; then
+  info "保真闸类数无法核验（未取到 plans/fidelity-gate.py 的 PATTERNS 键数）——无法核验 ≠ 通过"
+else
+  for _f in README.md docs/*.md docs/*/*.md; do
+    [ -f "$_f" ] || continue
+    _seg="$(grep -oE 'fidelity-gate.{0,120}' "$_f" 2>/dev/null | sed -E 's/第 ?[0-9]+( ?[/–-] ?[0-9]+)? 类//g')"
+    for _v in $(printf '%s\n' "$_seg" | grep -oE '(\*\*)?[0-9]+ 类(\*\*|：|（|检查)' | grep -oE '[0-9]+' | sort -u); do
+      FID_HITS=$((FID_HITS + 1))
+      [ "$_v" = "$FIDCLS" ] || FID_BAD="$FID_BAD ${_f}:类数=${_v}(实况 ${FIDCLS})"
+    done
+  done
+  if [ -n "$FID_BAD" ]; then bad "保真闸类数声称陈旧:${FID_BAD}"
+  elif [ "$FID_HITS" -eq 0 ]; then info "未出现保真闸类数声称（域：README + docs/**；写法：fidelity-gate 同行 N 类）"
+  else ok "保真闸类数声称与实现一致（命中 ${FID_HITS} 处，实际 ${FIDCLS} 类）"; fi
+fi
 # F375：`docs/development.md` §7「派生计数口径」表的**当前实况**列是**活声称**（表内只写裸数字或
 #   「N（M1–MN）」形态）⇒ 既不在第 1 类「N 项…」族域内、也无任何门禁覆盖（实证：长期漂移
 #   「167（M1–M167）」与「24」而实况 171/25）。本检查按**行标签**定位该表（标签即契约），取末列
