@@ -90,6 +90,8 @@
   - **为何不一律判红**：临时根顶层常有**他人**遗留且持续新增的同形条目，一律判红会使本机默认模式恒红并**归因错误**（把他人残留记到本工程头上）。
 - **豁免（`--exempt-from <文件>`，缺省不启用）**：读取登记文件的 `write_scope:` 段 `exempt:` 列表（约定为运行根 `README.md`）；命中路径与登记项**相等**、或**为其子路径**（登记项是命中路径的祖先目录，如登记 `plans` 覆盖 `plans/keep-me.bak`）者降级 **INFO**（列出但不判 FAIL）。登记文件不存在或不可读 ⇒ **exit 2**（无法核验 ≠ 通过）。
 - 不变：G1 与 G2 仍按 §6.2 命名口径**一律判 FAIL**，不适用上述归属降级。
+- **运行根 `write_scope.cleanup_status` 的实况核验（判据 h，F396/F403）**：`cleanup_status: clean` 时运行根**含子目录**不得存在黑名单命名物与编译缓存（`*.bak` / `*.bak-*` / `*~` / `*.orig` / `*.rej` / `*.tmp` / `*.swp` / `__pycache__` / `*.pyc`）；命中即 FAIL 并报**计数 + 前 6 条**；递归扫描需要 `find`，缺 `find` ⇒ exit 2（无法核验 ≠ 通过）。**F403 实证**：原实现只扫**顶层**（shell 通配）⇒ 运行根子目录 77 处 `.bak`/`.pyc`（含 `tools/__pycache__/*.pyc`、`logs/**/*.bak`）在场而门仍 rc=0 ⇒ `cleanup_status: clean` 在子目录层面不可核验。工程目录内的同类残留仍由 G1 负责（G1 本就递归）。
+- **字节码缓存预防（MUST）**：运行根工具自检/探针 MUST 用 `PYTHONDONTWRITEBYTECODE=1`（或 `python3 -B`）或跑完即删 `__pycache__`——`python3 -m py_compile` 会在被测目录留下 `__pycache__`，属 §6.2 黑名单（F403 的直接来源）。
 - 实现：`plans/write-scope-check.sh`（正式位 `~/.dsh-codepunk/scripts/`）——**退出码：0 通过 / 1 发现越界 / 2 无法核验或用法错**；结论码为 2 时不得当作通过（无法核验 ≠ 通过）。
 
 ### 6.5 宿主执行陷阱（本机实测，MUST）
