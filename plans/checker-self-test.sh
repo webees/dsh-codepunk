@@ -1782,12 +1782,14 @@ python3 - "$work/cur/plans/write-scope-check.sh" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-old = "    -h|--help)  sed -n '2,44p' \"$0\" | sed 's/^# \\{0,1\\}//'; exit 0 ;;"
-new = "    -h|--help)  echo '用法回归（探针用）' >&2; exit 2 ;;"
+# F379：变异锚点 MUST 只依赖**被守护的分支形态**，不得依赖易碎常量（原锚点写死了 `-h` 的
+#   行区间 `2,44p`；本轮把用法块由 44 行扩到 50 行后变异即不落地，自检因「变异未生效」整轮变红）。
+old = "    -h|--help)  sed -n '"
+new = "    -h|--help)  exit 2  # M149-MUT -- sed -n '"
 assert old in s, 'M149 变异目标行未找到'
 open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
 PYEOF
-mutate "write-scope-check.sh 的 -h 分支改为 exit 2" "$work/cur/plans/write-scope-check.sh" '用法回归（探针用）'
+mutate "write-scope-check.sh 的 -h 分支改为 exit 2" "$work/cur/plans/write-scope-check.sh" 'M149-MUT'
 check_rc "M149 实现者的 -h 回归 → doc-consistency 须报退出码契约漂移" \
   "bash plans/doc-consistency.sh 2>&1" 1 "退出码契约漂移"
 
@@ -2353,6 +2355,46 @@ sed -i.bak 's/if \[ "${2:-0}" -gt 0 \]; then/if false; then  # F374-COV-MUT/' "$
 mutate "M171-d 变异（覆盖分支恒假）" "$work/cur/plans/checker-self-test.sh" 'F374-COV-MUT'
 check_rc "M171-d 覆盖分支被破坏后同命令须复现旧文案（证明分支非空转）" \
   "DSH_CODEPUNK_ECHO_SKIPPED=3 bash plans/checker-self-test.sh --coverage-echo" 0 "全部变异均被对应检查项捕获"
+
+echo "[M173 运行根 write_scope 台账段（R17/F377）]"
+# 契约：references/artifacts.md §1.3 —— 运行根 README MUST 含 `write_scope:` 段（5 键：
+#   run_id / allowed_prefixes / created / cleanup_status / exempt），且 `cleanup_status: clean`
+#   是交接门与合并门的前置读数。夹具全部在沙箱内自建 ⇒ 不依赖本席真实运行根。
+fresh
+RR1="$work/rr-noblock"
+mkdir -p "$RR1"
+printf '# 运行根（夹具）\n\n## 说明\n\n本夹具**故意不含** write_scope 段。\n' > "$RR1/README.md"
+check_rc "M173-a 运行根 README 缺 write_scope 段 → 须 rc=1（R17 MUST）" \
+  "bash plans/write-scope-check.sh --run-root \"$RR1\"" 1 "缺 write_scope: 段"
+RR2="$work/rr-ok"
+mkdir -p "$RR2"
+{
+  printf '# 运行根（夹具）\n\n```yaml\n'
+  printf 'write_scope:\n'
+  printf '  run_id: run-fixture\n'
+  printf '  allowed_prefixes:\n    - "logs/"\n'
+  printf '  created:\n    - "logs/x"\n'
+  printf '  cleanup_status: clean\n'
+  printf '  exempt: []\n'
+  printf '```\n'
+} > "$RR2/README.md"
+check_rc "M173-b write_scope 段 5 键齐备 → 须 rc=0" \
+  "bash plans/write-scope-check.sh --run-root \"$RR2\"" 0 "write_scope 段 5 键齐备"
+RR3="$work/rr-misskey"
+mkdir -p "$RR3"
+grep -v '^  exempt:' "$RR2/README.md" > "$RR3/README.md"
+check_rc "M173-c 段缺键（exempt）→ 须 rc=1 报缺键" \
+  "bash plans/write-scope-check.sh --run-root \"$RR3\"" 1 "write_scope 段缺键"
+check_rc "M173-d 运行根目录不存在 → 须 rc=2（无法核验 ≠ 通过）" \
+  "bash plans/write-scope-check.sh --run-root \"$work/no-such-run-root\"" 2 "运行根不存在"
+fresh
+# 非空转证明：删掉「缺键判据」那一行 ⇒ 同 c 夹具须不再报缺键（rc=0）。
+# 注：直接**删除**该行会让 `for` 循环体为空 ⇒ 语法错（实测 rc=2）；故改为把 grep 判据换成 `true`，
+#   循环体仍合法、MISS 永不置位 —— 等价于「键校验失效」。
+sed -i.bak 's|grep -qE "^\[\[:space:\]\]+\${k}:"|true  # F377-KEYS-MUT|' "$work/cur/plans/write-scope-check.sh"
+mutate "M173-e 变异（缺键判据失效）" "$work/cur/plans/write-scope-check.sh" 'F377-KEYS-MUT'
+check_rc "M173-e 缺键判据被移除后同夹具须复现 rc=0（证明键校验非空转）" \
+  "bash plans/write-scope-check.sh --run-root \"$RR3\"" 0 "write_scope 段 5 键齐备"
 
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
