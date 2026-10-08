@@ -216,6 +216,20 @@ D3=$(python3 - <<'PYEOF' 2>/dev/null
 import re, subprocess
 files = [f for f in subprocess.run(['git','ls-files'],capture_output=True,text=True).stdout.split()
          if f.endswith('.md')]
+if not files:
+    # F388（本轮对抗实测）：说谎/异常 git（exit 0 零输出）或 GIT_DIR/GIT_WORK_TREE 误设时 `git ls-files`
+    #   返回空 ⇒ 下方循环空转却 report PASS（「行号引用均附符号名」「仓内相对链接均可达」）——否决式计分下
+    #   直接得到 100/100 假满分（与 F299 同类，F299 修的是 doc-consistency 类 8）。故回退文件系统遍历
+    #   （真核验，非跳过）；遍历仍为零则打印 NOFILES 由 shell 侧判「无法核验」。
+    import os
+    for _dp, _dns, _fns in os.walk('.'):
+        _dns[:] = [d for d in _dns if d != '.git']
+        for _fn in _fns:
+            if _fn.endswith('.md'):
+                files.append(os.path.relpath(os.path.join(_dp, _fn), '.'))
+    if not files:
+        print('NOFILES')
+        raise SystemExit(0)
 bad = []
 sym = re.compile(r'`[A-Za-z_][A-Za-z0-9_]*(?:\(\))?`|`[A-Za-z_][A-Za-z0-9_.]*\(`')
 for f in files:
@@ -231,6 +245,8 @@ if [ "$NOPY" = 1 ]; then
   :                                  # 上方已报「无法核验」，勿重复
 elif [ "${D3_RC:-1}" != 0 ]; then
   report "$FAIL" "D3 无法核验（python3 执行失败，退出码 ${D3_RC}）——无法核验 ≠ 通过"
+elif [ "$D3" = "NOFILES" ]; then
+  report "$FAIL" "D3 无法核验（git 枚举为空且文件系统遍历未找到 .md）——无法核验 ≠ 通过"
 elif [ -z "$D3" ]; then
   report "$PASS" "D3 行号引用均附符号名（可复核）"
 else
@@ -244,8 +260,22 @@ EC=$(grep -c "^## " README.md)
 # E3 仓内相对链接可达性（死链 = 读者可见缺陷；实测原三检查器全漏）
 E3=$(python3 - <<'PYEOF' 2>/dev/null
 import os, re, subprocess
-files = [f for f in subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
+files = [f for f in subprocess.run(['git','ls-files'],capture_output=True,text=True).stdout.split()
          if f.endswith('.md')]
+if not files:
+    # F388（本轮对抗实测）：说谎/异常 git（exit 0 零输出）或 GIT_DIR/GIT_WORK_TREE 误设时 `git ls-files`
+    #   返回空 ⇒ 下方循环空转却 report PASS（「行号引用均附符号名」「仓内相对链接均可达」）——否决式计分下
+    #   直接得到 100/100 假满分（与 F299 同类，F299 修的是 doc-consistency 类 8）。故回退文件系统遍历
+    #   （真核验，非跳过）；遍历仍为零则打印 NOFILES 由 shell 侧判「无法核验」。
+    import os
+    for _dp, _dns, _fns in os.walk('.'):
+        _dns[:] = [d for d in _dns if d != '.git']
+        for _fn in _fns:
+            if _fn.endswith('.md'):
+                files.append(os.path.relpath(os.path.join(_dp, _fn), '.'))
+    if not files:
+        print('NOFILES')
+        raise SystemExit(0)
 bad = []
 for f in files:
     txt = open(f, encoding='utf-8', errors='ignore').read()
@@ -273,6 +303,8 @@ if [ "$NOPY" = 1 ]; then
   :                                  # 上方已报「无法核验」，勿重复
 elif [ "${E3_RC:-1}" != 0 ]; then
   report "$FAIL" "E3 无法核验（python3 执行失败，退出码 ${E3_RC}）——无法核验 ≠ 通过"
+elif [ "$E3" = "NOFILES" ]; then
+  report "$FAIL" "E3 无法核验（git 枚举为空且文件系统遍历未找到 .md）——无法核验 ≠ 通过"
 elif [ -z "$E3" ]; then
   report "$PASS" "E3 仓内相对链接均可达"
 else

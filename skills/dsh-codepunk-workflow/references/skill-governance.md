@@ -172,6 +172,8 @@
 | **钩子配置完整性**（产品启动时读取的 `plans/hooks/hooks.json`：JSON 可解析 · matcher/type/command 齐备 · 命令引用的仓库内文件存在 · **解释器在 PATH 内**——缺解释器时钩子起不来、产品不设 decision ⇒ 放行，属失败开放；F368 实证：坏配置下五个门禁全绿） | `doc-consistency.sh` 第 7 类子项（+ 存活自检 M168） | 机械 |
 | **hooks 护栏路径归一**（`/etc`＝`/private/etc`＝符号链接＝大小写变体同判；F383 实证） | `plans/hook-write-scope.py` 的 `canon()` | 机械（M177） |
 | **hooks 命令抽取取真目标**（`chmod 777`/`truncate -s 0`/`chown root:wheel` 的实参不得顶替路径；F384 实证） | `plans/hook-write-scope.py` 的 `looks_like_path()` | 机械（M178） |
+| **零输入不得呈现为「通过」**（门禁的 PASS 前提是**真的扫到了输入**：替身/损坏的 `git`（退出码 0 零输出）或 `GIT_DIR` 误设时枚举为空 ⇒ 泄露防护门须退出码 2 并报「已扫描 N 个跟踪文件」；F387 实证：曾「一个文件不扫」仍打「✓ 通过」） | `plans/dsh-codepunk-leak-guard.sh` 的 git 自证 + 扫描计数（+ 存活自检 M180） | 机械 |
+| **空枚举须回退核验**（`git ls-files` 为空时不得让循环空转判 PASS：审计门 D3「行号引用均附符号名」/E3「仓内相对链接均可达」改为文件系统遍历回退，遍历仍空则报「无法核验 ≠ 通过」；F388 实证：说谎 `git` 下曾给 100/100 假满分） | `plans/preset-audit.sh` 的 D3/E3 `if not files:` 回退（+ 存活自检 M181） | 机械 |
 | **扫描工具缺失须显式失败**（`find` 不在 PATH 时进程替换为空、`2>/dev/null` 吞掉 `command not found` ⇒ 残留扫描全判「无残留」、`.DS_Store` 计数判 0；F372 实证：同一含残留沙箱在有/无 `find` 下 rc=1 → rc=0） | `write-scope-check.sh` 扫描工具预检 + `preset-score.sh` B14 + `verify-battery.sh` 杂散项（+ 存活自检 M169） | 机械 |
 | **doc 类数声称与实现派生一致**（`doc-consistency.sh` 同行的「N 类」须等于类段数派生值；序数写法「第 N 类」剔除不误判；F373 实证：`docs/architecture.md` 长期写 24 类而实现 25） | `doc-consistency.sh` 第 1 类派生核验（+ 存活自检 M170） | 机械 |
 | **存活自检的结论行须据实报告覆盖**（环境受限时若干变异只打印「跳过」而不执行，末行却称「全部变异均被对应检查项捕获」；F374 实证：设/未设 `DSH_APP_ROOT` 两次运行 ✅275 与 ✅270 而文案相同，CI 未设该变量 ⇒ 恒跳过该族） | `checker-self-test.sh` 结论行（`coverage_line` + `skip()` 计数；+ 存活自检 M171） | 机械 |

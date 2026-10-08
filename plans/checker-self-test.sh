@@ -2555,6 +2555,42 @@ mutate "M179-b 变异（载体判据被短路）" "$work/cur/plans/doc-consisten
 check_no_match "M179-b 判据短路后不得再报「治理矩阵载体不可解析」（证明该判据非空转）" \
   "bash plans/doc-consistency.sh 2>&1" "治理矩阵载体不可解析"
 
+echo "[M180 泄露防护门须自证 git 可用与扫描非零（F387：零输入不得呈现为「通过」）]"
+# 契约：tree 模式「通过」的前提是**真的扫到了文件**；说谎/损坏的 git（exit 0 零输出）或
+#   `GIT_DIR`/`GIT_WORK_TREE` 误设会让 `git ls-files` 返回空 ⇒ 一个文件都不扫却打「✓ 通过」
+#   （与 F250/F252 同族：跳过/依赖故障不得伪装成通过）。
+fresh
+mkdir -p "$work/bin-lie"
+printf '#!/bin/sh\nexit 0\n' > "$work/bin-lie/git"
+chmod 755 "$work/bin-lie/git"
+[ -x "$work/bin-lie/git" ] && echo "  · M180 夹具（说谎 git：exit 0 且零输出）就位"
+check_rc "M180-a 替身 git（rev-parse --git-dir 无输出）须以 2 拒绝（无法核验 ≠ 通过）" \
+  "PATH=\"$work/bin-lie:\$PATH\" bash plans/dsh-codepunk-leak-guard.sh --tree" 2 "git 不可用或行为异常"
+sed -i.bak -e '/^GITDIR_OUT=\$(git rev-parse --git-dir/,/^fi$/d' \
+  -e '/^    if \[ .* -eq 0 \]; then$/,/^    fi$/d' "$work/cur/plans/dsh-codepunk-leak-guard.sh"
+rm -f "$work/cur/plans/dsh-codepunk-leak-guard.sh.bak"
+mutate_gone "M180-b 删除型变异（移除 git 自证守卫）" "$work/cur/plans/dsh-codepunk-leak-guard.sh" 'GITDIR_OUT='
+mutate_gone "M180-b2 删除型变异（移除零扫描守卫）" "$work/cur/plans/dsh-codepunk-leak-guard.sh" '未扫描到任何跟踪文件'
+check_rc "M180-b 两道自证均移除后同夹具须复现假通过 rc=0（证明两道守卫非空转）" \
+  "PATH=\"$work/bin-lie:\$PATH\" bash plans/dsh-codepunk-leak-guard.sh --tree" 0 "泄露防护门：通过"
+
+echo "[M181 审计门须在 git 枚举为空时回退核验（F388：零输入不得判满分）]"
+# 契约：D3/E3 的 PASS 声称「仓内行号引用均附符号名」「仓内相对链接均可达」——若 git 枚举为空且不回退，
+#   循环空转即 PASS，否决式计分下直接 100/100 假满分。
+fresh
+printf '\n缺陷样例：见 plans/foo.sh:12 处。\n' >> "$work/cur/docs/faq.md"
+mutate "M181-a 夹具落地（注入缺符号名的行号引用）" "$work/cur/docs/faq.md" 'plans/foo.sh:12'
+mkdir -p "$work/bin-lie2"
+printf '#!/bin/sh\nexit 0\n' > "$work/bin-lie2/git"
+chmod 755 "$work/bin-lie2/git"
+check_rc "M181-a 说谎 git + 注入缺陷 ⇒ 须回退文件系统遍历并捕获（rc=1，D3 ✗）" \
+  "PATH=\"$work/bin-lie2:\$PATH\" bash plans/preset-audit.sh 2>&1" 1 "D3 行号引用缺符号名"
+sed -i.bak 's|^if not files:$|if False:  # F388-MUT|' "$work/cur/plans/preset-audit.sh"
+rm -f "$work/cur/plans/preset-audit.sh.bak"
+mutate "M181-b 变异（关闭文件系统回退）" "$work/cur/plans/preset-audit.sh" 'F388-MUT'
+check_no_match "M181-b 关闭回退后同一缺陷不得再被捕获（证明回退非空转）" \
+  "PATH=\"$work/bin-lie2:\$PATH\" bash plans/preset-audit.sh 2>&1" "D3 行号引用缺符号名"
+
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
 #   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。
