@@ -2746,6 +2746,27 @@ check_rc "M190-b2 合法取值不得被误拒（--order=5 / --id=my-preset.1 须
 mutate_gone "M190-c 删除型变异（移除 --order 守卫；作用于沙箱副本）" "$work/cur/plans/preset-declare.mjs" "Number.isSafeInteger(ORDER)"
 check_rc "M190-c 移除守卫后同输入须复现静默产出（order: NaN 落进声明）" "node plans/preset-declare.mjs emit --order=abc >\"$work/m190c.out\" 2>&1; grep -q 'order: NaN' \"$work/m190c.out\" && echo SILENT_NAN" 0 "SILENT_NAN"
 
+# F400：巡检名册时间戳实况核验（判据 i）——未来时间 / 非单调 MUST 报出，合规 MUST 通过。
+#   夹具全部落在 $work 沙箱（纪律 ㉟：变异与夹具 MUST 作用于沙箱副本，绝不碰源树）。
+m191_dir="$work/m191"; rm -rf "$m191_dir"; mkdir -p "$m191_dir/future" "$m191_dir/nonmono" "$m191_dir/ok" "$m191_dir/bad"
+m191_past="$(date -u -v-2H +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '-2 hours' +%Y-%m-%dT%H:%M:%SZ)"
+m191_now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+m191_fut="$(date -u -v+7H +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '+7 hours' +%Y-%m-%dT%H:%M:%SZ)"
+mk191() { # mk191 <目录> <at1> <at2>（时间戳一律带自身的偏移设计符 `Z`，跨时区主机同结果）
+  printf 'updated_at: %s\npatrol_log:\n  - round: 1\n    at: %s\n    note: 夹具一\n  - round: 2\n    at: %s\n    note: 夹具二\n' \
+    "$3" "$2" "$3" > "$m191_dir/$1/agents.yaml"
+}
+mk191 future "$m191_past" "$m191_fut"
+mk191 nonmono "$m191_now" "$m191_past"
+mk191 ok "$m191_past" "$m191_now"
+printf 'updated_at: %s\npatrol_log:\n  - round: 1\n    at: 2026-10-08T22:00+07:00\n    note: 形态夹具（缺秒）\n' \
+  "$m191_now" > "$m191_dir/bad/agents.yaml"
+echo "[M191 巡检名册时间戳实况核验（未来时间 / 非单调）（F400）]"
+check_rc "M191-a 未来时间戳须 rc=1 并报出（判据 i 非空转）" "bash plans/patrol-check.sh --run-root \"$m191_dir/future\" 2>&1" 1 "未来时间"
+check_rc "M191-b 非单调 at 须 rc=1 并报出" "bash plans/patrol-check.sh --run-root \"$m191_dir/nonmono\" 2>&1" 1 "非递减"
+check_rc "M191-c 合规夹具须 rc=0（不得误报）" "bash plans/patrol-check.sh --run-root \"$m191_dir/ok\" 2>&1" 0 "巡检名册合规"
+check_rc "M191-d 形态非法（缺秒/缺偏移）须 rc=1 并报出" "bash plans/patrol-check.sh --run-root \"$m191_dir/bad\" 2>&1" 1 "形态非法"
+
 # F394：终局 MUTFAIL 门（早退点之后的变异不得静默空转）——早退点在文件中部，其后新增的变异
 #   若 `mutate`/`mutate_gone` 失败只打印 ‼ 而退出码仍 0（实证：M185-a 的模式串 `**27 类**：编号` 在
 #   `grep -E` 下属非法重复算子 ⇒ 从未落地，却仍打印「✅ …」与「185/185 全捕获」）⇒ 必须在结论行之前再判一次。

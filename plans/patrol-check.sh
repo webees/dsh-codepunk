@@ -14,7 +14,7 @@
 #
 # 依赖: bash + awk / grep / sort / uniq（**不依赖 YAML 库**——仓内无 pyyaml，一律行级解析）
 #
-# 说明（判据 a–f；源＝references/artifacts.md 的 D095/D099 写入约束「每个 round 条目须齐备
+# 说明（判据 a–i；源＝references/artifacts.md 的 D095/D099 写入约束「每个 round 条目须齐备
 #   round/at/note」）:
 #   a 在 agents.yaml 定位 `patrol_log:` 段（到下一个顶格键为止），逐条解析 `- round: <整数>` 条目块；
 #   b 每条 MUST 有非空 `at:` 与非空 `note:`（缺失或值为空 ⇒ 违规，报「缺 at」/「缺 note」）；
@@ -25,6 +25,11 @@
 #   g 单引号标量闭合性（**必要条件**）：形如 `键: '…'` 的行内单引号个数 MUST 为偶数（YAML 单引号
 #     标量内的撇号须双写为两个单引号）。实证：`note: '…it's…'` ⇒ js-yaml 报
 #     `bad indentation of a mapping entry`（整个名册不可解析），而本门与 write-scope-check 曾同报通过。
+#   i 时间戳实况核验（F400）：`at:`/`updated_at:` MUST 为 `YYYY-MM-DDThh:mm:ss` 且带偏移（`Z` 或
+#     `±hh:mm`，`Z` 与 `+00:00` 等价）；MUST NOT 晚于
+#     当前时刻（容差 ${TS_TOL:-120}s）；巡检 `at` 按条目顺序 MUST 非递减。实证：上一轮条目写成次日
+#     05:05（实际落盘 22:02:37+07:00），而本门与 tools/patrol-readback.cjs 均报通过 ⇒ 名册时间线
+#     不可复算（D094/D095 以时间为据）。
 #   值 MUST 为单行标量；段缺失或段内零条目同样判违规（1）。重复键（D099 的严格解析器域）不在
 #   本门判据内——见解析处的 dsh-debt 标注。
 #   环境缺口一律 `exit 2` 并打印「无法核验 ≠ 通过」，不得静默判通过。
@@ -57,7 +62,7 @@ while [ $# -gt 0 ]; do
       [ $# -ge 2 ] || { echo "✗ --max-gap 缺参数（无法核验 ≠ 通过）" >&2; exit 2; }
       MAXGAP="$2"; shift 2 ;;
     -h|--help)
-      sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+      sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)
       echo "✗ 未知参数: $1（用法: patrol-check.sh --run-root <运行根> [--ledger <台账>] [--max-gap N]）" >&2
       exit 2 ;;
@@ -201,6 +206,47 @@ while IFS= read -r cur; do
   fi
   prev="$cur"
 done <<< "$(printf '%s\n' "$ROUNDS" | grep -v '^$' | sort -n -u)"
+
+# ── i 时间戳实况核验（F400）────────────────────────────────────────────────────
+TS_TOL="${TS_TOL:-120}"
+TS_ROWS=$(grep -nE "^[[:space:]]*(at|updated_at):" "$AGENTS" 2>/dev/null \
+  | sed -E "s/^([0-9]+):[[:space:]]*([A-Za-z_]+):[[:space:]]*[\"']?([^\"'[:space:]]+)[\"']?.*$/\1	\2	\3/")
+if [ -n "$TS_ROWS" ]; then
+  while IFS= read -r _m; do
+    [ -n "$_m" ] && bad "$_m"
+  done <<< "$(printf '%s\n' "$TS_ROWS" | awk -v now="$(date +%s)" -v tol="$TS_TOL" '
+    function days(y, m, d,   era, yoe, doy, doe, yy) {
+      yy = y - (m <= 2 ? 1 : 0)
+      era = int((yy >= 0 ? yy : yy - 399) / 400)
+      yoe = yy - era * 400
+      doy = int((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1
+      doe = yoe * 365 + int(yoe / 4) - int(yoe / 100) + doy
+      return era * 146097 + doe - 719468
+    }
+    function epoch(v,   y, mo, d, h, mi, s, sg, off) {
+      y = substr(v,1,4)+0; mo = substr(v,6,2)+0; d = substr(v,9,2)+0
+      h = substr(v,12,2)+0; mi = substr(v,15,2)+0; s = substr(v,18,2)+0
+      if (substr(v,20,1) == "Z") { off = 0 }            # RFC 3339 的 UTC 设计符 `Z` 与 `+00:00` 等价
+      else {
+        sg = (substr(v,20,1) == "-") ? -1 : 1
+        off = sg * (substr(v,21,2)*3600 + substr(v,24,2)*60)
+      }
+      return days(y, mo, d) * 86400 + h*3600 + mi*60 + s - off
+    }
+    {
+      split($0, f, "	"); ln = f[1]; key = f[2]; v = f[3]
+      if (index(v, "未记录") == 1) { exempt++; next }   # F382 历史归一占位（诚实标注「未记录」）豁免
+      if (v !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9](Z|[+-][0-9][0-9]:[0-9][0-9])$/) {
+        printf "行 %s 的 %s 时间戳形态非法（须 YYYY-MM-DDThh:mm:ss 且带偏移：Z 或 ±hh:mm）: %s\n", ln, key, v; next
+      }
+      e = epoch(v)
+      if (e > now + tol) printf "行 %s 的 %s 时间戳晚于当前时刻（未来时间）: %s\n", ln, key, v
+      if (key == "at") {
+        if (seen && e < prev) printf "行 %s 的 at 时间戳早于上一条（须按条目顺序非递减）: %s\n", ln, v
+        prev = e; seen = 1
+      }
+    }')"
+fi
 
 # ── 结论 ────────────────────────────────────────────────────────────────────
 if [ -z "$BAD" ]; then
