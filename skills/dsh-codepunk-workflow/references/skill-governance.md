@@ -169,6 +169,7 @@
 | **硬规则命名空间洁净**（禁三位以上 R 号；轮次引用写「轮次 N」） | `doc-consistency.sh` 第 19 类 | 机械 |
 | **岗位数一致性**（11 内建 + 2 外部后端；「13 岗位」须带历史/例外标记） | `doc-consistency.sh` 第 21 类 | 机械 |
 | **矩阵覆盖**（每个检查类须在治理矩阵中登记，含「第 a–b 类」范围写法） | `doc-consistency.sh` 第 22 类 | 机械 |
+| **钩子配置完整性**（产品启动时读取的 `plans/hooks/hooks.json`：JSON 可解析 · matcher/type/command 齐备 · 命令引用的仓库内文件存在 · **解释器在 PATH 内**——缺解释器时钩子起不来、产品不设 decision ⇒ 放行，属失败开放；F368 实证：坏配置下五个门禁全绿） | `doc-consistency.sh` 第 7 类子项（+ 存活自检 M168） | 机械 |
 | **运行型脚本退出码声明**（`plans/*.{sh,py,mjs}` MUST 在头部声明退出码；豁免仅两类：`dsh-codepunk-home.sh` 特例、无任何显式退出调用者——F336 起**取消**「含 source 一词即豁免」的启发式；环境类失败返回 2——F146/F152 同源） | `doc-consistency.sh` 第 5 类分支 | 机械 |
 | **简报检索日**（含 URL 的 benchmarks 须带 `retrieved_at`；不可考时显式标注依据） | `doc-consistency.sh` 第 23 类 | 机械 |
 | **证据引用包含性**（`log_ref` 解析后须位于交付目录内；绝对路径 / `..` 逃逸 / 指向目录外的符号链接一律 FAIL——F348 实证） | `plans/evidence-verify.sh` ② + 存活变异 M154 | 机械 + 变异 |

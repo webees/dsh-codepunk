@@ -632,6 +632,59 @@ else
   info "Dependabot 配置核验跳过（缺 .github/dependabot.yml 或 plans/github-setup.sh）——无法核验≠通过"
 fi
 
+# 类 7 子项（F368）：钩子配置完整性——`plans/hooks/hooks.json` 由产品在启动时读取（`agent.cordis.yml`
+#   的 `hooks-write-scope` 条目 configPath）。实测：截断为非法 JSON、或把命令路径改成不存在的文件时，
+#   doc·audit·score·preset-compat·write-scope **五个门禁全绿**、零处提到 hooks ⇒ 拦截层静默消失
+#   （产品侧仅 `logger.warn(… — no hooks registered)`）。此处核验语法、结构、命令引用的仓库内文件
+#   是否存在，以及**解释器是否在 PATH 内**（失败开放：命令起不来时产品不设 decision ⇒ 放行）。
+if [ -f plans/hooks/hooks.json ]; then
+  HOOK_INTERP=$(sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"[:space:]]*\).*/\1/p' plans/hooks/hooks.json | head -1)
+  if [ -n "$HOOK_INTERP" ] && ! command -v "$HOOK_INTERP" >/dev/null 2>&1; then
+    bad "钩子解释器 \`${HOOK_INTERP}\` 不在 PATH ⇒ 钩子命令无法启动、产品不设 decision ⇒ 放行（拦截层静默失效）：装该解释器，或移除 agent.cordis.yml 的 hooks-write-scope 条目"
+  fi
+  if command -v python3 >/dev/null 2>&1; then
+    HOOK_ISSUE=$(python3 <<'PYEOF'
+import json, os, re
+issues = []
+try:
+    d = json.load(open('plans/hooks/hooks.json', encoding='utf-8'))
+except Exception as e:
+    print('plans/hooks/hooks.json 不是合法 JSON（%s）' % e)
+    raise SystemExit
+groups = (d.get('hooks') or {}).get('PreToolUse')
+if not isinstance(groups, list) or not groups:
+    issues.append('hooks.PreToolUse 缺失或为空')
+else:
+    for i, g in enumerate(groups):
+        if not (g.get('matcher') or '').strip():
+            issues.append('第 %d 组的 matcher 为空（缺 matcher 即匹配全部工具）' % (i + 1))
+        for h in (g.get('hooks') or []):
+            if h.get('type') != 'command':
+                issues.append('第 %d 组的 hook type 非 command' % (i + 1))
+                continue
+            cmd = h.get('command') or ''
+            # 注：本行 MUST 用双引号 python 字面量——在 `$()` 内的 heredoc 正文里出现 `\'`
+            #   （反斜杠+单引号）会让 bash 的 `$()` 引号扫描失衡 ⇒ 整脚本 `bash -n` 报
+            #   「unexpected EOF while looking for matching `'`」（实测：单引号版本 rc=2）。
+            for m in re.finditer(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\"'\s]+)", cmd):
+                if not os.path.exists(m.group(1)):
+                    issues.append('命令引用的仓库内文件不存在：%s' % m.group(1))
+if issues:
+    print(', '.join(issues[:4]) + ('' if len(issues) <= 4 else ' 等共 %d 处' % len(issues)))
+PYEOF
+)
+    if [ -z "$HOOK_ISSUE" ]; then
+      ok "钩子配置完整（JSON 可解析 · matcher/type/command 齐备 · 命令引用的仓库内文件存在 · 解释器在 PATH 内）"
+    else
+      bad "钩子配置不完整 → ${HOOK_ISSUE}"
+    fi
+  else
+    info "钩子配置结构核验跳过（无 python3）——无法核验≠通过"
+  fi
+else
+  info "钩子配置核验跳过（缺 plans/hooks/hooks.json）——无法核验≠通过"
+fi
+
 echo "[8] 日期形态与未来日期"
 TODAY=$(date +%F)
 if ! command -v python3 >/dev/null 2>&1; then

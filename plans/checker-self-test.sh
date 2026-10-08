@@ -419,16 +419,19 @@ chmod 700 "$work/ro" 2>/dev/null
 
 echo "[M14 声明副本敏感度（双向：未改须一致 / 改适配路径须漂移）]"
 # 语义模式需 js-yaml：由 DSH_APP_ROOT / DSH_ASAR 提供（用户环境契约，与 preset-compat 一致）
-REAL_PATCH="${DSH_PROFILE_PATCH:-$REAL_HOME/.dsh/profiles/desktop/cordis.patch.yml}"
+# F370：夹具 MUST 由**源**在沙箱内生成（`apply --append --patch <沙箱文件>`），不得指向用户平面
+#   实况补丁——否则「源前进而用户未 apply」这一**正常开发态**下本断言假红（实测：源 19 条 / 副本 17 条
+#   ⇒ rc=1「漂移」），且 CI 无该文件 ⇒ 整族退化为「ℹ 跳过」（跳过 ≠ 通过）。
+FIX_PATCH="$work/prof/cordis.patch.yml"
 if [ -z "${DSH_APP_ROOT:-}${DSH_ASAR:-}" ]; then
   printf '  ℹ M14 跳过（未设 DSH_APP_ROOT/DSH_ASAR，无法进入语义核验模式）\n'
-elif [ ! -f "$REAL_PATCH" ]; then
-  printf '  ℹ M14 跳过（未找到 profile patch：%s）\n' "$REAL_PATCH"
+elif ! command -v node >/dev/null 2>&1; then
+  printf '  ℹ M14 跳过（缺 node）\n'
 else
-  fresh; mkdir -p "$HOME/.dsh/profiles/desktop"
-  cp "$REAL_PATCH" "$HOME/.dsh/profiles/desktop/cordis.patch.yml"
-  check_rc "M14a 未篡改 → 一致" "node plans/preset-declare.mjs check" 0 "语义一致"
-  python3 - "$HOME/.dsh/profiles/desktop/cordis.patch.yml" <<'PYEOF'
+  fresh; mkdir -p "$work/prof"; : > "$FIX_PATCH"
+  check_rc "M14a 由源生成副本 → 一致（自足夹具，不依赖用户平面）" \
+    "node plans/preset-declare.mjs apply --append --patch \"$FIX_PATCH\" >/dev/null && node plans/preset-declare.mjs check --patch \"$FIX_PATCH\"" 0 "语义一致"
+  python3 - "$FIX_PATCH" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
@@ -437,7 +440,7 @@ if n == s:                      # 兜底：按 skills/ 片段做更宽松的替�
     n = s.replace("new URL('skills/'", "new URL('/tmp/evil-skills/'", 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
-  check_rc "M14b 改适配路径 → 漂移" "node plans/preset-declare.mjs check" 1 "漂移"
+  check_rc "M14b 改适配路径 → 漂移" "node plans/preset-declare.mjs check --patch \"$FIX_PATCH\"" 1 "漂移"
 fi
 
 echo "[M15 文档声称一致性（doc-consistency 存活）]"
@@ -1912,16 +1915,26 @@ check_no_match "M155-f 判据移除 → 不得再报「根节点不是序列」�
   "node plans/preset-declare.mjs apply --patch '$f349_d/map.yml' --append 2>&1" "根节点不是序列"
 
 echo "[M156 电池跳过项不得计入「满分」（F350）]"
-fresh
+# F370：电池的第 8b 项（声明副本漂移）读 `$DSH_PROFILE_PATCH`，默认指向用户平面实况补丁 ⇒
+#   用户未 apply 时该项 ✗、F=1、结论行变「存在失败项」，于是「跳过 ≠ 通过」永不出现（M156-a 假红）。
+#   此处同样注入**由源生成的沙箱夹具**，使本断言只取决于「跳过项与结论行的关系」这一被检语义。
+if [ -z "${DSH_APP_ROOT:-}${DSH_ASAR:-}" ] || ! command -v node >/dev/null 2>&1; then
+  printf '  ℹ M156 跳过（缺 node 或 DSH_APP_ROOT/DSH_ASAR——声明漂移项无法进入语义模式）\n'
+else
+fresh; mkdir -p "$work/prof"
+BAT_PATCH="$work/prof/battery-patch.yml"; : > "$BAT_PATCH"
+( cd "$work/cur" && node plans/preset-declare.mjs apply --append --patch "$BAT_PATCH" >/dev/null 2>&1 ) || \
+  printf '  ‼ M156 夹具生成失败（自检自身问题）\n' >&2
 check_rc "M156-a 跳过模式结论行须列出跳过项且不称满分" \
-  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" 0 "跳过 ≠ 通过"
+  "DSH_PROFILE_PATCH=\"$BAT_PATCH\" DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" 0 "跳过 ≠ 通过"
 check_no_match "M156-a2 跳过模式不得出现「全部通过（满分）」" \
-  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "全部通过（满分）"
+  "DSH_PROFILE_PATCH=\"$BAT_PATCH\" DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "全部通过（满分）"
 sed -i.bak 's/跳过 ≠ 通过/（标注已移除）/' "$work/cur/plans/verify-battery.sh"
 rm -f "$work/cur/plans/verify-battery.sh.bak"
 mutate "电池结论行的跳过标注被抹掉" "$work/cur/plans/verify-battery.sh" '（标注已移除）'
 check_no_match "M156-b 标注被抹掉 → 不得再报「跳过 ≠ 通过」（断言非空转）" \
-  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "跳过 ≠ 通过"
+  "DSH_PROFILE_PATCH=\"$BAT_PATCH\" DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "跳过 ≠ 通过"
+fi
 
 # ---------------------------------------------------------------------------
 # M157 / M158：**无 ruby 主机**上的 YAML 解析路径（F351 / F352 / F353）
@@ -2235,6 +2248,32 @@ if command -v node >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
     "运行型入口未实现 -h/--help 用法约定"
 else
   echo "  ℹ M167 跳过（缺 node 或 python3）——跳过 ≠ 通过"
+fi
+
+# ── M168：钩子配置（产品启动时经 `configPath` 读取）须有门禁守护（F368）──────────────
+# 守护点：`doc-consistency.sh` 第 7 类子项「钩子配置完整性」。
+#   实测（加守护前）：把 `plans/hooks/hooks.json` 截断为非法 JSON、或把命令路径改成不存在的文件，
+#   doc·audit·score·preset-compat·write-scope **五个门禁全绿**且零处提到 hooks ⇒ 拦截层静默消失
+#   而无任何红灯（产品侧只有一条 `logger.warn(… — no hooks registered)`）。
+#   断言顺序纪律：同一变异的断言 MUST 排在其 `fresh` 之前（否则跑在已变异副本上）。
+if command -v python3 >/dev/null 2>&1; then
+  fresh
+  check_rc "M168-a 基线：钩子配置完整（rc=0）" "bash plans/doc-consistency.sh" 0 "钩子配置完整"
+  printf '{\n  "hooks": {\n    "PreToolUse": [ { "matcher": "write|edit",\n' > "$work/cur/plans/hooks/hooks.json"
+  mutate "M168-b 变异落地（hooks.json 截断为非法 JSON）" "$work/cur/plans/hooks/hooks.json" '"hooks"'
+  check_rc "M168-b 钩子配置非法 JSON 须被捕获（rc=1）" "bash plans/doc-consistency.sh" 1 "不是合法 JSON"
+  fresh
+  sed -i.bak 's/hook-write-scope\.py/hook-write-scope-TYPO.py/' "$work/cur/plans/hooks/hooks.json"
+  mutate "M168-c 变异落地（命令路径改指不存在的文件）" "$work/cur/plans/hooks/hooks.json" 'TYPO'
+  check_rc "M168-c 命令引用的仓库内文件不存在须被捕获（rc=1）" "bash plans/doc-consistency.sh" 1 \
+    "命令引用的仓库内文件不存在"
+  fresh
+  sed -i.bak 's/"python3 /"python9 /' "$work/cur/plans/hooks/hooks.json"
+  mutate "M168-d 变异落地（解释器改指不存在的命令）" "$work/cur/plans/hooks/hooks.json" 'python9'
+  check_rc "M168-d 解释器不在 PATH 须被捕获（rc=1，失败开放须红灯）" "bash plans/doc-consistency.sh" 1 \
+    "不在 PATH"
+else
+  echo "  ℹ M168 跳过（缺 python3）——跳过 ≠ 通过"
 fi
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
