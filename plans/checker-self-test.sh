@@ -2659,6 +2659,24 @@ GONE_PAT="F394：终局 MUTFAIL ""门（早退点"
 mutate_gone "M186-b 终局门已被删除（删除型变异）" "$work/cur/plans/checker-self-test.sh" "$GONE_PAT"
 check_rc "M186-b 删掉终局门后门计数须降为 1（证明该断言非空转）" "grep -cE 'exit 2; fi\$' plans/checker-self-test.sh | grep -qx 2" 1
 
+echo "[M187 巡检名册单引号标量闭合性（F395：撇号未双写致名册不可解析，而两门曾同报通过）]"
+mkdir -p "$work/rr187"
+cat > "$work/rr187/agents.yaml" <<'YAML187'
+run_id: r187
+patrol_log:
+  - round: 1
+    at: '2026-10-08T00:00:00+07:00'
+    note: '巡检：正常'
+  - round: 2
+    at: '2026-10-08T01:00:00+07:00'
+    note: '巡检：撇号 it's 未双写'
+YAML187
+check_rc "M187-a 单引号标量内未双写撇号须被 patrol-check 报出" "bash plans/patrol-check.sh --run-root \"$work/rr187\"" 1 "单引号标量未闭合"
+sed -i.bak "s/it's/it''s/" "$work/rr187/agents.yaml"
+rm -f "$work/rr187/agents.yaml.bak"
+mutate_gone "M187-b 撇号已双写（删除型变异）" "$work/rr187/agents.yaml" "it's"
+check_rc "M187-b 双写后须判合规（证明该判据非空转）" "bash plans/patrol-check.sh --run-root \"$work/rr187\"" 0 "巡检名册合规"
+
 # F394：终局 MUTFAIL 门（早退点之后的变异不得静默空转）——早退点在文件中部，其后新增的变异
 #   若 `mutate`/`mutate_gone` 失败只打印 ‼ 而退出码仍 0（实证：M185-a 的模式串 `**27 类**：编号` 在
 #   `grep -E` 下属非法重复算子 ⇒ 从未落地，却仍打印「✅ …」与「185/185 全捕获」）⇒ 必须在结论行之前再判一次。

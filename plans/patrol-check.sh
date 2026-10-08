@@ -22,6 +22,9 @@
 #   d `round` MUST 为整数（非整数 ⇒ 违规）；
 #   e 给了 --ledger：每个巡检轮次 MUST 有 `| R<轮次> |` 行（缺 ⇒ 违规）；
 #   f 升序排序后相邻轮次间隔 MUST ≤ --max-gap（默认 5）；超限报出间隔端点；不要求文件内顺序。
+#   g 单引号标量闭合性（**必要条件**）：形如 `键: '…'` 的行内单引号个数 MUST 为偶数（YAML 单引号
+#     标量内的撇号须双写为两个单引号）。实证：`note: '…it's…'` ⇒ js-yaml 报
+#     `bad indentation of a mapping entry`（整个名册不可解析），而本门与 write-scope-check 曾同报通过。
 #   值 MUST 为单行标量；段缺失或段内零条目同样判违规（1）。重复键（D099 的严格解析器域）不在
 #   本门判据内——见解析处的 dsh-debt 标注。
 #   环境缺口一律 `exit 2` 并打印「无法核验 ≠ 通过」，不得静默判通过。
@@ -54,7 +57,7 @@ while [ $# -gt 0 ]; do
       [ $# -ge 2 ] || { echo "✗ --max-gap 缺参数（无法核验 ≠ 通过）" >&2; exit 2; }
       MAXGAP="$2"; shift 2 ;;
     -h|--help)
-      sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+      sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)
       echo "✗ 未知参数: $1（用法: patrol-check.sh --run-root <运行根> [--ledger <台账>] [--max-gap N]）" >&2
       exit 2 ;;
@@ -167,6 +170,19 @@ done <<< "$PARSE"
 
 if [ "$HAS_SEC" = 1 ] && [ "$N_ENT" = 0 ]; then
   bad "patrol_log 段内无 round 条目（名册为空）"
+fi
+
+# ── g 单引号标量闭合性（必要条件）──────────────────────────────────────────────
+# 形如 `键: '…'` 的行：单引号个数 MUST 为偶数（撇号须双写）。奇数 ⇒ YAML 单引号标量未闭合，
+# 整文件在解析器处中止（实证：`note: '…it's…'` ⇒ js-yaml `bad indentation of a mapping entry`）。
+QUOTE_BAD=$(awk -v q="'" '
+  $0 ~ ("^[ \t]*[A-Za-z_][A-Za-z0-9_]*:[ \t]*" q) {
+    n = gsub(q, q)
+    if (n % 2 == 1) printf "%d:%s\n", NR, substr($0, 1, 72)
+  }
+' "$AGENTS" 2>/dev/null)
+if [ -n "$QUOTE_BAD" ]; then
+  bad "单引号标量未闭合（撇号 MUST 双写为两个单引号）: $(printf '%s' "$QUOTE_BAD" | head -1)"
 fi
 
 # ── c 唯一性 ────────────────────────────────────────────────────────────────
