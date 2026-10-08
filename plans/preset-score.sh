@@ -346,8 +346,13 @@ done
 STRAY=$(git status --short 2>/dev/null | grep -c '^??' || true)
 [ "${STRAY:-0}" -gt 0 ] && ded B14 10 "工作区有 ${STRAY} 个未跟踪项（可能杂散）"
 # 工作区物理杂散（被忽略但仍占工作区；D079 卫生纪律：不留杂散）
-DS=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
-[ "${DS:-0}" -gt 0 ] && ded B14 10 "工作区有 ${DS} 个 .DS_Store 杂散"
+# F372：`find` 缺失时管道取到 0 行 ⇒ 原实现静默判「无杂散」；MUST 显式按「无法核验」扣分。
+if command -v find >/dev/null 2>&1; then
+  DS=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
+  [ "${DS:-0}" -gt 0 ] && ded B14 10 "工作区有 ${DS} 个 .DS_Store 杂散"
+else
+  ded B14 10 "无法核验 .DS_Store 杂散（缺 find）——无法核验 ≠ 通过"
+fi
 
 # 注册表 schema 合法性（本地总库；不存在则跳过）：能过真实 YAML 解析器 + 键名一致
 IDX="$HOME/.dsh-codepunk/INDEX.yaml"

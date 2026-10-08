@@ -2276,6 +2276,43 @@ else
   echo "  ℹ M168 跳过（缺 python3）——跳过 ≠ 通过"
 fi
 
+# ── M169：扫描工具缺失时写盘纪律门 MUST 显式失败（F372）──────────────────────
+#   机理：G1/G2/G3 经 `find … 2>/dev/null` 的**进程替换**取列表 ⇒ `find` 不在 PATH 时列表为空、
+#   三项均判「无残留」⇒ rc=0 假绿（与本文件头部契约「2=无法核验」冲突）。
+#   断言：a) 完好版 + 无 find 的 PATH ⇒ rc=2 含「缺少必需工具 find」；
+#        b) 删掉该预检守护后同环境 ⇒ rc=0「写盘纪律门：通过」（证明假绿确由缺守护造成）。
+mkdir -p "$work/bin-nofind"
+for _t in bash sh git grep sed awk python3 mktemp stat sort uniq wc tr head tail basename dirname ls cat chmod cmp install locale; do
+  _p="$(command -v "$_t" 2>/dev/null)" || continue
+  [ -n "$_p" ] && ln -sf "$_p" "$work/bin-nofind/$_t"
+done
+if [ -x "$work/bin-nofind/bash" ] && [ ! -e "$work/bin-nofind/find" ]; then
+  fresh
+  check_rc "M169-a 扫描工具缺失（PATH 无 find）须 rc=2（无法核验 ≠ 通过）" \
+    "env -i PATH=\"$work/bin-nofind\" HOME=\"$HOME\" \"$work/bin-nofind/bash\" plans/write-scope-check.sh --repo ." 2 \
+    "缺少必需工具 find"
+  fresh
+  sed -i.bak '/缺少必需工具 find/d; /find 不可用（预检执行失败）/d' "$work/cur/plans/write-scope-check.sh"
+  mutate_gone "M169-b 删除型变异（移除 find 预检守护）" "$work/cur/plans/write-scope-check.sh" '缺少必需工具 find'
+  check_rc "M169-b 移除守护后同环境须复现假绿 rc=0（证明守护非空转）" \
+    "env -i PATH=\"$work/bin-nofind\" HOME=\"$HOME\" \"$work/bin-nofind/bash\" plans/write-scope-check.sh --repo ." 0 \
+    "写盘纪律门：通过"
+else
+  echo "  ℹ M169 跳过（无法构造无 find 的影子 PATH）——跳过 ≠ 通过"
+fi
+
+# M170（F373）：doc 类数声称陈旧须被第 1 类的派生核验捕获（`doc-consistency.sh` 同行「N 类」）。
+#   变异按**地址**（`/doc-consistency/`）改写，不与具体数字绑定 ⇒ 将来类数变化不会让变异静默失效
+#   （F300 教训）；另有断言证明**序数**写法（`doc-consistency.sh 第 10 类`）不被误当类数声称 —— 该假阳性
+#   在实现迭代中实测出现过（docs/documentation-policy.md 报 10 处）。
+fresh
+check_no_match "M170-c 基线：序数写法（第 N 类）不得被当作类数声称" "bash plans/doc-consistency.sh" "doc 类数声称陈旧"
+sed -i.bak -E '/doc-consistency/ s/(\*\*)?[0-9]+ 类(\*\*|：)/**99 类**/' "$work/cur/docs/architecture.md"
+mutate "M170-a 篡改 docs/architecture.md 的 doc 类数声称（→ 99 类）" "$work/cur/docs/architecture.md" '99 类'
+check_rc "M170-a doc 类数声称陈旧 → 须报错（证明守护非空转）" "bash plans/doc-consistency.sh" 1 "doc 类数声称陈旧"
+fresh
+check_rc "M170-b 基线：doc 类数声称与实现一致" "bash plans/doc-consistency.sh" 0 "doc 类数声称与实现一致"
+
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

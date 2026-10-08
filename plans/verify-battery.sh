@@ -90,6 +90,9 @@ fi   # command -v python3
 #    故任何被忽略文件都是意外产物；原检查只看 .DS_Store 与未跟踪会漏检 .bak 等）
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   unverified "杂散检查（非 git 工作区）"
+elif ! command -v find >/dev/null 2>&1; then
+  # F372：`find` 缺失时 .DS_Store 计数恒为 0 ⇒ 原实现静默判「无杂散」；MUST 显式标注未核验。
+  unverified "杂散检查（缺 find：.DS_Store 计数无法核验）"
 else
 S=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
 U=$(git status --short 2>/dev/null | grep -c '^??' || true)

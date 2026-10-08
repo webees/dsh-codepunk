@@ -293,6 +293,16 @@ if [ "${SCAN_HOME}" -eq 1 ]; then
   [ -d "${HOME}" ] || fatal "HOME 不是目录: ${HOME}"
 fi
 
+# ── 扫描工具可用性（无法核验 ⇒ 2）─────────────────────────────────────────
+# F372：G1/G2/G3 全部经 `find … 2>/dev/null` 的**进程替换**取列表；`find` 不在 PATH 时
+#   进程替换为空、stderr 被 `2>/dev/null` 吞掉 ⇒ 三项都判「无残留」⇒ exit 0 假绿。
+#   实测（真实克隆 + `probe-leftover.sh` 残留）：PATH 含 find ⇒ rc=1「发现越界」；
+#   PATH 去掉 find（git/grep/sed/awk/python3/node 仍在）⇒ 修复前 rc=0「通过」，与本文件
+#   头部契约「2=无法核验」直接冲突。故此处 MUST 显式预检——且预检**真的执行**一次
+#   （非仅 `command -v`），以覆盖「同名但不可用/被替换」的情形。
+command -v find >/dev/null 2>&1 || fatal "缺少必需工具 find ⇒ 无法扫描仓库/主目录/临时目录（无法核验 ≠ 通过）"
+find . -maxdepth 0 >/dev/null 2>&1 || fatal "find 不可用（预检执行失败）⇒ 无法核验 ≠ 通过"
+
 say "==== write-scope-check · 写盘纪律门 ===="
 if [ -n "${EXEMPT_FILE}" ]; then
   say "ℹ 豁免登记：${EXEMPT_FILE_ABS}（--exempt-from；解析出 ${EXEMPT_N} 条；命中降级 INFO，不判 FAIL）"
