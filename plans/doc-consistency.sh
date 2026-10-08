@@ -1552,6 +1552,25 @@ echo
 #   本脚本仍 rc=0 并原样输出错误计数）。按本仓「计数须派生」口径（同 F240/F241 与第 484 轮的 cmp_num 家族），
 #   此处从自身源码派生类段数，新增/删除类时自动跟随。
 NCLASS=$(grep -cE '^echo "\[[0-9]+\]' "$0")
+# F373：doc 类数声称（实现派生量＝类数）——`doc-consistency.sh` 行内的「N 类」。
+#   域：README.md + docs/**（开源规格化的对外文档面）。MUST 以「同行出现 doc-consistency」限定，
+#   否则会与 `fidelity-gate.py` 的「**14 类**」（另一实现、另一实况值）同形误报。
+#   实证：`docs/architecture.md` 长期写「24 类」（实况已 25），而此前类数声称不在任何门禁域。
+DOC_CLS_BAD=""; DOC_CLS_HITS=0
+for _f in README.md docs/*.md docs/*/*.md; do
+  [ -f "$_f" ] || continue
+  # 先剔除**序数**写法（`doc-consistency.sh 第 10 类`／`第 1–6 类`）——那是类号引用、不是类数声称；
+  #   再只认**计数**写法（`**N 类**` / `N 类：` / `N 类（` / `N 类检查`），避免把类号当成类数（实测：
+  #   未剔除序数时 docs/documentation-policy.md 报 10 处假阳性）。
+  _seg="$(grep -oE 'doc-consistency.{0,120}' "$_f" 2>/dev/null | sed -E 's/第 ?[0-9]+( ?[/–-] ?[0-9]+)? 类//g')"
+  for _v in $(printf '%s\n' "$_seg" | grep -oE '(\*\*)?[0-9]+ 类(\*\*|：|（|检查)' | grep -oE '[0-9]+' | sort -u); do
+    DOC_CLS_HITS=$((DOC_CLS_HITS + 1))
+    [ "$_v" = "$NCLASS" ] || DOC_CLS_BAD="$DOC_CLS_BAD ${_f}:类数=${_v}(实况 ${NCLASS})"
+  done
+done
+if [ -n "$DOC_CLS_BAD" ]; then bad "doc 类数声称陈旧:${DOC_CLS_BAD}"
+elif [ "$DOC_CLS_HITS" -eq 0 ]; then info "未出现 doc 类数声称（域：README + docs/**；写法：doc-consistency 同行 N 类）"
+else ok "doc 类数声称与实现一致（命中 ${DOC_CLS_HITS} 处，实际 ${NCLASS} 类）"; fi
 if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（${NCLASS} 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

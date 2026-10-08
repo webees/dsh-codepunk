@@ -20,6 +20,8 @@
 
 ### 修复
 
+- **扫描工具缺失时写盘纪律门静默放行**：`find` 不在 PATH 时，`plans/write-scope-check.sh` 四处 `done < <(find … 2>/dev/null)` 的进程替换为空、`command not found` 被 `2>/dev/null` 吞掉 ⇒ G1/G2/G3 全判「无残留」并 `exit 0`（同一含残留沙箱在有 `find` 时 rc=1）——与该脚本头部「2=无法核验」契约直接冲突；`preset-score` 与 `verify-battery` 的 `.DS_Store` 计数同族静默判 0。已加扫描工具预检（缺失 ⇒ `exit 2`，并输出「无法核验 ≠ 通过」）与缺失时的扣分/未核验分支；新增永久存活变异 M169（两断言：无 `find` 须 rc=2 / 移除守护后复现假绿，证明守护非空转）。
+- **文档里的 doc 类数声称无门禁覆盖**：`docs/architecture.md` 声称 `plans/doc-consistency.sh` 一致性「24 类」，而实现已派生 25 类（新增第 24/25 类时该处未同步）——计数声称族此前只覆盖「N 项…」写法，不含类数。已在第 1 类末尾把类数声称纳入派生核验（域 README + `docs/**`；剔除「第 N 类」序数写法以免误判），新增永久存活变异 M170（三断言：序数不误判 / 陈旧须报错 / 基线一致）。
 - **巡检名册的「可解析」自证用的是弱解析器**：运行根 `agents.yaml` 的写入约束（D099）原文只要求 `ruby -ryaml` 回读校验，而 Psych **不报重复键**——巡检写回把新条目插在上一轮条目的字段之前时，该轮条目丢失 `at`/`note`、上一轮条目出现两个 `at`/两个 `note`，Psych 静默取后者、`js-yaml` v4 则报 `duplicated mapping key` ⇒ 名册对严格解析器**不可读**而自证仍显示通过。已把约束升级为「MUST 用严格解析器（js-yaml，拒绝重复键）+ MUST 逐条核对字段归属」并写明两者差异与实测。
 - **钩子配置（产品启动时读取）无任何门禁守护**：`plans/hooks/hooks.json` 由 `agent.cordis.yml` 的
   `hooks-write-scope` 条目经 `configPath` 在产品启动时读取，而把该文件**截断为非法 JSON**、或把命令
