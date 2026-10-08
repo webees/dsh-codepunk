@@ -1571,6 +1571,27 @@ done
 if [ -n "$DOC_CLS_BAD" ]; then bad "doc 类数声称陈旧:${DOC_CLS_BAD}"
 elif [ "$DOC_CLS_HITS" -eq 0 ]; then info "未出现 doc 类数声称（域：README + docs/**；写法：doc-consistency 同行 N 类）"
 else ok "doc 类数声称与实现一致（命中 ${DOC_CLS_HITS} 处，实际 ${NCLASS} 类）"; fi
+# F375：`docs/development.md` §7「派生计数口径」表的**当前实况**列是**活声称**（表内只写裸数字或
+#   「N（M1–MN）」形态）⇒ 既不在第 1 类「N 项…」族域内、也无任何门禁覆盖（实证：长期漂移
+#   「167（M1–M167）」与「24」而实况 171/25）。本检查按**行标签**定位该表（标签即契约），取末列
+#   首个整数与派生值比对；表或标签缺失 ⇒ ℹ（无法核验 ≠ 通过）。
+DERIV_BAD=""; DERIV_HITS=0
+if [ -f docs/development.md ]; then
+  _deriv_row() { # 标签 派生值
+    _l="$(grep -E "^\| $1 \|" docs/development.md | head -1)"
+    [ -n "$_l" ] || return 0
+    _v="$(printf '%s' "$_l" | awk -F'|' '{print $(NF-1)}' | grep -oE '[0-9]+' | head -1)"
+    [ -n "$_v" ] || return 0
+    DERIV_HITS=$((DERIV_HITS + 1))
+    [ "$_v" = "$2" ] || DERIV_BAD="$DERIV_BAD $1=${_v}(实况 $2)"
+  }
+  _deriv_row 变异项数 "$MUT_N"
+  _deriv_row 文档一致性类数 "$NCLASS"
+  _deriv_row 电池项数 "$BAT_MAIN"
+fi
+if [ -n "$DERIV_BAD" ]; then bad "派生计数表实况陈旧:${DERIV_BAD}"
+elif [ "$DERIV_HITS" -eq 0 ]; then info "未出现派生计数表（域：docs/development.md §7，按行标签定位）"
+else ok "派生计数表实况与实现一致（命中 ${DERIV_HITS} 行：变异项数 / 文档一致性类数 / 电池项数）"; fi
 if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（${NCLASS} 类检查）"; exit 0; fi
 echo "✗ 存在 ${NFAIL} 处不一致" >&2
 exit 1

@@ -107,6 +107,7 @@
 | 生效前提 | 4 项必需检查全绿（strict）：门禁回归 / 存活自检 / 跨平台可移植 / 文档一致性 | 检查名由 `.github/workflows/ci.yml` 各作业的 `name` 定义，须与 `plans/github-setup.sh` 的 `CHECK_CONTEXTS` 逐字一致；ruleset 按上下文名匹配，**改名会让该检查永不出现、PR 永久阻塞**（`doc-consistency.sh` 第 7 类机械守护）。基线变化时 GitHub 先更新分支并重跑检查，再自动合并 |
 | 两条路径 | ① `mergeStateStatus=CLEAN` ⇒ 工作流直接合并；② 否则武装自动合并 | 实测：对已 clean 的 PR 调 `enablePullRequestAutoMerge` 会被 GitHub 拒绝（`Pull request is in clean status`）；武装成功后若立即可合并，GitHub 会当场合并而 `autoMergeRequest` 变 null ⇒ 自证判据取「已武装 **或** 已合并」 |
 
+- 存活自检的**覆盖**：CI 环境无产品安装、也不设 `DSH_APP_ROOT` ⇒ 依赖产品安装的变异族（声明副本比对、`-h` 用法探针等）自动**跳过**；结论行据实报「捕获 N/M 项 + 跳过 K 项（跳过 ≠ 通过）」，不会把跳过说成通过（F374）。本地设 `DSH_APP_ROOT` 后复跑可获得完整覆盖。
 - 人工介入点：需要评估的 major 变更——去掉 `automerge` 标签或直接关闭 PR 即可阻止自动合并；已武装的自动合并可用 `gh pr merge --disable-auto <PR>` 撤回。
 - 自动化工作流用 `pull_request_target` 触发（基线上下文、可写令牌），**不检出、不执行 PR 内容**，因此不引入代码注入面；这是 Dependabot 触发的 `pull_request` 工作流只有只读令牌所必需的写法。
 
