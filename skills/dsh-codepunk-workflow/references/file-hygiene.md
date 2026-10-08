@@ -213,6 +213,7 @@
   2. **不做符号链接解析**——指向黑名单的链接按字面路径判定（`~/link-to-etc/x` 不会被拦）。
   3. **只拦工具调用层**——拦不住工具内派生进程的任意写；也不拦读、不拦网络、不拦进程。
   4. **非沙箱、非安全边界**——它是「就高落点纪律」的机械提醒，不是隔离机制；未命中 ≠ 合规。
+  5. **失败开放（fail-open，MUST 知悉）**——钩子命令**无法启动**（解释器缺失、路径错）、脚本**异常退出**（非 0/2 的退出码）或**超时**时，产品侧**不设 decision** ⇒ 该次调用**照常放行**，只在钩子记录里留 `stderrSummary`（`dsh-hook-protocol/lib/index.js:102-126`：仅 exit 2 设 `block`、exit 0 才解析结构化输出，其余分支不改判定；同文件 runner 以 `parseHookOutput(result.exitCode ?? void 0, …)` 收尾——**基础设施层拒绝（进程起不来）没有退出码，故函数永不抛出**）。配置本身坏掉同理：`configPath` 不存在或非法 JSON 时桥只打一条 `logger.warn(… — no hooks registered)`（`dsh-hooks-claude-code/lib/index.js:139,145-146`）⇒ **零钩子注册、拦截层整体消失**。⇒ 本层是**尽力而为**：缺 `python3` 的机器（Windows 默认无 `python3`，而 matcher 却含 `pwsh`）上它等于不存在。
 - **路径归一（MUST 知悉，F367 实证）**：比对黑名单前先归一，否则「同一文件的不同写法」会**静默放行**——
   1. **前导多斜杠折叠**：`posixpath.normpath` 依 POSIX 规定**保留** `//`，故 `//etc/hosts` 与根 `/etc` 的字面前缀比对不成立，而在 POSIX 平台上它就是 `/etc/hosts`；现折叠为 `/etc/hosts` 后阻断（Windows 的 `//server/share` 是 UNC 路径，**不折叠**）。
   2. **大小写折叠**：macOS 默认卷（APFS/HFS+）与 Windows 不区分大小写 ⇒ `/ETC/hosts`、`/USERS/<名>/.ssh/id_ed25519` 与全小写写法是同一文件；现在这两类平台把**路径与黑名单根同时**折叠后比对（linux 等敏感平台保持原样，那里 `/ETC/hosts` 确是另一路径，护栏按设计放行）。
@@ -228,4 +229,6 @@
 | 4 | 会话 cwd 之下的 `$HOME` 顶层例外（`$HOME` 即 cwd 时） | 同 §7.5 缺口 3：此时「顶层散落」判据以 cwd 为根，护栏不判该条；G2 兜底 |
 | 5 | 只在新会话生效 | 已开着的会话在重启前不受新护栏约束（声明与钩子配置均为加载期读取） |
 | 6 | 归一的条件性（F367） | 前导多斜杠仅在 POSIX 平台折叠（Windows 的 `//server/share` 保持原样）；大小写折叠仅在 `darwin`/`win32` 生效 ⇒ linux 上 `/ETC/hosts` 与 `/etc/hosts` 视为不同路径（按设计；如需一律折叠须显式改 `CASE_INSENSITIVE_FS`） |
+| 7 | **失败开放**（解释器缺失 / 脚本异常退出 / 超时 / 配置坏掉 ⇒ 放行，F368） | 钩子命令起不来（如 Windows 无 `python3`）或脚本非 0/2 退出时，产品侧不设 decision ⇒ **照常放行**，只在钩子记录里留 `stderrSummary`；`configPath` 坏掉则**零钩子注册**（`dsh-hooks-claude-code/lib/index.js:139,145-146` 仅 `logger.warn`）⇒ 拦截层静默消失。守护：`plans/doc-consistency.sh` 第 7 类核验 `plans/hooks/hooks.json` 可解析、结构与命令引用的仓库内文件存在、**解释器在 PATH 内**（缺失即红灯） |
+| 8 | `matcher` 为**非锚定**正则 | 产品 `compileRegex` 用 `new RegExp(pattern)`（`dsh-hook-protocol/lib/index.js` 注释原文「unanchored matcher regex」）⇒ `todo_write` 等**含** `write`/`edit`/`bash`/`pwsh` 子串的工具名也会触发钩子：多一次判定与记录，判定不出目标即按 §8.2 放行并打提示——**只增噪声，不改变放行结果** |
 

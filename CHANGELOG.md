@@ -20,6 +20,20 @@
 
 ### 修复
 
+- **钩子配置（产品启动时读取）无任何门禁守护**：`plans/hooks/hooks.json` 由 `agent.cordis.yml` 的
+  `hooks-write-scope` 条目经 `configPath` 在产品启动时读取，而把该文件**截断为非法 JSON**、或把命令
+  路径改成**不存在的文件**时，`doc-consistency` · `preset-audit` · `preset-score` ·
+  `preset-compat` · `write-scope-check` **五个门禁全绿**、输出零处提到 hooks ⇒ 拦截层静默消失而无
+  红灯（产品侧只走 `logger.warn(` 一条分支，见 `dsh-hooks-claude-code/lib/index.js:139,145-146` 的「no hooks registered」）。
+  已在 `plans/doc-consistency.sh` 第 7 类新增子项「钩子配置完整性」：JSON 可解析 · `matcher`/`type`/`command`
+  齐备 · 命令内 `${CLAUDE_PLUGIN_ROOT}/<路径>` 在仓库内存在 · **解释器在 PATH 内**（缺失即红灯，给出
+  「装解释器或移除该条目」的可行动作）；新增永久存活变异 M168（三断言）。
+- **契约未记载「失败开放」**：钩子命令**无法启动**（解释器缺失、路径错）、脚本**异常退出**（非 0/2）
+  或**超时**时，产品侧**不设 decision** ⇒ 该次调用照常放行，只在钩子记录里留 `stderrSummary`
+  （`dsh-hook-protocol/lib/index.js:102-126`：仅 exit 2 设 `block`、exit 0 才解析结构化输出；runner 以
+  `parseHookOutput(result.exitCode ?? void 0, …)` 收尾——基础设施层拒绝无退出码）。README 的退出码列与
+  `references/file-hygiene.md` §8.3/§8.4 已补该条（缺口 7）与「`matcher` 为非锚定正则 ⇒ `todo_write`
+  等含子串的工具名也会触发（缺口 8）」。
 - **用法约定只覆盖 `.sh`，4 个非 shell 入口整体不在域内**：`plans/doc-consistency.sh` 第 20 类的
   静态子项写作 `for f in plans/*.sh`，探针表也只枚举 `.sh` ⇒ `fidelity-gate.py`、`preset-compat.py`、
   `preset-declare.mjs`、`ps-validate.mjs` 把 `-h` 当位置参数（rc=2，其中 `preset-compat.py` 报
