@@ -290,8 +290,12 @@ check_contains "M103 link.sh 含 F217 声明" "grep -c F217 plans/dsh-codepunk-l
 
 echo "[M102 preset-score 的双路径谓词与 INDEX 缺口声明（F215/F216 修复存活）]"
 fresh
-check_contains "M102 score 含 F215 说明" "grep -c F215 plans/preset-score.sh" "2"
-check_contains "M102 score 含 F216 缺口声明" "grep -c F216 plans/preset-score.sh" "1"
+# F399：原断言为 `grep -c F215 == 2` / `grep -c F216 == 1`（**计数式**）——新增一处正当的关联注释即断，
+#   与 F300 家族同病（计数式断言随实现演进静默腐化：本轮在 preset-score 注释里引用 F216 先例即触发
+#   「✗ M102 score 含 F216 缺口声明（未含「1」）」）。改为**下界**断言：既保留「两路径各自标注」的强度，
+#   又不再因合法新增提及而误判。
+check_rc "M102 score 含 F215 说明（下界 ≥2：双路径各自标注）" "test \"\$(grep -c F215 plans/preset-score.sh)\" -ge 2" 0
+check_rc "M102 score 含 F216 缺口声明（下界 ≥1）" "test \"\$(grep -c F216 plans/preset-score.sh)\" -ge 1" 0
 
 echo "[M101 解析双路径谓词须语义一致（F214 修复存活）]"
 fresh
@@ -2732,6 +2736,15 @@ else
   printf '  ✗ M189-b 探针移除后密封判据仍报已改动\n'
   FAILED=1
 fi
+
+echo "[M190 preset-declare CLI 取值守卫（非法 --order/--id 不得静默产出非法声明，更不得写进副本）（F398）]"
+check_rc "M190-a 非法 --order 须 rc=2 并给出理由" "node plans/preset-declare.mjs emit --order=abc 2>&1" 2 "--order 取值非法"
+check_rc "M190-b 非法 --id（空）须 rc=2 并给出理由" "node plans/preset-declare.mjs emit --id= 2>&1" 2 "--id 取值非法"
+check_rc "M190-b2 合法取值不得被误拒（--order=5 / --id=my-preset.1 须 rc=0）" "node plans/preset-declare.mjs emit --order=5 >/dev/null 2>&1 && node plans/preset-declare.mjs emit --id=my-preset.1 >/dev/null 2>&1 && echo LEGAL_OK" 0 "LEGAL_OK"
+( cd "$work/cur" && sed -i.bak '/Number.isSafeInteger(ORDER)/,/^}$/d' plans/preset-declare.mjs \
+    && rm -f plans/preset-declare.mjs.bak )
+mutate_gone "M190-c 删除型变异（移除 --order 守卫；作用于沙箱副本）" "$work/cur/plans/preset-declare.mjs" "Number.isSafeInteger(ORDER)"
+check_rc "M190-c 移除守卫后同输入须复现静默产出（order: NaN 落进声明）" "node plans/preset-declare.mjs emit --order=abc >\"$work/m190c.out\" 2>&1; grep -q 'order: NaN' \"$work/m190c.out\" && echo SILENT_NAN" 0 "SILENT_NAN"
 
 # F394：终局 MUTFAIL 门（早退点之后的变异不得静默空转）——早退点在文件中部，其后新增的变异
 #   若 `mutate`/`mutate_gone` 失败只打印 ‼ 而退出码仍 0（实证：M185-a 的模式串 `**27 类**：编号` 在

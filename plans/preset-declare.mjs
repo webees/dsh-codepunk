@@ -130,7 +130,19 @@ function parseArgs(argv) {
 const args = parseArgs(process.argv.slice(2));
 const action = args._[0];
 const ID = args.id ?? 'dsh-codepunk';
+// F398：CLI 取值守卫。旧行为是 `--order=abc` 静默产出 `order: NaN`、`--order=2.5` 产出小数、
+//   `--id ''` 产出 `- id: preset-`、`--id 'a b'` 产出含空格的 id，且全部 rc=0 —— apply 会把它们
+//   原样写进 profile 副本（实测：apply --append --order=abc 后副本第 15 行为 `order: NaN`），
+//   部署方见绿灯而产物不可用（id 为空时后续 check 还会报「存在 2 处声明」而自相矛盾）。
+if (!/^[a-z0-9][a-z0-9._-]*$/.test(ID)) {
+  die(`--id 取值非法：${JSON.stringify(ID)}（须匹配 ^[a-z0-9][a-z0-9._-]*$，例：dsh-codepunk）——`
+    + '非法 id 会被原样写进 profile 副本，产品注册行为未定义');
+}
 const ORDER = Number(args.order ?? 5);
+if (!Number.isSafeInteger(ORDER) || ORDER < 0) {
+  die(`--order 取值非法：${JSON.stringify(args.order ?? 5)}（须为非负整数，例：5）——`
+    + '非法 order 会被原样写进 profile 副本（NaN / 小数无意义）');
+}
 const PRESET_ROOT = resolve(args.root ?? ROOT);
 const PATCH = resolve(
   args.patch ??

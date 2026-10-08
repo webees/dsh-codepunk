@@ -155,16 +155,27 @@ grep -qE "D087[^|]*现行实现" "$REF/standard.md" 2>/dev/null && ded A3 25 "D0
 
 # ── A4 规范性 ───────────────────────────────────────────────────────────────
 PARSE="skip"
+# F399：js-yaml 回退候选与 `verify-battery.sh` 对齐（含 `$DSH_APP_ROOT` 指向的 DSH 安装）。
+YAML_DIR=""
+if [ -d "$HOME/.dsh-codepunk/tools/node_modules/js-yaml" ]; then
+  YAML_DIR="$HOME/.dsh-codepunk/tools/node_modules/js-yaml"
+elif [ -n "${DSH_APP_ROOT:-}" ] && [ -d "${DSH_APP_ROOT}/node_modules/js-yaml" ]; then
+  YAML_DIR="${DSH_APP_ROOT}/node_modules/js-yaml"
+fi
 if command -v ruby >/dev/null 2>&1; then
   # F215：两路径谓词须**语义一致**（与 preset-audit 的 F214 同族）——统一为「name 为**非空字符串**」。
   # F309：同 preset-audit A1 —— Psych 4/5（ruby >= 3.1）默认禁用别名，本仓配置的
   #   YAML 锚点会让 YAML.load_file 抛 Psych::AliasesNotEnabled ⇒ 跨版本修法：先带
   #   aliases: true，Psych 3 不认该关键字时回退旧调用。
   ruby -ryaml -e 'begin; d=YAML.load_file("agent.cordis.yml", aliases: true); rescue ArgumentError; d=YAML.load_file("agent.cordis.yml"); end; exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && PARSE="ok" || PARSE="fail"
-elif command -v node >/dev/null 2>&1 && [ -d "$HOME/.dsh-codepunk/tools/node_modules/js-yaml" ]; then
-  node -e 'const y=require(process.env.HOME+"/.dsh-codepunk/tools/node_modules/js-yaml");const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' 2>/dev/null && PARSE="ok" || PARSE="fail"   # F215：与 ruby 路径同语义
+elif command -v node >/dev/null 2>&1 && [ -n "$YAML_DIR" ]; then
+  YAML_DIR="$YAML_DIR" node -e 'const y=require(process.env.YAML_DIR);const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' 2>/dev/null && PARSE="ok" || PARSE="fail"   # F215：与 ruby 路径同语义
 fi
 [ "$PARSE" = "fail" ] && ded A4 100 "agent.cordis.yml 解析失败"
+# F399：`PARSE=skip` 旧行为**既不扣分也不提示**（判据消失而不告知）——同族 F216 已判为「缺失即通过」。
+#   且旧实现只认 `$HOME/.dsh-codepunk/tools/node_modules/js-yaml`（本机该路径不存在），而 `verify-battery.sh`
+#   与 `plans/preset-declare.mjs` 都接受 `$DSH_APP_ROOT/node_modules/js-yaml` 回退 ⇒ 同套件口径不一。
+[ "$PARSE" = "skip" ] && echo "  ℹ A4 结构解析无法核验（缺 ruby，且未找到 js-yaml：设 DSH_APP_ROOT 指向 DSH app 目录，或在 ~/.dsh-codepunk/tools 内 npm i js-yaml）——无法核验 ≠ 通过" >&2
 # 决策号冲突/跳号
 DUPD=$(grep -oE '^\| D[0-9]{3} ' "$REF/standard.md" 2>/dev/null | tr -d '| ' | sort | uniq -d)
 [ -n "$DUPD" ] && ded A4 20 "决策号重复: $(echo "$DUPD" | tr '\n' ' ')"
