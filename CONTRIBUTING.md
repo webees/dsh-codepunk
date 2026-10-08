@@ -121,7 +121,7 @@ fix(leak-guard): 禁词表存在但不可读时静默降为 0 条（假通过）
 
 PR 描述请按 `.github/pull_request_template.md` 逐项填写——该模板的核对清单与下面的自检项**同源**，模板更短，本节更全。以下命令均在仓库根执行。
 
-- [ ] 全量门禁：`bash plans/verify-battery.sh` 退出码 0（一次跑完评分、审计、泄露门、结构、语法、端到端等全部验证）
+- [ ] 全量门禁：`bash plans/verify-battery.sh` 退出码 0（一次跑完评分、审计、泄露门、结构、语法、端到端等全部验证）。合规运行产物（仓内 `tmp/`、`logs/`、`plans/__pycache__` 等 `.gitignore` 明示忽略者）只列 `ℹ` 信息行、**不判失败**；被忽略的**未登记**顶层路径仍判失败
 - [ ] 预设审计：`bash plans/preset-audit.sh` 退出码 0（5 组 rubric 零失分）
 - [ ] 指标评分：`bash plans/preset-score.sh` 退出码 0（15 指标全满分）
 - [ ] 检查器存活自检：`bash plans/checker-self-test.sh` 退出码 0，且末行含「自检通过」（证明守护没有空转）

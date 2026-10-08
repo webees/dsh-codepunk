@@ -2591,6 +2591,28 @@ mutate "M181-b 变异（关闭文件系统回退）" "$work/cur/plans/preset-aud
 check_no_match "M181-b 关闭回退后同一缺陷不得再被捕获（证明回退非空转）" \
   "PATH=\"$work/bin-lie2:\$PATH\" bash plans/preset-audit.sh 2>&1" "D3 行号引用缺符号名"
 
+echo "[M182 电池须把 .gitignore 明示忽略的运行产物与被忽略游离物分开判（F389：产物不得判杂散、白名单守卫不得放宽）]"
+fresh
+mkdir -p "$work/cur/tmp"
+printf 'x\n' > "$work/cur/tmp/run-artifact.txt"
+check_rc "M182-a 仓内 tmp/ 运行产物 ⇒ 电池须 rc=0 并把产物单列（按 .gitignore 契约允许）" \
+  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh . 2>&1" 0 "运行产物"
+rm -rf "$work/cur/tmp"
+fresh
+printf 'x\n' > "$work/cur/NEWTOP.md"
+check_rc "M182-b 未登记的顶层被忽略文件 ⇒ 仍须判杂散（白名单守卫不得被放宽）" \
+  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh . 2>&1" 1 "杂散"
+rm -f "$work/cur/NEWTOP.md"
+fresh
+mkdir -p "$work/cur/tmp"
+printf 'x\n' > "$work/cur/tmp/run-artifact.txt"
+sed -i.bak "s|^ARTIFACT_RE=.*|ARTIFACT_RE='^\$'  # F389-MUT|" "$work/cur/plans/verify-battery.sh"
+rm -f "$work/cur/plans/verify-battery.sh.bak"
+mutate "M182-c 变异（把产物白名单置空）" "$work/cur/plans/verify-battery.sh" 'F389-MUT'
+check_rc "M182-c 抹掉产物白名单后同夹具须复现假失败 rc=1（证明新判据非空转）" \
+  "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh . 2>&1" 1 "杂散"
+rm -rf "$work/cur/tmp"
+
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
 #   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。
