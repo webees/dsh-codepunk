@@ -40,6 +40,9 @@ EXIT_ALLOW = 0   # 放行
 EXIT_BLOCK = 2   # 阻断（stderr 为理由，回给模型）
 
 USAGE_LINES = (3, 31)   # 用法块行区间（1-based，含端点）——`-h` 逐行打印（不含首尾引号行）
+# F367：macOS 默认卷（APFS/HFS+）与 Windows 大小写不敏感 ⇒ `/ETC/hosts` 即 `/etc/hosts`；
+#   比对前折叠大小写（见 `case_fold()`）。linux 等敏感平台保持原样，避免误拦另一个真实路径。
+CASE_INSENSITIVE_FS = sys.platform in ("darwin", "win32")
 # ── 系统路径（`/var` 单独处理：排除 macOS TMPDIR 实际落点 `/var/folders`）────────
 SYS_DENY = ("/etc", "/usr", "/bin", "/sbin", "/System", "/Library", "/boot", "/opt")
 VAR_DENY = "/var"
@@ -144,7 +147,13 @@ def allow_roots(payload: dict) -> list:
 
 
 def abs_path(raw: str, cwd: str) -> str:
-    """把候选路径字面量解析为绝对路径（展开 `~`，相对路径按会话 cwd）。"""
+    """把候选路径字面量解析为绝对路径（展开 `~`，相对路径按会话 cwd）。
+
+    F367：`posixpath.normpath` **保留**前导双斜杠（POSIX 规定 `//` 由实现定义），于是
+      `//etc/hosts` 归一后仍是 `//etc/hosts` ⇒ 与黑名单根 `/etc` 的字面前缀比对不成立 ⇒
+      **静默放行**（POSIX 平台上与 `/etc/hosts` 是同一文件）。故先折叠前导多斜杠；
+      Windows 的 `//server/share` 是 UNC 路径，**不折叠**。
+    """
     p = raw.strip().strip("'\"")
     if not p:
         return ""
@@ -152,7 +161,19 @@ def abs_path(raw: str, cwd: str) -> str:
         p = home_dir() + p[1:]
     if not p.startswith("/"):
         p = posixpath.join(cwd, p)
+    if os.name != "nt" and p.startswith("//"):
+        p = "/" + p.lstrip("/")
     return posixpath.normpath(p)
+
+
+def case_fold(s: str) -> str:
+    """参与比对前的归一：大小写不敏感平台折叠为小写，其余原样（F367）。
+
+    macOS 默认卷（APFS/HFS+）与 Windows 均**大小写不敏感** ⇒ `/ETC/hosts` 与 `/etc/hosts`
+      是同一文件，字面比对却不成立 ⇒ 静默放行。故这些平台上把**路径与黑名单根同时**折叠；
+      大小写敏感平台（linux 等）保持原样（那里的 `/ETC/hosts` 确是另一个路径）。
+    """
+    return s.lower() if CASE_INSENSITIVE_FS else s
 
 
 def under(path: str, root: str) -> bool:
@@ -221,26 +242,32 @@ def candidates_from_payload(tool: str, tool_input: dict, cwd: str) -> list:
 
 
 def deny_rule(path: str) -> str:
-    """黑名单判据（deny 模式阻断集）；未命中返回空串。规则名随理由回给模型。"""
+    """黑名单判据（deny 模式阻断集）；未命中返回空串。规则名随理由回给模型。
+
+    F367：比对双方均经 `case_fold()`（大小写不敏感平台折叠），否则 `/ETC/hosts` 与
+      `/USERS/<名>/.ssh/id_ed25519` 这类**同一文件的大小写变体**会静默放行。
+    """
     home = home_dir()
-    if any(under(path, s) for s in SYS_DENY):
+    p = case_fold(path)
+    if any(under(p, case_fold(s)) for s in SYS_DENY):
         return "系统路径"
-    if under(path, VAR_DENY) and not under(path, VAR_TMP_EXEMPT):
+    if under(p, case_fold(VAR_DENY)) and not under(p, case_fold(VAR_TMP_EXEMPT)):
         return "系统路径（/var，已排除 /var/folders）"
     for rel in CRED_REL:
-        if under(path, home + "/" + rel):
+        if under(p, case_fold(home + "/" + rel)):
             return "凭据目录"
-    if under(path, posixpath.join(home, *DSH_USER_REL)):
+    if under(p, case_fold(posixpath.join(home, *DSH_USER_REL))):
         return "用户平面 DSH 配置"
     # 主目录顶层散落文件：`$HOME/<名字>` 且该路径不是已有目录（深度 1；对应既有 G2 判据）
-    if posixpath.dirname(path) == home and not os.path.isdir(path):
+    if case_fold(posixpath.dirname(path)) == case_fold(home) and not os.path.isdir(path):
         return "主目录顶层散落文件"
     return ""
 
 
 def strict_allowed(path: str, roots: list) -> bool:
-    """strict 模式：只放行白名单根之下的写入。"""
-    return any(under(path, r) for r in roots)
+    """strict 模式：只放行白名单根之下的写入（F367：同样经 `case_fold()` 比对）。"""
+    p = case_fold(path)
+    return any(under(p, case_fold(r)) for r in roots)
 
 
 def main() -> int:

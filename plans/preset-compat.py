@@ -160,6 +160,15 @@ def schema_keys(src: str) -> set[str]:
 
 
 def main() -> int:
+    # F366：全预设统一的用法约定（`-h`/`--help` ⇒ 打印用法并 rc=0）；此前 `-h` 被当预设根路径，
+    #   报「组合文件不存在：<仓库>/-h/agent.cordis.yml」——同一套 CLI 的用法约定不一致。
+    if len(sys.argv) > 1 and sys.argv[1] in ('-h', '--help'):
+        print("用法: preset-compat.py [<预设根>]")
+        print("  核验组合与当前 DSH 安装的兼容性（八项：插件包存在 / 配置键被接受 / 组与隔离形态 /")
+        print("  allow 名单有注册来源 / 锚点顺序 / 名单一致性 / agentOptions 覆盖面 / 声明块可被产品 CLI 组合）")
+        print("  环境变量: DSH_APP_ROOT（解包 app 目录）· DSH_ASAR（旧 asar 布局）")
+        print("  退出码: 0=兼容 · 1=存在不兼容项 · 2=用法错误或未定位 DSH 安装")
+        return 0
     root = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
     combo = root / "agent.cordis.yml"
     if not combo.is_file():

@@ -1219,18 +1219,32 @@ probe_rc 0 "acceptance-verify -h" "bash plans/acceptance-verify.sh -h"
 probe_rc 0 "evidence-verify -h"   "bash plans/evidence-verify.sh -h"
 probe_rc 0 "checker-self-test -h" "bash plans/checker-self-test.sh -h"
 probe_rc 0 "verify-battery -h"    "bash plans/verify-battery.sh -h"
-RC_DECL=27   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 14 条 -h）；新增探针须同步此值
-# F361 静态子项：**每个运行型 `plans/*.sh` 都 MUST 实现 `-h`**——探针表是人工枚举，
+# F366（本轮巡检实测）：用法约定的**实现集合**含 `plans/` 下全部可执行入口（`.sh`/`.py`/`.mjs`），
+#   而本类的静态子项与探针表此前只覆盖 `.sh` ⇒ 4 个可执行 CLI 把 `-h` 当位置参数（rc=2；其中
+#   preset-compat 报「组合文件不存在：<仓库>/-h/agent.cordis.yml」）⇒ 与「覆盖全部实现者」不符。
+probe_rc 0 "fidelity-gate -h"    "timeout 60 python3 plans/fidelity-gate.py -h"
+probe_rc 0 "preset-compat -h"    "timeout 60 python3 plans/preset-compat.py -h"
+probe_rc 0 "preset-declare -h"   "timeout 60 node plans/preset-declare.mjs -h"
+probe_rc 0 "ps-validate -h"      "timeout 60 node plans/ps-validate.mjs -h"
+RC_DECL=31   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 18 条 -h）；新增探针须同步此值
+# F361 静态子项：**每个运行型入口都 MUST 实现 `-h`**——探针表是人工枚举，
 #   新增脚本时极易漏挂（本轮即 4 个实现者不在表内）。此处以源码为准机械核验实现集合。
+# F366 起域扩为 `plans/` 下全部可执行入口（纯 source 库除外）——否则 `.py`/`.mjs` 永不在域。
 RC_HGAP=""
-for f in plans/*.sh; do
+for f in plans/*.sh plans/*.py plans/*.mjs; do
   base=$(basename "$f")
   case "$base" in dsh-codepunk-home.sh) continue ;; esac   # 纯 source 库：无 $1/$@，不属 CLI 入口
   # 接受两种书写顺序（`-h|--help` / `--help|-h`）与尾部追加别名（如 `-h|--help|help`）：
   #   实测 link.sh 用 `--help|-h|"")`、git-merge-flow.sh 用 `-h|--help|help)`。
-  grep -qE '^[[:space:]]*(-h\|--help|--help\|-h)' "$f" || RC_HGAP="${RC_HGAP} ${base}"
+  case "$base" in
+    *.sh) grep -qE '^[[:space:]]*(-h\|--help|--help\|-h)' "$f" || RC_HGAP="${RC_HGAP} ${base}" ;;
+    # 非 shell 入口写法各异（py 的 `in ('-h', '--help')`、mjs 的 `=== '-h'`/`includes('-h')`），
+    #   故判据取「同时含 `-h` 与 `--help` 字面量」：弱于 .sh 的结构判据，但守住「有分支」这一事实。
+    *) { grep -q -- "'-h'" "$f" || grep -q -- '"-h"' "$f"; } && grep -q -- '--help' "$f" \
+         || RC_HGAP="${RC_HGAP} ${base}" ;;
+  esac
 done
-[ -z "$RC_HGAP" ] || bad "运行型脚本未实现 -h/--help 用法约定:${RC_HGAP}"
+[ -z "$RC_HGAP" ] || bad "运行型入口未实现 -h/--help 用法约定:${RC_HGAP}"
 if [ "$RC_N" -ne "$RC_DECL" ]; then bad "退出码探针仅执行 ${RC_N}/${RC_DECL} 条（疑似被吞错，无法核验≠通过）"
 elif [ -n "$RC_BAD" ]; then bad "退出码契约漂移 → ${RC_BAD}"
 elif [ "$RC_V" -gt 0 ]; then info "退出码探针 ${RC_N} 条中 ${RC_V} 条因**环境缺口**无法核验（${RC_GAP}）——无法核验≠通过（F180）"

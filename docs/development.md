@@ -45,7 +45,7 @@ git switch -c feat/<主题>          # 本仓按主题分支开发，不直接�
 | `bash plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性 25 类 | 0 一致 / 1 不一致 / 2 环境或用法错误 |
 | `bash plans/preset-audit.sh` | 5 组 rubric 审计 | 0 全达标 / 1 有失分 / 2 预设根不存在 |
 | `bash plans/preset-score.sh` | 15 指标评分 | 0 全满分 / 1 有失分 / 2 环境或用法错误 |
-| `bash plans/checker-self-test.sh` | 检查器存活自检（166 项变异） | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
+| `bash plans/checker-self-test.sh` | 检查器存活自检（167 项变异） | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
 | `bash plans/verify-battery.sh` | 完整验证电池（11 项，一次跑完） | 0 全通过 / 1 有失败项 / 2 无法进入预设根 |
 | `bash plans/dsh-codepunk-leak-guard.sh --history` | 泄露防护门（近 20 提交与新增行） | 0 通过 / 1 命中阻断 / 2 用法或环境错误 |
 
@@ -118,7 +118,7 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 
 | 计数 | 派生命令 | 当前实况 |
 |---|---|---|
-| 变异项数 | `grep -oE 'M[0-9]+' plans/checker-self-test.sh \| sort -u \| wc -l` | 166（M1–M166） |
+| 变异项数 | `grep -oE 'M[0-9]+' plans/checker-self-test.sh \| sort -u \| wc -l` | 167（M1–M167） |
 | 文档一致性类数 | `grep -cE '^echo "\[[0-9]+' plans/doc-consistency.sh` | 24 |
 | 电池项数 | `grep -cE '^# [0-9]+\)' plans/verify-battery.sh` | 11 |
 | 保真语义类数 | 用 `ast` 取 `plans/fidelity-gate.py` 中 `PATTERNS` 的键数 | 14 |
@@ -129,7 +129,7 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 
 `README.md` 是使用者向的**计数权威宣称处**，下列声称必须与实现一致且**全文唯一**（同一数字在多处出现时，每处都会各自被校验）：
 
-1. 质量工具表的项数：15 指标 / 5 组 / **11 项**电池 / **166 项**变异（M1–M166）/ **14 类**保真。
+1. 质量工具表的项数：15 指标 / 5 组 / **11 项**电池 / **167 项**变异（M1–M167）/ **14 类**保真。
 2. 计数口径文案中的示例（如「18 references」「16 benchmarks」一类声称）。
 3. 硬规则上限、阶段数（六阶段）、岗位数（11 内建 + 2 外部后端；出现「13 岗位」须带历史或例外标记）。
 

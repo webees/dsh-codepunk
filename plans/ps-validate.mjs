@@ -17,6 +17,18 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// F366：全预设统一用法约定（`-h`/`--help` ⇒ 用法 + rc=0）。**MUST 排在依赖解析之前**——
+//   帮助不应依赖可选依赖：放在依赖检查之后时，未装 tree-sitter 的机器（CI 实测 ubuntu）
+//   会先 `exit 2` ⇒ 同一约定在本机 rc=0、在 CI rc=2（首版即因此被「文档一致性」作业拦下）。
+const argvFiles = process.argv.slice(2);
+if (argvFiles.includes('-h') || argvFiles.includes('--help')) {
+  console.log('用法: node ps-validate.mjs <文件.ps1> [...]');
+  console.log('  在无 pwsh 的机器上用 tree-sitter 校验 .ps1 语法（捕获结构性错误，不构成「合法 PowerShell 程序」的证明）');
+  console.log('  依赖: 脚本目录 / 总库 tools / 当前目录任一含 node_modules（tree-sitter + tree-sitter-powershell）');
+  console.log('  退出码: 0=全部通过 · 1=存在语法错误 · 2=用法或环境错误');
+  process.exit(0);
+}
+
 // 依赖解析：按序尝试 脚本目录 / 总库 tools / 当前目录（任一含 node_modules 即可）
 const here = dirname(fileURLToPath(import.meta.url));
 const home = process.env.HOME ?? '';
