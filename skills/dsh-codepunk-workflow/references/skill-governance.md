@@ -177,6 +177,9 @@
 | **运行型脚本退出码声明**（`plans/*.{sh,py,mjs}` MUST 在头部声明退出码；豁免仅两类：`dsh-codepunk-home.sh` 特例、无任何显式退出调用者——F336 起**取消**「含 source 一词即豁免」的启发式；环境类失败返回 2——F146/F152 同源） | `doc-consistency.sh` 第 5 类分支 | 机械 |
 | **简报检索日**（含 URL 的 benchmarks 须带 `retrieved_at`；不可考时显式标注依据） | `doc-consistency.sh` 第 23 类 | 机械 |
 | **证据引用包含性**（`log_ref` 解析后须位于交付目录内；绝对路径 / `..` 逃逸 / 指向目录外的符号链接一律 FAIL——F348 实证） | `plans/evidence-verify.sh` ② + 存活变异 M154 | 机械 + 变异 |
+| **运行根 `write_scope:` 台账段**（R17 的 `write_scope:` MUST；`cleanup_status` 为交接门/合并门前置读数） | `write-scope-check.sh --run-root`（F377 实证：散文形态下该读数不存在） | 机械 |
+| **自检变异锚点的稳定性**（MUST 只依赖被守护的分支形态，不得锚定易碎常量） | `checker-self-test.sh` 的 M149 锚点（F379 实证：行区间常量 44→50 即致变异不落地） | 机械 |
+| **巡检节奏（D095）**（间隔 ≤ 5 轮、轮次不重复、巡检轮次须在台账中有行） | `tools/patrol-cadence.py`（F378 实证：实测最大间隔 10 轮 + 重复轮次 601/602/609） | 机械 |
 | **Markdown 表格列数一致与结构完整**（分隔行驱动识别：数据行单元格数不得超过表头；代码跨度内的竖线须转义为 `\|`；另判两条**断表**结构缺陷——表头↔分隔行列数不等、分隔行后紧跟空行；围栏按字符+长度配对、排除缩进代码块、支持引用块与无行首竖线表格——F295 实证 + F296/F297 加严） | `doc-consistency.sh` 第 24 类 | 机械 |
 | **同一制品的多处生成器须一致**（总库 `INDEX.yaml` 骨架：`link.sh` 与 `init.sh` 两处 heredoc 模板须**逐字节一致**——否则终态内容取决于「谁先建文件」；F360 实证：link 原为 1 行头、init 为 11 行注释块） | `doc-consistency.sh` 第 25 类 | 机械 |
 | **外部输入变量须被记载**（未在本文件赋值、或写成 `${VAR:-默认}` 的覆盖开关 MUST 出现在任一 `.md` 或脚本**头部注释块**〔`#` 块 / `.py` docstring / `.mjs` JSDoc〕；F358 实证：`git-merge-flow.sh` 的 `PR_BODY` 曾只在实现里存在） | `doc-consistency.sh` 第 5 类子项 | 机械 |

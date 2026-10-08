@@ -306,6 +306,7 @@ knowledge/                      # 知识库（跨 run 沉淀）
 
 ### 1.3 运行根 `README.md` 的 `write_scope:` 段（R17）
 
+> 机械门：`bash plans/write-scope-check.sh --run-root <运行根>`（0=通过 / 1=段缺失·缺键·取值非法 / 2=运行根或 README 缺失）。
 > 运行根 `README.md` 除 spawn 登记表外 MUST 含 `write_scope:` 段（写盘台账）：允许写入前缀清单 + 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记。机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）据此核验；越界即缺陷（判据与命名见 `references/file-hygiene.md`「写盘白名单与越界判据」）。
 
 ```yaml
