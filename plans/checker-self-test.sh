@@ -2396,6 +2396,68 @@ mutate "M173-e 变异（缺键判据失效）" "$work/cur/plans/write-scope-chec
 check_rc "M173-e 缺键判据被移除后同夹具须复现 rc=0（证明键校验非空转）" \
   "bash plans/write-scope-check.sh --run-root \"$RR3\"" 0 "write_scope 段 5 键齐备"
 
+echo "[M174 声明写入的**原子性**（F380：就地截断写 vs 临时文件 + rename）]"
+# 契约：`plans/preset-declare.mjs` 的 apply 写用户平面 profile 补丁时 MUST 原子替换
+#   （写同目录临时文件后 rename），且 MUST 保留原文件权限位。
+#   判据用**可确定观测的不变量**：原子替换会更换目录项 ⇒ 目标 inode 必变；就地写 inode 不变。
+#   （非空转证明见 b：把 rename 换成 copyFileSync 后就地覆盖 ⇒ inode 不变 ⇒ 断言失败。）
+if command -v node >/dev/null 2>&1; then
+  fresh
+  m174_p="$work/m174.yml"
+  : > "$m174_p"                                  # apply --append 要求目标文件已存在（空文件=首次安装）
+  node plans/preset-declare.mjs apply --append --patch "$m174_p" >/dev/null 2>&1
+  sed -i.bak 's/order: 5/order: 6/' "$m174_p"; rm -f "$m174_p.bak"      # 迫使下一次 apply 真的重写
+  m174_inode_before=$(ls -i "$m174_p" | awk '{print $1}')
+  m174_mode_before=$(ls -l "$m174_p" | awk '{print $1}')
+  m174_cmd='a=$(ls -i "$work/m174.yml" | awk "{print \$1}"); '
+  m174_cmd="$m174_cmd"'(cd "$work/cur" && node plans/preset-declare.mjs apply --patch "$work/m174.yml" >/dev/null); '
+  m174_cmd="$m174_cmd"'b=$(ls -i "$work/m174.yml" | awk "{print \$1}"); '
+  m174_cmd="$m174_cmd"'m=$(ls -l "$work/m174.yml" | awk "{print \$1}"); '
+  m174_cmd="$m174_cmd"'if [ "$a" != "$b" ] && [ "$m" = "$m174_mode0" ]; then '
+  m174_cmd="$m174_cmd"'echo "ATOMIC_OK inode $a -> $b mode $m"; else '
+  m174_cmd="$m174_cmd"'echo "✗ 非原子写（inode ${a} -> ${b}）或权限漂移（${m}）"; exit 1; fi'
+  m174_mode0="$m174_mode_before"
+  check_rc "M174-a apply 须原子替换（inode 变更）且保留权限位" "$m174_cmd" 0 "ATOMIC_OK"
+  m174_hits=$(grep -c 'renameSync(tmp, PATCH)' "$work/cur/plans/preset-declare.mjs" || true)
+  sed -i.bak 's/renameSync(tmp, PATCH);/copyFileSync(tmp, PATCH);/' "$work/cur/plans/preset-declare.mjs"
+  rm -f "$work/cur/plans/preset-declare.mjs.bak"
+  mutate_gone "M174-b 原子替换已被替换为就地覆盖（源码内不再有 renameSync(tmp, PATCH)）" \
+    "$work/cur/plans/preset-declare.mjs" 'renameSync(tmp, PATCH)'
+  check_rc "M174-b 就地覆盖后同命令须复现 inode 不变（证明断言非空转）" "$m174_cmd" 1 "非原子写"
+else
+  skip "M174 跳过（缺 node：无法演示 apply 的写入语义）"
+fi
+
+echo "[M175 hooks 覆盖清单：\`sed -i\` 全族与 \`perl -i\`（F381）]"
+# 契约：references/file-hygiene.md §8.3「覆盖」列明 `sed -i` 全族（含 `-i.bak`/`-i''`/`--in-place`）
+#   与 `perl -i`、重定向 `>|`。判据：这些形态写 denylist 路径必须被阻断（rc=2 且含规则名）。
+#   夹具纪律（类 14）：denylist 路径与规则名一律运行时拼接，不在本文件写出可命中的字面量。
+m175_rule="$(printf '%s%s' '系统' '路径')"
+m175_sys="$(printf '/%s/%s' 'etc' 'hosts')"
+fresh
+printf '{"session_id":"m175","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"bash","tool_input":{"command":"sed -i.bak \\"s/a/b/\\" %s"}}' \
+  "$work/cur" "$m175_sys" > "$work/cur/m175-sed.json"
+check_rc "M175-a \`sed -i.bak\` 形态须阻断（rc=2）" \
+  "python3 plans/hook-write-scope.py --fixture m175-sed.json 2>&1" 2 "$m175_rule"
+printf '{"session_id":"m175","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"bash","tool_input":{"command":"perl -i -pe \\"s/a/b/\\" %s"}}' \
+  "$work/cur" "$m175_sys" > "$work/cur/m175-perl.json"
+check_rc "M175-a2 \`perl -i\` 形态须阻断（rc=2，此前未覆盖）" \
+  "python3 plans/hook-write-scope.py --fixture m175-perl.json 2>&1" 2 "$m175_rule"
+python3 - "$work/cur/plans/hook-write-scope.py" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+t = io.open(p, encoding='utf-8').read()
+old = r'(?P<suf>[^\s]*)'
+n = t.count(old)
+assert n >= 1, '锚点未找到（变异不可靠）'
+io.open(p, 'w', encoding='utf-8').write(t.replace(old, r'(?P<suf>[A-Za-z]*)'))
+print('  · M175-b 变异落地（%d 处后缀判据收窄为字母）' % n)
+PYEOF
+mutate "M175-b 变异（把 \`-i\` 后缀判据收窄回字母）" \
+  "$work/cur/plans/hook-write-scope.py" 'P<suf>\[A-Za-z\]\*'
+check_no_match "M175-b 后缀判据收窄后 \`sed -i.bak\` 不得再被阻断（证明该覆盖非空转）" \
+  "python3 plans/hook-write-scope.py --fixture m175-sed.json 2>&1" "$m175_rule"
+
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
 #   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。

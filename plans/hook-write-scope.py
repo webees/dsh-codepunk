@@ -62,10 +62,14 @@ PS_WRITE_CMDS = (
     "move-item", "rename-item", "clear-content", "tee-object", "set-itemproperty",
     "new-itemproperty",
 )
-# 重定向：`> path` / `>> path` / `2> path` / `&> path`（引号可选；含 PowerShell 的 `>`）
-REDIR_RE = re.compile(r"(?:[0-9]|&)?>>?\s*(?P<q>['\"]?)(?P<path>[^\s'\"|;&<>()]+)(?P=q)")
-# `sed -i[SUFFIX] [EXPR] FILE`：就地改写，目标在**末位**（表达式可能含空格，故取行尾 token）
-SED_I_RE = re.compile(r"\bsed\b[^|;&]*?\s-i(?:\s*[A-Za-z]*)?\s+(?P<rest>.+)$")
+# 重定向：`> path` / `>> path` / `2> path` / `&> path` / `>| path`（`>|` = noclobber 覆盖写，F381 补齐）
+REDIR_RE = re.compile(r"(?:[0-9]|&)?>>?\|?\s*(?P<q>['\"]?)(?P<path>[^\s'\"|;&<>()]+)(?P=q)")
+# `sed -i[SUFFIX] [EXPR] FILE`：就地改写，目标在**末位**（表达式可能含空格，故取行尾 token）。
+# F381：`-i` 家族须整族覆盖——`-i`、`-i.bak`、`-i''`、`--in-place`、`--in-place=.bak` 是同一操作的
+#   不同拼法（BSD sed 要求 `-i` 带参数，macOS 上 `-i.bak` 才是常态），此前只认「裸 `-i `」形态。
+SED_I_RE = re.compile(r"\bsed\b[^|;&]*?\s(?:-i|--in-place)(?P<suf>[^\s]*)\s+(?P<rest>.+)$")
+# `perl -i[SUFFIX] [-pe …] FILE`：同族的就地改写（此前未覆盖；实测 `perl -i -pe … /etc/hosts` 放行）
+PERL_I_RE = re.compile(r"\bperl\b[^|;&]*?\s-i(?P<suf>[^\s]*)\s+(?P<rest>.+)$")
 # 写入型命令的目标位（大小写不敏感：PowerShell cmdlet 为 `Set-Content` 驼峰形）
 CMD_TAIL_RE = re.compile(
     r"\b(?P<cmd>" + "|".join(SHELL_WRITE_CMDS) + r")\b(?P<rest>[^|;&\n]*)", re.IGNORECASE)
@@ -200,6 +204,10 @@ def candidates_from_command(command: str) -> list:
         add(m.group("path"))
     for m in SED_I_RE.finditer(command):
         toks = m.group("rest").split()
+        if toks:
+            add(toks[-1])
+    for m in PERL_I_RE.finditer(command):
+        toks = [t for t in m.group("rest").split() if not t.startswith("-")]
         if toks:
             add(toks[-1])
     for rx in (CMD_TAIL_RE, PS_CMD_RE):

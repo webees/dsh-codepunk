@@ -20,6 +20,8 @@
 
 ### 修复
 
+- **声明写入非原子（用户平面补丁可能被截断）**：`plans/preset-declare.mjs` 的 `apply` 原先就地对 profile 补丁 `writeFileSync`（先截断后写入）——实测并发读者能读到 **0 字节**（5 ms 采样命中中间态），进程被 SIGKILL 时文件停在截断态（`check` 报「profile patch 中找不到声明」），而写后自校验的回滚只在正常路径执行 ⇒ 产品下次启动读到不可用的 profile。现改为**原子替换**：写同目录临时文件 `${patch}.tmp-<pid>` 后 `renameSync`，并显式把原文件权限位复制到临时文件（rename 会换 inode）；异常时清理临时文件（崩溃可能留下惰性 `.tmp-*` 残留，产品不读它）。受控 A/B（同一处注入等量延时后 SIGKILL）：修复前目标 0 字节 / `check` rc=2，修复后目标字节数与权限不变 / `check` rc=1。永久变异 **M174**（2 断言，用「inode 是否变更」这一可确定观测的原子性不变量）。
+- **hooks 覆盖清单对 `sed -i` 声称过宽**：契约（`references/file-hygiene.md` §8.3）承诺覆盖 `sed -i` 末位文件，而实现只认「裸 `-i `」形态——`-i.bak`、`-i''`、`--in-place`、`--in-place=.bak` 四种**等价且更常见**的拼法（BSD sed 要求 `-i` 带参数，macOS 上 `-i.bak` 才是常态）静默放行，`perl -i` 与重定向 `>|` 同样未覆盖。现 `plans/hook-write-scope.py` 覆盖 `sed -i` 全族、`perl -i` 与 `>|`，§8.3 同步改写。永久变异 **M175**（3 断言：`sed -i.bak` / `perl -i` 须阻断 + 后缀判据收窄后不得再阻断）。
 - **运行根的 `write_scope:` 台账段只是散文、机械门无判据**：契约（`references/artifacts.md` §1.3）要求运行根 `README.md` MUST 含 `write_scope:` YAML 段（`run_id` / `allowed_prefixes` / `created` / `cleanup_status` / `exempt`），而该段长期只有散文形态、内容陈旧（`cleanup_status` 是交接门与合并门的前置读数，散文形态下该读数根本不存在）。`plans/write-scope-check.sh` 新增 `--run-root <运行根>` 模式（段缺失/缺键/取值非法 ⇒ exit 1；运行根或 README 缺失 ⇒ exit 2），并以夹具运行根守护（永久变异 M173，5 断言）。
 - **自检变异锚定易碎常量**：M149 的变异锚点写死了 `-h` 分支的行区间常量（`sed -n '2,44p'`）——本轮把 `plans/write-scope-check.sh` 的用法块由 44 行扩到 50 行后，变异不再落地，整轮自检因「变异未生效」变红（虽为显式失败，但失败原因与守护无关）。锚点改为只依赖**被守护的分支形态**（`-h|--help)  sed -n '`），与行区间解耦。
 - **巡检节奏无机械判据**：D095「每 N 轮巡检一次」此前只靠纪律执行，实测台账 632 轮内出现**最大间隔 10 轮**（超阈值 5）与**重复轮次**（601/602/609）。新增工具 `tools/patrol-cadence.py`（间隔 ≤ `--max-gap`、轮次不得重复、巡检轮次须在台账中有行；`--since N` 把历史违规列为信息、不改退出码），并据此把运行根 `agents.yaml` 的 `patrol_log` 去重合并（55 → 48 条，内容保留）与轮次值规范为裸整数。
