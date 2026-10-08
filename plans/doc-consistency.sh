@@ -13,6 +13,9 @@
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`；子项：外部输入
 #      变量（未赋值或 `${VAR:-默认}` 形式）MUST 被记载于任一 .md 或脚本头部注释块——F358）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）（**仅提示，不计失败**）
+#   26. 治理矩阵载体可解析（矩阵行内反引号的文件型引用 MUST 在仓内可解析，或为 `artifacts.md`
+#       以 `##` 小节声明的制品名，或该行显式标注「非仓内」——F385：原「巡检节奏」行以运行根
+#       本地脚本 `tools/patrol-cadence.py` 作为「机械」载体，仓内不可复现且仓内已有等价门）
 #   25. 同一制品的多处生成器须一致（INDEX 骨架模板：link 与 init 的 heredoc 须逐字节一致——F360）
 #   24. Markdown 表格列数一致（表格行的单元格数 MUST NOT 超过表头——GFM 规范下多余单元格被忽略
 #       ⇒ 内容静默丢失；代码跨度内的 `|` 须转义为 `\|`。行单元格数少于表头则补空单元格，不判失败。
@@ -1519,6 +1522,44 @@ elif [ "${SKEL_ISSUE%% *}" = "MISSING" ]; then
   info "INDEX 骨架模板无法核验（未定位到含 schema_version 的 heredoc 块）——无法核验 ≠ 通过"
 else
   bad "INDEX 骨架模板漂移 → ${SKEL_ISSUE}"
+fi
+
+echo "[26] 治理矩阵载体可解析（行内文件型引用须仓内可解析 / artifacts.md 制品名 / 显式标注非仓内）"
+# F385（本轮巡检实测）：治理矩阵是「声称 ↔ 能力互证」表，其「载体」列的引用若指向**仓外**文件
+#   （如运行根本地便利脚本），读者与 CI 都无法复现该「机械」声称 ⇒ 过度声称（F294/F315/F327 同族）。
+#   判据：矩阵行内反引号的文件型 token 必须①仓内可解析（多基准目录）②或是 `artifacts.md` 以
+#   `##` 小节声明的**制品名**（制品在运行期生成，本就不在仓内）③或该行显式标注「非仓内」。
+MATRIX_ISSUE=$(python3 <<'PYEOF'
+import io, os, re
+GOV = 'skills/dsh-codepunk-workflow/references/skill-governance.md'
+ART = 'skills/dsh-codepunk-workflow/references/artifacts.md'
+BASES = ['', 'plans', 'skills/dsh-codepunk-workflow', 'skills/dsh-codepunk-workflow/references',
+         'docs', '.github/workflows', '.github']
+try:
+    rows = [l for l in io.open(GOV, encoding='utf-8').read().split('\n') if l.startswith('| **')]
+    arts = set(re.findall(r'^##\s+([A-Za-z0-9_.-]+)', io.open(ART, encoding='utf-8').read(), re.M))
+except OSError as e:
+    print('MISSING %s' % e)
+    raise SystemExit(0)
+bad = []
+for i, row in enumerate(rows, 1):
+    if '非仓内' in row:
+        continue
+    for t in re.findall(r'`([A-Za-z0-9_./-]+\.(?:sh|py|mjs|md|yml|json))`', row):
+        if t in arts:
+            continue
+        if any(os.path.exists(os.path.join(b, t)) for b in BASES):
+            continue
+        bad.append('行%d:%s' % (i, t))
+print(', '.join(bad[:4]) + ('' if len(bad) <= 4 else ' 等共 %d 处' % len(bad)))
+PYEOF
+)
+if [ -z "$MATRIX_ISSUE" ]; then
+  ok "治理矩阵载体均可仓内解析（或为制品名 / 已标注非仓内）"
+elif [ "${MATRIX_ISSUE%% *}" = "MISSING" ]; then
+  info "治理矩阵载体无法核验（${MATRIX_ISSUE}）——无法核验 ≠ 通过"
+else
+  bad "治理矩阵载体不可解析 → ${MATRIX_ISSUE}"
 fi
 
 # class 17 子项（F179）：ps1 工作树行尾须为 CRLF（.gitattributes eol=crlf 的落地校验）
