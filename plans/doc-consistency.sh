@@ -1588,6 +1588,68 @@ PYEOF
   [ -z "$EOLBAD" ] && ok "ps1 行尾均为 CRLF（文件系统字节核验）" || bad "ps1 工作树行尾非 CRLF（文件系统字节核验）: ${EOLBAD}"
 fi
 
+echo "[27] 产品/用户平面行号引用可核验（锚点须落在引用区间；单引用行机械核验）"
+# F390/F391：`references/file-hygiene.md` 的「行号引用规则（MUST）」原以「引用 MUST 同时给出符号名检索式」
+#   声称，但实测 13 处行号引用仅 3 处附检索式、且该类声称无任何门禁（同 F294/F315/F327/F338/F347 家族）。
+#   本轮实测另证两处行号漂移：`PROF/cordis.patch.yml` 的 permission 区块（旧稿 `:216-229`）与 `defaultPreset`
+#   （旧稿 `:229`）在用户平面编辑后各后移 1 行（实况 `:217-230`、`:230`）；两处虽带检索式、读者按检索式可发现，
+#   但门禁此前无从发现。口径（与 `tools/cite-anchor.py` 一致）：仅判同行**单处**引用——有检索式者首命中行须落在
+#   引用区间内（不设容差），无检索式者反引号内符号名须在区间内出现一次；缺 `DSH_APP_ROOT`/`DSH_ASAR`、
+#   目标文件不存在（如 CI 无私用用户平面）记无法核验，不判失败。
+CITE_ISSUE=$(python3 <<'PYEOF'
+import glob, os, re
+CITE_RE = re.compile(r"(?P<pre>PKG|PROF)/(?P<path>[A-Za-z0-9._/-]+):(?P<start>\d+)(?:-(?P<end>\d+))?(?P<extra>,\d+)?")
+EXPR_RE = re.compile(r"grep -n\s+'([^']+)'\s+<?([^ >`|]*)>?")
+SPAN_RE = re.compile(r"`([^`]+)`")
+IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_.]{3,}")
+app = os.environ.get('DSH_APP_ROOT') or os.environ.get('DSH_ASAR')
+home = os.environ.get('HOME')
+bases = {'PKG': os.path.join(app, 'node_modules', '@deepseek-ai') if app else None,
+         'PROF': os.path.join(home, '.dsh', 'profiles', 'desktop') if home else None}
+docs = sorted(glob.glob('skills/*/references/*.md')) + sorted(glob.glob('docs/*.md')) + sorted(glob.glob('docs/*/*.md'))
+bad = []
+for doc in docs:
+    with open(doc, encoding='utf-8', errors='replace') as fh:
+        dlines = fh.read().split('\n')
+    for i, line in enumerate(dlines, start=1):
+        found = list(CITE_RE.finditer(line))
+        if len(found) != 1:
+            continue
+        m = found[0]
+        base = bases[m.group('pre')]
+        if base is None:
+            continue
+        target = os.path.join(base, m.group('path'))
+        if not os.path.isfile(target):
+            continue
+        with open(target, encoding='utf-8', errors='replace') as fh:
+            tlines = fh.read().split('\n')
+        start = int(m.group('start'))
+        end = int(m.group('end') or start)
+        if end > len(tlines):
+            bad.append('%s:%d %s 越界(共 %d 行)' % (doc, i, m.group(0), len(tlines)))
+            continue
+        e = EXPR_RE.search(line)
+        if e:
+            sym = e.group(1)
+            hits = [j for j, l in enumerate(tlines, start=1) if sym in l]
+            if not hits or not (start <= hits[0] <= end):
+                bad.append('%s:%d %s 检索式 %r 首命中 %s 不在区间' % (doc, i, m.group(0), sym, hits[0] if hits else '无'))
+            continue
+        toks = []
+        for span in SPAN_RE.findall(line):
+            for t in IDENT_RE.findall(span):
+                t = t.rstrip('.')
+                if len(t) >= 4 and t not in toks:
+                    toks.append(t)
+        if not any(any(t in l for l in tlines[start - 1:end]) for t in toks):
+            bad.append('%s:%d %s 锚点未在区间内出现' % (doc, i, m.group(0)))
+print(', '.join(bad[:4]) + ('' if len(bad) <= 4 else ' 等共 %d 处' % len(bad)))
+PYEOF
+)
+if [ -z "$CITE_ISSUE" ]; then ok "产品/用户平面行号引用的锚点均落在引用区间（单引用行机械核验；无法核验者不判失败）"
+else bad "行号引用锚点未落在引用区间 → ${CITE_ISSUE}"; fi
+
 echo
 # F261：原为**字面量**「23 类检查」，与实现（`echo "[N] …"` 类段数）**无任何联动**——
 #   自检对「类检查」的断言数为 0（实测），故改错字面量不会有任何门禁报错（实测：改成「24 类检查」后

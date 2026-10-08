@@ -2613,6 +2613,21 @@ check_rc "M182-c 抹掉产物白名单后同夹具须复现假失败 rc=1（证�
   "DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh . 2>&1" 1 "杂散"
 rm -rf "$work/cur/tmp"
 
+echo "[M183 产品/用户平面行号引用须可核验（第 27 类）：越界须报，修好后不得再报（F390/F391）]"
+if [ -n "${DSH_APP_ROOT:-}" ] && [ -d "$DSH_APP_ROOT/node_modules/@deepseek-ai" ]; then
+  fresh
+  printf '%s\n' '<!-- M183 夹具 -->' >> "$work/cur/docs/faq.md"
+  printf '%s\n' '行号引用夹具：`PKG/dsh-sandbox-policy/lib/index.js:9999`（核验式：`grep -n '"'"'SANDBOX_MODES'"'"' <该文件>`）。' >> "$work/cur/docs/faq.md"
+  mutate "M183-a 夹具（越界行号引用）已写入" "$work/cur/docs/faq.md" 'lib/index.js:9999'
+  check_rc "M183-a 行号引用越界须被第 27 类报出" "bash plans/doc-consistency.sh 2>&1" 1 "行号引用锚点未落在引用区间"
+  sed -i.bak 's|lib/index.js:9999|lib/index.js:26-30|' "$work/cur/docs/faq.md"
+  rm -f "$work/cur/docs/faq.md.bak"
+  mutate_gone "M183-b 夹具已修为合法区间（删除型变异）" "$work/cur/docs/faq.md" 'lib/index.js:9999'
+  check_no_match "M183-b 修好后第 27 类不得再报行号引用问题" "bash plans/doc-consistency.sh 2>&1" "行号引用锚点未落在引用区间"
+else
+  skip "M183 跳过（未设 DSH_APP_ROOT ⇒ 无法定位产品安装面）"
+fi
+
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
 #   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。
