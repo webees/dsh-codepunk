@@ -2628,6 +2628,44 @@ else
   skip "M183 跳过（未设 DSH_APP_ROOT ⇒ 无法定位产品安装面）"
 fi
 
+echo "[M184 用户平面引用禁写行号（第 27 类 PROF 子判据；应用会重写该文件）（F392）]"
+fresh
+printf '%s\n' '<!-- M184 夹具 -->' >> "$work/cur/docs/faq.md"
+printf '%s\n' '用户平面行号引用夹具：`PROF/cordis.patch.yml:217-230`。' >> "$work/cur/docs/faq.md"
+mutate "M184-a 夹具（用户平面带行号引用）已写入" "$work/cur/docs/faq.md" 'PROF/cordis.patch.yml:217-230'
+check_rc "M184-a 用户平面引用带行号须被第 27 类报出" "bash plans/doc-consistency.sh 2>&1" 1 "用户平面引用不得写行号"
+sed -i.bak 's|`PROF/cordis.patch.yml:217-230`|`PROF/cordis.patch.yml`|' "$work/cur/docs/faq.md"
+rm -f "$work/cur/docs/faq.md.bak"
+mutate_gone "M184-b 夹具已改为符号锚点（删除型变异）" "$work/cur/docs/faq.md" 'PROF/cordis.patch.yml:217-230'
+check_no_match "M184-b 去掉行号后第 27 类不得再报用户平面行号问题" "bash plans/doc-consistency.sh 2>&1" "用户平面引用不得写行号"
+
+echo "[M185 保真闸类数声称须入核验（与 doc 类数同族、另一实况值；计数同步易误伤相邻工具行）（F393）]"
+fresh
+sed -i.bak 's|\*\*14 类\*\*：编号|**27 类**：编号|' "$work/cur/README.md"
+rm -f "$work/cur/README.md.bak"
+mutate "M185-a 变异已落地（README 保真闸类数 14→27）" "$work/cur/README.md" '27 类\*\*：编号'
+check_rc "M185-a 保真闸类数陈旧须被报出" "bash plans/doc-consistency.sh 2>&1" 1 "保真闸类数声称陈旧"
+sed -i.bak 's|\*\*27 类\*\*：编号|**14 类**：编号|' "$work/cur/README.md"
+rm -f "$work/cur/README.md.bak"
+mutate_gone "M185-b 已复原（删除型变异）" "$work/cur/README.md" '27 类\*\*：编号'
+check_no_match "M185-b 复原后不得再报保真闸类数问题" "bash plans/doc-consistency.sh 2>&1" "保真闸类数声称陈旧"
+
+echo "[M186 自检尾部须有 MUTFAIL 终局门（早退点之后的变异不得静默空转）（F394）]"
+check_rc "M186-a 自检文件内须存在两处 MUTFAIL 门（早退点 + 终局）" "grep -cE 'exit 2; fi\$' plans/checker-self-test.sh | grep -qx 2" 0
+sed -i.bak '/^# F394：终局 MUTFAIL 门/,/^if \[ "\$MUTFAIL" != 0 \]; then echo "✗ 自检失败/d' "$work/cur/plans/checker-self-test.sh"
+rm -f "$work/cur/plans/checker-self-test.sh.bak"
+# 注：目标文件即本脚本自身 ⇒ 模式串 MUST 由拼接构造，否则该断言行自身即命中（F394 自纠 217）
+GONE_PAT="F394：终局 MUTFAIL ""门（早退点"
+mutate_gone "M186-b 终局门已被删除（删除型变异）" "$work/cur/plans/checker-self-test.sh" "$GONE_PAT"
+check_rc "M186-b 删掉终局门后门计数须降为 1（证明该断言非空转）" "grep -cE 'exit 2; fi\$' plans/checker-self-test.sh | grep -qx 2" 1
+
+# F394：终局 MUTFAIL 门（早退点之后的变异不得静默空转）——早退点在文件中部，其后新增的变异
+#   若 `mutate`/`mutate_gone` 失败只打印 ‼ 而退出码仍 0（实证：M185-a 的模式串 `**27 类**：编号` 在
+#   `grep -E` 下属非法重复算子 ⇒ 从未落地，却仍打印「✅ …」与「185/185 全捕获」）⇒ 必须在结论行之前再判一次。
+#   注：M186-b 的删除型变异 MUST 用「起止两正则」的地址范围（BSD sed 不支持 GNU 的 `addr,+N`：
+#   实测 `sed '/re/,+2d'` 在 macOS 上静默不删、计数仍为 2 ⇒ 该断言会假失败）。
+if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
 #   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。
