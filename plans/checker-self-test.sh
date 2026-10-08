@@ -2333,8 +2333,8 @@ if [ -x "$work/bin-nofind/bash" ] && [ ! -e "$work/bin-nofind/find" ]; then
     "env -i PATH=\"$work/bin-nofind\" HOME=\"$HOME\" \"$work/bin-nofind/bash\" plans/write-scope-check.sh --repo ." 2 \
     "缺少必需工具 find"
   fresh
-  sed -i.bak '/缺少必需工具 find/d; /find 不可用（预检执行失败）/d' "$work/cur/plans/write-scope-check.sh"
-  mutate_gone "M169-b 删除型变异（移除 find 预检守护）" "$work/cur/plans/write-scope-check.sh" '缺少必需工具 find'
+  sed -i.bak '/缺少必需工具 find ⇒ 无法扫描仓库/d; /find 不可用（预检执行失败）/d' "$work/cur/plans/write-scope-check.sh"
+  mutate_gone "M169-b 删除型变异（移除 find 预检守护）" "$work/cur/plans/write-scope-check.sh" '缺少必需工具 find ⇒ 无法扫描仓库'
   check_rc "M169-b 移除守护后同环境须复现假绿 rc=0（证明守护非空转）" \
     "env -i PATH=\"$work/bin-nofind\" HOME=\"$HOME\" \"$work/bin-nofind/bash\" plans/write-scope-check.sh --repo ." 0 \
     "写盘纪律门：通过"
@@ -2713,8 +2713,8 @@ write_scope:
 RR188
 check_rc "M188-a 顶层无备份/临时命名物须判通过" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 0 "判据 h 实况核验"
 touch "$work/rr188/x.bak"
-check_rc "M188-b 顶层存在 *.bak 而 cleanup_status=clean 须判失败" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 1 "备份/临时命名物"
-( cd "$work/cur" && sed -i.bak '/^    # 判据 h（F396）/,/^    fi$/d' plans/write-scope-check.sh \
+check_rc "M188-b 顶层存在 *.bak 而 cleanup_status=clean 须判失败" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 1 "备份/临时/编译缓存残留"
+( cd "$work/cur" && sed -i.bak '/^    # 判据 h/,/^    fi$/d' plans/write-scope-check.sh \
     && rm -f plans/write-scope-check.sh.bak )
 mutate_gone "M188-c 删除型变异（移除判据 h；作用于沙箱副本，F397）" "$work/cur/plans/write-scope-check.sh" "RR_JUNK"
 check_rc "M188-c 移除判据 h 后同夹具须复现假通过（证明该判据非空转）" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 0 "5 键齐备"
@@ -2766,6 +2766,38 @@ check_rc "M191-a 未来时间戳须 rc=1 并报出（判据 i 非空转）" "bas
 check_rc "M191-b 非单调 at 须 rc=1 并报出" "bash plans/patrol-check.sh --run-root \"$m191_dir/nonmono\" 2>&1" 1 "非递减"
 check_rc "M191-c 合规夹具须 rc=0（不得误报）" "bash plans/patrol-check.sh --run-root \"$m191_dir/ok\" 2>&1" 0 "巡检名册合规"
 check_rc "M191-d 形态非法（缺秒/缺偏移）须 rc=1 并报出" "bash plans/patrol-check.sh --run-root \"$m191_dir/bad\" 2>&1" 1 "形态非法"
+
+echo "[M192 运行根残留实况核验须**递归**（F403：原判据 h 只扫顶层 ⇒ 子目录编译缓存不可见）]"
+# F403 实证：`tools/__pycache__/*.pyc` 在运行根子目录在场而 `--run-root` 门 rc=0（只扫顶层）。
+m192_dir="$work/rr192"
+mkdir -p "$m192_dir/sub/__pycache__"
+cat > "$m192_dir/README.md" <<'RR192'
+# 夹具运行根（F403）
+write_scope:
+  run_id: rr192
+  allowed_prefixes:
+    - "本运行根/"
+  created:
+    - "sub*"
+  cleanup_status: clean
+  exempt: []
+RR192
+printf 'x' > "$m192_dir/sub/__pycache__/mod.cpython-314.pyc"
+fresh
+check_rc "M192-a 子目录编译缓存而 cleanup_status=clean 须判失败（判据 h 须递归）" \
+  "bash plans/write-scope-check.sh --run-root \"$m192_dir\" 2>&1" 1 "编译缓存残留"
+rm -rf "$m192_dir/sub"
+check_rc "M192-b 清理子目录残留后须判通过（不得误报）" \
+  "bash plans/write-scope-check.sh --run-root \"$m192_dir\" 2>&1" 0 "含子目录"
+( cd "$work/cur" && sed -i.bak 's|find \. \\(|find . -maxdepth 1 \\(|' plans/write-scope-check.sh \
+    && rm -f plans/write-scope-check.sh.bak )
+mutate "M192-c 变异落地（递归 find 退化为 -maxdepth 1）" "$work/cur/plans/write-scope-check.sh" "find . -maxdepth 1"
+mkdir -p "$m192_dir/sub/__pycache__" && printf 'x' > "$m192_dir/sub/__pycache__/mod.cpython-314.pyc"
+check_rc "M192-c 退化为只扫顶层后同夹具须复现假通过（证明递归扫描非空转）" \
+  "bash plans/write-scope-check.sh --run-root \"$m192_dir\" 2>&1" 0 "含子目录"
+rm -rf "$m192_dir/sub"
+fresh
+
 
 # F394：终局 MUTFAIL 门（早退点之后的变异不得静默空转）——早退点在文件中部，其后新增的变异
 #   若 `mutate`/`mutate_gone` 失败只打印 ‼ 而退出码仍 0（实证：M185-a 的模式串 `**27 类**：编号` 在

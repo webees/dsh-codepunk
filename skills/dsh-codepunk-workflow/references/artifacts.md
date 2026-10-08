@@ -325,7 +325,7 @@ write_scope:
     - { path: "skills/dsh-codepunk-workflow/references/file-hygiene.md", reason: "交付物，非临时物" }
 ```
 
-> 口径：`cleanup_status: clean` 是交接门与合并门的**前置读数**；`pending` 不得进入交接/合并（同 D079 残留自查门闩）。台账行与实况不符（写 clean 而门禁判 FAIL）以机械门结论为准。
+> 口径：`cleanup_status: clean` 是交接门与合并门的**前置读数**；`pending` 不得进入交接/合并（同 D079 残留自查门闩）。台账行与实况不符（写 clean 而门禁判 FAIL）以机械门结论为准。**机械门**：`plans/write-scope-check.sh --run-root <运行根>` 核验 5 键齐备 + 取值合法 + 判据 h（`clean` 时运行根**含子目录**不得存在 `*.bak`/`*.bak-*`/`*~`/`*.orig`/`*.rej`/`*.tmp`/`*.swp`/`__pycache__`/`*.pyc`；F396 顶层实证、F403 递归加严实证）。
 
 ## 子代理状态清单（D095：启动自检 + 定时巡检用）
 

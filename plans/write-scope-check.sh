@@ -28,9 +28,10 @@
 #                    核验该运行根的 `README.md` 是否含 R17 要求的 `write_scope:` 台账段
 #                    （键：run_id / allowed_prefixes / created / cleanup_status / exempt；
 #                    cleanup_status 取值须为 clean 或 pending）。只跑这一项、不扫目录树。
-#                    **判据 h（F396）**：`cleanup_status: clean` 时运行根**顶层**不得存在备份/临时命名物
-#                    （`*.bak` / `*.bak-*` / `*~` / `*.orig` / `*.rej` / `*.tmp` / `*.swp`）——
-#                    否则该取值与实况不符（R17/§6.2 黑名单；声称不可核验时 MUST 判失败）。
+#                    **判据 h（F396，加严 F403）**：`cleanup_status: clean` 时运行根**含子目录**不得存在
+#                    备份/临时命名物与编译缓存（`*.bak` / `*.bak-*` / `*~` / `*.orig` / `*.rej` / `*.tmp` /
+#                    `*.swp` / `__pycache__` / `*.pyc`）——否则该取值与实况不符（R17/§6.2 黑名单；
+#                    声称不可核验时 MUST 判失败）。递归扫描需要 `find`，缺 `find` ⇒ exit 2。
 #                    运行根或 README 缺失 ⇒ exit 2（无法核验 ≠ 通过）；段缺失/缺键/取值非法/判据 h 命中 ⇒ exit 1。
 #     --quiet        静默通过行；失败行与结论仍输出
 #     -h, --help     显示本用法
@@ -138,19 +139,25 @@ if [ -n "${RUN_ROOT}" ]; then
       *)  fail "✗ cleanup_status 取值非法: '${CS}'（须为 clean 或 pending）" ;;
     esac
     [ -z "${MISS}" ] && [ -n "${CS}" ] && say "  ✅ write_scope 段 5 键齐备（run_id / allowed_prefixes / created / cleanup_status / exempt）"
-    # 判据 h（F396）：cleanup_status=clean 的**实况**核验——顶层不得留备份/临时命名物。
-    # 用 shell 通配而非 find：本分支在 find 预检之前执行，且不引入外部依赖（未命中时通配保持字面量）。
+    # 判据 h（F396 / 加严 F403）：cleanup_status=clean 的**实况**核验——运行根**含子目录**不得留
+    #   备份/临时命名物与编译缓存（`*.bak`/`*.bak-*`/`*~`/`*.orig`/`*.rej`/`*.tmp`/`*.swp`/`__pycache__`/`*.pyc`）。
+    #   F403 实证：原实现只扫**顶层**（shell 通配）⇒ `tools/__pycache__/*.pyc`（14 个）在场而门仍 rc=0、
+    #   `cleanup_status: clean` 在子目录层面不可核验。递归扫描需要 find ⇒ 缺 find 时显式 exit 2。
     if [ "${CS}" = "clean" ]; then
-      RR_JUNK=""
-      for f in "${RUN_ROOT}"/*.bak "${RUN_ROOT}"/*.bak-* "${RUN_ROOT}"/*~ "${RUN_ROOT}"/*.orig \
-               "${RUN_ROOT}"/*.rej "${RUN_ROOT}"/*.tmp "${RUN_ROOT}"/*.swp; do
-        [ -e "${f}" ] || continue
-        RR_JUNK="${RR_JUNK} $(basename "${f}")"
-      done
-      if [ -n "${RR_JUNK}" ]; then
-        fail "✗ cleanup_status=clean 但运行根顶层存在备份/临时命名物（收尾未清理，R17/§6.2 黑名单）:${RR_JUNK}"
+      if command -v find >/dev/null 2>&1; then
+        RR_N=$( ( cd "${RUN_ROOT}" && find . \( -name '*.bak' -o -name '*.bak-*' -o -name '*~' -o -name '*.orig' \
+                  -o -name '*.rej' -o -name '*.tmp' -o -name '*.swp' -o -name '__pycache__' -o -name '*.pyc' \) \
+                  -print 2>/dev/null ) | wc -l | tr -d ' ')
+        RR_JUNK=$( ( cd "${RUN_ROOT}" && find . \( -name '*.bak' -o -name '*.bak-*' -o -name '*~' -o -name '*.orig' \
+                  -o -name '*.rej' -o -name '*.tmp' -o -name '*.swp' -o -name '__pycache__' -o -name '*.pyc' \) \
+                  -print 2>/dev/null ) | head -6 | tr '\n' ' ')
       else
-        say "  ✅ cleanup_status=clean 且运行根顶层无备份/临时命名物（判据 h 实况核验）"
+        fatal "缺少必需工具 find ⇒ 无法核验运行根残留（无法核验 ≠ 通过）"
+      fi
+      if [ "${RR_N:-0}" -gt 0 ]; then
+        fail "✗ cleanup_status=clean 但运行根存在备份/临时/编译缓存残留 ${RR_N} 处（收尾未清理，R17/§6.2 黑名单）: ${RR_JUNK}"
+      else
+        say "  ✅ cleanup_status=clean 且运行根（含子目录）无备份/临时/编译缓存残留（判据 h 实况核验）"
       fi
     fi
   fi
