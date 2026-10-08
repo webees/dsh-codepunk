@@ -214,6 +214,8 @@
 | **运行根 `cleanup_status` 的实况核验**（`write_scope.cleanup_status: clean` 是交接门/合并门前置读数，原实现只验 5 键齐备与取值合法、**不验实况**：实测 F396 运行根顶层留着 `ledger.md.bak-r626` 而门仍报通过 ⇒ 声称不可核验。判据 h 改判：`clean` 时顶层不得存在 `*.bak`/`*.bak-*`/`*~`/`*.orig`/`*.rej`/`*.tmp`/`*.swp`） | `plans/write-scope-check.sh --run-root` 判据 h + M188 | 机械（变异） |
 | **自检不得改动源树**（变异 MUST 作用于 `$work/cur` 沙箱副本；裸相对路径会施加于源树本身。F397 实证：M188-c 的裸 `sed -i.bak plans/write-scope-check.sh` 删掉了源树的判据 h 实现，紧随的 `rm -f …bak` 抹掉备份 ⇒ 工作树静默退化、CI 每跑一次污染一次，仅因 hub 镜像留有副本才可无损恢复） | `plans/checker-self-test.sh` 的 `src_fingerprint()` 与 `seal_check()` 源树密封判据（开工取指纹、收尾比对，差异即 exit 2）+ M189 两断言 | 机械（变异） |
 | **工程化入口（Makefile）自述与 CI 关系**（头部声称「本地与 CI 用同一条命令复跑」——实测 CI 全文无 `make` 调用；`make gates` ≠ CI「门禁回归」；`make write-scope` 实参窄于 CI（缺假 HOME 的 `--home`）⇒ 本地绿不等于 CI 绿。已改为实测口径并写明「以 CI 结论为准」） | 无（自然语言声称，不可机械化） | 人工：改动 Makefile/ci.yml 任一侧时逐条比对入口与实参 |
+| **声明生成器的 CLI 取值守卫**（`--order`/`--id` 原无校验：`--order=abc` 静默产出 `order: NaN`、`--id ''` 产出 `- id: preset-`，且 `apply` 会把非法值写进 profile 副本并报「生效」——F398 实证：apply 后副本第 15 行为 `order: NaN`） | `plans/preset-declare.mjs` 的 `--id` 正则（`^[a-z0-9][a-z0-9._-]*$`）与 `--order` 非负整数守卫（`Number.isSafeInteger`，非法即 `die()` rc=2 且不写盘）+ `checker-self-test.sh` M190（三条断言） | 机械（变异） |
+| **评分器的「无法核验」须可见**（`preset-score.sh` 的 `PARSE=skip` 原既不扣分也不提示＝判据消失而不告知；且只认总库 tools 的 js-yaml、不采纳 `verify-battery.sh`/`preset-declare.mjs` 都在用的 `$DSH_APP_ROOT` 回退 ⇒ 同套件口径不一。F399 实证） | `plans/preset-score.sh` 的 `YAML_DIR` 候选（总库 tools → `$DSH_APP_ROOT`）+ skip 时的显式提示行（一次性反空转证明见运行根 `logs/r643/`；未纳入永久变异：需构造无 ruby 环境并跑整轮评分） | 机械（部分：有 js-yaml 时真解析）+ 人工（无环境时的提示行） |
 | **日期时效性**（文档内实测结论是否已过期） | 无 | 人工 |
 | 需求/流程自洽（阶段归属、汇报链、责任席位是否有人） | 部分（A7/结构检查） | 半人工 |
 
