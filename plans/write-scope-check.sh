@@ -28,7 +28,10 @@
 #                    核验该运行根的 `README.md` 是否含 R17 要求的 `write_scope:` 台账段
 #                    （键：run_id / allowed_prefixes / created / cleanup_status / exempt；
 #                    cleanup_status 取值须为 clean 或 pending）。只跑这一项、不扫目录树。
-#                    运行根或 README 缺失 ⇒ exit 2（无法核验 ≠ 通过）；段缺失/缺键/取值非法 ⇒ exit 1。
+#                    **判据 h（F396）**：`cleanup_status: clean` 时运行根**顶层**不得存在备份/临时命名物
+#                    （`*.bak` / `*.bak-*` / `*~` / `*.orig` / `*.rej` / `*.tmp` / `*.swp`）——
+#                    否则该取值与实况不符（R17/§6.2 黑名单；声称不可核验时 MUST 判失败）。
+#                    运行根或 README 缺失 ⇒ exit 2（无法核验 ≠ 通过）；段缺失/缺键/取值非法/判据 h 命中 ⇒ exit 1。
 #     --quiet        静默通过行；失败行与结论仍输出
 #     -h, --help     显示本用法
 #   未给 --home/--tmp/--home-all 时，默认等价于 `--repo . --tmp`；显式给了模式参数时只跑所选模式。
@@ -135,6 +138,21 @@ if [ -n "${RUN_ROOT}" ]; then
       *)  fail "✗ cleanup_status 取值非法: '${CS}'（须为 clean 或 pending）" ;;
     esac
     [ -z "${MISS}" ] && [ -n "${CS}" ] && say "  ✅ write_scope 段 5 键齐备（run_id / allowed_prefixes / created / cleanup_status / exempt）"
+    # 判据 h（F396）：cleanup_status=clean 的**实况**核验——顶层不得留备份/临时命名物。
+    # 用 shell 通配而非 find：本分支在 find 预检之前执行，且不引入外部依赖（未命中时通配保持字面量）。
+    if [ "${CS}" = "clean" ]; then
+      RR_JUNK=""
+      for f in "${RUN_ROOT}"/*.bak "${RUN_ROOT}"/*.bak-* "${RUN_ROOT}"/*~ "${RUN_ROOT}"/*.orig \
+               "${RUN_ROOT}"/*.rej "${RUN_ROOT}"/*.tmp "${RUN_ROOT}"/*.swp; do
+        [ -e "${f}" ] || continue
+        RR_JUNK="${RR_JUNK} $(basename "${f}")"
+      done
+      if [ -n "${RR_JUNK}" ]; then
+        fail "✗ cleanup_status=clean 但运行根顶层存在备份/临时命名物（收尾未清理，R17/§6.2 黑名单）:${RR_JUNK}"
+      else
+        say "  ✅ cleanup_status=clean 且运行根顶层无备份/临时命名物（判据 h 实况核验）"
+      fi
+    fi
   fi
   echo
   if [ "${FAIL}" -eq 0 ]; then printf '==== 运行根写盘台账：通过（exit 0）====\n'; exit 0; fi

@@ -86,6 +86,23 @@ fresh()      { rm -rf "$work/cur"; cp -R "$SRC" "$work/cur"; }
 fresh_nogit(){ rm -rf "$work/cur"; mkdir -p "$work/cur"
                tar -C "$SRC" --exclude=.git -cf - . 2>/dev/null | tar -C "$work/cur" -xf - 2>/dev/null; }
 
+# F397（本轮巡检实测）：变异 MUST 作用于 `$work/cur`（沙箱副本）——裸相对路径（如 `plans/x.sh`）在主 shell
+#   下解析到**源树**，会把「删除型变异」真的施加于仓库文件（本轮实测：M188-c 的裸 `sed -i.bak` 删掉
+#   `plans/write-scope-check.sh` 的判据 h 实现，紧随的 `rm -f …bak` 又抹掉备份 ⇒ 源树静默退化，
+#   仅因 hub 镜像留有副本才可无损恢复）。为此本脚本自带**源树密封判据**：开工前取指纹，收尾比对。
+src_fingerprint() {  # 源树指纹：状态（含被 .gitignore 匹配的项）+ 未暂存差异 + 已暂存差异
+  # 注：本仓 .gitignore 以 `*` 兜底白名单，故**未跟踪探针文件也属被忽略项** ⇒ 须显式带 `--ignored=matching`，
+  #   否则密封判据对「在源树落一个未跟踪文件」这类改动完全无感（实测：漏判）。排除两类运行产物误报。
+  ( cd "$SRC" && { git status --porcelain=v1 2>/dev/null
+                   git status --porcelain=v1 --ignored=matching 2>/dev/null | grep -vE '__pycache__|\.DS_Store'
+                   git diff 2>/dev/null; git diff --cached 2>/dev/null; } \
+      | git hash-object --stdin 2>/dev/null )
+}
+seal_check() {  # 0=源树未被本脚本改动；1=已改动（自检自身问题）
+  [ "$(src_fingerprint)" = "$SRC_FP_BEFORE" ]
+}
+SRC_FP_BEFORE="$(src_fingerprint)"
+
 # mutate <描述> <文件> <grep 模式>：确认变异**真的落盘**——否则自检会误报「守护未捕获」
 mutate() {
   local desc="$1" f="$2" pat="$3"
@@ -2677,12 +2694,57 @@ rm -f "$work/rr187/agents.yaml.bak"
 mutate_gone "M187-b 撇号已双写（删除型变异）" "$work/rr187/agents.yaml" "it's"
 check_rc "M187-b 双写后须判合规（证明该判据非空转）" "bash plans/patrol-check.sh --run-root \"$work/rr187\"" 0 "巡检名册合规"
 
+echo "[M188 运行根 cleanup_status=clean 的实况核验（F396：只验键齐备/取值，残留备份也报通过）]"
+mkdir -p "$work/rr188"
+cat > "$work/rr188/README.md" <<'RR188'
+# 夹具运行根
+write_scope:
+  run_id: rr188
+  allowed_prefixes:
+    - "本运行根/"
+  created:
+    - "x*"
+  cleanup_status: clean
+  exempt: []
+RR188
+check_rc "M188-a 顶层无备份/临时命名物须判通过" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 0 "判据 h 实况核验"
+touch "$work/rr188/x.bak"
+check_rc "M188-b 顶层存在 *.bak 而 cleanup_status=clean 须判失败" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 1 "备份/临时命名物"
+( cd "$work/cur" && sed -i.bak '/^    # 判据 h（F396）/,/^    fi$/d' plans/write-scope-check.sh \
+    && rm -f plans/write-scope-check.sh.bak )
+mutate_gone "M188-c 删除型变异（移除判据 h；作用于沙箱副本，F397）" "$work/cur/plans/write-scope-check.sh" "RR_JUNK"
+check_rc "M188-c 移除判据 h 后同夹具须复现假通过（证明该判据非空转）" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 0 "5 键齐备"
+
+echo "[M189 源树密封（F397：变异 MUST 作用于沙箱副本，裸路径会改动源树且备份被 rm 后不可回滚）]"
+# M189-a：密封判据非空转——在源树落一个未跟踪探针文件 ⇒ seal_check 须报「已改动」；随即删除。
+SEAL_PROBE="$SRC/.seal-probe-m189"
+: > "$SEAL_PROBE"
+if seal_check; then
+  printf '  ✗ M189-a 源树被改动而密封判据未报出（判据空转）\n'
+  FAILED=1
+else
+  printf '  ✅ M189-a 源树改动（未跟踪探针）被密封判据捕获\n'
+fi
+rm -f "$SEAL_PROBE"
+if seal_check; then
+  printf '  ✅ M189-b 探针移除后密封判据恢复通过\n'
+else
+  printf '  ✗ M189-b 探针移除后密封判据仍报已改动\n'
+  FAILED=1
+fi
+
 # F394：终局 MUTFAIL 门（早退点之后的变异不得静默空转）——早退点在文件中部，其后新增的变异
 #   若 `mutate`/`mutate_gone` 失败只打印 ‼ 而退出码仍 0（实证：M185-a 的模式串 `**27 类**：编号` 在
 #   `grep -E` 下属非法重复算子 ⇒ 从未落地，却仍打印「✅ …」与「185/185 全捕获」）⇒ 必须在结论行之前再判一次。
 #   注：M186-b 的删除型变异 MUST 用「起止两正则」的地址范围（BSD sed 不支持 GNU 的 `addr,+N`：
 #   实测 `sed '/re/,+2d'` 在 macOS 上静默不删、计数仍为 2 ⇒ 该断言会假失败）。
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
+
+# F397：源树密封判据（全轮比对）——任一变异越界改动源树都在此显式失败，不得静默污染工作树。
+if ! seal_check; then
+  echo "✗ 自检失败：本轮改动了源树（变异 MUST 作用于 \$work/cur；见 F397）" >&2
+  exit 2
+fi
 
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
