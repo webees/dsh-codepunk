@@ -2539,6 +2539,22 @@ mutate "M178-b 变异（形似路径筛选退回首位）" "$work/cur/plans/hook
 check_rc "M178-b 退回首位后同一夹具须复现放行（rc=0，证明该筛选非空转）" \
   "python3 plans/hook-write-scope.py --fixture m178-chmod.json 2>&1" 0 ""
 
+echo "[M179 治理矩阵载体须仓内可解析（F385：仓外载体不得充当「机械」声称）]"
+# 契约：治理矩阵是「声称 ↔ 能力互证」表；其「载体」列的引用若指向仓外文件，读者与 CI 都无法复现
+#   该声称（F385 实证：原「巡检节奏」行以运行根本地脚本为「机械」载体）。判据：矩阵行内反引号的
+#   文件型 token 必须仓内可解析、或为 `artifacts.md` 以 `##` 声明的制品名、或该行显式标注「非仓内」。
+fresh
+m179_gov="skills/dsh-codepunk-workflow/references/skill-governance.md"
+printf '\n| **M179 夹具行** | `plans/no-such-carrier-xyz.sh` | 机械 |\n' >> "$work/cur/$m179_gov"
+mutate "M179-a 夹具落地（不可解析载体已注入矩阵）" "$work/cur/$m179_gov" 'no-such-carrier-xyz'
+check_rc "M179-a 矩阵出现仓外/不存在载体须报失败（rc=1）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "治理矩阵载体不可解析"
+sed -i.bak "s|        bad.append('行%d:%s' % (i, t))|        pass  # F385-MUT|" "$work/cur/plans/doc-consistency.sh"
+rm -f "$work/cur/plans/doc-consistency.sh.bak"
+mutate "M179-b 变异（载体判据被短路）" "$work/cur/plans/doc-consistency.sh" 'F385-MUT'
+check_no_match "M179-b 判据短路后不得再报「治理矩阵载体不可解析」（证明该判据非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "治理矩阵载体不可解析"
+
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
 #   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。
