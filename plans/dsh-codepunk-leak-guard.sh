@@ -40,6 +40,14 @@ case "$(locale charmap 2>/dev/null)" in
     done ;;
 esac
 
+# F405（依赖预检，MUST）：本门禁的禁词归一管道（`sed … | awk 'length($0)>=3' | sort -u`）与掩码、文件枚举
+#   都依赖下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」（rc=2），绝不静默降级为通过 ——
+#   实证：影子 PATH 去掉 awk 时，禁词表 25 条被静默归零，门仍打印「✓ 通过（禁词 0 条 + 通用模式 5 类）」。
+for _t in git awk sed sort grep cut; do
+  command -v "$_t" >/dev/null 2>&1 \
+    || { printf '✗ 缺少必需工具 %s ⇒ 无法核验 ≠ 通过（rc=2）\n' "$_t" >&2; exit 2; }
+done
+
 MODE="staged"
 MSG_FILE=""
 while [ $# -gt 0 ]; do
@@ -122,6 +130,12 @@ if [ -n "$DENY_UNREADABLE" ]; then
 fi
 # 归一：去空白、去过短（<3 字符易误报）、去重
 DENY=$(printf '%s\n' "$DENY_RAW" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | awk 'length($0)>=3' | sort -u)
+# F405 不变量：源非空而归一后为空 ⇒ 归一管道失效（外部命令缺失/被改写）⇒ 无法核验 ≠ 通过。
+#   仅有上面的依赖预检还不够：预检只覆盖「命令不存在」，此断言覆盖「命令在但管道被改坏/被别名遮蔽」。
+if [ -n "$(printf '%s' "$DENY_RAW" | tr -d '[:space:]')" ] && [ -z "$(printf '%s' "$DENY" | tr -d '[:space:]')" ]; then
+  printf '\033[31m✗ 禁词表非空但归一后为空 ⇒ 归一管道失效（无法核验 ≠ 通过，rc=2）\033[0m\n' >&2
+  exit 2
+fi
 
 mask() { # 脱敏显示
   local t="$1" n=${#1}
