@@ -170,6 +170,8 @@
 | **岗位数一致性**（11 内建 + 2 外部后端；「13 岗位」须带历史/例外标记） | `doc-consistency.sh` 第 21 类 | 机械 |
 | **矩阵覆盖**（每个检查类须在治理矩阵中登记，含「第 a–b 类」范围写法） | `doc-consistency.sh` 第 22 类 | 机械 |
 | **钩子配置完整性**（产品启动时读取的 `plans/hooks/hooks.json`：JSON 可解析 · matcher/type/command 齐备 · 命令引用的仓库内文件存在 · **解释器在 PATH 内**——缺解释器时钩子起不来、产品不设 decision ⇒ 放行，属失败开放；F368 实证：坏配置下五个门禁全绿） | `doc-consistency.sh` 第 7 类子项（+ 存活自检 M168） | 机械 |
+| **hooks 护栏路径归一**（`/etc`＝`/private/etc`＝符号链接＝大小写变体同判；F383 实证） | `plans/hook-write-scope.py` 的 `canon()` | 机械（M177） |
+| **hooks 命令抽取取真目标**（`chmod 777`/`truncate -s 0`/`chown root:wheel` 的实参不得顶替路径；F384 实证） | `plans/hook-write-scope.py` 的 `looks_like_path()` | 机械（M178） |
 | **扫描工具缺失须显式失败**（`find` 不在 PATH 时进程替换为空、`2>/dev/null` 吞掉 `command not found` ⇒ 残留扫描全判「无残留」、`.DS_Store` 计数判 0；F372 实证：同一含残留沙箱在有/无 `find` 下 rc=1 → rc=0） | `write-scope-check.sh` 扫描工具预检 + `preset-score.sh` B14 + `verify-battery.sh` 杂散项（+ 存活自检 M169） | 机械 |
 | **doc 类数声称与实现派生一致**（`doc-consistency.sh` 同行的「N 类」须等于类段数派生值；序数写法「第 N 类」剔除不误判；F373 实证：`docs/architecture.md` 长期写 24 类而实现 25） | `doc-consistency.sh` 第 1 类派生核验（+ 存活自检 M170） | 机械 |
 | **存活自检的结论行须据实报告覆盖**（环境受限时若干变异只打印「跳过」而不执行，末行却称「全部变异均被对应检查项捕获」；F374 实证：设/未设 `DSH_APP_ROOT` 两次运行 ✅275 与 ✅270 而文案相同，CI 未设该变量 ⇒ 恒跳过该族） | `checker-self-test.sh` 结论行（`coverage_line` + `skip()` 计数；+ 存活自检 M171） | 机械 |

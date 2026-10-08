@@ -198,7 +198,7 @@
 
 | 模式 | 开关 | 语义 |
 |---|---|---|
-| `deny`（默认） | 无（或 `DSH_CODEPUNK_HOOK_MODE=deny`） | **黑名单阻断**：命中即拦。集合 = §6.2 黑名单的可机械判定部分——系统路径（`/etc`、`/usr`、`/bin`、`/sbin`、`/System`、`/Library`、`/boot`、`/opt`；`/var` **排除** `/var/folders`，即 macOS `TMPDIR` 实际落点）· 凭据目录（`~/.ssh`、`~/.aws`、`~/.gnupg`）· 用户平面 DSH 配置（`~/.dsh/profiles/**`，对应 §7.4 硬规则）· **主目录顶层散落文件**（`$HOME/<名字>` 且非已有目录，对应 G2 判据） |
+| `deny`（默认） | 无（或 `DSH_CODEPUNK_HOOK_MODE=deny`） | **黑名单阻断**：命中即拦。集合 = §6.2 黑名单的可机械判定部分——系统路径（`/etc`、`/usr`、`/bin`、`/sbin`、`/System`、`/Library`、`/boot`、`/opt`；`/var` **排除** `/var/folders`，即 macOS `TMPDIR` 实际落点）· 凭据目录（`~/.ssh`、`~/.aws`、`~/.gnupg`）· 用户平面 DSH 配置（`~/.dsh/profiles/**`，对应 §7.4 硬规则）· **主目录顶层散落文件**（`$HOME/<名字>` 且非已有目录，对应 G2 判据）。比对前经 `realpath` + 大小写折叠 ⇒ `/private/etc`、`//etc`、大小写变体、指向黑名单文件的符号链接与 `/etc` 同判（F383） |
 | `strict` | `DSH_CODEPUNK_HOOK_MODE=strict` | **白名单放行**：只许预设仓库根、`~/.dsh-codepunk/**`、`${TMPDIR}` 与 `/tmp`、**会话 cwd** 之下的写入，其余一律阻断；黑名单仍优先判定 |
 | 取值非法 | 任意其它值 | 按 `deny` 处理并在 stderr 告警（fail-safe：异常输入不降级为放行） |
 
@@ -207,10 +207,11 @@
 
 ### 8.3 覆盖与**不覆盖**（MUST 知悉）
 
-- **覆盖**：`write` / `edit` 的 `file_path`（确定）；`bash` / `pwsh` 命令文本里的**可判定**写入目标——重定向（`>`、`>>`、`2>`、`>|`）、`tee`/`cp`/`mv`/`install`/`touch`/`mkdir`/`rm`/`truncate`/`ln`/`rsync`/`chmod`/`chown` 的目标位、**`sed -i` 全族**（`-i`、`-i.bak`、`-i''`、`--in-place`、`--in-place=.bak`；BSD sed 要求 `-i` 带参数，故 `-i.bak` 才是 macOS 常态）、`perl -i`、`dd of=…`，以及 PowerShell 写 cmdlet（`Set-Content`/`Add-Content`/`Out-File`/`New-Item`/`Remove-Item`/`Copy-Item`/`Move-Item`/`Rename-Item`/`Clear-Content`/`Tee-Object` 等）与 `-Path`/`-LiteralPath`/`-Destination`/`-FilePath`/`-OutFile` 具名参数。
+- **覆盖**：`write` / `edit` 的 `file_path`（确定）；`bash` / `pwsh` 命令文本里的**可判定**写入目标——重定向（`>`、`>>`、`2>`、`>|`）、`tee`/`gtee`/`cp`/`mv`/`install`/`touch`/`mkdir`/`rm`/`truncate`/`ln`/`rsync`/`chmod`/`chown` 的目标位（**首位位置参数若是实参**——模式 `777`、尺寸 `0`、属主 `root:wheel`——并入判定的仍是**全部形似路径的 token**，故 `chmod 777 <目标>`、`truncate -s 0 <目标>`、`rm -rf a <目标>` 的真目标都会被判定；F384 实证：取首位会取到实参 ⇒ 真目标从未被判定）、**`sed -i` 全族**（`-i`、`-i.bak`、`-i''`、`--in-place`、`--in-place=.bak`；BSD sed 要求 `-i` 带参数，故 `-i.bak` 才是 macOS 常态）、`perl -i`、`dd of=…`，以及 PowerShell 写 cmdlet（`Set-Content`/`Add-Content`/`Out-File`/`New-Item`/`Remove-Item`/`Copy-Item`/`Move-Item`/`Rename-Item`/`Clear-Content`/`Tee-Object` 等）与 `-Path`/`-LiteralPath`/`-Destination`/`-FilePath`/`-OutFile` 具名参数。
+- **路径归一（同一文件必须同判）**：判定前一律 `realpath` + 大小写折叠 ⇒ `/etc`、`/private/etc`（macOS 的 `/etc` 是它的符号链接，实测同一 inode）、`//etc`、`/ETC`、以及**指向黑名单文件的符号链接**都按同一文件判定（F383 实证：只做字面前缀比对时这些等价写法静默放行）。
 - **不覆盖（启发式局限，护栏不是证明）**：
   1. **混淆写法规避**——变量拼接、`eval`、`$'\x2f'`、base64 解码后执行、经解释器间接写盘（`python3 -c "open('/etc/x','w')"`）、别名与函数重定义，一律可能绕过。
-  2. **不做符号链接解析**——指向黑名单的链接按字面路径判定（`~/link-to-etc/x` 不会被拦）。
+  2. **硬链接不做 inode 归一**——`realpath` 只解析符号链接；指向黑名单文件同一 inode 的**硬链接**仍按字面路径判定（符号链接与 `..`/大小写变体已归一，见上）。
   3. **只拦工具调用层**——拦不住工具内派生进程的任意写；也不拦读、不拦网络、不拦进程。
   4. **非沙箱、非安全边界**——它是「就高落点纪律」的机械提醒，不是隔离机制；未命中 ≠ 合规。
   5. **失败开放（fail-open，MUST 知悉）**——钩子命令**无法启动**（解释器缺失、路径错）、脚本**异常退出**（非 0/2 的退出码）或**超时**时，产品侧**不设 decision** ⇒ 该次调用**照常放行**，只在钩子记录里留 `stderrSummary`（`dsh-hook-protocol/lib/index.js:102-126`：仅 exit 2 设 `block`、exit 0 才解析结构化输出，其余分支不改判定；同文件 runner 以 `parseHookOutput(result.exitCode ?? void 0, …)` 收尾——**基础设施层拒绝（进程起不来）没有退出码，故函数永不抛出**）。配置本身坏掉同理：`configPath` 不存在或非法 JSON 时桥只打一条 `logger.warn(… — no hooks registered)`（`dsh-hooks-claude-code/lib/index.js:139,145-146`）⇒ **零钩子注册、拦截层整体消失**。⇒ 本层是**尽力而为**：缺 `python3` 的机器（Windows 默认无 `python3`，而 matcher 却含 `pwsh`）上它等于不存在。

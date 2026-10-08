@@ -13,6 +13,8 @@
 模式：默认 `deny`＝黑名单阻断（系统路径 / 凭据目录 / 用户平面 DSH 配置 / 主目录顶层散落文件）；
       `DSH_CODEPUNK_HOOK_MODE=strict`＝白名单放行（只许预设仓库根、`~/.dsh-codepunk/**`、
       `${TMPDIR}` 与 `/tmp`、会话 cwd 之下），其余一律阻断。取值非法时按 deny 处理并告警。
+      比对路径一律先 `canon()`（realpath + 大小写折叠）：`/etc` 与 `/private/etc`、`//etc`、
+      大小写变体、以及**符号链接指向同一文件**的写法都落到同一真实路径 ⇒ 判定一致（F367/F383）。
 输入（stdin，Claude Code 同形载荷）：`{session_id, cwd, hook_event_name, tool_name, tool_input}`；
       `write`/`edit` 取 `tool_input.file_path`；`bash`/`pwsh` 用命令文本启发式抽取写入目标。
 环境变量：`DSH_CODEPUNK_HOOK_MODE`（模式开关，见上）；`CLAUDE_PLUGIN_ROOT`（预设根，由桥按
@@ -54,7 +56,7 @@ TMP_FALLBACK = "/tmp"
 # ── 命令文本启发式（bash/pwsh）───────────────────────────────────────────────
 SHELL_TOOLS = ("bash", "pwsh", "shell", "sh", "zsh")
 SHELL_WRITE_CMDS = (
-    "tee", "cp", "mv", "install", "touch", "mkdir", "rmdir", "rm", "truncate", "dd",
+    "tee", "gtee", "cp", "mv", "install", "touch", "mkdir", "rmdir", "rm", "truncate", "dd",
     "chmod", "chown", "ln", "rsync", "sed",
 )
 PS_WRITE_CMDS = (
@@ -180,6 +182,32 @@ def case_fold(s: str) -> str:
     return s.lower() if CASE_INSENSITIVE_FS else s
 
 
+def canon(s: str) -> str:
+    """比对前的**真实路径**归一（在 `case_fold` 之前先 realpath）。
+
+    F383：macOS 的 `/etc`、`/var`、`/tmp` 是 `/private/*` 的符号链接（`ls -ld /etc`
+      ⇒ `private/etc`），故 `/etc/hosts` 与 `/private/etc/hosts` 是**同一文件**
+      （实测 inode 相同），而符号链接间接写（`ln -s /etc/hosts /tmp/lnk` 后写 `/tmp/lnk`）
+      同样落到同一文件。只做字面前缀比对 ⇒ 这些等价路径**静默放行**，护栏的
+      「系统路径不得由工具写入」在真机上可被绕过。故比对双方都先 realpath：
+      同文件的不同写法解析到同一真实路径 ⇒ 判定一致（realpath 解析失败的极端输入
+      退回字面形式，不抛异常）。
+    """
+    try:
+        return case_fold(os.path.realpath(s))
+    except (OSError, ValueError):
+        return case_fold(s)
+
+
+def looks_like_path(tok: str) -> bool:
+    """token 是否形似路径（F384：用于把命令实参与路径区分开）。
+
+    `chmod 777 <目标>` 的 `777`、`truncate -s 0 <目标>` 的 `0`、`chown root:wheel <目标>`
+    的 `root:wheel` 都不是路径；只并入形似路径的 token 才不会误判，同时避免漏掉真目标。
+    """
+    return "/" in tok or tok.startswith("~") or tok in (".", "..") or tok.startswith("./") or tok.startswith("../")
+
+
 def under(path: str, root: str) -> bool:
     """path 是否在 root 之下（含 root 自身）；root 为空或 `/` 时按不覆盖处理。"""
     if not root or root == "/":
@@ -227,9 +255,15 @@ def candidates_from_command(command: str) -> list:
             if cmd == "ln":
                 add(toks[-1])                  # 末位为链接名
             elif cmd in ("cp", "mv", "install", "rsync"):
-                add(toks[-1])                  # 末位为目标位
+                add(toks[-1])                  # 末位为目标位（源位可读黑名单路径，故不并入）
             else:
-                add(toks[0])                   # 首位为目标位（tee/touch/mkdir/rm/chmod/…）
+                # 位置参数中含**非路径实参**的命令（`truncate -s 0 <目标>`、`chmod 777 <目标>`、
+                # `chown root:wheel <目标>`、`rm -rf <多目标>`）取首位会取到实参 ⇒ 真目标从未被判定。
+                # F384：改为并入**全部形似路径的 token**（含 `/`、`~`、`.` 前缀）；无一形似时退回首位，
+                # 保持 `mkdir foo` / `touch notes.md` 等既有语义。
+                like = [t for t in toks if looks_like_path(t)]
+                for t in (like or toks[:1]):
+                    add(t)
     for m in re.finditer(r"\bdd\b[^|;&\n]*?\bof=(?P<q>['\"]?)(?P<path>[^\s'\"]+)(?P=q)", command):
         add(m.group("path"))
     return out
@@ -256,18 +290,18 @@ def deny_rule(path: str) -> str:
       `/USERS/<名>/.ssh/id_ed25519` 这类**同一文件的大小写变体**会静默放行。
     """
     home = home_dir()
-    p = case_fold(path)
-    if any(under(p, case_fold(s)) for s in SYS_DENY):
+    p = canon(path)
+    if any(under(p, canon(s)) for s in SYS_DENY):
         return "系统路径"
-    if under(p, case_fold(VAR_DENY)) and not under(p, case_fold(VAR_TMP_EXEMPT)):
+    if under(p, canon(VAR_DENY)) and not under(p, canon(VAR_TMP_EXEMPT)):
         return "系统路径（/var，已排除 /var/folders）"
     for rel in CRED_REL:
-        if under(p, case_fold(home + "/" + rel)):
+        if under(p, canon(home + "/" + rel)):
             return "凭据目录"
-    if under(p, case_fold(posixpath.join(home, *DSH_USER_REL))):
+    if under(p, canon(posixpath.join(home, *DSH_USER_REL))):
         return "用户平面 DSH 配置"
     # 主目录顶层散落文件：`$HOME/<名字>` 且该路径不是已有目录（深度 1；对应既有 G2 判据）
-    if case_fold(posixpath.dirname(path)) == case_fold(home) and not os.path.isdir(path):
+    if canon(posixpath.dirname(path)) == canon(home) and not os.path.isdir(path):
         return "主目录顶层散落文件"
     return ""
 

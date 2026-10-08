@@ -2490,6 +2490,55 @@ mutate "M176-c 变异（缺 at 判据被短路）" "$work/cur/plans/patrol-check
 check_no_match "M176-c 判据短路后不得再报「缺 at」（证明该判据非空转）" \
   "bash plans/patrol-check.sh --run-root \"$m176_rr\"" "缺 at"
 
+echo "[M177 hooks 真实路径归一（F383：/etc 与 /private/etc、符号链接同文件须同判）]"
+# 契约：references/file-hygiene.md §8.2 的黑名单是**文件**级承诺（系统路径不得由工具写入）。
+#   macOS 的 `/etc` 是 `/private/etc` 的符号链接（实测同一 inode）⇒ 只做字面前缀比对时，
+#   等价写法（`/private/etc/hosts`、指向该文件的符号链接）静默放行。判据：符号链接指向黑名单
+#   文件时必须阻断（跨平台成立，不依赖 /private）。夹具纪律（类 14）：路径与规则名运行时拼接。
+m177_rule="$(printf '%s%s' '系统' '路径')"
+m177_sys="$(printf '/%s/%s' 'etc' 'hosts')"
+fresh
+m177_lnk="$work/lnk-system-path"
+ln -sf "$m177_sys" "$m177_lnk" 2>/dev/null
+if [ -L "$m177_lnk" ]; then
+  printf '{"session_id":"m177","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"write","tool_input":{"file_path":"%s"}}' \
+    "$work/cur" "$m177_lnk" > "$work/cur/m177-link.json"
+  check_rc "M177-a 符号链接指向黑名单文件须阻断（rc=2，真实路径归一）" \
+    "python3 plans/hook-write-scope.py --fixture m177-link.json 2>&1" 2 "$m177_rule"
+  sed -i.bak 's|return case_fold(os.path.realpath(s))|return case_fold(s)  # F383-MUT|' "$work/cur/plans/hook-write-scope.py"
+  rm -f "$work/cur/plans/hook-write-scope.py.bak"
+  mutate "M177-b 变异（realpath 归一被移除）" "$work/cur/plans/hook-write-scope.py" 'F383-MUT'
+  check_rc "M177-b 移除归一后同一夹具须复现放行（rc=0，证明该判据非空转）" \
+    "python3 plans/hook-write-scope.py --fixture m177-link.json 2>&1" 0 ""
+else
+  skip "M177 夹具未能建立符号链接"
+fi
+
+echo "[M178 命令实参不得顶替路径（F384：chmod/truncate/chown 族须取到真目标）]"
+# 契约：file-hygiene.md §8.3 列明覆盖 `chmod`/`chown`/`truncate`/`rm` 等写命令。判据：这些命令的
+#   首位位置参数若是**实参**（模式 `777`、尺寸 `0`、属主 `root:wheel`），真目标（末位路径）必须仍被
+#   判定；多目标命令（`rm -rf a b`）须并入全部形似路径的 token。夹具纪律（类 14）同上。
+m178_rule="$(printf '%s%s' '系统' '路径')"
+m178_sys="$(printf '/%s/%s' 'etc' 'hosts')"
+fresh
+printf '{"session_id":"m178","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"bash","tool_input":{"command":"chmod 777 %s"}}' \
+  "$work/cur" "$m178_sys" > "$work/cur/m178-chmod.json"
+check_rc "M178-a chmod 777 <黑名单文件> 须阻断（rc=2，实参不得顶替）" \
+  "python3 plans/hook-write-scope.py --fixture m178-chmod.json 2>&1" 2 "$m178_rule"
+printf '{"session_id":"m178","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"bash","tool_input":{"command":"truncate -s 0 %s"}}' \
+  "$work/cur" "$m178_sys" > "$work/cur/m178-trunc.json"
+check_rc "M178-a2 truncate -s 0 <黑名单文件> 须阻断（rc=2）" \
+  "python3 plans/hook-write-scope.py --fixture m178-trunc.json 2>&1" 2 "$m178_rule"
+printf '{"session_id":"m178","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"bash","tool_input":{"command":"chmod 755 plans/checker-self-test.sh"}}' \
+  "$work/cur" > "$work/cur/m178-repo.json"
+check_rc "M178-a3 仓内 chmod 755 plans/checker-self-test.sh 不得误报（rc=0）" \
+  "python3 plans/hook-write-scope.py --fixture m178-repo.json 2>&1" 0 ""
+sed -i.bak 's|for t in (like or toks\[:1\]):|for t in toks[:1]:  # F384-MUT|' "$work/cur/plans/hook-write-scope.py"
+rm -f "$work/cur/plans/hook-write-scope.py.bak"
+mutate "M178-b 变异（形似路径筛选退回首位）" "$work/cur/plans/hook-write-scope.py" 'F384-MUT'
+check_rc "M178-b 退回首位后同一夹具须复现放行（rc=0，证明该筛选非空转）" \
+  "python3 plans/hook-write-scope.py --fixture m178-chmod.json 2>&1" 0 ""
+
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
 #   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。
