@@ -16,6 +16,8 @@
  *   node plans/preset-declare.mjs check  [--patch <profile-patch>] [--id <id>]
  *   node plans/preset-declare.mjs apply  [--patch <profile-patch>] [--id <id>] [--order N]
  * 说明：副本中同一 id 出现多处（重复声明）时，check/apply 一律以退出码 2 拒绝并提示人工保留 1 处。
+ *      apply 为**原子替换**：写同目录临时文件 `${patch}.tmp-<pid>` 后 rename，保留原文件权限位；
+ *      并发读者与中途崩溃都只会看到旧内容或新内容（绝不出现 0 字节/半截补丁）。
  *
  * profile patch 默认取 $DSH_PROFILE_PATCH，其次 ~/.dsh/profiles/desktop/cordis.patch.yml。
  * 退出码：0=一致/成功；1=漂移；2=环境或参数错误。
@@ -24,7 +26,8 @@
  *      $DSH_ASAR 同级 → 当前目录 顺序发现）。找不到时 check 退化为「行内容比对」
  *      （忽略缩进，仍能捕获增删改，但报不出精确路径）。
  */
-import { readFileSync, writeFileSync, copyFileSync, existsSync, writeSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, existsSync, writeSync,
+         renameSync, chmodSync, statSync, unlinkSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -391,10 +394,21 @@ if (action === 'apply') {
   // ISO 串含 '.'（毫秒前），只去 [-:T] 会让备份名以尾随点结尾；一并去掉 '.' 并截到秒。
   const stamp = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
   const backup = `${PATCH}.bak-${stamp}`;
+  // F380（原子替换）：就地 writeFileSync 会**先截断原文件**再写入 —— 实测并发读者能读到 0 字节，
+  //   进程被 SIGKILL/断电时用户平面补丁停在截断态，而 F349 的回滚只在正常路径执行，
+  //   产品下次启动即读到一个不可用的 profile。改为「同目录临时文件 + rename」：
+  //   同文件系统内 rename 是原子操作，读者只可能看到旧内容或新内容。
+  //   rename 会替换 inode ⇒ 必须显式把原文件 mode 复制到临时文件（就地写本来会保留 mode）。
+  const tmp = `${PATCH}.tmp-${process.pid}`;
+  let prevMode = null;
+  try { prevMode = statSync(PATCH).mode & 0o7777; } catch { /* 目标不存在：沿用进程 umask */ }
   try {
     copyFileSync(PATCH, backup);
-    writeFileSync(PATCH, mergedText, 'utf8');
+    writeFileSync(tmp, mergedText, 'utf8');
+    if (prevMode !== null) chmodSync(tmp, prevMode);
+    renameSync(tmp, PATCH);
   } catch (e) {
+    try { unlinkSync(tmp); } catch { /* 临时文件可能未创建 */ }
     const _p = (e && e.path) ? e.path : PATCH;
     const _c = (e && e.code) ? e.code : 'IO';
     const _m = (e && e.message) ? e.message : String(e);

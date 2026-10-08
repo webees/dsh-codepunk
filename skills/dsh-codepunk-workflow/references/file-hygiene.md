@@ -207,7 +207,7 @@
 
 ### 8.3 覆盖与**不覆盖**（MUST 知悉）
 
-- **覆盖**：`write` / `edit` 的 `file_path`（确定）；`bash` / `pwsh` 命令文本里的**可判定**写入目标——重定向（`>`、`>>`、`2>`）、`tee`/`cp`/`mv`/`install`/`touch`/`mkdir`/`rm`/`truncate`/`ln`/`rsync`/`chmod`/`chown` 的目标位、`sed -i` 末位文件、`dd of=…`，以及 PowerShell 写 cmdlet（`Set-Content`/`Add-Content`/`Out-File`/`New-Item`/`Remove-Item`/`Copy-Item`/`Move-Item`/`Rename-Item`/`Clear-Content`/`Tee-Object` 等）与 `-Path`/`-LiteralPath`/`-Destination`/`-FilePath`/`-OutFile` 具名参数。
+- **覆盖**：`write` / `edit` 的 `file_path`（确定）；`bash` / `pwsh` 命令文本里的**可判定**写入目标——重定向（`>`、`>>`、`2>`、`>|`）、`tee`/`cp`/`mv`/`install`/`touch`/`mkdir`/`rm`/`truncate`/`ln`/`rsync`/`chmod`/`chown` 的目标位、**`sed -i` 全族**（`-i`、`-i.bak`、`-i''`、`--in-place`、`--in-place=.bak`；BSD sed 要求 `-i` 带参数，故 `-i.bak` 才是 macOS 常态）、`perl -i`、`dd of=…`，以及 PowerShell 写 cmdlet（`Set-Content`/`Add-Content`/`Out-File`/`New-Item`/`Remove-Item`/`Copy-Item`/`Move-Item`/`Rename-Item`/`Clear-Content`/`Tee-Object` 等）与 `-Path`/`-LiteralPath`/`-Destination`/`-FilePath`/`-OutFile` 具名参数。
 - **不覆盖（启发式局限，护栏不是证明）**：
   1. **混淆写法规避**——变量拼接、`eval`、`$'\x2f'`、base64 解码后执行、经解释器间接写盘（`python3 -c "open('/etc/x','w')"`）、别名与函数重定义，一律可能绕过。
   2. **不做符号链接解析**——指向黑名单的链接按字面路径判定（`~/link-to-etc/x` 不会被拦）。
