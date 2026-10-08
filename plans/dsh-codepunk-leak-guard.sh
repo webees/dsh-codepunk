@@ -24,7 +24,7 @@
 #   bash dsh-codepunk-leak-guard.sh --install-hook  # 装 pre-commit + pre-push + commit-msg 三钩子
 #   bash dsh-codepunk-leak-guard.sh --list          # 只打印载入的禁词（脱敏）
 #
-# 退出码：0=通过；1=命中（阻断）；2=用法/环境错误
+# 退出码：0=通过；1=命中（阻断）；2=用法/环境错误、**无法核验**（含 git 行为异常、tree 模式扫描零文件）
 # ============================================================================
 set -uo pipefail
 
@@ -60,6 +60,16 @@ while [ $# -gt 0 ]; do
 done
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "不在 git 仓库内" >&2; exit 2; }
+# F387（本轮对抗实测）：`git rev-parse` **只验退出码**时，「说谎的 git」（PATH 前置 stub，exit 0 且零输出）
+#   与环境变量误设（`GIT_DIR`/`GIT_WORK_TREE` 指向别处或空仓）都能通过本守卫，随后 `git ls-files` 返回空
+#   ⇒ tree 模式**一个文件都没扫**，末尾仍打「✓ 泄露防护门：通过」并 rc=0（与 F250「按扩展名排除的二进制
+#   从不被扫描却默默打通过」、F252「依赖故障伪装成通过」同族）。故：判定前先要求 git 自证可用
+#   （`--git-dir` 必须有输出），tree 模式再核对**实际扫描文件数**，零输入一律以 2 拒绝（无法核验 ≠ 通过）。
+GITDIR_OUT=$(git rev-parse --git-dir 2>/dev/null)
+if [ -z "$GITDIR_OUT" ]; then
+  echo "✗ git 不可用或行为异常（git rev-parse --git-dir 无输出；疑为损坏/替身 git 或 GIT_DIR 误设）——无法核验 ≠ 通过" >&2
+  exit 2
+fi
 cd "$ROOT"
 
 # ── 通用模式（可公开：形态而非具体值） ────────────────────────────────────
@@ -233,14 +243,23 @@ case "$MODE" in
   tree)
     # F250 同族：按扩展名排除的二进制从未被扫描 ⇒ 原实现对此**不发一言**即打「✓ 通过」。
     #   现显式告知跳过数量（无法核验 ≠ 通过）。非 git 工作区已由上方 ROOT 守卫以 2 拒绝，此处无需再判。
-    CONTENT=""; SKIPPED=0
+    # F387（本轮实测）：上方守卫只能挡「git 不可用」，挡不住「git 可用但枚举为空」——`GIT_DIR`/`GIT_WORK_TREE`
+    #   指向别处（如空仓）时 `git ls-files` 返回空、`[ -f ]` 再滤掉一切 ⇒ 扫描 0 文件却打「✓ 通过」。
+    #   故此处统计**实际扫描数**，零输入以 2 拒绝，并在通过行报告扫描数（零输入在输出中必须可见）。
+    CONTENT=""; SKIPPED=0; SCANNED=0
     while IFS= read -r f; do
       [ -f "$f" ] || continue
       case "$f" in *.png|*.jpg|*.jpeg|*.gif|*.webp|*.pdf|*.zip|*.gz|*.bundle) SKIPPED=$((SKIPPED+1)); continue ;; esac
       CONTENT+=$(sed -n '1,4000p' "$f" 2>/dev/null)
       CONTENT+=$'\n'
+      SCANNED=$((SCANNED+1))
     done < <(git ls-files)
+    if [ "$SCANNED" -eq 0 ]; then
+      echo "✗ 未扫描到任何跟踪文件（git ls-files 返回空或所列文件在本工作树中不存在；疑为 GIT_DIR/GIT_WORK_TREE 误设或替身 git）——无法核验 ≠ 通过" >&2
+      exit 2
+    fi
     [ "$SKIPPED" -gt 0 ] && echo "  ℹ 跳过 ${SKIPPED} 个按扩展名排除的二进制文件（未扫描）——无法核验 ≠ 通过" >&2
+    echo "  ℹ 已扫描 ${SCANNED} 个跟踪文件（未扫描数：${SKIPPED}）" >&2
     scan_stream "tracked-tree" "$CONTENT"
     ;;
   history)
