@@ -86,8 +86,13 @@ else
   p "✗" "格式卫生 ${H} 处"; F=1
 fi
 fi   # command -v python3
-# 5) 物理杂散（含被 .gitignore 忽略的游离物——本仓是白名单式 ignore，
-#    故任何被忽略文件都是意外产物；原检查只看 .DS_Store 与未跟踪会漏检 .bak 等）
+# 5) 物理杂散（含被 .gitignore 忽略的游离物）。本仓是白名单式 ignore（.gitignore:2 的 `*` + 逐条 `!`），
+#    故**未登记**的被忽略项是意外产物（原检查只看 .DS_Store 与未跟踪会漏检 .bak 等）。
+#    F389：但 `.gitignore` 同时**明示忽略**若干运行产物（tmp/ logs/ node_modules/ .dsh-codepunk-*、
+#    __pycache__/ *.pyc *.log *.out），且 Makefile:21 把仓内 tmp/ 与 logs/ 记为运行产物落点 ⇒
+#    两类 MUST 分开判：产物只列信息行，其余被忽略项才判杂散。原实现一律判杂散 ⇒ 按文档在 plans/ 内跑门禁
+#    （生成 plans/__pycache__，见 .gitignore:28-32 的 F266 注）或把产物落仓内 tmp/ 后，
+#    本节在本应干净的状态下 rc=1（CONTRIBUTING §5.1 清单第 1 项被阻塞）。实测见台账 F389 行。
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   unverified "杂散检查（非 git 工作区）"
 elif ! command -v find >/dev/null 2>&1; then
@@ -96,10 +101,17 @@ elif ! command -v find >/dev/null 2>&1; then
 else
 S=$(find . -name '.DS_Store' -not -path './.git/*' 2>/dev/null | wc -l | tr -d ' ')
 U=$(git status --short 2>/dev/null | grep -c '^??' || true)
-I=$(git status --ignored --short 2>/dev/null | grep '^!!' | grep -v '/\.DS_Store$' | grep -vc '^\.DS_Store$' || true)
+IGNORED_LS=$(git status --ignored --short 2>/dev/null | grep '^!!' | sed 's/^!! //' || true)
+ARTIFACT_RE='^(tmp/|logs/|node_modules/|\.dsh-codepunk-)|__pycache__/|\.pyc$|\.log$|\.out$'
+DS_RE='(^|/)\.DS_Store$'
+A=$(printf '%s\n' "$IGNORED_LS" | grep -cE "$ARTIFACT_RE" || true)
+I=$(printf '%s\n' "$IGNORED_LS" | grep -vE "$ARTIFACT_RE" | grep -vE "$DS_RE" | grep -c . || true)
+if [ "${A:-0}" -gt 0 ]; then
+  p "ℹ" "已忽略的运行产物 ${A} 项（tmp/ logs/ __pycache__ 等，按 .gitignore 契约允许；make clean 可清仓内与总库 tmp/）"
+fi
 [ "$S" -eq 0 ] && [ "${U:-0}" -eq 0 ] && [ "${I:-0}" -eq 0 ] \
-  && p "✅" "无杂散（.DS_Store/未跟踪/被忽略游离物）" \
-  || { p "✗" "杂散: DS=${S} untracked=${U} ignored=${I}"; F=1; }
+  && p "✅" "无杂散（.DS_Store/未跟踪/未登记的被忽略游离物；运行产物单列不判失败）" \
+  || { p "✗" "杂散: DS=${S} untracked=${U} ignored=${I}（其中运行产物 ${A:-0} 项已单列）"; F=1; }
 fi   # git 工作区检查
 # 6) 结构（围栏/标题/引用）
 if python3 - <<'PY' >/dev/null 2>&1
