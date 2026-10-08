@@ -11,8 +11,10 @@
 # python3、score/battery 非 git 工作区）、退出码契约型（evidence/acceptance 用法码、init 只读
 # 失败）与工具型（link index 坏注册表）。
 #
-# 用法: checker-self-test.sh [预设根]
-# 退出码: 0=全部变异均被对应检查项捕获；1=存在未被捕获的变异（守护失效/空转）；2=环境/自检问题
+# 用法: checker-self-test.sh [预设根] [--coverage-echo（仅打印结论行，测试钩子）]
+# 退出码: 0=通过（结论行据实报「捕获 N/M 项 + 跳过 K 项」）；1=存在未被捕获的变异（守护失效/空转）；2=环境/自检问题
+# 环境变量: DSH_CODEPUNK_ECHO_TOTAL / DSH_CODEPUNK_ECHO_SKIPPED（配合 `--coverage-echo` 注入结论行计数，
+#   供永久变异 M171 秒级断言）· DSH_CODEPUNK_SKIP_SELFTEST=1（递归防护：已在自检上下文内时立即退出）
 # =============================================================================
 set -u
 
@@ -31,8 +33,24 @@ esac
 # F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当预设根（报「预设根无效: -h」），
 #   而本脚本的 M149 变异自述「`-h`/`--help` 约定……第 20 类探针 MUST 覆盖全部实现者」——
 #   自身却是缺口（自相矛盾）。现补上。
+SKIPPED=0      # F374：**跳过**计数（环境受限而未执行的变异）——结论行 MUST 据实报告覆盖
+# F374 配套：跳过节统一走本助手（计数 + 统一措辞）；`跳过 ≠ 通过` 防止读者把跳过当已验证。
+skip() { SKIPPED=$((SKIPPED + 1)); case "$1" in *"跳过 ≠ 通过"*) printf '  ℹ %s\n' "$1" ;; *) printf '  ℹ %s（跳过 ≠ 通过）\n' "$1" ;; esac; }
+# F374：结论行实现（主路径与 `--coverage-echo` 测试钩子**共用**，避免钩子测的是另一份逻辑）。
+coverage_line() { # 总数 跳过数
+  if [ "${2:-0}" -gt 0 ]; then
+    echo "✔ 自检通过：捕获 $(( $1 - $2 ))/$1 项变异；跳过 $2 项（跳过 ≠ 通过）"
+  else
+    echo "✔ 自检通过：全部变异均被对应检查项捕获（$1/$1）"
+  fi
+}
 case "${1:-}" in
-  -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  # F374 测试钩子：只打印结论行（同一 coverage_line 实现），供永久变异 M171 秒级断言。
+  --coverage-echo)
+    _tm=$(grep -oE 'M[0-9]+' "$0" | sort -u | wc -l | tr -d ' ')
+    coverage_line "${DSH_CODEPUNK_ECHO_TOTAL:-$_tm}" "${DSH_CODEPUNK_ECHO_SKIPPED:-0}"
+    exit 0 ;;
 esac
 SRC="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 [ -d "$SRC/plans" ] || { echo "✗ 预设根无效: $SRC" >&2; exit 2; }
@@ -424,9 +442,9 @@ echo "[M14 声明副本敏感度（双向：未改须一致 / 改适配路径须
 #   ⇒ rc=1「漂移」），且 CI 无该文件 ⇒ 整族退化为「ℹ 跳过」（跳过 ≠ 通过）。
 FIX_PATCH="$work/prof/cordis.patch.yml"
 if [ -z "${DSH_APP_ROOT:-}${DSH_ASAR:-}" ]; then
-  printf '  ℹ M14 跳过（未设 DSH_APP_ROOT/DSH_ASAR，无法进入语义核验模式）\n'
+  skip 'M14 跳过（未设 DSH_APP_ROOT/DSH_ASAR，无法进入语义核验模式）'
 elif ! command -v node >/dev/null 2>&1; then
-  printf '  ℹ M14 跳过（缺 node）\n'
+  skip 'M14 跳过（缺 node）'
 else
   fresh; mkdir -p "$work/prof"; : > "$FIX_PATCH"
   check_rc "M14a 由源生成副本 → 一致（自足夹具，不依赖用户平面）" \
@@ -1059,7 +1077,7 @@ if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
   # F259：此处原调用**未定义助手** `pass`（实测 stderr: `line 1005: pass: command not found`）⇒
   #   与本脚本 F191 守卫所针对的「调用不存在助手」属同类缺陷（该守卫仅扫描 `check*` 调用点，漏掉此处）。
   #   按本套件既有跳过口径改用 printf（同 M14 的 `  ℹ … 跳过（…）` 风格）。
-  printf '  ℹ M51 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）\n'
+  skip 'M51 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）'
 else
   : > "$work/patch51.yml"
   node plans/preset-declare.mjs apply --patch "$work/patch51.yml" --append >/dev/null 2>&1 || true
@@ -1075,7 +1093,7 @@ fi
 echo "[M138 声明包装 config.order 漂移（F325：check 增比 order 的修复存活）]"
 fresh
 if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
-  printf '  ℹ M138 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）\n'
+  skip 'M138 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）'
 else
   : > "$work/patch138.yml"
   node plans/preset-declare.mjs apply --patch "$work/patch138.yml" --append >/dev/null 2>&1 || true
@@ -1091,7 +1109,7 @@ fi
 echo "[M139 包装块内注释不得误报缺失（F326：固定 8 行窗口假红）]"
 fresh
 if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
-  printf '  ℹ M139 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）\n'
+  skip 'M139 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）'
 else
   : > "$work/patch139.yml"
   node plans/preset-declare.mjs apply --patch "$work/patch139.yml" --append >/dev/null 2>&1 || true
@@ -1115,7 +1133,7 @@ check_rc "M140 docs 内死引用 → 第 4 类报缺脚本" "bash plans/doc-cons
 echo "[M141 allow 名单连字符工具名不得静默漏检（F329：提取字符类收窄致假通过）]"
 fresh
 if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
-  printf '  ℹ M141 跳过（未设 DSH_APP_ROOT，无法核验安装真实性；属环境受限）\n'
+  skip 'M141 跳过（未设 DSH_APP_ROOT，无法核验安装真实性；属环境受限）'
 else
   cat > "$work/inject141.py" <<'PYEOF'
 import io, sys
@@ -1549,7 +1567,7 @@ check_rc "M132 非 git 回退核验 → 未来日期须报" "bash plans/doc-cons
 echo "[M133 声明包装语义等价改写不得误报（F305：旧实现以文本正则/切片比 config.id 与 name，YAML 等价加引号即假红）]"
 fresh
 if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
-  printf '  ℹ M133 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）\n'
+  skip 'M133 跳过（未设 DSH_APP_ROOT，无法做语义比对；属环境受限）'
 else
   : > "$work/patch133.yml"
   ( cd "$work/cur" && node plans/preset-declare.mjs apply --patch "$work/patch133.yml" --append >/dev/null 2>&1 ) || true
@@ -1919,7 +1937,7 @@ echo "[M156 电池跳过项不得计入「满分」（F350）]"
 #   用户未 apply 时该项 ✗、F=1、结论行变「存在失败项」，于是「跳过 ≠ 通过」永不出现（M156-a 假红）。
 #   此处同样注入**由源生成的沙箱夹具**，使本断言只取决于「跳过项与结论行的关系」这一被检语义。
 if [ -z "${DSH_APP_ROOT:-}${DSH_ASAR:-}" ] || ! command -v node >/dev/null 2>&1; then
-  printf '  ℹ M156 跳过（缺 node 或 DSH_APP_ROOT/DSH_ASAR——声明漂移项无法进入语义模式）\n'
+  skip 'M156 跳过（缺 node 或 DSH_APP_ROOT/DSH_ASAR——声明漂移项无法进入语义模式）'
 else
 fresh; mkdir -p "$work/prof"
 BAT_PATCH="$work/prof/battery-patch.yml"; : > "$BAT_PATCH"
@@ -1965,7 +1983,7 @@ printf '%s\n' '{"name":"js-yaml","main":"index.js"}' > "$work/m157tools/node_mod
 printf '%s\n' 'module.exports={DEFAULT_SCHEMA:{extend:function(){return module.exports.DEFAULT_SCHEMA;}},Type:function(){},load:function(){if(process.env.STUB_INDEX==="bad")return {schema_version:"1",projects:{},last_updated:{a:1}};if(process.env.STUB_INDEX)return {schema_version:"1",projects:{},last_updated:new Date()};if(process.env.STUB_A1==="bad")return [{name:""}];var a=[],i;for(i=0;i<17;i++)a.push({name:"role"+i});return a;}};' \
   > "$m157_tools/index.js"
 if [ ! -x "$farm_noruby/bash" ] || [ ! -e "$farm_noruby/node" ]; then
-  printf '  ℹ M157/M158 跳过：本机无法构造「有 node 但无 ruby」的 PATH 农场\n'
+  skip 'M157/M158 跳过：本机无法构造「有 node 但无 ruby」的 PATH 农场'
 else
   check_rc "M157-a 无 ruby + 候选链内有 js-yaml ⇒ A1 报「解析 OK」（修复前：解析失败）" \
     "PATH='$farm_noruby' DSH_CODEPUNK_TOOLS='$work/m157tools' bash plans/preset-audit.sh 2>&1 | grep -qF 'A1 解析 OK'" 0
@@ -1984,7 +2002,7 @@ fi
 
 echo "[M158 无 ruby 主机的 INDEX 语义类型判定（F352 / F353）]"
 if [ ! -x "$farm_noruby/bash" ] || [ ! -e "$farm_noruby/node" ]; then
-  printf '  ℹ M158 跳过：同 M157 的环境前提不成立\n'
+  skip 'M158 跳过：同 M157 的环境前提不成立'
 else
   mkdir -p "$work/m158"
   printf 'schema_version: "1"\nprojects: {}\nlast_updated: "2026-10-08T00:00:00+07:00"\n' > "$work/m158/INDEX.yaml"
@@ -2313,6 +2331,33 @@ check_rc "M170-a doc 类数声称陈旧 → 须报错（证明守护非空转）
 fresh
 check_rc "M170-b 基线：doc 类数声称与实现一致" "bash plans/doc-consistency.sh" 0 "doc 类数声称与实现一致"
 
-if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi
+echo "[M172 派生计数表「当前实况」列须与实现一致（F375）]"
+fresh
+sed -i.bak -E '/^\| 变异项数 \|/ s/\| [0-9]+（M1–M[0-9]+） \|/| 99（M1–M99） |/' "$work/cur/docs/development.md"
+mutate "M172-a 篡改派生计数表的变异项数实况（→ 99）" "$work/cur/docs/development.md" '99（M1–M99）'
+check_rc "M172-a 派生计数表实况陈旧 → 须报错（证明守护非空转）" "bash plans/doc-consistency.sh" 1 "派生计数表实况陈旧"
+fresh
+check_rc "M172-b 基线：派生计数表实况与实现一致" "bash plans/doc-consistency.sh" 0 "派生计数表实况与实现一致"
+
+echo "[M171 自检结论须据实报告覆盖（F374）]"
+# 快速路径：`--coverage-echo` 复用主路径的 `coverage_line`，秒级断言，不跑整轮（整轮约 5 分钟）。
+check_rc "M171-a 有跳过时结论须报「捕获 N/M … 跳过 K（跳过 ≠ 通过）」" \
+  "DSH_CODEPUNK_ECHO_SKIPPED=3 bash plans/checker-self-test.sh --coverage-echo" 0 "跳过 3 项（跳过 ≠ 通过）"
+check_no_match "M171-b 有跳过时不得称「全部变异均被对应检查项捕获」" \
+  "DSH_CODEPUNK_ECHO_SKIPPED=3 bash plans/checker-self-test.sh --coverage-echo" "全部变异均被对应检查项捕获"
+check_rc "M171-c 无跳过时结论保持「全部变异均被对应检查项捕获」" \
+  "bash plans/checker-self-test.sh --coverage-echo" 0 "全部变异均被对应检查项捕获"
+fresh
+# 变异标记须**唯一**：本脚本别处已有 `if false; then`，用裸串做落地断言会假通过（实测 grep -c = 3）。
+sed -i.bak 's/if \[ "${2:-0}" -gt 0 \]; then/if false; then  # F374-COV-MUT/' "$work/cur/plans/checker-self-test.sh"
+mutate "M171-d 变异（覆盖分支恒假）" "$work/cur/plans/checker-self-test.sh" 'F374-COV-MUT'
+check_rc "M171-d 覆盖分支被破坏后同命令须复现旧文案（证明分支非空转）" \
+  "DSH_CODEPUNK_ECHO_SKIPPED=3 bash plans/checker-self-test.sh --coverage-echo" 0 "全部变异均被对应检查项捕获"
+
+# F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
+#   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
+#   而旧文案两次都写「全部变异均被对应检查项捕获」；CI 未设该变量 ⇒ CI 恒跳过该族）。
+TOTAL_MUT=$(grep -oE 'M[0-9]+' "$0" | sort -u | wc -l | tr -d ' ')
+if [ "$FAILED" = 0 ]; then coverage_line "$TOTAL_MUT" "$SKIPPED"; exit 0; fi
 echo "✗ 自检失败：存在「注入缺陷却未被对应检查项捕获」的守护——疑似空转，请排查" >&2
 exit 1

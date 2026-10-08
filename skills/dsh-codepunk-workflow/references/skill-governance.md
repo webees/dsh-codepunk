@@ -172,6 +172,8 @@
 | **钩子配置完整性**（产品启动时读取的 `plans/hooks/hooks.json`：JSON 可解析 · matcher/type/command 齐备 · 命令引用的仓库内文件存在 · **解释器在 PATH 内**——缺解释器时钩子起不来、产品不设 decision ⇒ 放行，属失败开放；F368 实证：坏配置下五个门禁全绿） | `doc-consistency.sh` 第 7 类子项（+ 存活自检 M168） | 机械 |
 | **扫描工具缺失须显式失败**（`find` 不在 PATH 时进程替换为空、`2>/dev/null` 吞掉 `command not found` ⇒ 残留扫描全判「无残留」、`.DS_Store` 计数判 0；F372 实证：同一含残留沙箱在有/无 `find` 下 rc=1 → rc=0） | `write-scope-check.sh` 扫描工具预检 + `preset-score.sh` B14 + `verify-battery.sh` 杂散项（+ 存活自检 M169） | 机械 |
 | **doc 类数声称与实现派生一致**（`doc-consistency.sh` 同行的「N 类」须等于类段数派生值；序数写法「第 N 类」剔除不误判；F373 实证：`docs/architecture.md` 长期写 24 类而实现 25） | `doc-consistency.sh` 第 1 类派生核验（+ 存活自检 M170） | 机械 |
+| **存活自检的结论行须据实报告覆盖**（环境受限时若干变异只打印「跳过」而不执行，末行却称「全部变异均被对应检查项捕获」；F374 实证：设/未设 `DSH_APP_ROOT` 两次运行 ✅275 与 ✅270 而文案相同，CI 未设该变量 ⇒ 恒跳过该族） | `checker-self-test.sh` 结论行（`coverage_line` + `skip()` 计数；+ 存活自检 M171） | 机械 |
+| **文档「派生计数口径」表的实况列须与派生值一致**（表内只写裸数字或「N（M1–MN）」，不在第 1 类「N 项…」族域内；F375 实证：`docs/development.md` §7 长期写 167/24 而实况 171/25） | `doc-consistency.sh` 第 1 类派生核验（按行标签；+ 存活自检 M172） | 机械 |
 | **运行型脚本退出码声明**（`plans/*.{sh,py,mjs}` MUST 在头部声明退出码；豁免仅两类：`dsh-codepunk-home.sh` 特例、无任何显式退出调用者——F336 起**取消**「含 source 一词即豁免」的启发式；环境类失败返回 2——F146/F152 同源） | `doc-consistency.sh` 第 5 类分支 | 机械 |
 | **简报检索日**（含 URL 的 benchmarks 须带 `retrieved_at`；不可考时显式标注依据） | `doc-consistency.sh` 第 23 类 | 机械 |
 | **证据引用包含性**（`log_ref` 解析后须位于交付目录内；绝对路径 / `..` 逃逸 / 指向目录外的符号链接一律 FAIL——F348 实证） | `plans/evidence-verify.sh` ② + 存活变异 M154 | 机械 + 变异 |
