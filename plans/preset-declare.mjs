@@ -92,6 +92,16 @@ function parseArgs(argv) {
   const out = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    // F366：全预设统一用法约定（`-h`/`--help` ⇒ 用法 + rc=0）；此前被当子命令 ⇒ rc=2。
+    if (a === '-h' || a === '--help') {
+      console.log('用法：preset-declare.mjs <emit|check|apply> [--patch <profile-patch>] [--id <id>] '
+        + '[--order N] [--root <dir>] [--append]  （首次安装：apply --append）');
+      console.log('  emit  打印声明块（供 --patch 叠加或人工检视）');
+      console.log('  check 比对声明源与 profile patch 副本（一致 rc=0 / 漂移 rc=1 / 无法核验 rc=2）');
+      console.log('  apply 把声明块写入 profile patch（幂等；--append 用于首次安装）');
+      console.log('退出码：0=一致或成功 · 1=存在漂移 · 2=用法错误或无法核验');
+      process.exit(0);
+    }
     if (!a.startsWith('--')) {
       out._.push(a);
       continue;

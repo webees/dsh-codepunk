@@ -2137,6 +2137,32 @@ mutate "M164-a 断言依赖的规则名确在 hook 源码内" \
   "$work/cur/plans/hook-write-scope.py" "$m164_rule"
 check_rc "M164-b 预设仓库内路径须放行（rc=0）" \
   "HOME='$m164_home' python3 plans/hook-write-scope.py --fixture m164-allow.json 2>&1" 0
+# F367（本轮巡检实测）：黑名单比对曾有两条**静默绕过**（未命中即放行，无任何提示）——
+#   d) `//etc/hosts`：POSIX 归一（`posixpath.normpath`）**保留前导双斜杠** ⇒ 与根 `/etc` 的字面
+#      前缀比对不成立，而 POSIX 平台上它就是 `/etc/hosts`（同一文件）；
+#   e) 大小写变体 `/ETC/hosts`：macOS 默认卷（APFS/HFS+）不区分大小写 ⇒ 同一文件。
+#   两者现已归一（折叠前导多斜杠 + 不敏感平台比对折叠），并**写进契约 §8.3/§8.4**。
+#   位置纪律：本段 MUST 排在下方 `fresh` + M164-c 变异**之前**——M164-c 会把阻断分支抹掉，
+#   排在它之后的断言实际运行在「阻断已失效」的副本里（首版即因此假红，见自纠记录）。
+m164_sys="$(printf '/%s/%s' '' 'etc/hosts')"                       # ⇒ //etc/hosts
+printf '{"session_id":"m164d","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"write","tool_input":{"file_path":"%s"}}' \
+  "$work/cur" "$m164_sys" > "$work/cur/m164-slash.json"
+m164_rule_sys="$(printf '%s%s' '系统' '路径')"
+check_rc "M164-d 前导双斜杠路径须阻断（rc=2，F367）" \
+  "HOME='$m164_home' python3 plans/hook-write-scope.py --fixture m164-slash.json 2>&1" 2 "$m164_rule_sys"
+# 大小写变体只在**大小写不敏感平台**成立（linux 上 `/ETC/hosts` 确是另一个路径，护栏按设计放行）
+case "$(uname -s)" in
+  Darwin|MINGW*|MSYS*|CYGWIN*)
+    m164_up="$(printf '/%s/%s' 'ETC' 'hosts')"
+    printf '{"session_id":"m164e","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"write","tool_input":{"file_path":"%s"}}' \
+      "$work/cur" "$m164_up" > "$work/cur/m164-case.json"
+    check_rc "M164-e 大小写变体路径须阻断（rc=2，F367，不敏感卷）" \
+      "HOME='$m164_home' python3 plans/hook-write-scope.py --fixture m164-case.json 2>&1" 2 "$m164_rule_sys"
+    ;;
+  *)
+    echo "  ℹ M164-e 跳过（大小写敏感平台：该路径确为另一文件，护栏按设计放行）——跳过 ≠ 通过"
+    ;;
+esac
 fresh
 sed -i.bak 's/^            return EXIT_BLOCK$/            return EXIT_ALLOW/' "$work/cur/plans/hook-write-scope.py"
 rm -f "$work/cur/plans/hook-write-scope.py.bak"
@@ -2184,6 +2210,31 @@ if command -v python3 >/dev/null 2>&1; then
   check_rc "M166-b 超出容忍上限的日期须报未来" "TZ=UTC bash plans/doc-consistency.sh 2>&1" 1 "未来日期: "
 else
   echo "  ℹ M166 跳过（缺 python3）——跳过 ≠ 通过"
+fi
+
+# ── M167：用法约定的**域**含非 shell 入口（F366：`.py`/`.mjs` 此前整体不在第 20 类）────
+# 守护点：`doc-consistency.sh` 第 20 类静态子项（`for f in plans/*.sh plans/*.py plans/*.mjs`）。
+#   变异＝抹掉 `plans/ps-validate.mjs` 的 `-h` 字面量（`.mjs` 入口：旧域 `plans/*.sh` 看不见它）
+#   ⇒ 该子项须报出，且探针表里的 `ps-validate -h` 也会漂移（两条 `bad` 同时给出，rc=1）。
+if command -v node >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+  fresh
+  m167_cmd="bash plans/doc-consistency.sh"
+  check_rc "M167-a 基线：域内全部入口有 -h 分支（rc=0）" "$m167_cmd" 0 "无硬性不一致"
+  # M167-c：帮助**不得依赖可选依赖**（CI 实测：`ps-validate.mjs` 未装 tree-sitter 时旧位置先
+  #   `exit 2` ⇒ 本机 rc=0、CI rc=2；帮助分支 MUST 排在依赖解析之前）。用无 node_modules 的 HOME 造境。
+  check_rc "M167-c 帮助不依赖可选依赖（无依赖的 HOME 下 -h 仍 rc=0）" \
+    "HOME='$work/cur/.m167empty' node plans/ps-validate.mjs -h" 0 "用法: node ps-validate.mjs"
+  m167_before=$(grep -c -- "'-h'" "$work/cur/plans/ps-validate.mjs" || true)
+  # 变异锚点＝**字面量本身**（`'-h'` → `'-x'`），不绑变量名：首版锚定 `files.includes('-h')`，
+  #   而该分支提升到依赖解析之前时变量已改名 `argvFiles` ⇒ sed 不落地（MUTFAIL 报「1 → 1」）。
+  sed -i.bak "s/'-h'/'-x'/" "$work/cur/plans/ps-validate.mjs"
+  m167_after=$(grep -c -- "'-h'" "$work/cur/plans/ps-validate.mjs" || true)
+  mutate "M167-b 变异落地（ps-validate.mjs 的 '-h' 字面量 ${m167_before} → ${m167_after}）" \
+    "$work/cur/plans/ps-validate.mjs" "'-x'"
+  check_rc "M167-b 非 shell 入口缺 -h 分支须被第 20 类捕获（rc=1）" "$m167_cmd" 1 \
+    "运行型入口未实现 -h/--help 用法约定"
+else
+  echo "  ℹ M167 跳过（缺 node 或 python3）——跳过 ≠ 通过"
 fi
 
 if [ "$FAILED" = 0 ]; then echo "✔ 自检通过：全部变异均被对应检查项捕获"; exit 0; fi

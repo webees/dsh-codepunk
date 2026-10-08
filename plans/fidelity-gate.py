@@ -147,6 +147,11 @@ def main():
         usage()
         return 2
     mode = sys.argv[1]
+    # F366：本预设的用法约定（`-h`/`--help` ⇒ 打印用法并 rc=0）适用于**全部可执行入口**，
+    #   不只 `plans/*.sh`；本文件此前把 `-h` 当模式名 ⇒ rc=2「未知模式: -h」。
+    if mode in ('-h', '--help'):
+        usage()
+        return 0
     if mode not in ('snapshot', 'verify'):
         print(f"✗ 未知模式: {mode}")
         usage()

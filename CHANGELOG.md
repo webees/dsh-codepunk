@@ -20,6 +20,21 @@
 
 ### 修复
 
+- **用法约定只覆盖 `.sh`，4 个非 shell 入口整体不在域内**：`plans/doc-consistency.sh` 第 20 类的
+  静态子项写作 `for f in plans/*.sh`，探针表也只枚举 `.sh` ⇒ `fidelity-gate.py`、`preset-compat.py`、
+  `preset-declare.mjs`、`ps-validate.mjs` 把 `-h` 当位置参数（rc=2，其中 `preset-compat.py` 报
+  「组合文件不存在：`<仓库>/-h/agent.cordis.yml`」），而治理矩阵声称该检查「覆盖全部实现者」。
+  已为四个入口补 `-h`/`--help` 分支（rc=0 + 用法），并把第 20 类的静态子项域扩为
+  `plans/*.sh plans/*.py plans/*.mjs`（纯 source 库除外）、探针表补 4 条（27 → 31 条），
+  新增永久存活变异（M167）。**补充**（CI 拦下）：`ps-validate.mjs` 的用法分支首版排在**依赖解析
+  之后**，未装 tree-sitter 的机器（ubuntu CI）会先 `exit 2` ⇒ 同一约定本机 rc=0、CI rc=2；
+  已把帮助分支提到依赖解析之前（帮助不依赖可选依赖），并加断言 M167-c 固化。
+- **写盘护栏黑名单的两条静默绕过**：`plans/hook-write-scope.py` 的路径比对未做归一 ⇒
+  ① `//etc/hosts`（`posixpath.normpath` 依 POSIX 保留前导双斜杠）与 ② 大小写变体
+  `/ETC/hosts`、`/USERS/<名>/.ssh/id_ed25519`（macOS 默认卷不区分大小写）都**绕过黑名单且无任何提示**
+  （既非阻断、也不属于契约里「无法判定 ⇒ 放行 + 明示」那一类）。已归一：POSIX 折叠前导多斜杠
+  （Windows UNC 不折叠）、大小写不敏感平台（darwin/win32）比对双方折叠；契约 `§8.3/§8.4` 补记归一规则
+  与条件性缺口，M164 增两条断言（M164-d/M164-e）。
 - **`INDEX.yaml` 权限随执行顺序变化（同输入终态不一致）**：`plans/dsh-codepunk-link.sh` 写回总库索引时用
   `mktemp` + `mv`，而 macOS 的 `mktemp` 建文件即 0600 ⇒ `register` 跑在 `init` 之后会把 `INDEX.yaml`
   由 644 **降为 600**（同一输入、两种顺序终态权限不同）。已在写回前记录原 mode、`mv` 后按原 mode 复位
