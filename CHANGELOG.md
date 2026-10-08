@@ -20,6 +20,7 @@
 
 ### 修复
 
+- **巡检名册的「可解析」自证用的是弱解析器**：运行根 `agents.yaml` 的写入约束（D099）原文只要求 `ruby -ryaml` 回读校验，而 Psych **不报重复键**——巡检写回把新条目插在上一轮条目的字段之前时，该轮条目丢失 `at`/`note`、上一轮条目出现两个 `at`/两个 `note`，Psych 静默取后者、`js-yaml` v4 则报 `duplicated mapping key` ⇒ 名册对严格解析器**不可读**而自证仍显示通过。已把约束升级为「MUST 用严格解析器（js-yaml，拒绝重复键）+ MUST 逐条核对字段归属」并写明两者差异与实测。
 - **钩子配置（产品启动时读取）无任何门禁守护**：`plans/hooks/hooks.json` 由 `agent.cordis.yml` 的
   `hooks-write-scope` 条目经 `configPath` 在产品启动时读取，而把该文件**截断为非法 JSON**、或把命令
   路径改成**不存在的文件**时，`doc-consistency` · `preset-audit` · `preset-score` ·
