@@ -2862,6 +2862,26 @@ fi
 fresh
 
 
+# ── M194：文档路径引用域与扩展名（F408）──────────────────────────────────────────
+#   机理：第 4 类（工具存在性）原扫描域只含 SKILL / references / README / CONTRIBUTING / docs，
+#   根级文档（`CHANGELOG.md` 等）不在域内；且扩展名集只有 `sh|py|mjs` ⇒ `.cjs` 形态的引用
+#   根本不被识别 ⇒ 仓内不可解析的假引用长期零守护（红证实测见运行根 `logs/r647/f408-red.txt`）。
+#   断言：a) 在**根级** md 注入不存在的 `.cjs` 形态 `plans/*` 引用 ⇒ rc=1 且点名文件:引用；
+#        b) 移除注入 ⇒ 同环境 rc=0（证明失败源于该引用，而非环境/其他类）；
+#        c) 通过消息须写明扫描域（「全部跟踪 .md」）——域扩落地，非仅改文案。
+fresh
+printf '\n- 注入探针（自检临时写入）：见 `plans/m194-probe-nonexistent.cjs`。\n' >> "$work/cur/CHANGELOG.md"
+mutate "M194-a 注入型变异（根级 md 中不存在的 plans/*.cjs 引用）" "$work/cur/CHANGELOG.md" 'm194-probe-nonexistent'
+check_rc "M194-a 第 4 类须报出不存在的引用（域含根级 md + 扩展名含 cjs）" "bash plans/doc-consistency.sh 2>&1" 1 "不存在"
+check_contains "M194-a2 报错须可定位（文件:引用）" "bash plans/doc-consistency.sh 2>&1" "CHANGELOG.md:m194-probe-nonexistent.cjs"
+sed -i.bak '/m194-probe-nonexistent/d' "$work/cur/CHANGELOG.md"
+rm -f "$work/cur/CHANGELOG.md.bak"
+mutate_gone "M194-b 删除型变异（移除注入的假引用）" "$work/cur/CHANGELOG.md" 'm194-probe-nonexistent'
+check_rc "M194-b 移除注入后须复归 rc=0（失败确由该引用引起）" "bash plans/doc-consistency.sh" 0 ""
+check_contains "M194-c 通过消息须写明扫描域（全部跟踪 .md）" "bash plans/doc-consistency.sh 2>&1" "全部跟踪 .md"
+fresh
+
+
 # F394：终局 MUTFAIL 门（早退点之后的变异不得静默空转）——早退点在文件中部，其后新增的变异
 #   若 `mutate`/`mutate_gone` 失败只打印 ‼ 而退出码仍 0（实证：M185-a 的模式串 `**27 类**：编号` 在
 #   `grep -E` 下属非法重复算子 ⇒ 从未落地，却仍打印「✅ …」与「185/185 全捕获」）⇒ 必须在结论行之前再判一次。

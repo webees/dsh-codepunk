@@ -9,7 +9,8 @@
 #   1. 计数声称（15 指标 / 5 组 / 电池项数 / 18 references / 16 benchmarks）
 #   2. 阶段口径（README 表 = preset.yml 阶段项 = stages.md 阶段号 = 6）
 #   3. 术语咨询（裸用「工作区」列出供人工确认；**咨询不判失败**——矩阵已把术语一致性列为人工项）
-#   4. 工具存在性（文档提到的 plans/*.sh 必须真实存在）
+#   4. 工具存在性（**全部跟踪的 .md** 中提到的 `plans/*` 引用必须真实存在；扩展名 sh|py|mjs|cjs|ps1；
+#      域与空枚举口径见 F327/F408）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`；子项：外部输入
 #      变量（未赋值或 `${VAR:-默认}` 形式）MUST 被记载于任一 .md 或脚本头部注释块——F358）
 #   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）（**仅提示，不计失败**）
@@ -253,15 +254,30 @@ echo "[4] 工具存在性"
 # F327：扫描域原先只含 SKILL / references / README / CONTRIBUTING，**不含 docs/**（开源规格化时新增 9 篇，
 #   内有 90+ 处 `plans/...` 引用）⇒ 通过消息「文档提到的 plans 脚本均存在」属**过度声称**，且
 #   `docs/documentation-policy.md` 的占位路径 `plans/xxx.sh` 无任何机械门可发现。故扩展域并写明域。
+# F408：域再扩至**全部跟踪的 .md**（此前域为 SKILL / references / README / CONTRIBUTING / docs，
+#   `CHANGELOG.md` 等根级文档不在域内 ⇒ 其 `plans/patrol-readback.cjs` 不可解析却无门禁可见）；
+#   扩展名集补 `cjs`/`ps1`（原集只有 sh|py|mjs，`.cjs` 形态的引用根本不被识别）；
+#   空枚举判「无法核验 ≠ 通过」（与类 17/18 口径统一）。
+MD_LIST=$(git ls-files '*.md' 2>/dev/null)
+MD_SRC="git ls-files '*.md'"
+if [ -z "$MD_LIST" ]; then
+  MD_LIST=$(find . -name '*.md' -not -path './.git/*' 2>/dev/null | sed 's#^\./##')
+  MD_SRC="find 回退（非 git 工作区）"
+fi
+MD_N=$(printf '%s\n' "$MD_LIST" | grep -c '[^[:space:]]' || true)
 MISS=""
-for f in "$SKILL" "$REF"/*.md README.md CONTRIBUTING.md docs/*.md docs/*/*.md; do
-  [ -f "$f" ] || continue
-  case "$f" in */benchmarks/*) continue ;; esac
-  for s in $(grep -oE 'plans/[a-z0-9._-]+\.(sh|py|mjs)' "$f" 2>/dev/null | sed 's#plans/##' | sort -u); do
-    [ -f "plans/$s" ] || [ -f "plans/windows/$s" ] || MISS="$MISS $(basename "$f"):$s"
+if [ "${MD_N:-0}" -eq 0 ]; then
+  na "文档枚举为空（${MD_SRC}）：无法核验 ≠ 通过"
+else
+  for f in $MD_LIST; do
+    [ -f "$f" ] || continue
+    case "$f" in */benchmarks/*) continue ;; esac
+    for s in $(grep -oE 'plans/[a-z0-9._-]+\.(sh|py|mjs|cjs|ps1)' "$f" 2>/dev/null | sed 's#plans/##' | sort -u); do
+      [ -f "plans/$s" ] || [ -f "plans/windows/$s" ] || MISS="$MISS $f:$s"
+    done
   done
-done
-[ -z "$MISS" ] && ok "文档提到的 plans 脚本均存在（域：SKILL / references / README / CONTRIBUTING / docs）" || bad "文档提到但不存在的脚本:${MISS}"
+  [ -z "$MISS" ] && ok "文档提到的 plans 脚本均存在（域：全部跟踪 .md ${MD_N} 篇，来源 ${MD_SRC}；排除 */benchmarks/*；扩展名 sh|py|mjs|cjs|ps1）" || bad "文档提到但不存在的脚本:${MISS}"
+fi
 
 echo "[5] 退出码契约"
 # F231：**空输入守卫** —— plans 下无可检脚本时，下方两处循环均不执行 ⇒ 两个判据都会**恒真通过**（0 脚本 ⇒ 「无违规」）。
