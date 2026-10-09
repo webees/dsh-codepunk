@@ -42,6 +42,15 @@ case "$(locale charmap 2>/dev/null)" in
     done ;;
 esac
 
+# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
+#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
+#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
+#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
+  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
+  exit 2
+fi
+
 # F405（依赖预检，MUST）：本门禁的禁词归一管道（`sed … | awk 'length($0)>=3' | sort -u`）与掩码、文件枚举
 #   都依赖下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」（rc=2），绝不静默降级为通过 ——
 #   实证：影子 PATH 去掉 awk 时，禁词表 25 条被静默归零，门仍打印「✓ 通过（禁词 0 条 + 通用模式 5 类）」。

@@ -16,6 +16,8 @@
 
 脚本内已固定 UTF-8 locale：当 `locale charmap` 不是 UTF-8 且系统存在 UTF-8 locale 时自动 `export LC_ALL`。原因：C/POSIX 或 ISO-8859 系 locale 下 BSD 工具链逐字节处理，会**误报**一致性缺陷。手工复跑命令时请勿显式指定 `LC_ALL=C`。
 
+**运行模式前置（`POSIXLY_CORRECT`）**：门禁脚本是 bash 脚本且使用 bash 扩展（进程替换 `< <(...)`）。若环境里设了 `POSIXLY_CORRECT=1`（或显式 `bash --posix`），bash 会进入 POSIX 模式：进程替换变成**语法错误**，退出码虽为 2 但输出里只有语法错误文本、没有保守措辞，于是上游会把「环境不支持」误归因为「脚本坏了」（实测：`preset-score` 报 `bash -n 失败`、`doc-consistency` 报「退出码契约漂移」）。因此 8 个门禁脚本（`doc-consistency` / `preset-audit` / `preset-score` / `dsh-codepunk-leak-guard` / `write-scope-check` / `patrol-check` / `verify-worktree` / `github-setup`）在**入口**检测该变量与 `set -o posix` 状态，命中即打印「POSIX 模式 ⇒ 无法核验 ≠ 通过」并 `exit 2`（无法核验 ≠ 通过）。要跑门禁就 `unset POSIXLY_CORRECT`。
+
 ## 2. 克隆与布局
 
 ```bash
@@ -45,7 +47,7 @@ git switch -c feat/<主题>          # 本仓按主题分支开发，不直接�
 | `bash plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性 27 类 | 0 一致 / 1 不一致 / 2 环境或用法错误 |
 | `bash plans/preset-audit.sh` | 5 组 rubric 审计 | 0 全达标 / 1 有失分 / 2 预设根不存在 |
 | `bash plans/preset-score.sh` | 15 指标评分 | 0 全满分 / 1 有失分 / 2 环境或用法错误 |
-| `bash plans/checker-self-test.sh` | 检查器存活自检（200 项变异） | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
+| `bash plans/checker-self-test.sh` | 检查器存活自检（206 项变异） | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
 | `bash plans/verify-battery.sh` | 完整验证电池（11 项，一次跑完） | 0 全通过 / 1 有失败项 / 2 无法进入预设根 |
 | `bash plans/dsh-codepunk-leak-guard.sh --history` | 泄露防护门（近 20 提交与新增行） | 0 通过 / 1 命中阻断 / 2 用法或环境错误 |
 
@@ -118,7 +120,7 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 
 | 计数 | 派生命令 | 当前实况 |
 |---|---|---|
-| 变异项数 | `grep -oE 'M[0-9]+' plans/checker-self-test.sh \| sort -u \| wc -l` | 200（M1–M200） |
+| 变异项数 | `grep -oE 'M[0-9]+' plans/checker-self-test.sh \| sort -u \| wc -l` | 206（M1–M206） |
 | 文档一致性类数 | `grep -cE '^echo "\[[0-9]+' plans/doc-consistency.sh` | 28 |
 | 电池项数 | `grep -cE '^# [0-9]+\)' plans/verify-battery.sh` | 11 |
 | 保真语义类数 | 用 `ast` 取 `plans/fidelity-gate.py` 中 `PATTERNS` 的键数 | 14 |
@@ -129,7 +131,7 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 
 `README.md` 是使用者向的**计数权威宣称处**，下列声称必须与实现一致且**全文唯一**（同一数字在多处出现时，每处都会各自被校验）：
 
-1. 质量工具表的项数：15 指标 / 5 组 / **11 项**电池 / **200 项**变异（M1–M200）/ **14 类**保真。
+1. 质量工具表的项数：15 指标 / 5 组 / **11 项**电池 / **206 项**变异（M1–M206）/ **14 类**保真。
 2. 计数口径文案中的示例（如「18 references」「16 benchmarks」一类声称）。
 3. 硬规则上限、阶段数（六阶段）、岗位数（11 内建 + 2 外部后端；出现「13 岗位」须带历史或例外标记）。
 

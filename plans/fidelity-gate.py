@@ -129,7 +129,7 @@ def extract(path):
 
 
 def files():
-    r = subprocess.run(['git', 'ls-files'], capture_output=True, text=True).stdout.split()
+    r = subprocess.run(['git', 'ls-files', '-z'], capture_output=True, text=True).stdout.split('\0')  # F419：`-z` + NUL 切分（`.split()` 分词 ⇒ 含空白文件名被拆碎 ⇒ 漏扫/错误归因）
     return [f for f in r if f.endswith(('.md', '.yml', '.sh', '.ps1'))]
 
 

@@ -58,6 +58,17 @@
 # ============================================================================
 set -uo pipefail
 
+# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
+#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
+#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
+#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+#   注：守卫 MUST 位于**顶层**（曾误置于 `if [ -n "${RUN_ROOT}" ]` 分支内 ⇒ 默认模式不经过它，
+#   仍在 line 409 的 `done < <(find …)` 处报语法错误）。
+if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
+  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
+  exit 2
+fi
+
 # F197：本工具的判据/输出含**多字节**内容（中文结论）。非 UTF-8 locale（C/POSIX/ISO-8859 系）下会被逐字节
 #   处理，甚至有把**环境问题**误诊为数据损坏的先例（见 verify-worktree.sh 同段注释）。
 #   故在非 UTF-8 且系统存在 UTF-8 locale 时固定之；探测只用 ASCII。

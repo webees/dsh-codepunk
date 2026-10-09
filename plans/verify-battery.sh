@@ -66,7 +66,7 @@ if ! command -v python3 >/dev/null 2>&1; then
 else
 H=$(python3 - <<'PY'
 import subprocess
-files = subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
+files = [f for f in subprocess.run(['git','ls-files', '-z'], capture_output=True, text=True).stdout.split('\0') if f]  # F419：`-z` + NUL 切分（`.split()` 分词 ⇒ 含空白文件名被拆碎 ⇒ 漏扫）
 bad = 0
 for f in files:
     try: raw = open(f,'rb').read()
@@ -123,7 +123,7 @@ fi   # git 工作区检查
 # 6) 结构（围栏/标题/引用）
 if python3 - <<'PY' >/dev/null 2>&1
 import subprocess, re, sys, os
-files = subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
+files = [f for f in subprocess.run(['git','ls-files', '-z'], capture_output=True, text=True).stdout.split('\0') if f]  # F419：`-z` + NUL 切分（`.split()` 分词 ⇒ 含空白文件名被拆碎 ⇒ 漏扫）
 
 def unfence(txt):
     """去掉围栏代码块内容：块内 `# 注释` 不是 Markdown 标题，误判会造成假阳性。"""
@@ -177,7 +177,7 @@ for kind, path in resolved:
     if kind == 'file' and not os.path.exists(path): sys.exit(1)
     if kind == 'dir' and not os.path.isdir(path): sys.exit(1)
 listed = {p for k, p in resolved if k == 'file'}
-files = subprocess.run(['git', 'ls-files'], capture_output=True, text=True).stdout.split()
+files = [f for f in subprocess.run(['git', 'ls-files', '-z'], capture_output=True, text=True).stdout.split('\0') if f]  # F419：`-z` + NUL 切分（`.split()` 分词 ⇒ 含空白文件名被拆碎 ⇒ 漏扫）
 # references/benchmarks 为按需层，不在目录树逐项列出（README 另有说明）
 skip = ('skills/dsh-codepunk-workflow/benchmarks/', 'skills/dsh-codepunk-workflow/references/')
 if any(f not in listed and not f.startswith(skip) for f in files): sys.exit(1)
