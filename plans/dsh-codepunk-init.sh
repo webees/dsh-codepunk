@@ -130,6 +130,7 @@ publish_bare_commands() {
 # 同步源 = 本脚本所在目录（即仓内 plans/）：**从仓内运行本脚本即为升级动作**。
 install_scripts() {
   local src_dir="$SCRIPT_DIR" n_new=0 n_upd=0 n_stale=0 f base dst
+  local _stale_names=""   # F424：点名漂移文件（旧实现只报数量 ⇒ 定位需手工逐文件比对）
   if [[ "$(cd "$src_dir" && pwd)" == "$(cd "$DSH_CODEPUNK_SCRIPTS" 2>/dev/null && pwd)" ]]; then
     echo "  ℹ 正从总库副本自身运行：更新工具请改用仓内副本（bash <repo>/plans/dsh-codepunk-init.sh）" >&2
     return 0
@@ -144,9 +145,11 @@ install_scripts() {
     dst="$DSH_CODEPUNK_SCRIPTS/$base"
     if [[ ! -e "$dst" ]]; then
       n_new=$((n_new + 1))
+      _stale_names="${_stale_names} ${base}（缺失）"
       (( CHECK_ONLY )) || { cp "$f" "$dst"; chmod 755 "$dst" 2>/dev/null; }
     elif ! cmp -s "$f" "$dst"; then
       n_upd=$((n_upd + 1))
+      _stale_names="${_stale_names} ${base}（过期）"
       (( CHECK_ONLY )) || { cp "$f" "$dst"; chmod 755 "$dst" 2>/dev/null; }
     elif (( ! CHECK_ONLY )); then
       # F304：内容一致时**权限仍可能漂移**——源为 711/644 会把非规范模式带进总库，或副本被人工改成
@@ -159,7 +162,7 @@ install_scripts() {
   if (( CHECK_ONLY )); then
     n_stale=$((n_new + n_upd))
     (( n_stale == 0 )) && pass "工具脚本与源一致（${DSH_CODEPUNK_SCRIPTS}）" \
-                       || fail "总库工具脚本缺失/过期 $n_stale 个（运行本体脚本同步）"
+                       || fail "总库工具脚本缺失/过期 $n_stale 个:${_stale_names}（运行本体脚本同步）"
   else
     if (( n_new + n_upd == 0 )); then
       pass "工具脚本已是最新（无变更）"

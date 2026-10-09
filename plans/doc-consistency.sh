@@ -1877,6 +1877,70 @@ fi
 if [ -n "$DERIV_BAD" ]; then bad "派生计数表实况陈旧:${DERIV_BAD}"
 elif [ "$DERIV_HITS" -eq 0 ]; then info "未出现派生计数表（域：docs/development.md §7，按行标签定位）"
 else ok "派生计数表实况与实现一致（命中 ${DERIV_HITS} 行：变异项数 / 文档一致性类数 / 电池项数）"; fi
+
+# F425：`plans/` 源副本的**扩展名计数声称**（形如「16 个 `.sh` + 3 个 `.py`」）此前不在任何门禁域
+#   —— 实测 `docs/development.md` 声称「13 个 `.sh` + 2 个 `.py`」而实况 16/3（开源规格化后新增的
+#   `.sh`/`.py` 从未被计数守护；第 1 类的计数族只识别「N 项变异 / N 指标 / N 组 / 电池项数」等写法，
+#   派生计数表只认 §7 的固定行标签）。此处按 `git ls-files` 派生实况，与**全部跟踪 .md** 中
+#   「行内含 `plans/`」的同类声称逐一比对；`.ps1` 域为 `plans/windows/`。无命中 ⇒ ℹ（域为空）。
+EXT_BAD=""; EXT_HITS=0
+if command -v git >/dev/null 2>&1; then
+  EXT_OUT=$(python3 - <<'PYEOF' 2>/dev/null
+import re, subprocess
+
+def ls(pat):
+    r = subprocess.run(['git', 'ls-files', '-z', pat], capture_output=True)
+    if r.returncode != 0:
+        return None
+    return [x for x in r.stdout.decode('utf-8', 'replace').split('\0') if x]
+
+files = ls('*.md')
+if files is None:
+    print('UNVER')
+    raise SystemExit
+counts = {}
+for ext in ('sh', 'py', 'mjs', 'ps1'):
+    pat = 'plans/windows/*.ps1' if ext == 'ps1' else 'plans/*.' + ext
+    got = ls(pat)
+    counts[ext] = None if got is None else len(got)
+pat = re.compile(r'(\d+)\s*个\s*`\.(sh|py|mjs|ps1)`')
+# 只把**目录清单式**声称纳入域：同一行内出现「N 个 `.x` + M 个 `.y`」的**加号串联链**才算总量声称。
+# 反例（实测假报）：`skill-governance.md` 的历史叙述「F361 实证 4 个 `.sh` 实现者曾不在探针表内，
+# F366 实证 4 个 `.py`/`.mjs` 入口曾整体不在域内」——讲的是**当时不在域内的子集**，不是总数，
+# 且其扩展名计数之间无 `+` 串联 ⇒ 排除。
+chain = re.compile(r'\d+\s*个\s*`\.(?:sh|py|mjs)`\s*\+\s*\d+\s*个\s*`\.(?:py|mjs|ps1)`')
+hits, bad = 0, []
+for f in files:
+    try:
+        text = open(f, encoding='utf-8', errors='replace').read()
+    except OSError:
+        continue
+    for i, line in enumerate(text.splitlines(), 1):
+        if 'plans/' not in line or not chain.search(line):
+            continue
+        for m in pat.finditer(line):
+            ext, claim = m.group(2), int(m.group(1))
+            if counts.get(ext) is None:
+                continue
+            hits += 1
+            if claim != counts[ext]:
+                bad.append(f'{f}:{i}(声称 {claim} 个 .{ext}，实况 {counts[ext]})')
+print('HITS', hits)
+for b in bad:
+    print('BAD', b)
+PYEOF
+)
+  case "$EXT_OUT" in
+    *UNVER*) info "扩展名计数声称：无法核验（git 枚举失败）——无法核验 ≠ 通过" ;;
+    *)
+      EXT_HITS="$(printf '%s\n' "$EXT_OUT" | awk '/^HITS /{print $2}')"
+      EXT_BAD="$(printf '%s\n' "$EXT_OUT" | sed -n 's/^BAD //p' | tr '\n' ' ' | sed 's/ *$//')"
+      if [ -n "$EXT_BAD" ]; then bad "plans 扩展名计数声称陈旧: ${EXT_BAD}"
+      elif [ "${EXT_HITS:-0}" -eq 0 ]; then info "未出现 plans 扩展名计数声称（域：全部跟踪 .md，形态「N 个 \`.ext\`」且行内含 plans/）"
+      else ok "plans 扩展名计数声称与实现一致（命中 ${EXT_HITS} 处：.sh/.py/.mjs/.ps1）"; fi
+      ;;
+  esac
+fi
 if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（${NCLASS} 类检查）"; exit 0; fi
 # F421：归因 MUST 区分「不一致」与「无法核验」（na() 计数另计）——旧实现把两者合并成
 #   「存在 N 处不一致」，把环境缺口说成文档缺陷（实测：`GIT_INDEX_FILE` 错指时本类 rc=1

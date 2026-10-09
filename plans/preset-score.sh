@@ -364,7 +364,10 @@ grep -q "thresholdRatio: 0.6" agent.cordis.yml 2>/dev/null || ded B13 15 "缺 th
 grep -qE "MUST|绝不|禁止" "$SKILL" 2>/dev/null || ded B13 20 "约束强度词丢失"
 
 # ── B14 工程卫生 ────────────────────────────────────────────────────────────
-FSYNC=$(for p in plans/*.sh; do f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "$f"; done)
+# F423：B14 的「plans↔scripts 同步」此前只对照 `plans/*.sh`（与 Windows 侧 `.ps1`），缺 `plans/*.py`/
+#   `plans/*.mjs` ⇒ 这两类脚本的总库副本陈旧时 B14 仍满分（实测 `plans/preset-compat.py` 陈旧而 15/15）。
+#   此处与 `plans/preset-audit.sh` 的 F2 正向对照保持同一扩展名集合。
+FSYNC=$(for p in plans/*.sh plans/*.py plans/*.mjs; do f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "$f"; done)
 WSYNC=$(for p in plans/windows/*.ps1; do [ -f "$p" ] || continue; f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "$f"; done)
 SYNC="$(printf '%s %s' "$FSYNC" "$WSYNC" | tr -s ' ' ' ' | sed 's/^ *//; s/ *$//')"
 [ -n "$SYNC" ] && ded B14 25 "plans↔scripts 不同步: $SYNC"
