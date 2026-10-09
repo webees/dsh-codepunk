@@ -155,7 +155,7 @@
 
 | **部分流程自洽**（阶段引用可解析：悬空引用／孤立阶段——矩阵空档已机械化） | `doc-consistency.sh` 第 15 类（双向负向验证通过） | 机械 |
 | **夹具字面量纪律**（自检夹具不得含触发本仓守卫的字面量：用户目录绝对路径／邮箱形态／私网地址；须运行时拼接，否则副本内评分与泄露门会命中夹具自身） | `doc-consistency.sh` 第 14 类 | 机械 |
-| 已登记的计数声称（15 指标 / 5 组 / 14 项电池 / 岗位数 / 变异项数——域：`README.md` + `docs/**` 同族写法） | `preset-score` A3 · `preset-audit` B1 · `doc-consistency.sh` 第 1 类 | 机械 |
+| 已登记的计数声称（16 指标 / 5 组 / 14 项电池 / 岗位数 / 变异项数——域：`README.md` + `docs/**` 同族写法） | `preset-score` A3 · `preset-audit` B1 · `doc-consistency.sh` 第 1 类 | 机械 |
 | 泄露与品牌卫生 | `leak-guard`（3 模式 + 三钩子）· `preset-score` B5/B11 | 机械 |
 | 格式/EOL/杂散/全角紧邻陷阱 | `verify-battery` 4/5 · `preset-audit` B1b | 机械 |
 | 失败路径提示与退出码契约 | `checker-self-test` M10–M13 | 机械（变异） |

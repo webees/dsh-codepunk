@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# preset-score.sh —— dsh-codepunk 15 指标评分器（run-score-15 rubric 固化）
+# preset-score.sh —— dsh-codepunk 16 指标评分器（rubric 固化：策略/质量/准确性/规范性/精简度/一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性/内容卫生）
 # -----------------------------------------------------------------------------
 # 用法: preset-score.sh [预设根]
-# 输出: 15 项得分（每项 100 分为满分门槛）+ 失分证据 + 是否「全满分」
-# 退出码: 0=15 项全 100；1=存在未满分项；2=环境/用法错误（预设根不存在等）
+# 输出: 16 项得分（每项 100 分为满分门槛）+ 失分证据 + 是否「全满分」
+# 退出码: 0=16 项全 100；1=存在未满分项；2=环境/用法错误（预设根不存在等）
 #
 # 判据原则：优先客观可验证（解析/实跑/计数/grep），主观项给出明确扣分锚点。
 # 环境变量:
@@ -40,10 +40,10 @@ if [ ! -f skills/dsh-codepunk-workflow/SKILL.md ] || [ ! -d plans ]; then
 fi
 
 
-# ---- 评分累计器（15 项独立变量） -------------------------------------------
+# ---- 评分累计器（16 项独立变量） -------------------------------------------
 A1=100; A2=100; A3=100; A4=100; A5=100
 B6=100; B7=100; B8=100; B9=100; B10=100
-B11=100; B12=100; B13=100; B14=100; B15=100
+B11=100; B12=100; B13=100; B14=100; B15=100; B16=100
 EV=""   # 证据累积
 
 # F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
@@ -80,13 +80,14 @@ named() { case "$1" in
   B7) echo "B7 完整性";; B8) echo "B8 可执行性";; B9) echo "B9 可维护性";;
   B10) echo "B10 跨平台性";; B11) echo "B11 安全性";; B12) echo "B12 可发现性";;
   B13) echo "B13 语义保真";; B14) echo "B14 工程卫生";; B15) echo "B15 演进性";;
+  B16) echo "B16 内容卫生";;
 esac; }
 
 SKILL="skills/dsh-codepunk-workflow/SKILL.md"
 REF="skills/dsh-codepunk-workflow/references"
 BM="skills/dsh-codepunk-workflow/benchmarks"
 
-echo "===== dsh-codepunk 15 指标评分 ====="
+echo "===== dsh-codepunk 16 指标评分 ====="
 
 # ── A1 策略性 ───────────────────────────────────────────────────────────────
 for s in "需求确认" "规划与组队" "并行开发" "巡检与交接" "解散与评分" "再规划"; do
@@ -198,7 +199,7 @@ DUPD=$(grep -oE '^\| D[0-9]{3} ' "$REF/standard.md" 2>/dev/null | tr -d '| ' | s
 [ -n "$DUPD" ] && ded A4 20 "决策号重复: $(echo "$DUPD" | tr '\n' ' ')"
 # F263：治理矩阵（skill-governance.md「编号一致性（D/P/R 定义与引用、重复号）」行）声称由
 #   `preset-audit` B7/D1/D3 与本组**并列**承担，但实测**重复 R 号**（SKILL 硬规则表追加第二条 `| R9 |`）
-#   在 `doc-consistency`（rc=0）／`preset-audit`（100/100）／本组（15/15）**三工具下全部放行**，
+#   在 `doc-consistency`（rc=0）／`preset-audit`（100/100）／本组（全满分）**三工具下全部放行**，
 #   而重复 **D** 号确被上方抓获 ⇒ D 有覆盖、R 缺失（**覆盖不对称**）。此处**同构**补 R 号重复检测。
 DUPR=$(grep -oE '^\| R[0-9]{1,2} ' skills/dsh-codepunk-workflow/SKILL.md 2>/dev/null | tr -d '| ' | sort | uniq -d)
 [ -n "$DUPR" ] && ded A4 20 "硬规则号重复: $(echo "$DUPR" | tr '\n' ' ')"
@@ -365,7 +366,7 @@ grep -qE "MUST|绝不|禁止" "$SKILL" 2>/dev/null || ded B13 20 "约束强度�
 
 # ── B14 工程卫生 ────────────────────────────────────────────────────────────
 # F423：B14 的「plans↔scripts 同步」此前只对照 `plans/*.sh`（与 Windows 侧 `.ps1`），缺 `plans/*.py`/
-#   `plans/*.mjs` ⇒ 这两类脚本的总库副本陈旧时 B14 仍满分（实测 `plans/preset-compat.py` 陈旧而 15/15）。
+#   `plans/*.mjs` ⇒ 这两类脚本的总库副本陈旧时 B14 仍满分（实测 `plans/preset-compat.py` 陈旧而满分）。
 #   此处与 `plans/preset-audit.sh` 的 F2 正向对照保持同一扩展名集合。
 FSYNC=$(for p in plans/*.sh plans/*.py plans/*.mjs; do f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "$f"; done)
 WSYNC=$(for p in plans/windows/*.ps1; do [ -f "$p" ] || continue; f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "$f"; done)
@@ -414,11 +415,223 @@ grep -qE "升级|废弃" "$REF/skill-governance.md" 2>/dev/null || ded B15 20 "�
 grep -q "knowledge" "$SKILL" 2>/dev/null || ded B15 15 "SKILL 未说明知识库布局"
 grep -q "D0[0-9][0-9]" "$REF/standard.md" 2>/dev/null || ded B15 20 "无决策登记路径"
 
+# ── B16 内容卫生（垃圾与重复治理；阈值源 docs/development.md §7.1） ──────────────
+# D118：单文件上限 / 跨文件重复块冗余 / 跨文件重复行冗余 / 孤儿内容 / 溯源档案索引缺口——五项各自独立判据，
+#   上限值**只降不升**（削减落地后下调；上调须登记理由）。判据实现在下方内联 python，
+#   与工位仪器 `tools/junk-dup-scan.py` 同口径（三行窗口 / 块 ≥200 B、行 ≥40 字符）。
+if command -v python3 >/dev/null 2>&1; then
+  HYG_OUT=$(python3 - <<'PYEOF'
+# -*- coding: utf-8 -*-
+"""B16 内容卫生判据（供 plans/preset-score.sh 内联调用；也可独立跑做核验）。
+
+输出：每行 FINDING|扣分|消息；无输出＝全项达标。
+口径（与 docs/development.md §7.1 上限表逐项对应；与运行根工位仪器 tools/junk-dup-scan.py 同口径）：
+  单文件字节 / 跨文件重复块冗余 / 跨文件重复行冗余 / 孤儿内容 / 溯源档案索引缺口
+注意：本体内联进 plans/preset-score.sh 的 heredoc，**不得出现反引号**（macOS bash 3.2 会在命令替换里把反引号
+  当作旧式命令替换起点，导致 $() 提前收尾、后续 python 被当 shell 解析）⇒ 代码围栏与索引表用 chr 拼接。
+退出码：0（判据已跑完，扣分以 FINDING 行表达）/ 2（无法核验）
+"""
+import hashlib
+import io
+import os
+import re
+import subprocess
+import sys
+
+DOC = "docs/development.md"
+IDX = "skills/dsh-codepunk-workflow/references/learned-skills.md"
+BENCH = "skills/dsh-codepunk-workflow/benchmarks"
+LABELS = ("单文件字节", "跨文件重复块冗余", "跨文件重复行冗余", "孤儿内容", "溯源档案索引缺口")
+MIN_LINES, MIN_BLOCK_BYTES, MIN_LINE_CHARS = 3, 200, 40
+WHITELIST = re.compile(
+    r"^(LICENSE|README\.md|CHANGELOG\.md|CONTRIBUTING\.md|SECURITY\.md|SUPPORT\.md|"
+    r"CODE_OF_CONDUCT\.md|GOVERNANCE\.md|Makefile|agent\.cordis\.yml|preset\.yml|AGENT-PLANE\.yml)$"
+    r"|^\."
+    r"|^docs/index\.md$"
+    r"|^\.github/"
+    r"|^plans/hooks/"
+)
+TEXT_EXT = (".md", ".sh", ".py", ".mjs", ".yml", ".yaml", ".json", ".ps1", ".txt", ".ini", ".cfg", ".toml")
+
+
+def finding(points, msg):
+    sys.stdout.write("FINDING|%d|%s\n" % (points, msg))
+
+
+def norm(s):
+    return re.sub(r"\s+", " ", s.strip())
+
+
+def tracked():
+    p = subprocess.run(["git", "ls-files", "-z"], capture_output=True)
+    if p.returncode != 0:
+        return None
+    out = p.stdout.decode("utf-8", "replace")
+    return [f for f in out.split("\0") if f]
+
+
+def read_text(path):
+    try:
+        if os.path.getsize(path) > 4 * 1024 * 1024:
+            return None
+        raw = io.open(path, "rb").read()
+        if b"\0" in raw[:4096]:
+            return None
+        return raw.decode("utf-8", "replace")
+    except OSError:
+        return None
+
+
+def limits():
+    got = {}
+    try:
+        rows = io.open(DOC, encoding="utf-8").read().split("\n")
+    except OSError:
+        return None
+    for lab in LABELS:
+        for r in rows:
+            if not r.startswith("|"):
+                continue
+            cells = [c.strip() for c in r.strip("|").split("|")]
+            if len(cells) >= 2 and cells[0] == lab and re.fullmatch(r"[0-9]+", cells[1]):
+                got[lab] = int(cells[1])
+                break
+    return got if len(got) == len(LABELS) else None
+
+
+def dup_blocks(contents):
+    windows = {}
+    for f, text in contents.items():
+        if not f.endswith(TEXT_EXT) and os.path.basename(f) != "Makefile":
+            continue
+        lines = [norm(x) for x in text.split("\n")]
+        for i in range(0, max(0, len(lines) - MIN_LINES + 1)):
+            win = lines[i:i + MIN_LINES]
+            if sum(len(w) for w in win) < MIN_BLOCK_BYTES:
+                continue
+            if all(not w for w in win):
+                continue
+            key = hashlib.sha1(("\n".join(win)).encode("utf-8")).hexdigest()
+            windows.setdefault(key, []).append((f, i, sum(len(w) + 1 for w in win)))
+    seen, total, count = [], 0, 0
+    for key, occ in windows.items():
+        if len(occ) < 2 or len(set(o[0] for o in occ)) < 2:
+            continue
+        first = occ[0]
+        span = (first[0], first[1], first[1] + MIN_LINES)
+        if any(span[0] == s[0] and s[1] <= span[1] <= s[2] for s in seen):
+            continue
+        seen.append(span)
+        count += 1
+        total += first[2] * (len(occ) - 1)
+    return count, total
+
+
+def repeat_lines(contents):
+    occ = {}
+    for f, text in contents.items():
+        for i, raw in enumerate(text.split("\n")):
+            n = norm(raw)
+            if len(n) < MIN_LINE_CHARS:
+                continue
+            if n.startswith((chr(96) * 3, "|---")) or set(n) <= set("-|: "):
+                continue
+            occ.setdefault(n, []).append((f, i + 1))
+    rows = [l for l, v in occ.items() if len(set(f for f, _ in v)) > 1]
+    return len(rows), sum(len(l) * (len(occ[l]) - 1) for l in rows)
+
+
+def main():
+    lim = limits()
+    if lim is None:
+        finding(15, "内容卫生上限无法核验：%s 的 §7.1 上限表缺行或格式不符（无法核验 ≠ 通过）" % DOC)
+        return 2
+    files = tracked()
+    if not files:
+        finding(30, "内容卫生无法核验：git 枚举失败或为空（无法核验 ≠ 通过）")
+        return 2
+    contents = {}
+    for f in files:
+        if os.path.isfile(f):
+            t = read_text(f)
+            if t is not None:
+                contents[f] = t
+
+    # ① 单文件字节
+    biggest, big = 0, ""
+    for f in files:
+        try:
+            s = os.path.getsize(f)
+        except OSError:
+            continue
+        if s > biggest:
+            biggest, big = s, f
+    if biggest > lim["单文件字节"]:
+        finding(15, "单文件超限：%s %d 字节 > 上限 %d（拆分或削减）" % (big, biggest, lim["单文件字节"]))
+
+    # ② / ③ 重复块、重复行
+    _, blk = dup_blocks(contents)
+    if blk > lim["跨文件重复块冗余"]:
+        finding(10, "跨文件重复块冗余 %d 字节 > 上限 %d（抽公用片段）" % (blk, lim["跨文件重复块冗余"]))
+    _, line = repeat_lines(contents)
+    if line > lim["跨文件重复行冗余"]:
+        finding(10, "跨文件重复行冗余 %d 字节 > 上限 %d（消除样板重复）" % (line, lim["跨文件重复行冗余"]))
+
+    # ④ 溯源档案索引缺口
+    try:
+        idx = io.open(IDX, encoding="utf-8").read()
+    except OSError:
+        idx, listed, claim = None, [], None
+        finding(10, "溯源档案索引无法核验：缺 %s（无法核验 ≠ 通过）" % IDX)
+    if idx is not None:
+        _bq = chr(96)
+        listed = sorted(set(re.findall("^\\|\\s*" + _bq + "benchmarks/([^" + _bq + "]+[.]md)" + _bq + "\\s*\\|",
+                                      idx, re.M)))
+        try:
+            real = sorted(f for f in os.listdir(BENCH) if f.endswith(".md"))
+        except OSError:
+            real = []
+            finding(10, "溯源档案索引无法核验：缺目录 %s（无法核验 ≠ 通过）" % BENCH)
+        claim = re.search(r"（\**([0-9]+) 篇", idx)
+        if len(listed) != len(real) or (claim and int(claim.group(1)) != len(real)):
+            finding(10, "溯源档案索引缺口：表内 %d 条 / 目录 %d 个 / 声称 %s 篇（须列全且计数相符）"
+                    % (len(listed), len(real), claim.group(1) if claim else "无"))
+
+    # ⑤ 孤儿内容
+    if lim["孤儿内容"] == 0:
+        orph = []
+        for f in files:
+            if WHITELIST.search(f):
+                continue
+            base = os.path.basename(f)
+            hit = any(base in t for g, t in contents.items() if g != f)
+            if not hit:
+                orph.append(f)
+        if orph:
+            finding(10, "孤儿内容（零引用）%d 个: %s" % (len(orph), ", ".join(sorted(orph)[:5])))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+PYEOF
+) || HYG_OUT="FINDING|30|内容卫生判据执行失败 ⇒ 无法核验 ≠ 通过（重跑并检查 python3）"
+  while IFS='|' read -r _tag _pts _msg; do
+    [ "$_tag" = "FINDING" ] && ded B16 "$_pts" "$_msg"
+  done <<HYGEOF
+$HYG_OUT
+HYGEOF
+else
+  ded B16 20 "内容卫生无法核验（缺 python3）——无法核验 ≠ 通过"
+fi
+
 # ── 汇总 ────────────────────────────────────────────────────────────────────
 echo
 NOTFULL=0
-for v in A1 A2 A3 A4 A5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15; do
+NITEMS=0
+for v in A1 A2 A3 A4 A5 B6 B7 B8 B9 B10 B11 B12 B13 B14 B15 B16; do
   eval "s=\$$v"
+  NITEMS=$((NITEMS+1))
   mark="✅"; [ "$s" -lt 100 ] && { mark="✗"; NOTFULL=$((NOTFULL+1)); }
   printf "  %s %-14s %3s\n" "$mark" "$(named $v)" "$s"
 done
@@ -432,7 +645,7 @@ fi
 
 echo "===== 结论 ====="
 if [ "$NOTFULL" -eq 0 ]; then
-  echo "15/15 全满分 —— 本轮计为一次满分"
+  echo "${NITEMS}/${NITEMS} 全满分 —— 本轮计为一次满分"
   exit 0
 fi
 echo "未满分 $NOTFULL 项 —— 需继续优化"

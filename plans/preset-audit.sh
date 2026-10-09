@@ -335,7 +335,7 @@ fi
 echo "[组F 工具层 10]"
 # F423：正向对照（源 → 总库）此前只含 `plans/*.sh`（与 Windows 侧 `.ps1`），**缺 `plans/*.py`/`plans/*.mjs`**
 #   ⇒ 这两类脚本的**总库副本陈旧时 F2 仍报「✅ plans↔scripts 同步」**：实测 `plans/preset-compat.py`
-#   比总库副本多 9 行（F366 的 `-h` 用法块），而审计 100/100、评分 15/15、doc rc=0、自检 rc=0 全绿，
+#   比总库副本多 9 行（F366 的 `-h` 用法块），而审计 100/100、评分满分、doc rc=0、自检 rc=0 全绿，
 #   只有 `plans/dsh-codepunk-init.sh --check` 报「缺失/过期 1 个」（且不点名文件）。此处把正向对照的
 #   扩展名集合与**反向对照**（`scripts/*.sh|*.py|*.mjs`）对齐，消除单向覆盖缺口。
 FSYNC=$(for p in plans/*.sh plans/*.py plans/*.mjs; do f=$(basename "$p"); diff -q "$HOME/.dsh-codepunk/scripts/$f" "$p" >/dev/null 2>&1 || echo "${f%.*}"; done)

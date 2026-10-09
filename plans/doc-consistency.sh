@@ -11,7 +11,7 @@
 #       与「可选写成必填」两向；含 `--` 开关的提及属开关式形态，本类不判；仅名称差异只记 ℹ。
 #       F413 实证：`CONTRIBUTING.md` 三处与实现不符（evidence-verify 交付目录、acceptance-verify
 #       交付方、verify-battery 预设根），而第 4/5 类只管路径存在性与退出码声明）
-#   1. 计数声称（15 指标 / 5 组 / 电池项数 / 18 references / 16 benchmarks）
+#   1. 计数声称（16 指标 / 5 组 / 电池项数 / 18 references / 16 benchmarks）
 #   2. 阶段口径（README 表 = preset.yml 阶段项 = stages.md 阶段号 = 6）
 #   3. 术语咨询（裸用「工作区」列出供人工确认；**咨询不判失败**——矩阵已把术语一致性列为人工项）
 #   4. 工具存在性（**全部跟踪的 .md** 中提到的 `plans/*` 引用必须真实存在；扩展名 sh|py|mjs|cjs|ps1；

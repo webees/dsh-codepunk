@@ -26,7 +26,7 @@ Closes #
 ## 核对清单
 
 - [ ] `bash plans/preset-audit.sh` 本地退出码 rc=0（100 分制审计全项达标）
-- [ ] `bash plans/preset-score.sh` 本地退出码 rc=0（15 指标全满分）
+- [ ] `bash plans/preset-score.sh` 本地退出码 rc=0（16 指标全满分）
 - [ ] `bash plans/checker-self-test.sh` 本地退出码 rc=0，且末行含「自检通过」
 - [ ] `bash plans/doc-consistency.sh` 本地退出码 rc=0，且输出含「无硬性不一致」
 - [ ] 文档与计数已同步：README / SKILL / references 中出现的篇数、项数、分组数、规则上限等声称值，与实际文件一致
