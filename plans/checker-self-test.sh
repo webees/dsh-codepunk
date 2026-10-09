@@ -11,8 +11,8 @@
 # python3、score/battery 非 git 工作区）、退出码契约型（evidence/acceptance 用法码、init 只读
 # 失败）与工具型（link index 坏注册表）。
 #
-# 用法: checker-self-test.sh [预设根] [--coverage-echo（仅打印结论行，测试钩子）]
-# 退出码: 0=通过（结论行据实报「捕获 N/M 项 + 跳过 K 项」）；1=存在未被捕获的变异（守护失效/空转）；2=环境/自检问题
+# 用法: checker-self-test.sh [预设根] [--coverage-echo（仅打印结论行，测试钩子）| --lock-echo（取得并发锁后立即退出，测试钩子）]
+# 退出码: 0=通过（结论行据实报「捕获 N/M 项 + 跳过 K 项（跳过 ≠ 通过）」）；1=存在未被捕获的变异（守护失效或空转）；2=环境或自检问题（含：同一预设根上已有另一次自检在运行——并发自检会互相污染 ⇒ 见下方并发互斥块）
 # 环境变量: DSH_CODEPUNK_ECHO_TOTAL / DSH_CODEPUNK_ECHO_SKIPPED（配合 `--coverage-echo` 注入结论行计数，
 #   供永久变异 M171 秒级断言）· DSH_CODEPUNK_SKIP_SELFTEST=1（递归防护：已在自检上下文内时立即退出）
 # =============================================================================
@@ -67,6 +67,9 @@ case "${1:-}" in
     _tm=$(grep -oE 'M[0-9]+' "$0" | sort -u | wc -l | tr -d ' ')
     coverage_line "${DSH_CODEPUNK_ECHO_TOTAL:-$_tm}" "${DSH_CODEPUNK_ECHO_SKIPPED:-0}"
     exit 0 ;;
+  # F410 测试钩子：**不在此处退出** —— 该钩子的意义是「走完锁获取路径」，故只登记意图，
+  #   真正的退出点放在并发互斥块之后（见下）。
+  --lock-echo) LOCK_ECHO=1; shift ;;
 esac
 SRC="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 [ -d "$SRC/plans" ] || { echo "✗ 预设根无效: $SRC" >&2; exit 2; }
@@ -89,6 +92,71 @@ fi
 
 work="$(mktemp -d "${TMPDIR:-/tmp}/cst.XXXXXX")" || { echo "✗ 无法建临时目录" >&2; exit 2; }
 trap 'rm -rf "$work"' EXIT
+
+# ── 并发互斥（F410）──────────────────────────────────────────────────────────
+#   为什么 MUST：本套件把 **${SRC}（调用方给出的预设根，通常是真仓库）** 当**可写共享资源**使用 ——
+#   M189 的密封探针 `$SRC/.seal-probe-m189` 直接写入源树，`fresh()` 又整树复制 `$SRC` 到沙箱 ⇒
+#   同一 `$SRC` 上并行两次自检会互相观察对方的探针、半成品副本与瞬时改动。
+#   实证（本仓 R648）：一次与另一次自检重叠的运行产出 rc=1 的**幻影失败**（M194 三条断言拿到
+#   doc-consistency rc=2，而不是期望的 1/0），而同一配置的**三次单跑**均为 195/195 rc=0 ⇒
+#   结论不可复现、无法归因（「不可复现 ≠ 通过」的同族问题）。
+#   锁：键＝`$SRC` 解析后的绝对路径（cksum 取整），落 `${TMPDIR:-/tmp}`；持锁者写 pid 文件；
+#   持有者存活 ⇒ 拒绝启动（rc=2）；pid 不存在（陈旧锁）⇒ 接管并继续；退出时由 EXIT trap 释放。
+LOCK_DIR=""
+# 锁键 MUST 两侧口径一致：调用方给的路径可能是符号链接形态（macOS 上 /var、/tmp 均指向 /private/…），
+# 而子实例由 `pwd` 得到的是**物理路径** ⇒ 直接对原始字符串取 cksum 会让父子算出不同键、互斥静默失效
+# （实证 R648：M196-a 的子实例因键不匹配而**放行**，转而跑完整套件、挂满 CPU）。故统一取 `pwd -P`。
+lock_key_for() {   # 参数：预设根目录 ⇒ 锁键（纯数字）；失败返回 1
+  local d k
+  d=$(cd "$1" 2>/dev/null && pwd -P) || return 1
+  k=$(printf '%s' "$d" | cksum 2>/dev/null | awk '{print $1}' 2>/dev/null)
+  case "$k" in ''|*[!0-9]*) return 1 ;; esac
+  printf '%s' "$k"
+}
+lock_acquire() {
+  local lock pid alive=0 key
+  key=$(lock_key_for "$SRC") || {
+    printf '✗ 无法派生并发锁键（预设根不可进入，或缺 cksum/awk）⇒ 无法核验 ≠ 通过（rc=2）\n' >&2
+    return 2
+  }
+  lock="${TMPDIR:-/tmp}/cst-lock-$key"
+  if mkdir "$lock" 2>/dev/null; then
+    LOCK_DIR="$lock"          # 只在**自己持有**时才登记，供 EXIT trap 释放（拒绝路径 MUST NOT 登记）
+    printf '%s\n' "$$" > "$lock/pid" 2>/dev/null
+    return 0
+  fi
+  pid=$(cat "$lock/pid" 2>/dev/null || true)
+  case "$pid" in ''|*[!0-9]*) pid=0 ;; esac
+  if [ "$pid" -gt 0 ]; then
+    if command -v ps >/dev/null 2>&1; then
+      ps -p "$pid" >/dev/null 2>&1 && alive=1
+    else
+      alive=1   # 无法判定持有者是否存活 ⇒ 按持有处理（无法核验 ≠ 通过）
+    fi
+  fi
+  # F410 守护：持有者存活即拒绝
+  if [ "$alive" = 1 ]; then
+    printf '✗ 另一次自检正在运行（同一预设根 %s，pid %s）⇒ 并发自检会互相污染、结论不可归因（无法核验 ≠ 通过，rc=2）\n' \
+      "$SRC" "$pid" >&2
+    printf '  处置：等待该实例结束（或确认其 pid 已不存在）后重跑。\n' >&2
+    return 2
+  fi
+  printf '  ℹ 接管陈旧锁（%s，原 pid %s 已不存在）\n' "$lock" "${pid:-未知}" >&2
+  LOCK_DIR="$lock"
+  printf '%s\n' "$$" > "$lock/pid" 2>/dev/null
+  return 0
+}
+lock_release() { [ -n "${LOCK_DIR:-}" ] && rm -rf "$LOCK_DIR" 2>/dev/null; return 0; }
+
+lock_acquire || exit 2
+trap 'lock_release; rm -rf "$work"' EXIT
+
+# F410 测试钩子：走完锁获取路径后立即退出（供永久变异 M196 秒级断言；不做任何其它副作用）
+if [ "${LOCK_ECHO:-0}" = 1 ]; then
+  printf '锁已取得：src=%s lock=%s\n' "$SRC" "$LOCK_DIR"
+  exit 0
+fi
+
 # 沙箱会话：自检与操作者本机状态无关（hub 同步/tools 均用副本内构造）
 SANDBOX="$work/home"
 REAL_HOME="$HOME"
@@ -2879,6 +2947,96 @@ rm -f "$work/cur/CHANGELOG.md.bak"
 mutate_gone "M194-b 删除型变异（移除注入的假引用）" "$work/cur/CHANGELOG.md" 'm194-probe-nonexistent'
 check_rc "M194-b 移除注入后须复归 rc=0（失败确由该引用引起）" "bash plans/doc-consistency.sh" 0 ""
 check_contains "M194-c 通过消息须写明扫描域（全部跟踪 .md）" "bash plans/doc-consistency.sh 2>&1" "全部跟踪 .md"
+fresh
+
+
+# ── M195：守卫 --history 的覆盖率可见性（F409）──────────────────────────────────
+#   机理：tree 模式会报「已扫描 N 个跟踪文件」且零输入以 2 拒绝（F387/F250），但 history 模式原实现
+#   只打印「✓ 通过（禁词 25 条 + 通用模式 5 类）」，不报实际扫描的提交数 ⇒ **浅克隆**（`.git/shallow`
+#   在场：CI 的 depth=1 检出、只取一层的克隆都属此列）与**空仓库**下 `git log` 只返回可见提交，
+#   输出却与全历史扫描无法区分（红证实测：`--depth 1` 克隆 rc=0 且与完整仓同形，见运行根
+#   `logs/r648/p2-shallow-history.txt`）⇒ 审计者会误以为全历史已核验。
+#   断言：a) 浅克隆 ⇒ rc=2 且说明「浅克隆」；b) 空仓库 ⇒ rc=2 且说明「空仓库」；
+#        c) 完整仓 ⇒ rc=0 且输出含「已扫描」（覆盖率可见）；d) 仅删浅克隆守卫 ⇒ 浅克隆复现 rc=0（证明该守卫非空转）。
+_m195_deny="DSH_CODEPUNK_DENYLIST='leakwordalpha:leakwordbeta'"
+#   注（自引入缺陷，已修）：夹具内的邮箱形态 MUST 运行时拼接——写字面量会同时触发 ① 泄露防护门（通用「邮箱
+#   形态」模式 ⇒ 本仓自身 rc=1）② doc 第 5 类子项「夹具含触发守卫的字面量」；下方 `_m195_at` 即为此用。
+_m195_at='@'
+rm -rf "$work/m195_src" "$work/m195_shallow" "$work/m195_empty"
+mkdir -p "$work/m195_src"
+( cd "$work/m195_src" && git init -q . && git config user.email "self-test${_m195_at}example.invalid" \
+    && git config user.name "self-test" && printf 'seed\n' > seed.txt && git add -A && git commit -qm "seed" \
+    && printf 'second\n' >> seed.txt && git add -A && git commit -qm "second" ) >/dev/null 2>&1
+if git clone -q --depth 1 --no-tags "file://$work/m195_src" "$work/m195_shallow" >/dev/null 2>&1 \
+   && [ -f "$work/m195_shallow/.git/shallow" ]; then
+  cp "$work/cur/plans/dsh-codepunk-leak-guard.sh" "$work/m195_shallow/"
+  check_rc "M195-a 浅克隆须判「无法核验 ≠ 通过」（rc=2）" \
+    "cd '$work/m195_shallow' && env $_m195_deny bash dsh-codepunk-leak-guard.sh --history 2>&1" 2 "浅克隆"
+  # d) 删除型变异：移除浅克隆守卫（BSD sed 的地址范围式删除，不用 GNU 的 addr,+N）
+  #    注：锚点中被守护脚本的变量名按**运行时拼接**（`_gv`）——直书「美元符 + 变量名」形态会被 doc 第 5 类
+  #    子项判为「未被记载的外部输入变量」（本套件并不消费该变量，仅为 sed 锚点，故不应进文档）。
+  _gv="GITDIR_OUT"
+  sed -i.bak "/^    if \[ -n \"\$${_gv}\" \] && \[ -f \"\$${_gv}\/shallow\" \]; then$/,/^    fi$/d" \
+    "$work/cur/plans/dsh-codepunk-leak-guard.sh"
+  rm -f "$work/cur/plans/dsh-codepunk-leak-guard.sh.bak"
+  mutate_gone "M195-d 删除型变异（浅克隆守卫）" "$work/cur/plans/dsh-codepunk-leak-guard.sh" 'GITDIR_OUT/shallow'
+  cp "$work/cur/plans/dsh-codepunk-leak-guard.sh" "$work/m195_shallow/"
+  check_rc "M195-d 仅删浅克隆守卫 ⇒ 浅克隆复现假绿 rc=0（证明守卫非空转）" \
+    "cd '$work/m195_shallow' && env $_m195_deny bash dsh-codepunk-leak-guard.sh --history 2>&1" 0 "已扫描"
+  cp "$SRC/plans/dsh-codepunk-leak-guard.sh" "$work/cur/plans/dsh-codepunk-leak-guard.sh"   # 复原沙箱副本
+else
+  echo "  ℹ M195-a/d 跳过（无法构造浅克隆夹具：git clone --depth 1 不可用）——跳过 ≠ 通过"
+fi
+mkdir -p "$work/m195_empty"
+( cd "$work/m195_empty" && git init -q . ) >/dev/null 2>&1
+cp "$work/cur/plans/dsh-codepunk-leak-guard.sh" "$work/m195_empty/"
+check_rc "M195-b 空仓库须判「无法核验 ≠ 通过」（rc=2）" \
+  "cd '$work/m195_empty' && env $_m195_deny bash dsh-codepunk-leak-guard.sh --history 2>&1" 2 "空仓库"
+check_contains "M195-c 完整仓通过时须报出实际扫描的提交数（覆盖率可见）" \
+  "cd '$work/cur' && env $_m195_deny bash plans/dsh-codepunk-leak-guard.sh --history 2>&1" "已扫描"
+fresh
+
+
+# ── M196：自检自身的并发互斥（F410）─────────────────────────────────────────────
+#   机理：本套件把 `$SRC`（调用方给的预设根，通常是真仓库）当**可写共享资源**用 —— M189 的密封探针
+#   `$SRC/.seal-probe-m189` 写进源树、`fresh()` 整树复制 `$SRC` ⇒ 同一 `$SRC` 上并行两次自检会互相
+#   观察对方的探针/半成品副本（实证 R648：一次与另一次重叠的运行产出 rc=1 幻影失败——M194 三条断言
+#   得到 doc-consistency rc=2，而同配置三次单跑均 195/195 rc=0）。
+#   断言：a) 集成——同预设根上已持锁（持有者存活）⇒ 子实例 rc=2 且说明「另一次自检」；
+#        b) 陈旧锁（pid 已不存在）⇒ `--lock-echo` rc=0 且说明「接管陈旧锁」；
+#        c) 无锁 ⇒ `--lock-echo` rc=0、不报「接管」，且退出后锁目录已被释放（EXIT trap 非空转）；
+#        d) 仅删「持有者存活即拒绝」守护 ⇒ 持活锁下 `--lock-echo` 复现放行 rc=0（证明该守护非空转）。
+echo "[M196 自检并发互斥：同一预设根上并行自检 MUST 响亮拒绝（F410）]"
+_m196_src="$work/cur"
+_m196_lock="${TMPDIR:-/tmp}/cst-lock-$(lock_key_for "$_m196_src")"
+rm -rf "$_m196_lock"
+mkdir -p "$_m196_lock"; printf '%s\n' "$$" > "$_m196_lock/pid"
+check_rc "M196-a 同预设根上已持锁（持有者存活）⇒ 子实例须 rc=2 并说明「另一次自检」" \
+  "env DSH_CODEPUNK_SKIP_SELFTEST=0 bash plans/checker-self-test.sh 2>&1" 2 "另一次自检"
+rm -rf "$_m196_lock"
+mkdir -p "$_m196_lock"; printf '%s\n' 999999 > "$_m196_lock/pid"
+check_rc "M196-b 陈旧锁（pid 不存在）⇒ 须接管并继续（rc=0）" \
+  "env DSH_CODEPUNK_SKIP_SELFTEST=0 bash plans/checker-self-test.sh --lock-echo 2>&1" 0 "接管陈旧锁"
+rm -rf "$_m196_lock"
+check_rc "M196-c 无锁 ⇒ 正常取得锁（rc=0，且不得报「接管」）" \
+  "env DSH_CODEPUNK_SKIP_SELFTEST=0 bash plans/checker-self-test.sh --lock-echo 2>&1" 0 "锁已取得"
+if [ -d "$_m196_lock" ]; then
+  printf '  ✗ M196-c2 退出后锁 MUST 已释放（EXIT trap 空转？）：%s 仍存在\n' "$_m196_lock"
+  FAILED=1
+else
+  printf '  ✅ M196-c2 退出后锁已释放（EXIT trap 非空转）\n'
+fi
+mkdir -p "$_m196_lock"; printf '%s\n' "$$" > "$_m196_lock/pid"
+# 注：目标文件即本脚本自身 ⇒ 模式串 MUST 由运行时拼接构造，否则 sed 地址行/断言行自身即命中
+#   （同 M186-b / F394 自纠）。此处 `_m196_gone` 由两段拼接，文件里不存在连续的目标串。
+_m196_gone="F410 守护：持有者存活即""拒绝"
+sed -i.bak "/^  # ${_m196_gone}\$/,/^  fi\$/d" "$work/cur/plans/checker-self-test.sh"
+rm -f "$work/cur/plans/checker-self-test.sh.bak"
+mutate_gone "M196-d 删除型变异（持有者存活即拒绝）" "$work/cur/plans/checker-self-test.sh" "$_m196_gone"
+check_rc "M196-d 仅删该守护 ⇒ 持活锁下复现放行 rc=0（证明守护非空转）" \
+  "env DSH_CODEPUNK_SKIP_SELFTEST=0 bash plans/checker-self-test.sh --lock-echo 2>&1" 0 "锁已取得"
+rm -rf "$_m196_lock"
+cp "$SRC/plans/checker-self-test.sh" "$work/cur/plans/checker-self-test.sh"   # 复原沙箱副本
 fresh
 
 

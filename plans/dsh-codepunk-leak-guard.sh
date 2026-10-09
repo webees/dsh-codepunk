@@ -18,13 +18,15 @@
 # 用法：
 #   bash dsh-codepunk-leak-guard.sh                 # 扫索引（git diff --cached），适合作为 pre-commit
 #   bash dsh-codepunk-leak-guard.sh --tree          # 扫工作树全部跟踪文件
-#   bash dsh-codepunk-leak-guard.sh --history       # 扫提交信息与新增行（HEAD~N..HEAD）
+#   bash dsh-codepunk-leak-guard.sh --history       # 扫提交信息与新增行（近 20 提交窗口；报实际扫描提交数，
+#                                                   #   浅克隆/空仓库判「无法核验 ≠ 通过」rc=2）
 #   bash dsh-codepunk-leak-guard.sh --msg <file>   # 扫指定提交信息文件（commit-msg 钩子用；信息体不进索引，pre-commit 覆盖不到）
 #   bash dsh-codepunk-leak-guard.sh --staged       # 显式指定扫索引（与默认同）
 #   bash dsh-codepunk-leak-guard.sh --install-hook  # 装 pre-commit + pre-push + commit-msg 三钩子
 #   bash dsh-codepunk-leak-guard.sh --list          # 只打印载入的禁词（脱敏）
 #
-# 退出码：0=通过；1=命中（阻断）；2=用法/环境错误、**无法核验**（含 git 行为异常、tree 模式扫描零文件）
+# 退出码：0=通过；1=命中（阻断）；2=用法/环境错误、**无法核验**（含 git 行为异常、tree 模式扫描零文件、
+#   history 模式浅克隆或空仓库）
 # ============================================================================
 set -uo pipefail
 
@@ -283,7 +285,25 @@ case "$MODE" in
     #   「守卫 --history」）。此处**只屏蔽尾注行内的地址**（其余内容仍全量扫描，以免连凭据/路径类泄漏
     #   一并豁免）；真泄漏在文件内容与提交主题中仍会被拦截。注意：本注释内不得书写可命中的地址字面样例
     #   （tree 扫描会读到本文件自身 ⇒ 自锁）。
+    # F409（本轮实测）：与 tree 模式同族——**覆盖率必须可见**。原实现只打印「✓ 通过（禁词 25 条 + 通用
+    #   模式 5 类）」，不报实际扫描的提交数；浅克隆（`.git/shallow` 在场，CI 与「只取一层的」克隆常见）下
+    #   `git log` 只返回可见提交，输出却与全历史扫描**无法区分** ⇒ 审计者会以为全历史已核验（实测：
+    #   `--depth 1` 克隆 rc=0 且与完整仓输出同形）；空仓库同理（0 提交也打「✓」）。二者判「无法核验 ≠ 通过」。
+    if [ -n "$GITDIR_OUT" ] && [ -f "$GITDIR_OUT/shallow" ]; then
+      echo "✗ 浅克隆仓库（\`.git/shallow\` 在场）：历史被截断 ⇒ 无法核验 ≠ 通过（rc=2）；处置：git fetch --unshallow 后重试" >&2
+      exit 2
+    fi
+    TOTAL=$(git rev-list --count HEAD 2>/dev/null || true); TOTAL=${TOTAL:-0}
+    if [ "$TOTAL" -eq 0 ]; then
+      echo "✗ 无任何提交可扫描（空仓库）——无法核验 ≠ 通过（rc=2）" >&2
+      exit 2
+    fi
     TRAILER_MASK='s/^((Signed-off-by|Co-authored-by|Reviewed-by|Tested-by|Acked-by|Reported-by|Suggested-by):[^<]*<)[^>]*@[^>]*>/\1redacted>/'
+    WIN=$(git log -20 --format=%H 2>/dev/null | grep -c . || true); WIN=${WIN:-0}
+    echo "  ℹ 已扫描 ${WIN} 个提交（窗口＝近 20；仓库总提交 ${TOTAL}）" >&2
+    if [ "$TOTAL" -gt "$WIN" ]; then
+      echo "  ℹ 更早的 $((TOTAL-WIN)) 个提交不在本窗口内（全历史内容扫描请另用 git log -p 或加大窗口）" >&2
+    fi
     CONTENT=$( { git log -20 --format='%s%n%b' 2>/dev/null | sed -E "$TRAILER_MASK"; git log -20 -p -U0 2>/dev/null | grep '^+' | grep -v '^+++'; } )
     [ -z "$CONTENT" ] && { echo "✓ 近 20 提交无可扫描内容"; exit 0; }
     scan_stream "history(近20提交)" "$CONTENT"
