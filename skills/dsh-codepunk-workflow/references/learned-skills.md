@@ -63,14 +63,14 @@
 
 ## 溯源档案（benchmarks/）
 
-> **覆盖边界（2026-10-05 实测）**：下表为**已建档**的调研简报（16 篇，文件均存在）。另有若干来源仅出现在机制溯源列而未单独建档——如 LangGraph / crewAI / ADK / CAMEL / ChatDev （`grep -ril` 于 `benchmarks/` 内 0 命中）；引用它们时按「机制层引用」对待，不得声称已有调研档案。
+> **覆盖边界（2026-10-05 实测；篇数已按目录实况校正并加守护）**：下表为**已建档**的调研简报（**19 篇 = `benchmarks/` 目录内全部 `.md`**，文件均存在；篇数与目录的一致性由 `plans/preset-audit.sh` 组 B 的 B16 判据机械守护——表须列全、计数须相符）。另有若干来源仅出现在机制溯源列而未单独建档——如 LangGraph / crewAI / ADK / CAMEL / ChatDev （`grep -ril` 于 `benchmarks/` 内 0 命中）；引用它们时按「机制层引用」对待，不得声称已有调研档案。
 
 | 简报 | 内容 |
 |---|---|
 | `benchmarks/agent-skills-open-source-benchmark.md` | agent-skills 生态：agentskills 规范 / superpowers / VoltAgent 质量门 |
 | `benchmarks/prompt-context-compression.md` | 提示词压缩/上下文优化（14 个一手来源） |
 | `benchmarks/adhd-workflow-analysis.md` | ayghri/i-have-adhd 输出纪律分析 |
-| `benchmarks/loop-failure-diagnosis.md` | 长任务循环故障诊断（loop-failure-diagnosis）（F290 补登：目录实有 16 篇，原清单漏此篇） |
+| `benchmarks/loop-failure-diagnosis.md` | 长任务循环故障诊断（loop-failure-diagnosis）（F290 补登；原清单漏此篇） |
 | `benchmarks/caveman-analysis.md` | juliusbrussee/caveman 极简分析 |
 | `benchmarks/deepseek-harness-study.md` | DeepSeek Harness 官方机制调研（**原 §0.0** 对齐表来源；该节现名 §0，见 `harness-alignment.md`） |
 | `benchmarks/anti-hallucination.md` | 防幻觉技术调研（D077 来源） |
@@ -83,6 +83,9 @@
 | `benchmarks/agent-memory-management.md` | agent 记忆管理调研（D085 来源） |
 | `benchmarks/agent-prompt-practice.md` | Agent 系统提示词精简工程实践（D074 延伸调研） |
 | `benchmarks/prompt-compression-academic.md` | 提示词压缩学术方法与工具（D074 延伸调研） |
+| `benchmarks/loop-incident-inventory.md` | 本台账 61 条自纠记录归类出的 10 条循环模式（R16 阈值的实测依据） |
+| `benchmarks/dsh-latest-features.md` | DSH 2.0.17 最新特性调研（hooks 写盘护栏、cordis inspect、CLI 组合门；D095 来源） |
+| `benchmarks/anti-loop-research.md` | 反思考循环机制调研（22 机制 / 36 一手来源；R16 思考循环熔断阈值的依据） |
 
 ## 应用原则（铁律）
 1. **机制借鉴不抄码**：只借鉴思想/规则，不复制实现；MIT 来源保留 attribution。

@@ -296,11 +296,7 @@
           # 与岗位组同基线：默认全关，只放行 shell/文件/检索/作业/todo/skill 与父向汇报。
           # 目的：通用委派孩子不得默认拿到 web/ask_user/goal/编排委托类工具（R2 与单一派遣入口纪律）。
           allow: *role-allow
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
 
     # ── 多智能体开发流程 · 岗位子代理 ─────────────────────────────────────────
     # 每个岗位为一个独立命名的子代理工具实例：创建型提供者（spawn）加固定角色人设
@@ -317,11 +313,7 @@
         provider: spawn
         toolName: subagent_squad_lead
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           # 白名单（allow）锚点：默认全关，只放行本岗所需的继承工具（shell/文件/检索/作业/todo/skill）。
@@ -354,11 +346,7 @@
         provider: spawn
         toolName: subagent_engineer
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -379,11 +367,7 @@
         provider: spawn
         toolName: subagent_sdet
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -407,11 +391,7 @@
         provider: spawn
         toolName: subagent_product
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -431,11 +411,7 @@
         provider: spawn
         toolName: subagent_research
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         # 唯一保留 web 工具的岗位：allow = 基础工具集 + web_search/web_fetch。
         # 其余岗位（&role-allow）默认无 web。
@@ -457,11 +433,7 @@
         provider: spawn
         toolName: subagent_people
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -482,11 +454,7 @@
         provider: spawn
         toolName: subagent_docs
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -506,11 +474,7 @@
         provider: spawn
         toolName: subagent_proc_audit
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -531,11 +495,7 @@
         provider: spawn
         toolName: subagent_sys_arch
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -562,11 +522,7 @@
         provider: spawn
         toolName: subagent_code_review
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow
@@ -587,11 +543,7 @@
         provider: spawn
         toolName: subagent_release_eng
         backgroundMode: continuable
-        # 子代理路由（DSH 0.2.0-rc.2 实测）：**默认继承父会话的实时路由**——provider/model/
-        #   reasoningEffort/maxTokens 均随父（dsh-subagent: resolveChildAgentOptions ←
-        #   parentAgentOptionsForDelegation 读父请求头 config）。仅在需**偏离**父路由时才显式声明
-        #   agentOptions: { provider, model, ... }；注意显式声明会**覆盖**父 reasoningEffort。
-        # 版本沿革（D090 的前提已于 0.2.0-rc.2 反转）见 references/model-routing.md
+        # 子代理路由说明：见本文件首个 role-allow 条目上方的完整注释块与 references/model-routing.md（DSH 0.2.0-rc.2 实测）
         maxDepth: 1
         toolFilter:
           allow: *role-allow

@@ -51,8 +51,8 @@ skipnote() {
   if [ -n "$SKIP_LIST" ]; then SKIP_LIST="${SKIP_LIST}、${1}"; else SKIP_LIST="$1"; fi
 }
 
-# 1) 15 指标评分
-bash plans/preset-score.sh >/dev/null 2>&1 && p "✅" "15 指标评分 100/100" || { p "✗" "15 指标评分未满分"; F=1; }
+# 1) 16 指标评分
+bash plans/preset-score.sh >/dev/null 2>&1 && p "✅" "16 指标评分 100/100" || { p "✗" "16 指标评分未满分"; F=1; }
 # 2) 5 组审计（A 配置 / B 手册 / D 调研 / E 文档 / F 工具；无 C 组）
 bash plans/preset-audit.sh >/dev/null 2>&1 && p "✅" "预设审计 100/100" || { p "✗" "预设审计未满分"; F=1; }
 # 3) 泄露防护门三模式

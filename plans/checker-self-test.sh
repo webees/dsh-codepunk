@@ -12,7 +12,7 @@
 # 失败）与工具型（link index 坏注册表）。
 #
 # 用法: checker-self-test.sh [预设根] [--coverage-echo（仅打印结论行，测试钩子）| --lock-echo（取得并发锁后立即退出，测试钩子）]
-# 退出码: 0=通过（结论行据实报「捕获 N/M 项 + 跳过 K 项（跳过 ≠ 通过）」）；1=存在未被捕获的变异（守护失效或空转）；2=环境或自检问题（含：同一预设根上已有另一次自检在运行——并发自检会互相污染 ⇒ 见下方并发互斥块）
+# 退出码: 0=通过（结论行据实报「捕获 N/M 项 + 跳过 K 项（跳过 ≠ 通过）」）；1=存在未被捕获的变异（守护失效或空转）；2=环境或自检问题（含：同一预设根上已有另一次自检在运行——并发自检会互相污染 ⇒ 见下方并发互斥块）；3=夹具锚点缺失（仅出现在**夹具子进程**的返回值上：M47/M212 的派生锚未命中时以 rc=3 表示「夹具无法落地」，由 MUTFAIL 门转为 1 —— 见 D120）
 # 环境变量: DSH_CODEPUNK_ECHO_TOTAL / DSH_CODEPUNK_ECHO_SKIPPED（配合 `--coverage-echo` 注入结论行计数，
 #   供永久变异 M171 秒级断言）· DSH_CODEPUNK_SKIP_SELFTEST=1（递归防护：已在自检上下文内时立即退出）
 # =============================================================================
@@ -428,7 +428,7 @@ echo "[M93 apply 写入失败须清晰降级（F203 修复存活）]"
 fresh
 check_contains "M93 declare 含写入失败捕获分支" "grep -c '无法写入 profile patch' plans/preset-declare.mjs" "1"
 
-echo "[M92 A5 成段重复扣分可达（15 指标全覆盖收口）]"
+echo "[M92 A5 成段重复扣分可达（16 指标全覆盖收口）]"
 fresh
 python3 - "$work/cur/skills/dsh-codepunk-workflow/SKILL.md" <<'PYEOF'
 import sys
@@ -582,7 +582,7 @@ python3 - "$work/cur/README.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-n = s.replace('15 指标', '99 指标', 1)
+n = s.replace('16 指标', '99 指标', 1)
 open(p, 'w', encoding='utf-8').write(n)
 PYEOF
 mutate "README 指标声称改为 99" "$work/cur/README.md" '99 指标'
@@ -729,7 +729,7 @@ mkdir -p "$SANDBOX/.dsh-codepunk"
 : > "$SANDBOX/.dsh-codepunk/denylist.txt"          # 先清空禁词表
 # ① 通用模式链（不依赖本地禁词）：绝对路径
 # 触发串在运行时拼接：自检文件内不得出现字面量，否则本仓守卫（B10 硬编码绝对路径 / B11 泄露门）
-# 会在副本内把自检文件自身判为违规（F131 实测：评分由 15/15 掉至 13 项）。
+# 会在副本内把自检文件自身判为违规（F131 实测：评分由满分掉至 13 项）。
 printf 'see /%s/%s/private/notes.md\n' 'Users' 'someone' > "$work/leak-generic.txt"
 check_rc "M26-a 通用模式命中 → 阻断" \
   "bash plans/dsh-codepunk-leak-guard.sh --msg '$work/leak-generic.txt' 2>&1" 1 "[通用]"
@@ -1145,15 +1145,21 @@ check_rc "M46 references 篇数声称漂移 → doc-consistency 失败" "bash pl
 echo "[M47 多值声称一致（doc-consistency 第 1 类 F164 修复存活）]"
 fresh
 python3 - "$work/cur/README.md" <<'PYEOF'
-import sys
+import re, sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-i = s.find('15 指标')
-j = s.find('15 指标', i + 1)
-if j > 0:
-    s = s[:j] + '77 指标' + s[j + len('15 指标'):]
-open(p, 'w', encoding='utf-8').write(s)
+# F432：锚点 MUST 从实况派生 —— 此前写死 '15 指标'，评分项数改成 16 后夹具整体静默失效
+#   （两处 find 都返回 -1，README 一字未改，doc-consistency 反而 rc=0），即守护被无声拔掉。
+hits = list(re.finditer(r'[0-9]+ 指标', s))
+if len(hits) < 2:
+    sys.exit(3)
+m = hits[1]
+open(p, 'w', encoding='utf-8').write(s[:m.start()] + '77 指标' + s[m.end():])
 PYEOF
+_m47_rc=$?
+if [ "$_m47_rc" != 0 ] || ! grep -q '77 指标' "$work/cur/README.md"; then
+  echo "  ‼ M47 夹具未落地（锚点缺失或未改到，rc=${_m47_rc}）" >&2; MUTFAIL=1
+fi
 check_rc "M47 同一声称多值漂移 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "评分指标 声称不一致"
 echo "[M48 退出码集合对等（doc-consistency 第 17 类 F165 修复存活）]"
 fresh
@@ -3473,6 +3479,107 @@ print('MUTATED')
 PYEOF
 check_rc "M210-c 削弱（无条件 push --delete）⇒ 服务端已删场景须复现 rc=1（判据非空转）" \
   "cd '$_m210/wt' && PATH=\"$_m210/bin:\$PATH\" M210_HEAD=feat bash '$_m210/weaken-gmf.sh' merge 1 2>&1" 1 "删除远端分支失败"
+
+# M211（内容卫生 / 垃圾与重复治理）：B16 的五条子检查都必须**被证明会命中**——否则「16/16 全满分」
+#   可能只是判据空转。削弱对照（M211-d）证明扣分**只来自** B16 的执行（同一夹具、只差 B16 是否被调用）。
+#   夹具与判据同口径：新增/改动文件须 `git add -A` 后才进 `git ls-files` 的枚举面。
+echo "[M211 内容卫生判据 B16（单文件上限 / 索引缺口 / 孤儿内容）]"
+fresh
+python3 - "$work/cur" "$SRC" <<'PYEOF'
+import io, os, sys
+root, src = sys.argv[1], sys.argv[2]
+# 越界防线（本轮实测教训）：夹具 MUST 写进沙箱副本 —— 相对路径会落到**源树**（自检 cwd＝调用方目录），
+#   触发源树密封判据（F397）并真的污染工作树（实测：删掉一行登记、留下 512 KB 探针文件）。
+assert os.path.basename(root) == "cur", "M211 沙箱根异常: %s" % root
+assert os.path.realpath(root) != os.path.realpath(src), "M211 拒绝对源树写入"
+
+
+def w(rel, txt):
+    io.open(os.path.join(root, rel), "w", encoding="utf-8").write(txt)
+
+
+junk = "".join("内容填充行：单文件规模探针，用后可整体删除\n" for _ in range(8000))
+w("docs/junk-probe.md", junk)
+p = os.path.join(root, "skills/dsh-codepunk-workflow/references/learned-skills.md")
+s = io.open(p, encoding="utf-8").read()
+lines = s.split("\n")
+hit = [n for n, l in enumerate(lines) if l.startswith("| `benchmarks/anti-loop-research.md`")]
+assert len(hit) == 1, "M211-b 锚点缺失"
+del lines[hit[0]]
+io.open(p, "w", encoding="utf-8").write("\n".join(lines))
+# 孤儿夹具名 MUST 运行时拼接：字面量会出现在本文件（跟踪文件）里 ⇒ 夹具被「引用」而不再是孤儿
+#   （首跑实测：M211-c 假失败——夹具名写在自检自身里，判据正确地不判它为孤儿）。
+w("docs/zz-orphan-" + "probe.md", "孤儿内容探针（全仓零引用）\n")
+print("MUTATED")
+PYEOF
+_m211_orph="zz-orphan-""probe.md"
+if [ -e "$SRC/docs/junk-probe.md" ] || [ -e "$SRC/docs/$_m211_orph" ]; then
+  echo "  ‼ M211 夹具越界写入源树（自检自身问题）" >&2; MUTFAIL=1
+fi
+( cd "$work/cur" && git add -A ) >/dev/null 2>&1
+mutate "M211-a 单文件超限夹具" "$work/cur/docs/junk-probe.md" '内容填充行'
+mutate_gone "M211-b 索引登记行已删" "$work/cur/skills/dsh-codepunk-workflow/references/learned-skills.md" 'anti-loop-research\.md'
+mutate "M211-c 孤儿夹具" "$work/cur/docs/$_m211_orph" '零引用'
+check_rc "M211-a 单文件超限 ⇒ B16 命中并扣分" \
+  "bash plans/preset-score.sh 2>&1" 1 "单文件超限"
+check_rc "M211-b 溯源档案索引缺口 ⇒ B16 命中" \
+  "bash plans/preset-score.sh 2>&1" 1 "溯源档案索引缺口"
+check_rc "M211-c 孤儿内容 ⇒ B16 命中" \
+  "bash plans/preset-score.sh 2>&1" 1 "孤儿内容"
+python3 - "$work/cur/plans/preset-score.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+i = s.index("# ── B16 内容卫生")
+j = s.index("# ── 汇总 ──")
+open(p, 'w', encoding='utf-8').write(s[:i] + s[j:])
+print("WEAKENED")
+PYEOF
+check_no_match "M211-d 削弱（移除 B16 调用）⇒ 同一夹具 MUST NOT 再被检出（判据非空转）" \
+  "bash plans/preset-score.sh 2>&1" "单文件超限"
+check_no_match "M211-d2 削弱后索引缺口亦 MUST NOT 出现" \
+  "bash plans/preset-score.sh 2>&1" "溯源档案索引缺口"
+
+# M212（M47 家族 / F432）：证明判据锚点**派生自实况**而非写死计数 —— 先把「评分指标」口径整体改到
+#   21（README 声称改 21，并在 preset-score.sh 末尾补 5 个 B17 标记，使实况计数同步到 21，
+#   口径变更本身自洽 ⇒ 基线仍绿），再施加同一「制造多值漂移」的派生锚夹具：
+#   写死计数（16 或 15）的锚点在此必然失效，派生锚点须仍报出「评分指标 声称不一致」。
+echo "[M212 夹具锚点派生性（F432：计数口径变更后夹具仍须制造漂移）]"
+fresh
+python3 - "$work/cur" <<'PYEOF'
+import io, os, sys
+root = sys.argv[1]
+# 第 1 类的实况值 = preset-score.sh 中匹配「# ── <字母><数字><空格>」的行数 ⇒ 补 5 个标记即 +5
+io.open(os.path.join(root, "plans/preset-score.sh"), "a", encoding="utf-8").write(
+    "".join("# ── B%d 占位（M212 夹具）\n" % (17 + i) for i in range(5)))
+p = os.path.join(root, "README.md")
+s = io.open(p, encoding="utf-8").read()
+io.open(p, "w", encoding="utf-8").write(s.replace("16 指标", "21 指标"))
+print("MUTATED")
+PYEOF
+_m212_rc=$?
+if [ "$_m212_rc" != 0 ] || ! grep -q '21 指标' "$work/cur/README.md"; then
+  echo "  ‼ M212 口径变更夹具未落地（rc=${_m212_rc}）" >&2; MUTFAIL=1
+fi
+check_rc "M212-a 口径整体改到 21 后基线须仍通过（证明口径变更自洽、断言非空转）" \
+  "bash plans/doc-consistency.sh" 0
+python3 - "$work/cur/README.md" <<'PYEOF'
+import io, re, sys
+p = sys.argv[1]
+s = io.open(p, encoding="utf-8").read()
+hits = list(re.finditer(r"[0-9]+ 指标", s))
+if len(hits) < 2:
+    sys.exit(3)
+m = hits[1]
+io.open(p, "w", encoding="utf-8").write(s[:m.start()] + "77 指标" + s[m.end():])
+print("MUTATED")
+PYEOF
+_m212_rc2=$?
+if [ "$_m212_rc2" != 0 ] || ! grep -q '77 指标' "$work/cur/README.md"; then
+  echo "  ‼ M212 漂移夹具未落地（rc=${_m212_rc2}）" >&2; MUTFAIL=1
+fi
+check_rc "M212-b 计数口径变更后派生锚夹具仍制造多值漂移" \
+  "bash plans/doc-consistency.sh" 1 "评分指标 声称不一致"
 
 # F416（本轮实测）：**报告顺序** MUST 让因果更早的判据先报。源树被并发改动（运行期间有人在
 #   源树里改脚本）会让 `fresh()` 复制出语法损坏的副本 ⇒ 成批变异「未生效/退出码 2」，
