@@ -3303,6 +3303,117 @@ check_rc "M206-b 削弱（把隐式根加回）⇒ 同一夹具下判定被重�
   "DSH_CODEPUNK_REPO=\"$SRC\" bash plans/doc-consistency.sh 2>&1" 0
 fresh
 
+echo "[M207 总库副本漂移守护须覆盖 .py/.mjs（F423）]"
+fresh
+python3 - "$work/hub423" "$work/cur" <<'PYEOF'
+import os, shutil, sys
+base, cur = sys.argv[1], sys.argv[2]
+hub = os.path.join(base, '.dsh-codepunk', 'scripts')
+os.makedirs(hub, exist_ok=True)
+plans = os.path.join(cur, 'plans')          # 从**沙箱副本**取源，保证与门禁的对照面一致
+for f in sorted(os.listdir(plans)):
+    if f.endswith(('.sh', '.py', '.mjs')):
+        shutil.copy(os.path.join(plans, f), os.path.join(hub, f))
+win = os.path.join(plans, 'windows')
+if os.path.isdir(win):
+    for f in os.listdir(win):
+        if f.endswith('.ps1'):
+            shutil.copy(os.path.join(win, f), os.path.join(hub, f))
+for name in ('preset-compat.py', 'ps-validate.mjs'):
+    p = os.path.join(hub, name)
+    assert os.path.exists(p), name
+    open(p, 'a', encoding='utf-8').write('\n# stale\n')
+print('MUTATED')
+PYEOF
+check_rc "M207-a 陈旧 .py/.mjs 总库副本 ⇒ audit F2 须报不同步" \
+  "HOME='$work/hub423' bash plans/preset-audit.sh 2>&1" 1 "F2 不同步"
+check_rc "M207-b 陈旧 .py/.mjs 总库副本 ⇒ score B14 须扣分" \
+  "HOME='$work/hub423' bash plans/preset-score.sh 2>&1" 1 "不同步"
+python3 - "$work/cur" "$work/hub423" <<'PYEOF'
+import os, sys
+cur = sys.argv[1]
+hub = os.path.join(sys.argv[2], '.dsh-codepunk', 'scripts')
+for name in ('preset-audit.sh', 'preset-score.sh'):
+    p = os.path.join(cur, 'plans', name)
+    s = open(p, encoding='utf-8').read()
+    old = 'for p in plans/*.sh plans/*.py plans/*.mjs; do'
+    assert old in s, name
+    s2 = s.replace(old, 'for p in plans/*.sh; do', 1)
+    open(p, 'w', encoding='utf-8').write(s2)
+    # 被改的门禁脚本自身也在对照集合内 ⇒ 必须同步刷新假 hub 副本，
+    #   否则「不同步」来自探针自身改动（口径污染），而非判据生效。
+    open(os.path.join(hub, name), 'w', encoding='utf-8').write(s2)
+print('MUTATED')
+PYEOF
+check_no_match "M207-c 削弱（只对照 .sh）⇒ 陈旧 .py 副本不再被报（判据非空转）" \
+  "HOME='$work/hub423' bash plans/preset-audit.sh 2>&1" "F2 不同步"
+check_no_match "M207-d 削弱后 score 亦不再报（判据非空转）" \
+  "HOME='$work/hub423' bash plans/preset-score.sh 2>&1" "不同步"
+fresh
+
+echo "[M208 init --check 须点名漂移文件（F424）]"
+fresh
+python3 - "$work/hub424" "$work/cur" <<'PYEOF'
+import os, shutil, sys
+base, cur = sys.argv[1], sys.argv[2]
+plans = os.path.join(cur, 'plans')
+hub = os.path.join(base, '.dsh-codepunk', 'scripts')
+os.makedirs(hub, exist_ok=True)
+for f in sorted(os.listdir(plans)):
+    if f.endswith(('.sh', '.py', '.mjs')):
+        shutil.copy(os.path.join(plans, f), os.path.join(hub, f))
+# init.sh 在 install_scripts 之前先校验**路径常量文件**（缺失即 fail 退出，根本走不到脚本同步）
+# ⇒ 夹具必须一并安装，否则断言测的是「常量缺失」而非「漂移点名」。
+shutil.copy(os.path.join(plans, 'dsh-codepunk-home.sh'),
+            os.path.join(base, '.dsh-codepunk', 'dsh-codepunk-home.sh'))
+p = os.path.join(hub, 'preset-compat.py')
+open(p, 'a', encoding='utf-8').write('\n# stale\n')
+print('MUTATED')
+PYEOF
+check_rc "M208-a --check 须点名漂移文件（不是只报数量）" \
+  "HOME='$work/hub424' bash plans/dsh-codepunk-init.sh --check 2>&1" 1 "preset-compat.py（过期）"
+python3 - "$work/cur/plans/dsh-codepunk-init.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '_stale_names="${_stale_names} ${base}（过期）"\n'
+assert old in s, 'M208-b 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, '', 1))
+print('MUTATED')
+PYEOF
+check_no_match "M208-b 削弱（不记录文件名）⇒ 漂移文件不再被点名（判据非空转）" \
+  "HOME='$work/hub424' bash plans/dsh-codepunk-init.sh --check 2>&1" "preset-compat.py（过期）"
+fresh
+
+echo "[M209 plans 扩展名计数声称须被守护（F425）]"
+fresh
+python3 - "$work/cur/docs/development.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '（16 个 `.sh` + 3 个 `.py` + 2 个 `.mjs`'
+new = '（13 个 `.sh` + 2 个 `.py` + 2 个 `.mjs`'
+assert old in s, 'M209-a 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+mutate "M209-a" "$work/cur/docs/development.md" '13 个 `\.sh`'
+check_rc "M209-a 陈旧的扩展名计数声称 ⇒ 须报错" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "扩展名计数声称陈旧"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "chain = re.compile(r'\\d+\\s*个\\s*`\\.(?:sh|py|mjs)`\\s*\\+\\s*\\d+\\s*个\\s*`\\.(?:py|mjs|ps1)`')"
+assert old in s, 'M209-b 锚点缺失'
+new = "chain = re.compile(r'(?!x)x')"
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+check_no_match "M209-b 削弱（串联链判据失效）⇒ 陈旧声称不再被报（判据非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "扩展名计数声称陈旧"
+fresh
+
 # F416（本轮实测）：**报告顺序** MUST 让因果更早的判据先报。源树被并发改动（运行期间有人在
 #   源树里改脚本）会让 `fresh()` 复制出语法损坏的副本 ⇒ 成批变异「未生效/退出码 2」，
 #   而旧顺序把密封判据排在 MUTFAIL 门**之后** ⇒ 真因（源树已改动）被「自检脚本问题」掩盖，
