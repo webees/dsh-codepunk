@@ -3414,6 +3414,66 @@ check_no_match "M209-b 削弱（串联链判据失效）⇒ 陈旧声称不再�
   "bash plans/doc-consistency.sh 2>&1" "扩展名计数声称陈旧"
 fresh
 
+# F426（本轮实测）：**远端清理动作 MUST 幂等**——GitHub 侧 `delete_branch_on_merge=true` 时，
+#   合并已在服务端删除 head 分支 ⇒ 无条件 `git push origin --delete` 会以「remote ref does not
+#   exist」失败，把**已完成**的清理报成失败，并留下陈旧的远端跟踪引用（`git branch -r` 仍显示
+#   该分支，误导后续核验）。断言：a) 远端仍存在 head 分支 ⇒ 删除成功；a2) 清理后 MUST NOT 残留
+#   陈旧跟踪引用；b) 服务端已删（幂等路径）⇒ rc=0 且说明「已不存在」、MUST NOT 报失败；
+#   c) 仅删幂等探测 ⇒ 服务端已删场景复现 rc=1（证明该探测非空转）。
+echo "[M210 远端分支清理须幂等（F426）]"
+_m210="$work/m210"
+rm -rf "$_m210"; mkdir -p "$_m210/bin"
+# gh 影子：`pr view` 打印 head 分支名；其余子命令成功无输出（need_gh 的 `auth status` 亦须 rc=0）
+cat > "$_m210/bin/gh" <<'GHSHIM'
+#!/bin/sh
+if [ "$1" = "pr" ] && [ "$2" = "view" ]; then printf '%s\n' "${M210_HEAD:-feat}"; fi
+exit 0
+GHSHIM
+chmod +x "$_m210/bin/gh"
+_m210_at='@'
+mkdir -p "$_m210/origin.git" "$_m210/wt"
+git init -q --bare "$_m210/origin.git" >/dev/null 2>&1
+( cd "$_m210/wt" && git init -q -b main . && git config user.email "self-test${_m210_at}example.invalid" \
+    && git config user.name "self-test" && printf 'seed\n' > f.txt && git add -A && git commit -qm seed \
+    && git remote add origin "$_m210/origin.git" && git push -q origin main \
+    && git checkout -q -b feat && printf 'feat\n' >> f.txt && git commit -qam feat && git push -q origin feat \
+    && git checkout -q main && git merge -q --no-ff -m "Merge pull request #1 from feat" feat \
+    && git push -q origin main ) >/dev/null 2>&1
+_m210_gmf="$work/cur/plans/git-merge-flow.sh"
+#   注：PATH 前置 MUST 用**双引号**书写——单引号会阻止 eval 时展开 `$PATH`，导致 `bash: command
+#   not found`（rc=127）被误读为「清理失败」，整条断言的判据随之失效。
+_m210_run="cd '$_m210/wt' && PATH=\"$_m210/bin:\$PATH\" M210_HEAD=feat bash '$_m210_gmf' merge 1 2>&1"
+check_rc "M210-a 远端仍存在 head 分支 ⇒ 须删除成功（rc=0 且说明「已删除远端分支」）" \
+  "$_m210_run" 0 "已删除远端分支"
+check_no_match "M210-a2 清理后 MUST NOT 残留陈旧远端跟踪引用（origin/feat）" \
+  "cd '$_m210/wt' && git branch -r 2>&1" "origin/feat"
+check_rc "M210-b 服务端已删 head 分支（幂等路径）⇒ rc=0 且说明「已不存在」" \
+  "$_m210_run" 0 "远端分支已不存在"
+check_no_match "M210-b2 幂等路径 MUST NOT 报「删除远端分支失败」（清理已完成 ≠ 失败）" \
+  "$_m210_run" "删除远端分支失败"
+python3 - "$_m210_gmf" "$_m210/weaken-gmf.sh" <<'PYEOF'
+import sys
+s = open(sys.argv[1], encoding='utf-8').read()
+# 变量引用 MUST 运行时拼接：写字面量会同时触发 ① doc 第 5 类「外部输入变量未被记载」② 断言行自身
+# 命中锚点（同 M186-b/F394 纪律）。两种书写形态（`$VAR` 与 `${VAR}`）在目标文件里混用，须分别拼。
+_d = '$'
+ref = _d + '{' + 'HEAD' + '_REF' + '}'
+plain = _d + 'HEAD' + '_REF'
+old = ('    if [ -n "$(git ls-remote --heads origin "%s" 2>/dev/null)" ]; then\n'
+       '      git push origin --delete "%s" >/dev/null 2>&1 \\\n'
+       '        || fail1 "删除远端分支失败: %s（远端仍存在该引用）"\n'
+       '      say "已删除远端分支: %s"\n'
+       '    else\n'
+       '      say "远端分支已不存在（delete_branch_on_merge 已在服务端删除）: %s"\n'
+       '    fi\n') % (plain, plain, ref, ref, ref)
+new = '    git push origin --delete "%s" >/dev/null 2>&1 || fail1 "删除远端分支失败: %s"\n' % (plain, ref)
+assert old in s, 'M210-c 锚点缺失'
+open(sys.argv[2], 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+check_rc "M210-c 削弱（无条件 push --delete）⇒ 服务端已删场景须复现 rc=1（判据非空转）" \
+  "cd '$_m210/wt' && PATH=\"$_m210/bin:\$PATH\" M210_HEAD=feat bash '$_m210/weaken-gmf.sh' merge 1 2>&1" 1 "删除远端分支失败"
+
 # F416（本轮实测）：**报告顺序** MUST 让因果更早的判据先报。源树被并发改动（运行期间有人在
 #   源树里改脚本）会让 `fresh()` 复制出语法损坏的副本 ⇒ 成批变异「未生效/退出码 2」，
 #   而旧顺序把密封判据排在 MUTFAIL 门**之后** ⇒ 真因（源树已改动）被「自检脚本问题」掩盖，

@@ -11,7 +11,8 @@
 #   git-merge-flow.sh merge <PR号>                以**合并提交**落地：gh pr merge <n> --merge
 #                                                 --delete-branch=false → 本地 main 拉取
 #                                                 --ff-only → 断言顶端为合并提交（父数=2）
-#                                                 → 删除远端特性分支
+#                                                 → **幂等**清理远端特性分支（远端已无该引用
+#                                                 时视为已完成，不报失败）+ 清理陈旧远端跟踪引用
 #   git-merge-flow.sh status                      当前分支 / 开着的 PR / main 合并提交数
 #   git-merge-flow.sh -h|--help                   显示本用法
 # 退出码: 0=成功；1=业务前置不满足（脏工作区、分支已存在、无 PR、断言失败、git/gh 操作失败）；2=用法或环境错误（未知子命令、缺参数、非法参数、非 git 仓库、无 gh 或未登录）
@@ -114,7 +115,7 @@ case "$CMD" in
     HEAD_REF="$(gh pr view "$NUM" --json headRefName --jq '.headRefName' 2>/dev/null)" \
       || fail1 "读取 PR #${NUM} 失败（号不存在或无权限？）"
     [ -n "$HEAD_REF" ] || fail1 "PR #${NUM} 无 headRefName，无法确定要删除的分支"
-    say "合并 PR #${NUM}（head=${HEAD_REF}）——使用合并提交（--merge），不自动删远端分支"
+    say "合并 PR #${NUM}（head=${HEAD_REF}）——使用合并提交（--merge）；远端 head 分支随后幂等清理"
     gh pr merge "$NUM" --merge --delete-branch=false >/dev/null 2>&1 \
       || fail1 "gh pr merge 失败（可能：本仓仅允许合并提交/必需状态检查未通过/无权限）"
     ensure_main
@@ -122,8 +123,19 @@ case "$CMD" in
     PARENTS="$(git log -1 --pretty=%P | wc -w | tr -d ' ')"
     [ "$PARENTS" = 2 ] || fail1 "断言失败：main 顶端父提交数=${PARENTS}（非合并提交）⇒ 不删除远端分支"
     say "断言通过：main 顶端为合并提交（父提交数=2，$(git log -1 --pretty='%h %s'))"
-    git push origin --delete "$HEAD_REF" >/dev/null 2>&1 || fail1 "删除远端分支失败: ${HEAD_REF}"
-    say "已完成：PR #${NUM} 以合并提交落地 main，远端分支 ${HEAD_REF} 已删除"
+    # F426：GitHub 侧 delete_branch_on_merge=true 时，合并即已在服务端删除 head 分支 ⇒ 无条件
+    # `git push origin --delete` 会以「remote ref does not exist」失败，把**已完成**的清理报成
+    # 失败，并留下陈旧的远端跟踪引用（`git branch -r` 显示已不存在的分支）。故先探测远端引用
+    # 是否仍在，再决定动作：清理动作 MUST 幂等，诊断 MUST 反映真实终态。
+    if [ -n "$(git ls-remote --heads origin "$HEAD_REF" 2>/dev/null)" ]; then
+      git push origin --delete "$HEAD_REF" >/dev/null 2>&1 \
+        || fail1 "删除远端分支失败: ${HEAD_REF}（远端仍存在该引用）"
+      say "已删除远端分支: ${HEAD_REF}"
+    else
+      say "远端分支已不存在（delete_branch_on_merge 已在服务端删除）: ${HEAD_REF}"
+    fi
+    git remote prune origin >/dev/null 2>&1 || true
+    say "已完成：PR #${NUM} 以合并提交落地 main，远端分支 ${HEAD_REF} 已清理"
     ;;
 
   status)
