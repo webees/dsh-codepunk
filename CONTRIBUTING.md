@@ -38,7 +38,7 @@ cd dsh-codepunk
 bash plans/verify-battery.sh      # 完整验证电池：首次进仓先确认基线为全绿
 ```
 
-- 门禁默认以**当前工作目录的上一级**推断预设根，也可显式指定：`bash plans/verify-battery.sh <预设根>`。
+- 门禁默认以**当前工作目录的上一级**推断预设根，也可显式指定：`bash plans/verify-battery.sh [预设根]`。
 - DSH 相关的可选判据由环境变量开启（`DSH_APP_ROOT` / `DSH_ASAR` / `DSH_PROFILE_PATCH`），未设时对应项按「无法核验」处理，不计为通过。
 - 若你需要在 DSH 中**实际挂载**本预设（而不只是改文档），按 `README.md` 的快速开始执行三步：落位源文件 → `node plans/preset-declare.mjs apply` 注入 profile patch → `node plans/preset-declare.mjs check` 复核内联副本未漂移。预设声明在进程启动时读取，改动后须重启 DSH Desktop 生效。
 
@@ -214,8 +214,8 @@ PR 描述请按 `.github/pull_request_template.md` 逐项填写——该模板�
 |---|---|
 | `bash plans/preset-score.sh` | 关心 15 指标得分与失分明细时 |
 | `bash plans/preset-audit.sh` | 关心 5 组 rubric 审计结论时 |
-| `bash plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 校验子代理交付证据（防假通过）时 |
-| `bash plans/acceptance-verify.sh <acceptance.yaml> [交付方 task_id]` | 校验签收文件（含签收独立性）时 |
+| `bash plans/evidence-verify.sh <evidence.yaml> <交付目录>` | 校验子代理交付证据（防假通过）时 |
+| `bash plans/acceptance-verify.sh <acceptance.yaml> <交付方 task_id>` | 校验签收文件（含签收独立性）时 |
 | `bash plans/verify-worktree.sh` | 校验工作房（worktree）落点纪律时 |
 | `bash plans/dsh-codepunk-init.sh [--check]` | 初始化总库骨架 / 检查脚本副本是否过期时 |
 | `source plans/dsh-codepunk-home.sh` | 在会话中载入共享路径常量时 |

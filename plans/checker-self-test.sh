@@ -195,9 +195,12 @@ seal_check() {  # 0=源树未被本脚本改动；1=已改动（自检自身问�
 SRC_FP_BEFORE="$(src_fingerprint)"
 
 # mutate <描述> <文件> <grep 模式>：确认变异**真的落盘**——否则自检会误报「守护未捕获」
+# F415（本轮实测）：模式串 MUST 用 `--` 与 grep 选项分隔。旧实现 `grep -qE "$pat" "$f"` 在
+#   模式串以 `-` 开头时（例：`-lt 1 ]; then`）被 grep 当作**选项**解析 ⇒ 命令报用法错误、
+#   匹配恒失败 ⇒ 打印「‼ 变异未生效」并把整轮自检判为失败（假失败，且诊断指向「自检脚本问题」）。
 mutate() {
   local desc="$1" f="$2" pat="$3"
-  if ! grep -qE "$pat" "$f" 2>/dev/null; then
+  if ! grep -qE -- "$pat" "$f" 2>/dev/null; then
     printf '  ‼ 变异未生效（%s）——自检自身问题，非守护问题\n' "$desc" >&2
     MUTFAIL=1
   fi
@@ -3039,6 +3042,149 @@ rm -rf "$_m196_lock"
 cp "$SRC/plans/checker-self-test.sh" "$work/cur/plans/checker-self-test.sh"   # 复原沙箱副本
 fresh
 
+# M197（F412）：证据门的**必需上下文**缺失 ⇒ 无法核验 ≠ 通过（rc=2），且 MUST NOT
+#   把环境缺口误归因为数据缺陷（旧实现按校验器 cwd 解析 log_ref ⇒ 断言「文件不存在」）。
+echo "[M197 证据门必需上下文（F412）]"
+_m197_d="$work/f412/deliv"
+mkdir -p "$_m197_d/logs"
+printf 'inner log\n' > "$_m197_d/logs/ok.log"
+printf 'task_id: t\ndelivered_at: "2026-10-07T10:00:00+07:00"\nvalidated_at: "2099-01-01T00:00:00+07:00"\nevidence:\n  - id: EV-1\n    command: "bash plans/doc-consistency.sh"\n    exit_code: 0\n    log_ref: "logs/ok.log"\n' > "$_m197_d/evidence.yaml"
+mutate "证据门正常夹具（含交付目录）" "$_m197_d/evidence.yaml" 'log_ref: "logs/ok.log"'
+check_rc "M197-a 缺交付目录 ⇒ rc=2 判「无法核验」（旧实现 rc=1「文件不存在」）" \
+  "bash plans/evidence-verify.sh '$_m197_d/evidence.yaml' 2>&1" 2 "无法核验"
+check_no_match "M197-a2 缺交付目录时 MUST NOT 断言「log_ref 文件不存在」（环境缺口不得误归因为数据缺陷）" \
+  "bash plans/evidence-verify.sh '$_m197_d/evidence.yaml' 2>&1" "log_ref 文件不存在"
+check_rc "M197-b 交付目录不存在 ⇒ rc=2 并指明目录" \
+  "bash plans/evidence-verify.sh '$_m197_d/evidence.yaml' '$_m197_d/absent-dir' 2>&1" 2 "交付目录不存在"
+check_rc "M197-c 两参齐备且 log_ref 在目录内 ⇒ PASS（不误伤正常交付）" \
+  "bash plans/evidence-verify.sh '$_m197_d/evidence.yaml' '$_m197_d' 2>&1" 0 "verdict=PASS"
+# 删除型等价的「削弱型」变异：① 参数下限 2→1；② 交付目录缺省值退回 `.`（即校验器 cwd）
+#   —— 二者合起来正是 F412 修复前的语义（按 cwd 解析 log_ref）。模式串不含 `$#`，避免被判「外部输入变量」。
+sed -i.bak 's/-lt 2 \]; then/-lt 1 ]; then/' "$work/cur/plans/evidence-verify.sh"
+sed -i.bak 's|^DELIVERY_DIR="\$2"$|DELIVERY_DIR="${2:-.}"|' "$work/cur/plans/evidence-verify.sh"
+rm -f "$work/cur/plans/evidence-verify.sh.bak"
+mutate "M197-d 削弱型变异（参数下限 2→1 + 交付目录缺省 .）" "$work/cur/plans/evidence-verify.sh" '-lt 1 ]; then'
+check_no_match "M197-d 削弱后缺交付目录即复现旧行为（按 cwd 解析 ⇒ 不得再出现「无法核验」，证明守护非空转）" \
+  "bash plans/evidence-verify.sh '$_m197_d/evidence.yaml' 2>&1" "无法核验"
+cp "$SRC/plans/evidence-verify.sh" "$work/cur/plans/evidence-verify.sh"   # 复原沙箱副本
+fresh
+
+# M198（F413）：文档命令表的**位置式用法串**占位符可选性 MUST 与脚本头部权威用法逐位一致
+#   （F413 实证：CONTRIBUTING.md 三处与实现不符——两处必填写成可选、一处可选写成必填）。
+echo "[M198 命令表用法形态（F413）]"
+_m198_line_a='| `bash plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 注入探针（自检临时写入） |'
+printf '%s\n' "$_m198_line_a" >> "$work/cur/CONTRIBUTING.md"
+mutate "M198-a 注入漂移（交付目录写成可选）" "$work/cur/CONTRIBUTING.md" '\[交付目录\]` | 注入探针'
+check_rc "M198-a 必填写成可选 ⇒ 第 28 类须报错（rc=1 含「命令表用法形态」）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "命令表用法形态"
+sed -i.bak '/注入探针（自检临时写入）/d' "$work/cur/CONTRIBUTING.md"
+rm -f "$work/cur/CONTRIBUTING.md.bak"
+mutate_gone "M198-b 移除注入行（反向方向单独验证）" "$work/cur/CONTRIBUTING.md" '注入探针（自检临时写入）'
+_m198_line_b='| `bash plans/verify-battery.sh <预设根>` | 注入探针（自检临时写入） |'
+printf '%s\n' "$_m198_line_b" >> "$work/cur/CONTRIBUTING.md"
+mutate "M198-b 注入反向漂移（可选写成必填）" "$work/cur/CONTRIBUTING.md" 'verify-battery.sh <预设根>` | 注入探针'
+check_rc "M198-b 可选写成必填 ⇒ 须报错（含「文档标为必填」）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "文档标为必填"
+# 削弱型变异：令第 28 类的失败分支条件恒假（漂移仍在，但门禁不再报）——证明守护非空转。
+#   变量名运行时拼接：注释里的美元符变量名会被第 5 类子判据当作「未被记载的外部输入变量」而报错（F407 同族）。
+_m198_v="UF_""BAD"
+sed -i.bak "s/elif \[ -n \"\$${_m198_v}\" \]; then bad/elif [ -n \"\" ]; then bad/" "$work/cur/plans/doc-consistency.sh"
+rm -f "$work/cur/plans/doc-consistency.sh.bak"
+mutate "M198-c 削弱第 28 类（失败分支条件恒假）" "$work/cur/plans/doc-consistency.sh" 'elif \[ -n "" \]; then bad'
+check_no_match "M198-c 削弱后同一漂移不再被报（证明守护非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "命令表用法形态与脚本头部不一致"
+cp "$SRC/plans/doc-consistency.sh" "$work/cur/plans/doc-consistency.sh"      # 复原沙箱副本
+cp "$SRC/CONTRIBUTING.md" "$work/cur/CONTRIBUTING.md"
+fresh
+
+# M199（F415）：`mutate` 助手 MUST 接受**以 `-` 开头**的模式串（否则被 grep 当选项 ⇒ 假「变异未生效」）。
+#   本断言在**子 shell** 里调用助手并捕获其 stderr：子 shell 中的 MUTFAIL 不影响本轮判定，
+#   故可安全地「自测助手」。
+echo "[M199 变异助手模式串分隔（F415）]"
+mkdir -p "$work/f415"
+printf 'if [ $# -lt 1 ]; then\n' > "$work/f415/pat.sh"
+_m199_out="$( ( mutate "M199-a" "$work/f415/pat.sh" '-lt 1 ]; then' ) 2>&1 )"
+if printf '%s' "$_m199_out" | grep -qF '变异未生效'; then
+  printf '  ✗ M199-a 以 `-` 开头的模式串被误判为未生效（grep 选项解析）——助手缺 `--` 分隔\n'
+  FAILED=1
+else
+  printf '  ✅ M199-a 以 `-` 开头的模式串可被正确匹配（退出码 0）\n'
+fi
+_m199_out2="$( ( mutate "M199-b" "$work/f415/pat.sh" 'lt 9 ]; then' ) 2>&1 )"
+if printf '%s' "$_m199_out2" | grep -qF '变异未生效'; then
+  printf '  ✅ M199-b 对照：不存在的模式串仍须报「未生效」（判据非空转，退出码 0）\n'
+else
+  printf '  ✗ M199-b 对照：不存在的模式串未被报出 ⇒ 助手恒真、判据空转\n'
+  FAILED=1
+fi
+rm -rf "$work/f415"
+
+# M200（F416）：终局判据的**报告顺序** MUST 让因果更早者先报 —— 源树密封判据须排在 MUTFAIL 门之前，
+#   否则「运行期间源树被改动」这一真因会被「自检脚本问题」掩盖（本轮实测：28 条变异成批 rc=2，
+#   而日志只给「有变异未生效」）。静态判据：比较两处锚点的行号。
+echo "[M200 终局判据报告顺序（F416）]"
+# 锚点用**行首**匹配的专用标记（`^# [F416-顺序锚点]` 与 `^# F394：…`）：本判据自身代码/字面量里
+#   也含这些串，若用「任意位置匹配 + head -1」会命中本块代码行 ⇒ 行号比较失真（首跑实测假失败）。
+# 另加**区间下限**：两锚点都须落在文件尾部 120 行内，否则说明锚点漂移、判据无意义。
+_m200_total=$(wc -l < "$0")
+_m200_floor=$((_m200_total - 120))
+_m200_seal=$(grep -n '^# \[F416-顺序锚点\]' "$0" | head -1 | cut -d: -f1)
+_m200_gate=$(grep -n '^# F394：终局 MUTFAIL 门' "$0" | head -1 | cut -d: -f1)
+if [ -n "$_m200_seal" ] && [ -n "$_m200_gate" ] \
+   && [ "$_m200_seal" -gt "$_m200_floor" ] && [ "$_m200_gate" -gt "$_m200_floor" ] \
+   && [ "$_m200_seal" -lt "$_m200_gate" ]; then
+  printf '  ✅ M200-a 密封判据（行 %s）排在 MUTFAIL 门（行 %s）之前 ⇒ 真因先报（退出码 0）\n' "$_m200_seal" "$_m200_gate"
+else
+  printf '  ✗ M200-a 密封判据未排在 MUTFAIL 门之前或锚点漂移（密封 %s / 门 %s / 尾部下限 %s）⇒ 真因会被「自检脚本问题」掩盖\n' "${_m200_seal:-缺失}" "${_m200_gate:-缺失}" "$_m200_floor"
+  FAILED=1
+fi
+# M200-b：削弱型变异——**按行**把「顺序锚点＋密封块」整体移到 MUTFAIL 门之后 ⇒ 判据须报错（证明非空转）。
+#   按行搬运（而非替换文本片段）是因为同名字符串在脚本里多处出现（python 字面量、sed 地址），
+#   文本替换会命中错误位置（首跑实测：插进了本块的 python 字面量里）。
+_m200_bak="$work/f416.sh"
+cp "$work/cur/plans/checker-self-test.sh" "$_m200_bak"
+python3 - "$_m200_bak" <<'PYEOF'
+import sys
+p = sys.argv[1]
+lines = open(p, encoding='utf-8').read().split('\n')
+mark = '# [F416-顺序锚点]'
+gate = 'if [ "$MUTFAIL" != 0 ]; then'
+mi = max(i for i, l in enumerate(lines) if l.startswith(mark))
+end = mi
+while lines[end].strip() != 'fi':
+    end += 1
+blk = lines[mi:end + 1]
+rest = lines[:mi] + lines[end + 1:]
+gi = max(i for i, l in enumerate(rest) if l.startswith(gate))
+out = rest[:gi] + blk + rest[gi:]
+open(p, 'w', encoding='utf-8').write('\n'.join(out))
+print('MUTATED')
+PYEOF
+_m200_total2=$(wc -l < "$_m200_bak")
+_m200_floor2=$((_m200_total2 - 120))
+_m200_swap=$(grep -n '^# \[F416-顺序锚点\]' "$_m200_bak" | head -1 | cut -d: -f1)
+_m200_gate2=$(grep -n '^# F394：终局 MUTFAIL 门' "$_m200_bak" | head -1 | cut -d: -f1)
+if [ -n "$_m200_swap" ] && [ -n "$_m200_gate2" ] \
+   && [ "$_m200_swap" -gt "$_m200_floor2" ] && [ "$_m200_gate2" -gt "$_m200_floor2" ] \
+   && [ "$_m200_swap" -gt "$_m200_gate2" ]; then
+  printf '  ✅ M200-b 削换顺序后同一判据即报错（密封 %s 晚于门 %s，证明判据非空转，退出码 0）\n' "$_m200_swap" "$_m200_gate2"
+else
+  printf '  ✗ M200-b 削换顺序后判据仍未报错或锚点漂移（密封 %s / 门 %s / 尾部下限 %s）⇒ 判据空转\n' "${_m200_swap:-缺失}" "${_m200_gate2:-缺失}" "$_m200_floor2"
+  FAILED=1
+fi
+rm -f "$_m200_bak"
+
+
+# F416（本轮实测）：**报告顺序** MUST 让因果更早的判据先报。源树被并发改动（运行期间有人在
+#   源树里改脚本）会让 `fresh()` 复制出语法损坏的副本 ⇒ 成批变异「未生效/退出码 2」，
+#   而旧顺序把密封判据排在 MUTFAIL 门**之后** ⇒ 真因（源树已改动）被「自检脚本问题」掩盖，
+#   排查方向被误导。故：先判密封，再判变异落地（顺序由 M200 静态守护）。
+# [F416-顺序锚点] 源树密封判据 MUST 排在 MUTFAIL 门之前（见 D107 / M200）
+# F397：源树密封判据（全轮比对）——任一变异越界改动源树都在此显式失败，不得静默污染工作树。
+if ! seal_check; then
+  echo "✗ 自检失败：本轮改动了源树（变异 MUST 作用于 \$work/cur；见 F397）" >&2
+  exit 2
+fi
 
 # F394：终局 MUTFAIL 门（早退点之后的变异不得静默空转）——早退点在文件中部，其后新增的变异
 #   若 `mutate`/`mutate_gone` 失败只打印 ‼ 而退出码仍 0（实证：M185-a 的模式串 `**27 类**：编号` 在
@@ -3046,12 +3192,6 @@ fresh
 #   注：M186-b 的删除型变异 MUST 用「起止两正则」的地址范围（BSD sed 不支持 GNU 的 `addr,+N`：
 #   实测 `sed '/re/,+2d'` 在 macOS 上静默不删、计数仍为 2 ⇒ 该断言会假失败）。
 if [ "$MUTFAIL" != 0 ]; then echo "✗ 自检失败：有变异未生效（自检脚本问题）" >&2; exit 2; fi
-
-# F397：源树密封判据（全轮比对）——任一变异越界改动源树都在此显式失败，不得静默污染工作树。
-if ! seal_check; then
-  echo "✗ 自检失败：本轮改动了源树（变异 MUST 作用于 \$work/cur；见 F397）" >&2
-  exit 2
-fi
 
 # F374：结论行 MUST 据实报告**覆盖**（捕获/总数 + 跳过数）——被环境跳过的变异未被执行，
 #   不得与已验证的变异同列「全部捕获」（实证：设 `DSH_APP_ROOT` 时 7 项实跑、未设时同 7 项跳过，
