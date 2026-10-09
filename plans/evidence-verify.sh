@@ -4,13 +4,19 @@
 # -----------------------------------------------------------------------------
 # 退出码：0=校验通过（verdict=PASS） · 1=校验未过（列出问题） · 2=用法/文件缺失/环境错误
 # 用法：
-#   bash evidence-verify.sh <evidence.yaml> [任务交付目录]
+#   bash evidence-verify.sh <evidence.yaml> <任务交付目录>
+#
+# F412（D104）：交付目录由「可选」改**必填**——缺它时 ②（log_ref 存在）无法核验，
+#   旧实现退化为按**校验器自身 cwd** 解析并断言「log_ref 文件不存在」：把环境缺口
+#   误归因成数据缺陷（实证：单参调用 ⇒ rc=1「[ev1] log_ref 文件不存在: run.log」，
+#   同时 ⑤ 又打印「时间序未检（未提供交付目录）」，同一份输出自相矛盾）。
+#   现缺参/目录不存在一律 rc=2「无法核验 ≠ 通过」（与 acceptance-verify.sh 的 F332 同口径）。
 #
 # 对 sdet 产出的 evidence.yaml 做四条机械断言（任一 FAIL 即打回）：
 #   ① command 可执行性：非 N/A 命令须以真实可执行前缀开头，且不得含描述性文本
 #   ② log_ref 文件真实存在（相对路径以交付目录为基）；**绝对路径、或解析后逃出交付目录的引用
 #      （`..` 组合、指向交付目录外的符号链接）一律判 FAIL**——F348：否则 `log_ref: /etc/hosts`
-#      亦得 verdict=PASS，「防假通过门」的 ②③ 对本次交付不成立；未提供交付目录时不判包含性（记 ⑤ 未检）
+#      亦得 verdict=PASS，「防假通过门」的 ②③ 对本次交付不成立（F412：交付目录已改必填，故 ② 恒可核验）
 #   ① task_id 必填、evidence id 唯一（D069 结构强约束）
 #   ③ exit_code 必须为 0（非 0 即判 FAIL：证据门定义是「成功命令 + exit_code=0 + log 引用」）
 #   ④ validated_at 晚于交付目录 mtime（R12 数值断言，替代 LLM 目测）
@@ -36,17 +42,24 @@ esac
 # F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当位置参数（报「evidence 文件不存在: -h」），
 #   与全仓「实现者 MUST 返回 0 并打印头部用法」的约定（doc-consistency 第 20 类）不符。现补上。
 case "${1:-}" in
-  -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
 
-if [ $# -lt 1 ]; then
-  echo "用法: evidence-verify.sh <evidence.yaml> [交付目录]" >&2
+if [ $# -lt 2 ]; then
+  echo "用法: evidence-verify.sh <evidence.yaml> <任务交付目录>" >&2
+  # F412：交付目录必填 —— 缺它则 ②（log_ref 存在）不可核验，旧实现按校验器 cwd 解析并断言
+  #   「log_ref 文件不存在」（环境缺口被误归因为数据缺陷）。缺参即 rc=2（用法错误）。
+  echo "✗ 未提供任务交付目录 ⇒ 无法核验 log_ref 与时间序（无法核验 ≠ 通过）" >&2
   exit 2                       # 用法错误 = 2（与 acceptance-verify 及全仓约定一致）
 fi
 EVID="$1"
-DELIVERY_DIR="${2:-}"
+DELIVERY_DIR="$2"
 
 [ -f "$EVID" ] || { echo "❌ [fetch] evidence 文件不存在: $EVID"; exit 2; }   # 2=文件缺失
+[ -d "$DELIVERY_DIR" ] || {
+  echo "✗ 交付目录不存在: $DELIVERY_DIR ⇒ 无法核验 log_ref 与时间序（无法核验 ≠ 通过）" >&2
+  exit 2
+}
 
 # F254：python3 不可用（缺失/执行失败）时下方断言体输出为空 ⇒ 结果退化为「rc=1 且**不列任何问题**」，
 #   违背本脚本「列出问题」契约且无任何诊断（方向是失败安全，但无法核验的成因不可见，用户无从修复）。
@@ -166,6 +179,11 @@ for e in entries:
         base_log = re.sub(r'\s?\(\w[\w-]*\)\s?$', '', log_s).strip()
         base_log = re.sub(r'#[^/\s]+$', '', base_log).strip()
         cands = [base_log]
+        # F412：交付目录必填（外层已 rc=2 拒绝缺参），此分支为**纵深防御**：
+        #   缺交付目录时 MUST NOT 按校验器 cwd 断言「文件不存在」（那会把环境缺口误归因为数据缺陷）。
+        if not delivery:
+            problems.append(f"[{evid}] log_ref({base_log}) 无法核验（未提供交付目录）—— 无法核验 ≠ 通过")
+            continue
         if delivery:
             cands.insert(0, os.path.join(delivery, base_log))
             if not base_log.startswith(("logs/", "evidence/", "handoff/")):

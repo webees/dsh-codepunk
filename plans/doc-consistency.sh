@@ -6,6 +6,11 @@
 # -----------------------------------------------------------------------------
 # 覆盖矩阵（references/skill-governance.md）把「文档声称 ↔ 实现」列为无机械检查的首要空档——
 # 历次审计中该类最高产（F077/F082/F083/F088/F090/F092/F093）。本脚本固化其中可机械化的部分：
+#   28. 命令表用法形态（文档里的**位置式用法串**（`` `plans/X.sh <必填> [可选]` ``）与脚本头部
+#       权威用法行的**占位符可选性须逐位一致**——含「必填写成可选」（读者按文档执行必撞 rc=2）
+#       与「可选写成必填」两向；含 `--` 开关的提及属开关式形态，本类不判；仅名称差异只记 ℹ。
+#       F413 实证：`CONTRIBUTING.md` 三处与实现不符（evidence-verify 交付目录、acceptance-verify
+#       交付方、verify-battery 预设根），而第 4/5 类只管路径存在性与退出码声明）
 #   1. 计数声称（15 指标 / 5 组 / 电池项数 / 18 references / 16 benchmarks）
 #   2. 阶段口径（README 表 = preset.yml 阶段项 = stages.md 阶段号 = 6）
 #   3. 术语咨询（裸用「工作区」列出供人工确认；**咨询不判失败**——矩阵已把术语一致性列为人工项）
@@ -1673,6 +1678,113 @@ PYEOF
 )
 if [ -z "$CITE_ISSUE" ]; then ok "产品/用户平面行号引用的锚点均落在引用区间（用户平面不写行号；单引用行机械核验；无法核验者不判失败）"
 else bad "行号引用锚点未落在引用区间 → ${CITE_ISSUE}"; fi
+
+echo "[28] 命令表用法形态（文档位置式用法串 ↔ 脚本头部权威用法：占位符可选性须逐位一致）"
+# F413：`CONTRIBUTING.md` 把 `evidence-verify.sh` 的交付目录、`acceptance-verify.sh` 的交付方、
+#   `verify-battery.sh` 的预设根三处用法形态写错（前两者实现已必填而文档仍标可选 ⇒ 读者按文档执行必撞 rc=2；
+#   后者实现可选而文档标必填）。第 4/5 类只覆盖「路径存在性」与「退出码声明」，用法形态无任何门禁 ⇒ 本类。
+#   口径：仅判**位置式**用法串（含 `<…>`/`[…]` 占位符且不含 `--` 开关）；按位置逐位比可选性；
+#   仅名称不同（如 `交付目录` ↔ `任务交付目录`）只记 ℹ，不判失败。
+UF_OUT=$(python3 - <<'PYEOF'
+import os, re, subprocess, sys
+
+repo = os.environ.get('DSH_CODEPUNK_REPO') or os.getcwd()
+
+def norm(tok):
+    return re.sub(r'\s+', ' ', tok.strip().strip('[]<>').strip())
+
+def header_usage(path):
+    """头部权威用法行的位置式序列：[(名称, 是否可选)]。"""
+    req, opt = [], []
+    try:
+        fh = open(path, encoding='utf-8', errors='replace')
+    except OSError:
+        return []
+    with fh:
+        for ln in fh:
+            if not ln.startswith('#'):
+                break
+            m = re.search(r'\b(?:bash\s+)?' + re.escape(os.path.basename(path)) + r'\s+(.*)$', ln)
+            if not m:
+                continue
+            rest = m.group(1).strip()
+            if not rest or rest.startswith('--') or rest.startswith('='):
+                continue
+            toks = re.findall(r'\[[^\]]+\]|<[^>]+>|\S+', rest)
+            for t in toks:
+                if t.startswith('[') and t.endswith(']'):
+                    opt += re.findall(r'<[^>]+>', t) or [t.strip('[]')]
+                elif t.startswith('<') and t.endswith('>'):
+                    req.append(t)
+            if req or opt:      # 标题/描述行（无占位符）不是权威用法行
+                break
+    return [(norm(t), False) for t in req] + [(norm(t), True) for t in opt]
+
+try:
+    mds = subprocess.run(['git', 'ls-files', '*.md'], cwd=repo, capture_output=True, text=True,
+                         check=True).stdout.split()
+except Exception:
+    mds = [os.path.join(r, f) for r, _d, fs in os.walk(repo) for f in fs if f.endswith('.md')]
+mds = [m for m in mds if '/benchmarks/' not in m and not m.startswith('benchmarks/')]
+
+bad, notes, checked, skipped = [], [], 0, 0
+pdir = os.path.join(repo, 'plans')
+names = sorted(n for n in os.listdir(pdir) if os.path.isfile(os.path.join(pdir, n))
+               and n.endswith(('.sh', '.py', '.mjs')))
+for name in names:
+    auth = header_usage(os.path.join(pdir, name))
+    if not auth:
+        continue
+    pat = re.compile(r'`(?:bash\s+)?(?:plans/|scripts/)?' + re.escape(name) +
+                     r'((?:\s+(?:\[[^\]]+\]|<[^>]+>))*)\s*`')
+    for rel in mds:
+        try:
+            txt = open(os.path.join(repo, rel), encoding='utf-8', errors='replace').read()
+        except OSError:
+            continue
+        for m in pat.finditer(txt):
+            args = m.group(1).strip()
+            if not args or '--' in args:
+                skipped += 1
+                continue
+            req = [norm(t) for t in re.findall(r'<[^>]+>', re.sub(r'\[[^\]]+\]', ' ', args))]
+            opt = [norm(t) for t in re.findall(r'\[[^\]]+\]', args)]
+            seq = [(t, False) for t in req] + [(t, True) for t in opt]
+            if not seq:
+                skipped += 1
+                continue
+            checked += 1
+            line = txt[:m.start()].count('\n') + 1
+            why = []
+            for i, (dname, dopt) in enumerate(seq):
+                if i >= len(auth):
+                    why.append('第 %d 个占位符 %r 在权威用法中无对应位置' % (i + 1, dname))
+                    continue
+                aname, aopt = auth[i]
+                if dopt != aopt:
+                    why.append('第 %d 个占位符 %r 文档标为%s，权威用法标为%s' %
+                               (i + 1, dname, '可选' if dopt else '必填', '可选' if aopt else '必填'))
+                elif dname != aname:
+                    notes.append('%s:%d 第 %d 个占位符名称不同（文档 %r / 权威 %r）' % (rel, line, i + 1, dname, aname))
+            if why:
+                bad.append('%s:%d %s → %s' % (rel, line, name, '；'.join(why)))
+print('CHECKED=%d' % checked)
+print('SKIPPED=%d' % skipped)
+print('NOTES=%d' % len(notes))
+if bad:
+    print('BAD=' + ' | '.join(bad[:4]) + ('' if len(bad) <= 4 else ' 等共 %d 处' % len(bad)))
+else:
+    print('BAD=')
+PYEOF
+)
+UF_CHECKED=$(printf '%s\n' "$UF_OUT" | sed -n 's/^CHECKED=//p')
+UF_SKIPPED=$(printf '%s\n' "$UF_OUT" | sed -n 's/^SKIPPED=//p')
+UF_NOTES=$(printf '%s\n' "$UF_OUT" | sed -n 's/^NOTES=//p')
+UF_BAD=$(printf '%s\n' "$UF_OUT" | sed -n 's/^BAD=//p')
+if [ -z "$UF_CHECKED" ]; then na "用法形态比对未产出读数（python3 子进程无输出）"
+elif [ -n "$UF_BAD" ]; then bad "命令表用法形态与脚本头部不一致 → ${UF_BAD}"
+elif [ "${UF_CHECKED:-0}" -eq 0 ]; then na "域内未找到位置式用法串（核验 ${UF_CHECKED} 处）——无法核验 ≠ 通过"
+else ok "命令表用法形态与脚本头部逐位一致（核验 ${UF_CHECKED} 处位置式用法串；开关式提及 ${UF_SKIPPED} 处不适用；仅名称差异 ${UF_NOTES} 处）"; fi
 
 echo
 # F261：原为**字面量**「23 类检查」，与实现（`echo "[N] …"` 类段数）**无任何联动**——
