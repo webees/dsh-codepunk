@@ -183,7 +183,7 @@
 | **证据引用包含性**（`log_ref` 解析后须位于交付目录内；绝对路径 / `..` 逃逸 / 指向目录外的符号链接一律 FAIL——F348 实证） | `plans/evidence-verify.sh` ② + 存活变异 M154 | 机械 + 变异 |
 | **运行根 `write_scope:` 台账段**（R17 的 `write_scope:` MUST；`cleanup_status` 为交接门/合并门前置读数） | `write-scope-check.sh --run-root`（F377 实证：散文形态下该读数不存在） | 机械 |
 | **自检变异锚点的稳定性**（MUST 只依赖被守护的分支形态，不得锚定易碎常量） | `checker-self-test.sh` 的 M149 锚点（F379 实证：行区间常量 44→50 即致变异不落地） | 机械 |
-| **巡检节奏（D095）**（间隔 ≤ 5 轮、轮次不重复、巡检轮次须在台账中有行） | `plans/patrol-check.sh`（第 20 类探针 `patrol-check -h` · 变异 `M176`；F378 实证：实测最大间隔 10 轮 + 重复轮次 601/602/609。F385 更正：原记的运行根便利脚本 `tools/patrol-cadence.py` **非仓内产物**，不得作为「机械」载体） | 机械 |
+| **巡检节奏（D095）**（间隔 ≤ 5 轮、轮次不重复、巡检轮次须在台账中有行） | `plans/patrol-check.sh`（第 20 类探针 `patrol-check -h` · 变异 `M176`；F378 实证：实测最大间隔 10 轮 + 重复轮次 601/602/609。F385 更正：原记的运行根便利脚本 `非仓内：tools/patrol-cadence.py` **非仓内产物**，不得作为「机械」载体） | 机械 |
 | **Markdown 表格列数一致与结构完整**（分隔行驱动识别：数据行单元格数不得超过表头；代码跨度内的竖线须转义为 `\|`；另判两条**断表**结构缺陷——表头↔分隔行列数不等、分隔行后紧跟空行；围栏按字符+长度配对、排除缩进代码块、支持引用块与无行首竖线表格——F295 实证 + F296/F297 加严） | `doc-consistency.sh` 第 24 类 | 机械 |
 | **同一制品的多处生成器须一致**（总库 `INDEX.yaml` 骨架：`dsh-codepunk-link.sh` 与 `dsh-codepunk-init.sh` 两处 heredoc 模板须**逐字节一致**——否则终态内容取决于「谁先建文件」；F360 实证：link 原为 1 行头、init 为 11 行注释块；F386 更正：原写脚本简称（去掉 `dsh-codepunk-` 前缀）按名不可检索） | `doc-consistency.sh` 第 25 类 | 机械 |
 | **治理矩阵载体可解析**（矩阵行内反引号的文件型引用须在仓内可解析，或为 `artifacts.md` 以 `##` 小节声明的制品名，或该行显式标注「非仓内」——F385 实证：原「巡检节奏」行以运行根本地脚本作为「机械」载体，仓内不可复现、CI 无法执行，且仓内已有等价门） | `doc-consistency.sh` 第 26 类 | 机械（变异 M179） |
@@ -195,7 +195,7 @@
 | **日期形态与未来日期**（须 ISO；「实测」不得标在未来；未来日期上限＝UTC 今天 +1 天以容忍时区偏移——CI 为 UTC 时钟，作者本机「今天」最多超前 UTC 一天，不设容忍则本地 00:00–07:00 产生的合法日期在 CI 上必红） | `doc-consistency.sh` 第 8 类 + `checker-self-test.sh` M166（注入 UTC 今天 +1 天须放行 / +2 天须报出） | 机械（变异） |
 | **树遍历不得跟随符号链接**（门禁 MUST 限时返回：检出内含链接环时不得无限递归——`glob('**/*', recursive=True)` 默认跟随，实测 rc=124 无判定行；改用 `os.walk(followlinks=False)`） | `checker-self-test.sh` M148（沙箱内造链接环 ⇒ 断言限时返回且通过） | 机械（变异） |
 | **坏输入不得假绿灯**（`preset-declare` 的补丁：含 NUL 的非文本、非空且不可被 YAML 解析 ⇒ `check`/`apply` 一律 rc=2；`apply --append` 曾把声明块追加进损坏文件并报「生效」） | `preset-declare.mjs` 头部守卫（F341） | 机械 |
-| **制品字段模板声称可解析**（凡「`<制品>`（字段模板见 `references/artifacts.md`）」的声称，该制品名 MUST 在 `artifacts.md` 有 `##` 小节；F344 实证：`plan_draft.md` 的字段契约曾悬空，全文仅出现在运行根树状图） | `doc-consistency.sh` 第 10 类子项 | 机械（变异 M150） |
+| **制品字段模板声称可解析**（凡「`<制品>`（字段模板见 `references/artifacts.md`）」的声称，该制品名 MUST 在 `artifacts.md` 有 `##` 小节；F344 实证：`非仓内：plan_draft.md` 的字段契约曾悬空，全文仅出现在运行根树状图） | `doc-consistency.sh` 第 10 类子项 | 机械（变异 M150） |
 | **散落根判据与默认根解析**（`verify-worktree.sh`：只有与本主仓库共享 git 目录的散落 worktree 判 FAIL，散落根内其它 git 仓库只报 INFO；默认根顺序 `SCAN_ROOT` > `DSH_CODEPUNK_WORKTREES` > `DESKTOP` > 桌面候选。F345 实证：旧实现把开发机桌面上的无关仓库一律判 FAIL，而文档化落点从不被扫描） | `checker-self-test.sh` M151（四断言：无关仓库 ⇒ rc=0 且含「不计 FAIL」/ 主仓克隆 ⇒ 同上 / 真散落 worktree ⇒ rc=1 / 未设 `SCAN_ROOT` ⇒ 优先扫总库 `worktrees/`） | 机械（变异） |
 | **INDEX 序列缩进风格容忍与保持**（`dsh-codepunk-link.sh`：`projects:` 下顶格序列项（`- project_id: …`）与 `---`/`...` 文档标记不得被当「未知顶层键」；追加条目沿用既有缩进，否则产出非法 YAML 被回滚；真未知顶层键仍失败。F346 实证：真总库 24 条目顶格 ⇒ `index`/`register` 双双 rc=1，登记链整体失效且提示「从备份恢复」为误导） | `checker-self-test.sh` M152（五断言：顶格 ⇒ `index` rc=0 / `register` rc=0 / 追加沿用顶格 / 追加后条目齐 / 真未知顶层键 ⇒ rc=1） | 机械（变异） |
 | **分支保护必需检查名三方一致**（`plans/github-setup.sh` 的 `CHECK_CONTEXTS` ↔ `.github/workflows/ci.yml` 各作业 `name` ↔ `docs/maintenance.md` 的提及。ruleset 按上下文名匹配，改名后该检查永不出现 ⇒ PR 永久阻塞；F347 实证：四作业名各加 `-v2` 时四门禁仍全绿） | `doc-consistency.sh` 第 7 类子项 | 机械（变异 M153，两断言：改名 ⇒ rc=1 且缺/多同报；文档漏提 ⇒ 不得报「一致」） |
