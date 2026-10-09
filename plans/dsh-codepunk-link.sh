@@ -30,10 +30,7 @@
 
 set -u
 
-# F197：本工具的判据/内联脚本含**多字节**内容（中文结论、计数标签）。非 UTF-8 locale（C/POSIX/ISO-8859 系）
-#   下会被逐字节或按 US-ASCII 处理，甚至把**环境问题**误诊为数据损坏（实证：`link.sh index` 在 `LC_ALL=C`
-#   下报「INDEX 语义非法：invalid multibyte char (US-ASCII)」并提示「从备份恢复或重建」——而 INDEX 完好）。
-#   故在非 UTF-8 且系统存在 UTF-8 locale 时固定之；探测只用 ASCII。
+# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
 case "$(locale charmap 2>/dev/null)" in
   UTF-8|utf8|UTF8) ;;
   *)
@@ -557,7 +554,7 @@ cmd_register() {
     #   ⇒ 终态注释头取决于「谁先建文件」（顺序① init→register 保留 11 行头；顺序② register→init
     #   只有 1 行头）。机械判据见 plans/doc-consistency.sh 第 25 类（两处模板须一致）。
     if cat > "$DSH_CODEPUNK_INDEX" <<'EOF'
-# =============================================================================
+# =============================================
 # dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
 # 条目 schema（骨架期声明；条目本体由 dsh-codepunk-link 的 register 构建）：
 #   project_id:        项目 slug（目录名直用，冲突加路径 hash 后缀）
@@ -567,7 +564,7 @@ cmd_register() {
 #   source:            条目来源：register（或历史 migration-report）
 # 字段名以 dsh-codepunk-link 的校验实现为准（早期骨架注释用 repo_path/status 旧名，已对齐）。
 # 树形约定：projects/<project_id>/runs/<run_id>/…（结构 = 现工程内 .dsh-codepunk/ 内容平移）
-# =============================================================================
+# =============================================
 schema_version: 1
 projects: []
 last_updated: null

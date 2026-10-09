@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# =============================================================================
+# =============================================
 # preset-score.sh —— dsh-codepunk 16 指标评分器（rubric 固化：策略/质量/准确性/规范性/精简度/一致性/完整性/可执行性/可维护性/跨平台性/安全性/可发现性/语义保真/工程卫生/演进性/内容卫生）
-# -----------------------------------------------------------------------------
+# ---------------------------------------------
 # 用法: preset-score.sh [预设根]
 # 输出: 16 项得分（每项 100 分为满分门槛）+ 失分证据 + 是否「全满分」
 # 退出码: 0=16 项全 100；1=存在未满分项；2=环境/用法错误（预设根不存在等）
@@ -11,14 +11,10 @@
 #   OLD_NAME=<旧名>      启用品牌卫生回归检查（默认跳过，不在仓库内硬编码旧名）
 #   PWSH_VALIDATOR=<路径> PowerShell 语法校验器（默认 ~/.dsh-codepunk/tools/ps-validate.mjs）
 # bash 3.2 兼容（macOS 自带）：不使用关联数组/mapfile。
-# =============================================================================
+# =============================================
 set -u
 
-# F195：本工具多处判据依赖**多字节**模式（占位符、编号、①②③…）。C/POSIX locale 下 BSD 工具链会
-#   逐字节处理，`grep`/`cut` 甚至报 `Invalid argument` / `Illegal byte sequence` → 判据失效或**误报**
-#   （假拒绝；F192/F193 已各实证一处）。故在当前 locale 为 C/POSIX（或未设）且系统存在 UTF-8 locale 时固定之。
-# F196：以 `locale charmap` 判定**是否 UTF-8**，而非枚举 C/POSIX——非 UTF-8 locale（如 ISO-8859 系）同样会
-#   逐字节处理并误报（实证：`LC_ALL=de_DE.ISO8859-15` 下 doc-consistency 误报 1 处不一致）。
+# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
 case "$(locale charmap 2>/dev/null)" in
   UTF-8|utf8|UTF8) ;;
   *)
@@ -46,10 +42,7 @@ B6=100; B7=100; B8=100; B9=100; B10=100
 B11=100; B12=100; B13=100; B14=100; B15=100; B16=100
 EV=""   # 证据累积
 
-# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
-#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
-#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
-#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+# F421：POSIX 模式（`POSIXLY_CORRECT=1` 或 `bash --posix`）关闭扩展 ⇒ 进程替换报语法错误且无保守措辞，会被误归因为「脚本坏了」；此处前置拒答。
 if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
   echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
   exit 2

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ============================================================================
+# =============================================
 # dsh-codepunk-leak-guard —— 泄露防护门（推送/提交前守卫，D091）
 #
 # 设计原则：**机制进仓库，禁词留本地**。
@@ -27,13 +27,10 @@
 #
 # 退出码：0=通过；1=命中（阻断）；2=用法/环境错误、**无法核验**（含 git 行为异常、tree 模式扫描零文件、
 #   history 模式浅克隆或空仓库）
-# ============================================================================
+# =============================================
 set -uo pipefail
 
-# F197：本工具的判据/内联脚本含**多字节**内容（中文结论、计数标签）。非 UTF-8 locale（C/POSIX/ISO-8859 系）
-#   下会被逐字节或按 US-ASCII 处理，甚至把**环境问题**误诊为数据损坏（实证：`link.sh index` 在 `LC_ALL=C`
-#   下报「INDEX 语义非法：invalid multibyte char (US-ASCII)」并提示「从备份恢复或重建」——而 INDEX 完好）。
-#   故在非 UTF-8 且系统存在 UTF-8 locale 时固定之；探测只用 ASCII。
+# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
 case "$(locale charmap 2>/dev/null)" in
   UTF-8|utf8|UTF8) ;;
   *)
@@ -42,10 +39,7 @@ case "$(locale charmap 2>/dev/null)" in
     done ;;
 esac
 
-# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
-#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
-#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
-#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+# F421：POSIX 模式（`POSIXLY_CORRECT=1` 或 `bash --posix`）关闭扩展 ⇒ 进程替换报语法错误且无保守措辞，会被误归因为「脚本坏了」；此处前置拒答。
 if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
   echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
   exit 2

@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-# F197：本工具的判据/内联脚本含**多字节**内容（中文结论、计数标签）。非 UTF-8 locale（C/POSIX/ISO-8859 系）
-#   下会被逐字节或按 US-ASCII 处理，甚至把**环境问题**误诊为数据损坏（实证：`link.sh index` 在 `LC_ALL=C`
-#   下报「INDEX 语义非法：invalid multibyte char (US-ASCII)」并提示「从备份恢复或重建」——而 INDEX 完好）。
-#   故在非 UTF-8 且系统存在 UTF-8 locale 时固定之；探测只用 ASCII。
+# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
 case "$(locale charmap 2>/dev/null)" in
   UTF-8|utf8|UTF8) ;;
   *)
@@ -11,9 +8,9 @@ case "$(locale charmap 2>/dev/null)" in
       if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
     done ;;
 esac
-# =============================================================================
+# =============================================
 # dsh-codepunk-init：幂等建立 dsh-codepunk 统一总库骨架
-# -----------------------------------------------------------------------------
+# ---------------------------------------------
 # 落位：预设 plans/ 下（待评审后移入正式位 scripts/init-hub.sh）。
 # 职责：
 #   0. 安装路径常量到总库根、发布无扩展名入口、**同步工具脚本到总库正式位**（升级动作）
@@ -27,7 +24,7 @@ esac
 #   不改写 INDEX.yaml 既有内容（仅缺失时生成骨架）、绝不触碰 config.yaml。
 #   注：若你手改过总库 scripts/ 下的副本，运行本脚本会用源副本覆盖之（升级语义），请改源。
 # 用法：bash dsh-codepunk-init.sh [--check]     --check=只断言不创建
-# =============================================================================
+# =============================================
 set -euo pipefail
 
 # F421（本轮对抗实测）：**帮助 MUST 不依赖环境**。旧实现里 `-h` 分支（下方 case）位于 `$HOME` 展开
@@ -195,7 +192,7 @@ else
     fail "INDEX.yaml 缺失: $DSH_CODEPUNK_INDEX"
   fi
   cat > "$DSH_CODEPUNK_INDEX" <<'EOF'
-# =============================================================================
+# =============================================
 # dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
 # 条目 schema（骨架期声明；条目本体由 dsh-codepunk-link 的 register 构建）：
 #   project_id:        项目 slug（目录名直用，冲突加路径 hash 后缀）
@@ -205,7 +202,7 @@ else
 #   source:            条目来源：register（或历史 migration-report）
 # 字段名以 dsh-codepunk-link 的校验实现为准（早期骨架注释用 repo_path/status 旧名，已对齐）。
 # 树形约定：projects/<project_id>/runs/<run_id>/…（结构 = 现工程内 .dsh-codepunk/ 内容平移）
-# =============================================================================
+# =============================================
 schema_version: 1
 projects: []
 last_updated: null
