@@ -30,6 +30,18 @@ esac
 # =============================================================================
 set -euo pipefail
 
+# F421（本轮对抗实测）：**帮助 MUST 不依赖环境**。旧实现里 `-h` 分支（下方 case）位于 `$HOME` 展开
+#   **之后**，而 `set -u` 下 HOME 未设时第 39 行先报 `HOME: unbound variable` 并 rc=1 ⇒
+#   `doc-consistency` 的退出码契约探针判「init -h(rc=1,want=0) 漂移」（假红：帮助文本本应可离线查看）。
+#   故 `-h` 前置；其余路径给显式环境前置（rc=2，而非 unbound variable 崩溃）。
+case "${1:-}" in
+  -h|--help) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+if [ -z "${HOME:-}" ]; then
+  echo "✗ HOME 未设 ⇒ 无法核验 ≠ 通过（本脚本安装到 \$HOME/.dsh-codepunk，无法确定落点；rc=2）" >&2
+  exit 2
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # 常量来源三态（fresh 机器必须能跑通：仓内副本 → 总库已装副本 → 内联兜底）：

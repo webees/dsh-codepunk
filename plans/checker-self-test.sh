@@ -3175,6 +3175,134 @@ fi
 rm -f "$_m200_bak"
 
 
+# ============================================================================
+# F419/F420/F421（R651 对抗性探针）：本轮修复项的**行为型**守护 —— 断言全部在 `$work/cur` 沙箱内
+#   跑**真门禁**，且每条都带**削弱反向断言**（把守护改回去 ⇒ 检出能力消失），证明判据非空转。
+# ============================================================================
+echo "[M201 文档枚举 MUST 按 NUL 记录（F419）]"
+fresh
+( cd "$work/cur" && git mv docs/documentation-policy.md "docs/advm probe 'quote'.md" >/dev/null 2>&1 \
+  && printf '\n参考：`plans/advm-nonexistent-probe.sh`（探针注入）。\n' >> "docs/advm probe 'quote'.md" )
+mutate "M201-a" "$work/cur/docs/advm probe 'quote'.md" 'advm-nonexistent-probe.sh'
+check_rc "M201-a 含空白+引号的文件名仍被扫描（点名注入的失效引用）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "advm-nonexistent-probe.sh"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+D = chr(36)   # 变体文本里的美元符：避免在本文件里出现未定义变量的字面形态（doc 第 5 类）
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "  while IFS= read -r -d '' f; do"
+new = "  for f in " + D + "(eval \"" + D + "MD_ENUM\" 2>/dev/null | tr '\\0' '\\n'); do"
+assert old in s, 'M201-b 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+check_rc "M201-b 削弱（NUL 流 → 裸分词）⇒ 同一夹具下漏扫（rc=0，判据非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" 0
+
+echo "[M202 含 NUL 字节的文档仍须点名真实缺陷（F420）]"
+fresh
+( cd "$work/cur" && printf '\n参考：`plans/advm-nul-probe.sh`（探针注入）。\n' >> docs/documentation-policy.md \
+  && printf '\0' >> docs/documentation-policy.md )
+mutate "M202-a" "$work/cur/docs/documentation-policy.md" 'advm-nul-probe.sh'
+check_rc "M202-a 含 NUL 文档仍点名注入的失效引用" "bash plans/doc-consistency.sh 2>&1" 1 "advm-nul-probe.sh"
+check_no_match "M202-b 不得出现 Binary file 乱码 token" "bash plans/doc-consistency.sh 2>&1" "Binary file"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "grep -aoE 'plans/"
+new = "grep -oE 'plans/"
+assert old in s, 'M202-c 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+check_no_match "M202-c 削弱（去 -a）⇒ 注入的缺陷名不再被点名（判据非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "advm-nul-probe.sh"
+
+echo "[M203 POSIX 模式前置守卫（F421）]"
+fresh
+for _s in doc-consistency preset-audit preset-score dsh-codepunk-leak-guard write-scope-check patrol-check verify-worktree github-setup; do
+  check_rc "M203-a ${_s} 在 POSIX 模式保守拒答（rc=2 且带措辞）" \
+    "POSIXLY_CORRECT=1 bash plans/${_s}.sh 2>&1" 2 "POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）"
+done
+mutate "M203-b" "$work/cur/plans/dsh-codepunk-leak-guard.sh" 'POSIXLY_CORRECT'
+python3 - "$work/cur/plans/dsh-codepunk-leak-guard.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "if [ -n \"${POSIXLY_CORRECT:-}\" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then"
+new = "if false; then"
+assert old in s, 'M203-b 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+check_no_match "M203-b 削弱（守卫条件恒假）⇒ 不再有保守措辞（判据非空转）" \
+  "POSIXLY_CORRECT=1 bash plans/dsh-codepunk-leak-guard.sh --tree 2>&1" "无法核验 ≠ 通过（rc=2）"
+
+echo "[M204 帮助 MUST 不依赖环境（F421）]"
+fresh
+check_rc "M204-a HOME 未设 ⇒ init -h 仍 rc=0" "env -u HOME bash plans/dsh-codepunk-init.sh -h 2>&1" 0 "用法"
+check_rc "M204-b HOME 未设 ⇒ 非帮助路径显式 rc=2（非 unbound variable 崩溃）" \
+  "env -u HOME bash plans/dsh-codepunk-init.sh --check 2>&1" 2 "HOME 未设"
+mutate "M204-c" "$work/cur/plans/dsh-codepunk-init.sh" '--help\) sed -n'
+python3 - "$work/cur/plans/dsh-codepunk-init.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "case \"${1:-}\" in\n  -h|--help) sed -n '2,30p' \"$0\" | sed 's/^# \\{0,1\\}//'; exit 0 ;;\nesac\n"
+assert old in s, 'M204-c 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, "", 1))
+print('MUTATED')
+PYEOF
+check_rc "M204-c 削弱（删前置 -h 分支）⇒ 帮助路径不再 rc=0（判据非空转）" \
+  "env -u HOME bash plans/dsh-codepunk-init.sh -h 2>&1" 2 "HOME 未设"
+
+echo "[M205 终局归因 MUST 区分「无法核验」（F421）]"
+fresh
+check_rc "M205-a 仅无法核验 ⇒ 终局文案区分归因" \
+  "GIT_INDEX_FILE=/nonexistent-advm bash plans/doc-consistency.sh 2>&1" 1 "处为「无法核验」"
+mutate "M205-b" "$work/cur/plans/doc-consistency.sh" 'NUNVER'
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+D = chr(36)   # 同上：变体文本里的美元符按运行期拼接
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = ("if [ \"" + D + "{NUNVER:-0}\" -gt 0 ]; then\n"
+       "  echo \"✗ 存在 " + D + "{NFAIL} 处失败（其中 " + D + "{NUNVER} 处为「无法核验」，无法核验 ≠ 通过）\" >&2\n"
+       "else\n"
+       "  echo \"✗ 存在 " + D + "{NFAIL} 处不一致\" >&2\n"
+       "fi\n")
+new = "echo \"✗ 存在 " + D + "{NFAIL} 处不一致\" >&2\n"
+assert old in s, 'M205-b 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+check_rc "M205-b 削弱（删归因分支）⇒ 退回旧文案（判据非空转）" \
+  "GIT_INDEX_FILE=/nonexistent-advm bash plans/doc-consistency.sh 2>&1" 1 "存在 1 处不一致"
+fresh
+
+echo "[M206 判定的根 MUST NOT 可被宿主环境重定向（F422）]"
+fresh
+_m206_line='| `bash plans/evidence-verify.sh <evidence.yaml> [交付目录]` | 注入探针（自检临时写入） |'
+printf '%s\n' "$_m206_line" >> "$work/cur/CONTRIBUTING.md"
+mutate "M206-a" "$work/cur/CONTRIBUTING.md" '\[交付目录\]` | 注入探针'
+check_rc "M206-a 宿主 DSH_CODEPUNK_REPO 指向真仓时仍判沙箱（第 28 类须捕获漂移）" \
+  "DSH_CODEPUNK_REPO=\"$SRC\" bash plans/doc-consistency.sh 2>&1" 1 "命令表用法形态"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "repo = os.getcwd()"
+new = "repo = os.environ.get('DSH_CODEPUNK_REPO') or os.getcwd()"
+assert old in s, 'M206-b 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+check_rc "M206-b 削弱（把隐式根加回）⇒ 同一夹具下判定被重定向到真仓、漂移不再被捕获（判据非空转）" \
+  "DSH_CODEPUNK_REPO=\"$SRC\" bash plans/doc-consistency.sh 2>&1" 0
+fresh
+
 # F416（本轮实测）：**报告顺序** MUST 让因果更早的判据先报。源树被并发改动（运行期间有人在
 #   源树里改脚本）会让 `fresh()` 复制出语法损坏的副本 ⇒ 成批变异「未生效/退出码 2」，
 #   而旧顺序把密封判据排在 MUTFAIL 门**之后** ⇒ 真因（源树已改动）被「自检脚本问题」掩盖，

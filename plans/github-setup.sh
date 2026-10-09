@@ -33,6 +33,15 @@
 
 set -uo pipefail
 
+# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
+#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
+#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
+#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
+  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
+  exit 2
+fi
+
 RS_NAME="保护 main"
 SLUG="${REPO_SLUG:-webees/dsh-codepunk}"
 DESCRIPTION="${REPO_DESCRIPTION:-多智能体开发流程预设（DeepSeek Harness）：六阶段闭环、双门闩、实现三角、goal 自动续行}"

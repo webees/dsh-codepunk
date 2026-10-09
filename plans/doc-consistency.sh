@@ -102,6 +102,15 @@ if [ ! -f skills/dsh-codepunk-workflow/SKILL.md ] || [ ! -d plans ]; then
   exit 2
 fi
 
+# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
+#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
+#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
+#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
+  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
+  exit 2
+fi
+
 # F253：python3 不可用时，下游未加守卫的判定点（11 处：123/143/152/199/230/572/607/637/830/866/888）
 #   会以**空值**参与比较 ⇒ 输出**虚假不一致**（例：凭空报「阶段口径不一」「文档未声明计数」），
 #   即把「无法核验」归因为「文档缺陷」。与本仓教义（无法核验 ≠ 通过）相悖 ⇒ 统一前置为显式失败（2）。
@@ -113,9 +122,10 @@ SKILL="skills/dsh-codepunk-workflow/SKILL.md"
 REF="skills/dsh-codepunk-workflow/references"
 BM="skills/dsh-codepunk-workflow/benchmarks"
 NFAIL=0
+NUNVER=0   # F421：na() 另计「无法核验」数——终局归因须区分「不一致」与「无法核验」
 ok()  { printf '  ✅ %s\n' "$1"; }
 bad() { printf '  ✗ %s\n' "$1"; NFAIL=$((NFAIL + 1)); }
-na()  { printf '  ⚠ 无法核验：%s（无法核验 ≠ 通过）\n' "$1"; NFAIL=$((NFAIL + 1)); }
+na()  { printf '  ⚠ 无法核验：%s（无法核验 ≠ 通过）\n' "$1"; NFAIL=$((NFAIL + 1)); NUNVER=$((NUNVER + 1)); }
 info(){ printf '  ℹ %s\n' "$1"; }
 
 echo "== 文档「声称 ↔ 实现」一致性核对 =="
@@ -263,24 +273,32 @@ echo "[4] 工具存在性"
 #   `CHANGELOG.md` 等根级文档不在域内 ⇒ 其 `plans/patrol-readback.cjs` 不可解析却无门禁可见）；
 #   扩展名集补 `cjs`/`ps1`（原集只有 sh|py|mjs，`.cjs` 形态的引用根本不被识别）；
 #   空枚举判「无法核验 ≠ 通过」（与类 17/18 口径统一）。
-MD_LIST=$(git ls-files '*.md' 2>/dev/null)
-MD_SRC="git ls-files '*.md'"
-if [ -z "$MD_LIST" ]; then
-  MD_LIST=$(find . -name '*.md' -not -path './.git/*' 2>/dev/null | sed 's#^\./##')
-  MD_SRC="find 回退（非 git 工作区）"
+# F419（本轮对抗实测）：枚举 MUST 按 **NUL 记录**流式读取。旧实现以**未加引号的列表变量**遍历
+#   `git ls-files` 的换行分隔输出 ⇒ 隐式**分词**：文件名含空白/引号时被拆成多个 token、`[ -f … ]`
+#   双双失败 ⇒ `continue` ⇒ **该文档整篇不被扫描**（实证：`docs/advm probe 'quote'.md` 内注入的失效
+#   引用不被检出，本类 rc=0 假绿）。注：bash 变量不能保存 NUL ⇒ 列表以管道流式读入，不落入变量。
+# F420（同轮实测）：含 NUL 字节的文档令 `grep -oE` 输出 `Binary file … matches` ⇒ 被当成路径 token
+#   （乱码行），**真实缺陷名不被点名** ⇒ 加 `-a` 按文本处理。
+MD_ENUM="git ls-files -z -- '*.md'"
+MD_SRC="git ls-files -z '*.md'"
+MD_N=$( { eval "$MD_ENUM" 2>/dev/null || true; } | tr '\0' '\n' | grep -c '[^[:space:]]' || true )
+if [ "${MD_N:-0}" -eq 0 ]; then
+  MD_ENUM="find . -name '*.md' -not -path './.git/*' -print0"
+  MD_SRC="find -print0 回退（非 git 工作区）"
+  MD_N=$( { eval "$MD_ENUM" 2>/dev/null || true; } | tr '\0' '\n' | grep -c '[^[:space:]]' || true )
 fi
-MD_N=$(printf '%s\n' "$MD_LIST" | grep -c '[^[:space:]]' || true)
 MISS=""
 if [ "${MD_N:-0}" -eq 0 ]; then
   na "文档枚举为空（${MD_SRC}）：无法核验 ≠ 通过"
 else
-  for f in $MD_LIST; do
+  while IFS= read -r -d '' f; do
+    case "$f" in ./*) f="${f#./}" ;; esac
     [ -f "$f" ] || continue
     case "$f" in */benchmarks/*) continue ;; esac
-    for s in $(grep -oE 'plans/[a-z0-9._-]+\.(sh|py|mjs|cjs|ps1)' "$f" 2>/dev/null | sed 's#plans/##' | sort -u); do
+    for s in $(grep -aoE 'plans/[a-z0-9._-]+\.(sh|py|mjs|cjs|ps1)' "$f" 2>/dev/null | sed 's#plans/##' | sort -u); do
       [ -f "plans/$s" ] || [ -f "plans/windows/$s" ] || MISS="$MISS $f:$s"
     done
-  done
+  done < <(eval "$MD_ENUM" 2>/dev/null)
   [ -z "$MISS" ] && ok "文档提到的 plans 脚本均存在（域：全部跟踪 .md ${MD_N} 篇，来源 ${MD_SRC}；排除 */benchmarks/*；扩展名 sh|py|mjs|cjs|ps1）" || bad "文档提到但不存在的脚本:${MISS}"
 fi
 
@@ -725,8 +743,10 @@ limit = sys.argv[1]
 # F299：非 git 工作区（或 git 不可用）时 `git ls-files` **静默返回空** ⇒ 本类空转却输出
 #   「✅ 无未来日期」= 假绿灯（与同脚本类 17 的「ℹ 非 git 工作区…无法核验≠通过」口径不一致）。
 #   改为：git 索引不可用即**回退文件系统遍历**（真核验，非跳过），并由 shell 侧 info 明示回退。
-r = subprocess.run(['git', 'ls-files'], capture_output=True, text=True)
-files = r.stdout.split() if r.returncode == 0 else []
+r = subprocess.run(['git', 'ls-files', '-z'], capture_output=True, text=True)
+# F419：`git ls-files` 输出 MUST 按 NUL 记录切分（`split()` 会按空白分词 ⇒ 含空白的文件名被拆碎，
+#   本类随后 `open()` 失败或漏扫；同族站点见 preset-audit D3/E3、preset-score A2、verify-battery）。
+files = [f for f in r.stdout.split('\0') if f] if r.returncode == 0 else []
 mode = 'git'
 if not files:
     import os
@@ -1688,7 +1708,10 @@ echo "[28] 命令表用法形态（文档位置式用法串 ↔ 脚本头部权�
 UF_OUT=$(python3 - <<'PYEOF'
 import os, re, subprocess, sys
 
-repo = os.environ.get('DSH_CODEPUNK_REPO') or os.getcwd()
+# F422：仓库根 MUST 只由 cwd 决定（其余各类同口径）——原用**未文档化**的 `DSH_CODEPUNK_REPO` 覆盖，
+#   宿主环境若设了它（本轮实测：自检继承宿主值）本类会把**真仓**当分析对象 ⇒ 沙箱判定被静默重定向：
+#   变异断言假红、削弱断言假绿（自检结论不可信）。判定输入面 MUST NOT 含可重定向的隐式根。
+repo = os.getcwd()
 
 def norm(tok):
     return re.sub(r'\s+', ' ', tok.strip().strip('[]<>').strip())
@@ -1721,8 +1744,9 @@ def header_usage(path):
     return [(norm(t), False) for t in req] + [(norm(t), True) for t in opt]
 
 try:
-    mds = subprocess.run(['git', 'ls-files', '*.md'], cwd=repo, capture_output=True, text=True,
-                         check=True).stdout.split()
+    # F419：MUST 用 `-z` + 按 NUL 切分（`.split()` 分词 ⇒ 含空白的文件名被拆碎 ⇒ 漏扫）
+    mds = [m for m in subprocess.run(['git', 'ls-files', '-z', '*.md'], cwd=repo,
+                                     capture_output=True, text=True, check=True).stdout.split('\0') if m]
 except Exception:
     mds = [os.path.join(r, f) for r, _d, fs in os.walk(repo) for f in fs if f.endswith('.md')]
 mds = [m for m in mds if '/benchmarks/' not in m and not m.startswith('benchmarks/')]
@@ -1854,5 +1878,12 @@ if [ -n "$DERIV_BAD" ]; then bad "派生计数表实况陈旧:${DERIV_BAD}"
 elif [ "$DERIV_HITS" -eq 0 ]; then info "未出现派生计数表（域：docs/development.md §7，按行标签定位）"
 else ok "派生计数表实况与实现一致（命中 ${DERIV_HITS} 行：变异项数 / 文档一致性类数 / 电池项数）"; fi
 if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（${NCLASS} 类检查）"; exit 0; fi
-echo "✗ 存在 ${NFAIL} 处不一致" >&2
+# F421：归因 MUST 区分「不一致」与「无法核验」（na() 计数另计）——旧实现把两者合并成
+#   「存在 N 处不一致」，把环境缺口说成文档缺陷（实测：`GIT_INDEX_FILE` 错指时本类 rc=1
+#   且报「存在 1 处不一致」，而该处实为 ⚠ 无法核验）。二者同为失败（rc=1，保守），但归因不得混淆。
+if [ "${NUNVER:-0}" -gt 0 ]; then
+  echo "✗ 存在 ${NFAIL} 处失败（其中 ${NUNVER} 处为「无法核验」，无法核验 ≠ 通过）" >&2
+else
+  echo "✗ 存在 ${NFAIL} 处不一致" >&2
+fi
 exit 1

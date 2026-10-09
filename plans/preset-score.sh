@@ -46,6 +46,15 @@ B6=100; B7=100; B8=100; B9=100; B10=100
 B11=100; B12=100; B13=100; B14=100; B15=100
 EV=""   # 证据累积
 
+# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
+#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
+#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
+#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
+  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
+  exit 2
+fi
+
 # F405（依赖预检，MUST）：扣分判据的抽取管道（`grep -hoE … | sed … | sort -u`、`tr`/`cut`/`find`）依赖
 #   下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」（rc=2），绝不静默降级为通过 ——
 #   实证：缺 sed 时 A2 的「引用了不存在的脚本」循环体一次都不执行，BADCMD 恒 0 ⇒ 该扣分项静默消失。
@@ -122,7 +131,7 @@ UNLABELED=$(grep -rnE "<[A-Z_]{3,}>" "$SKILL" 2>/dev/null | grep -vcE "占位|�
 if command -v python3 >/dev/null 2>&1; then
 WS=$(python3 - <<'PYEOF2'
 import subprocess
-files = subprocess.run(['git','ls-files'], capture_output=True, text=True).stdout.split()
+files = [f for f in subprocess.run(['git','ls-files', '-z'], capture_output=True, text=True).stdout.split('\0') if f]  # F419：`-z` + NUL 切分（`.split()` 分词 ⇒ 含空白文件名被拆碎 ⇒ 漏扫）
 bad = 0
 for f in files:
     try: txt = open(f, encoding='utf-8').read()

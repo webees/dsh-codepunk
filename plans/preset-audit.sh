@@ -45,6 +45,15 @@ fi
 PASS="✅"; FAIL="✗"; LOSE=0
 report() { echo "  [$1] $2"; if [ "$1" = "$FAIL" ]; then LOSE=$((LOSE+1)); fi; return 0; }
 
+# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
+#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
+#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
+#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
+  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
+  exit 2
+fi
+
 # F405（依赖预检，MUST）：判据的计数/裁剪管道依赖下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」
 #   （rc=2），绝不静默降级为通过 —— 实证：B5 的 `git grep -ic … | awk '{s+=$2}'` 在缺 awk 时得空值，
 #   `${N:-0}` 归零 ⇒ 报「B5 全仓零旧名」通过，而旧名实际存在（影子 PATH 实测 rc=0 + 100/100）。
@@ -222,7 +231,10 @@ fi
 #   内部 python3 的 stderr 仍会漏出（实测缺 python3 时漏 2 行 `command not found`）。
 D3=$(python3 - <<'PYEOF' 2>/dev/null
 import re, subprocess
-files = [f for f in subprocess.run(['git','ls-files'],capture_output=True,text=True).stdout.split()
+# F419（本轮对抗实测）：MUST 用 `-z` 并按 NUL 切分 —— `.split()` 按空白分词，文件名含空白时被拆碎，
+#   随后 `open()` 抛异常 ⇒ 本项报「无法核验（python3 执行失败）」= **错误归因**（实证：沙箱内
+#   `docs/advm probe 'quote'.md` 使 D3/E3 双项 rc≠0）。同族站点见 preset-score A2 / verify-battery。
+files = [f for f in subprocess.run(['git','ls-files','-z'],capture_output=True,text=True).stdout.split('\0')
          if f.endswith('.md')]
 if not files:
     # F388（本轮对抗实测）：说谎/异常 git（exit 0 零输出）或 GIT_DIR/GIT_WORK_TREE 误设时 `git ls-files`
@@ -268,7 +280,8 @@ EC=$(grep -c "^## " README.md)
 # E3 仓内相对链接可达性（死链 = 读者可见缺陷；实测原三检查器全漏）
 E3=$(python3 - <<'PYEOF' 2>/dev/null
 import os, re, subprocess
-files = [f for f in subprocess.run(['git','ls-files'],capture_output=True,text=True).stdout.split()
+# F419：同 D3 —— `-z` + 按 NUL 切分（`.split()` 分词 ⇒ 含空白文件名被拆碎 ⇒ 异常 ⇒ 错误归因）
+files = [f for f in subprocess.run(['git','ls-files','-z'],capture_output=True,text=True).stdout.split('\0')
          if f.endswith('.md')]
 if not files:
     # F388（本轮对抗实测）：说谎/异常 git（exit 0 零输出）或 GIT_DIR/GIT_WORK_TREE 误设时 `git ls-files`
