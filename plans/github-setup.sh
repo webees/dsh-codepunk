@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# ============================================================================
+# =============================================
 # github-setup.sh —— GitHub 仓库治理幂等应用（仓库元数据 + main 分支保护）
-# ----------------------------------------------------------------------------
+# ---------------------------------------------
 # 用法:
 #   github-setup.sh [--dry-run] [--repo <owner/name>] [-h|--help]
 #     --dry-run     只打印将执行的 gh api 调用（含请求体），不改动远端
@@ -29,14 +29,11 @@
 # 退出码: 0=全部应用且校验通过；1=未完全应用或校验不符（含 required_status_checks 被 GitHub 以 422 拒绝，已写入其余规则、待 CI 首跑后重跑本脚本）；2=环境或用法错误（无 gh、未登录、参数错）
 # 依赖: gh（GitHub CLI，已登录）；写操作需该账号对本仓有 admin 权限
 # 环境变量: REPO_SLUG / REPO_DESCRIPTION / REPO_HOMEPAGE 可覆盖默认值
-# ============================================================================
+# =============================================
 
 set -uo pipefail
 
-# F421（本轮对抗实测）：POSIX 模式前置守卫（`POSIXLY_CORRECT=1` 或 `bash --posix`）——该模式下 bash 关闭
-#   扩展，本脚本的进程替换 `< <(...)` 报语法错误（rc=2 但**无保守措辞**），下游会把「环境不支持」
-#   误归因为「脚本坏了」（实测：preset-score 报 `bash -n 失败`、doc-consistency 报「退出码契约漂移」）。
-#   前置拒答，使「无法核验」显式化；环境变量 `POSIXLY_CORRECT` 的记载见 docs/development.md。
+# F421：POSIX 模式（`POSIXLY_CORRECT=1` 或 `bash --posix`）关闭扩展 ⇒ 进程替换报语法错误且无保守措辞，会被误归因为「脚本坏了」；此处前置拒答。
 if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
   echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
   exit 2

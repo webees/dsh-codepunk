@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# =============================================================================
+# =============================================
 # checker-self-test.sh —— 检查器**存活自检**（变异测试）
-# -----------------------------------------------------------------------------
+# ---------------------------------------------
 # 动机（实证）：F097/F099/F101/F102 一整类缺陷是「检查项因工具不可用/正则不兼容/空值判定
 # 而恒判 PASS」——静态审计自身无法发现这种「守护空转」。本脚本用**注入已知缺陷**的方式验证
 # 检查项真的会失败：在临时副本内逐个变异，断言**对应检查项**（按名称核对，非仅看退出码）
@@ -15,14 +15,10 @@
 # 退出码: 0=通过（结论行据实报「捕获 N/M 项 + 跳过 K 项（跳过 ≠ 通过）」）；1=存在未被捕获的变异（守护失效或空转）；2=环境或自检问题（含：同一预设根上已有另一次自检在运行——并发自检会互相污染 ⇒ 见下方并发互斥块）；3=夹具锚点缺失（仅出现在**夹具子进程**的返回值上：M47/M212 的派生锚未命中时以 rc=3 表示「夹具无法落地」，由 MUTFAIL 门转为 1 —— 见 D120）
 # 环境变量: DSH_CODEPUNK_ECHO_TOTAL / DSH_CODEPUNK_ECHO_SKIPPED（配合 `--coverage-echo` 注入结论行计数，
 #   供永久变异 M171 秒级断言）· DSH_CODEPUNK_SKIP_SELFTEST=1（递归防护：已在自检上下文内时立即退出）
-# =============================================================================
+# =============================================
 set -u
 
-# F195：本工具多处判据依赖**多字节**模式（占位符、编号、①②③…）。C/POSIX locale 下 BSD 工具链会
-#   逐字节处理，`grep`/`cut` 甚至报 `Invalid argument` / `Illegal byte sequence` → 判据失效或**误报**
-#   （假拒绝；F192/F193 已各实证一处）。故在当前 locale 为 C/POSIX（或未设）且系统存在 UTF-8 locale 时固定之。
-# F196：以 `locale charmap` 判定**是否 UTF-8**，而非枚举 C/POSIX——非 UTF-8 locale（如 ISO-8859 系）同样会
-#   逐字节处理并误报（实证：`LC_ALL=de_DE.ISO8859-15` 下 doc-consistency 误报 1 处不一致）。
+# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
 case "$(locale charmap 2>/dev/null)" in
   UTF-8|utf8|UTF8) ;;
   *)
@@ -2077,7 +2073,7 @@ check_no_match "M156-b 标注被抹掉 → 不得再报「跳过 ≠ 通过」�
   "DSH_PROFILE_PATCH=\"$BAT_PATCH\" DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "跳过 ≠ 通过"
 fi
 
-# ---------------------------------------------------------------------------
+# ---------------------------------------------
 # M157 / M158：**无 ruby 主机**上的 YAML 解析路径（F351 / F352 / F353）
 #   本仓默认走 ruby（Psych）；node 回退分支只在**没有 ruby 的主机**上生效，而自检环境
 #   通常有 ruby ⇒ 该分支长期**不可达**（这正是它带缺陷存在多轮的原因）。故此处用「工具农场」
@@ -2085,7 +2081,7 @@ fi
 #   无 ruby 主机，并用**桩 js-yaml**（`DEFAULT_SCHEMA.extend`/`Type`/`load`，按环境变量
 #   返回不同结构）验证：①候选链解析 ②`!!js` 容忍 schema ③解析结果的类型判定（Date 属标量）。
 #   桩目录经 `DSH_CODEPUNK_TOOLS` 显式提供 ⇒ 不受真实 `~/.dsh-codepunk/tools` 内容影响。
-# ---------------------------------------------------------------------------
+# ---------------------------------------------
 echo "[M157 无 ruby 主机的 A1 解析路径（F351）]"
 farm_noruby="$work/farm-noruby"
 mkdir -p "$farm_noruby"
@@ -3181,10 +3177,10 @@ fi
 rm -f "$_m200_bak"
 
 
-# ============================================================================
+# =============================================
 # F419/F420/F421（R651 对抗性探针）：本轮修复项的**行为型**守护 —— 断言全部在 `$work/cur` 沙箱内
 #   跑**真门禁**，且每条都带**削弱反向断言**（把守护改回去 ⇒ 检出能力消失），证明判据非空转。
-# ============================================================================
+# =============================================
 echo "[M201 文档枚举 MUST 按 NUL 记录（F419）]"
 fresh
 ( cd "$work/cur" && git mv docs/documentation-policy.md "docs/advm probe 'quote'.md" >/dev/null 2>&1 \
@@ -3580,6 +3576,42 @@ if [ "$_m212_rc2" != 0 ] || ! grep -q '77 指标' "$work/cur/README.md"; then
 fi
 check_rc "M212-b 计数口径变更后派生锚夹具仍制造多值漂移" \
   "bash plans/doc-consistency.sh" 1 "评分指标 声称不一致"
+
+# M213（内容卫生 / 垃圾与重复治理，F435 守护缺口）：B16 的**重复度**两条子判据（跨文件重复块 /
+#   跨文件重复行）MUST 被证明会命中——M211 只覆盖单文件上限、索引缺口与孤儿内容三条，
+#   重复度两条此前**无任何守护**（阈值改动或判据被删都不会被报出）。
+#   夹具：同一 3 行块写入 8 个跟踪文件 ⇒ 重复块冗余、重复行冗余双双越过 §7.1 上限；
+#   削弱对照（M213-c）证明扣分**只来自** B16 的执行。
+echo "[M213 内容卫生判据 B16（重复度子判据：跨文件重复块 / 跨文件重复行）]"
+fresh
+python3 - "$work/cur" "$SRC" <<'PYEOF'
+import io, os, sys
+root, src = sys.argv[1], sys.argv[2]
+assert os.path.basename(root) == "cur", "M213 沙箱根异常: %s" % root
+assert os.path.realpath(root) != os.path.realpath(src), "M213 拒绝对源树写入"
+line = "填充段落：跨文件重复块与重复行判据的探针内容（长度足够越过最小块与最小行阈值）" * 3
+block = "\n".join(line for _ in range(3)) + "\n"
+for i in range(8):
+    io.open(os.path.join(root, "docs", "dup-%d.md" % i), "w", encoding="utf-8").write(block)
+print("MUTATED")
+PYEOF
+( cd "$work/cur" && git add -A ) >/dev/null 2>&1
+mutate "M213-a 重复块夹具已落地" "$work/cur/docs/dup-0.md" '探针内容'
+check_rc "M213-a 跨文件重复块超阈 ⇒ B16 命中" \
+  "bash plans/preset-score.sh 2>&1" 1 "跨文件重复块冗余"
+check_rc "M213-b 跨文件重复行超阈 ⇒ B16 命中" \
+  "bash plans/preset-score.sh 2>&1" 1 "跨文件重复行冗余"
+python3 - "$work/cur/plans/preset-score.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+i = s.index("# ── B16 内容卫生")
+j = s.index("# ── 汇总 ──")
+open(p, 'w', encoding='utf-8').write(s[:i] + s[j:])
+print("WEAKENED")
+PYEOF
+check_no_match "M213-c 削弱（移除 B16 调用）⇒ 重复块 MUST NOT 再被检出（判据非空转）" \
+  "bash plans/preset-score.sh 2>&1" "跨文件重复块冗余"
 
 # F416（本轮实测）：**报告顺序** MUST 让因果更早的判据先报。源树被并发改动（运行期间有人在
 #   源树里改脚本）会让 `fresh()` 复制出语法损坏的副本 ⇒ 成批变异「未生效/退出码 2」，
