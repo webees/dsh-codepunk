@@ -87,7 +87,7 @@ _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "
 # -h/--help：打印头部用法并返回 0。仓内约定只对**实现者**成立（实现者 MUST 返回 0 并打印用法；
 #   未实现者按用法错误返回 2）——实测 10 个实现 / 8 个未实现，第 20 类探针覆盖全部实现者。
 case "${1:-}" in
-  -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) codepunk_usage 28 ;;
 esac
 ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT" >&2; exit 2; }

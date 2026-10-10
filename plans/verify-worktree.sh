@@ -25,7 +25,7 @@ _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "
 
 # -h/--help：打印头部用法（与其余脚本一致的通用约定）
 case "${1:-}" in
-  -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) codepunk_usage 28 ;;
 esac
 MAIN="${1:-${MAIN_REPO:-}}"
 if [ -z "$MAIN" ]; then
