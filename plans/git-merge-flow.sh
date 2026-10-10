@@ -28,6 +28,8 @@
 
 set -uo pipefail
 
+_EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
+
 say() { printf '%s\n' "$*"; }
 fail1() { printf '✗ %s\n' "$*" >&2; exit 1; }
 die2() { printf '✗ %s\n' "$*" >&2; exit 2; }

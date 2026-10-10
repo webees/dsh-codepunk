@@ -18,14 +18,7 @@
 # =============================================
 set -u
 
-# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
-case "$(locale charmap 2>/dev/null)" in
-  UTF-8|utf8|UTF8) ;;
-  *)
-    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
-      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
-    done ;;
-esac
+_EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
 # F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当预设根（报「预设根无效: -h」），
 #   而本脚本的 M149 变异自述「`-h`/`--help` 约定……第 20 类探针 MUST 覆盖全部实现者」——
 #   自身却是缺口（自相矛盾）。现补上。
@@ -774,8 +767,9 @@ check_rc "M122 目录参数 → ps-validate rc 2 且判「未校验」（非恒�
 
 echo "[M121 F2 源副本缺失须报不同步（F235）]"
 fresh
+#   F439：同 M117——守卫库是运行时单元的一部分，隔离夹具须一并保留。
 for f in "$work/cur"/plans/*.sh; do
-  [ "$(basename "$f")" = preset-audit.sh ] || rm -f "$f"
+  case "$(basename "$f")" in preset-audit.sh|env-guard.sh) ;; *) rm -f "$f" ;; esac
 done
 rm -f "$work/cur"/plans/*.py "$work/cur"/plans/*.mjs
 mutate_gone "删除除 preset-audit 外的源副本脚本" "$work/cur/plans/preset-score.sh" 'ded A1'
@@ -854,8 +848,10 @@ check_rc "M118 缺配置 → A7 判无法核验（非恒真通过）" "bash plan
 
 echo "[M117 class 5 空脚本输入须判「无法核验」（F231）]"
 fresh
+#   F439（本轮实证）：隔离单脚本的夹具 MUST 一并提供 `plans/env-guard.sh`——抽库后它是**运行时单元
+#   的一部分**，缺它会让脚本在到达被测判据之前就以 rc=2 拒答（本轮六条断言因此假失败）。
 for f in "$work/cur"/plans/*.sh; do
-  [ "$(basename "$f")" = doc-consistency.sh ] || rm -f "$f"
+  case "$(basename "$f")" in doc-consistency.sh|env-guard.sh) ;; *) rm -f "$f" ;; esac
 done
 rm -f "$work/cur"/plans/*.py "$work/cur"/plans/*.mjs
 mutate_gone "删除除检查器外的全部脚本" "$work/cur/plans/preset-score.sh" 'ded A1'
@@ -2975,6 +2971,7 @@ mkdir -p "$work/m195_src"
 if git clone -q --depth 1 --no-tags "file://$work/m195_src" "$work/m195_shallow" >/dev/null 2>&1 \
    && [ -f "$work/m195_shallow/.git/shallow" ]; then
   cp "$work/cur/plans/dsh-codepunk-leak-guard.sh" "$work/m195_shallow/"
+  cp "$work/cur/plans/env-guard.sh" "$work/m195_shallow/"   # F439：库须与脚本同目录，否则 rc=2 缺库
   check_rc "M195-a 浅克隆须判「无法核验 ≠ 通过」（rc=2）" \
     "cd '$work/m195_shallow' && env $_m195_deny bash dsh-codepunk-leak-guard.sh --history 2>&1" 2 "浅克隆"
   # d) 删除型变异：移除浅克隆守卫（BSD sed 的地址范围式删除，不用 GNU 的 addr,+N）
@@ -2986,6 +2983,7 @@ if git clone -q --depth 1 --no-tags "file://$work/m195_src" "$work/m195_shallow"
   rm -f "$work/cur/plans/dsh-codepunk-leak-guard.sh.bak"
   mutate_gone "M195-d 删除型变异（浅克隆守卫）" "$work/cur/plans/dsh-codepunk-leak-guard.sh" 'GITDIR_OUT/shallow'
   cp "$work/cur/plans/dsh-codepunk-leak-guard.sh" "$work/m195_shallow/"
+  cp "$work/cur/plans/env-guard.sh" "$work/m195_shallow/"   # F439：库须与脚本同目录，否则 rc=2 缺库
   check_rc "M195-d 仅删浅克隆守卫 ⇒ 浅克隆复现假绿 rc=0（证明守卫非空转）" \
     "cd '$work/m195_shallow' && env $_m195_deny bash dsh-codepunk-leak-guard.sh --history 2>&1" 0 "已扫描"
   cp "$SRC/plans/dsh-codepunk-leak-guard.sh" "$work/cur/plans/dsh-codepunk-leak-guard.sh"   # 复原沙箱副本
@@ -2995,6 +2993,7 @@ fi
 mkdir -p "$work/m195_empty"
 ( cd "$work/m195_empty" && git init -q . ) >/dev/null 2>&1
 cp "$work/cur/plans/dsh-codepunk-leak-guard.sh" "$work/m195_empty/"
+cp "$work/cur/plans/env-guard.sh" "$work/m195_empty/"   # F439：同上
 check_rc "M195-b 空仓库须判「无法核验 ≠ 通过」（rc=2）" \
   "cd '$work/m195_empty' && env $_m195_deny bash dsh-codepunk-leak-guard.sh --history 2>&1" 2 "空仓库"
 check_contains "M195-c 完整仓通过时须报出实际扫描的提交数（覆盖率可见）" \
@@ -3224,12 +3223,14 @@ check_no_match "M202-c 削弱（去 -a）⇒ 注入的缺陷名不再被点名�
 
 echo "[M203 POSIX 模式前置守卫（F421）]"
 fresh
-for _s in doc-consistency preset-audit preset-score dsh-codepunk-leak-guard write-scope-check patrol-check verify-worktree github-setup; do
+for _s in doc-consistency preset-audit preset-score dsh-codepunk-leak-guard write-scope-check patrol-check verify-worktree github-setup git-merge-flow; do
   check_rc "M203-a ${_s} 在 POSIX 模式保守拒答（rc=2 且带措辞）" \
     "POSIXLY_CORRECT=1 bash plans/${_s}.sh 2>&1" 2 "POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）"
 done
-mutate "M203-b" "$work/cur/plans/dsh-codepunk-leak-guard.sh" 'POSIXLY_CORRECT'
-python3 - "$work/cur/plans/dsh-codepunk-leak-guard.sh" <<'PYEOF'
+# F437（本轮实测）：POSIX 守卫的实现已抽到 plans/env-guard.sh ⇒ 削弱靶点随之改到库文件
+#   （此前写在内联守卫行上，抽库后锚点消失 ⇒ 变异会「未生效」而报自检自身问题）。
+mutate "M203-b 削弱靶点为守卫库" "$work/cur/plans/env-guard.sh" 'POSIXLY_CORRECT'
+python3 - "$work/cur/plans/env-guard.sh" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
@@ -3239,8 +3240,147 @@ assert old in s, 'M203-b 锚点缺失'
 open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
 print('MUTATED')
 PYEOF
-check_no_match "M203-b 削弱（守卫条件恒假）⇒ 不再有保守措辞（判据非空转）" \
+check_no_match "M203-b 削弱（库内守卫条件恒假）⇒ 不再有保守措辞（判据非空转）" \
   "POSIXLY_CORRECT=1 bash plans/dsh-codepunk-leak-guard.sh --tree 2>&1" "无法核验 ≠ 通过（rc=2）"
+
+echo "[M214 缺 plans/env-guard.sh ⇒ 拒绝核验（不得静默跳过）]"
+# F437：抽库引入新的失败模式——库缺失时若消费方「能跑就跑」，locale 固定与 POSIX 拒答会同时消失
+#   且门禁仍报通过（静默降级）。故断言：缺库 ⇒ rc=2 且点名缺失件（保守拒答）。
+fresh
+python3 - "$work/cur" <<'PYEOF'
+import os
+import sys
+root = sys.argv[1]
+assert os.path.basename(root) == 'cur', root
+lib = os.path.join(root, 'plans', 'env-guard.sh')
+assert os.path.exists(lib), lib
+os.remove(lib)
+print('MUTATED')
+PYEOF
+mutate_gone "M214-a 守卫库已从沙箱移除" "$work/cur/plans/env-guard.sh" 'POSIXLY_CORRECT'
+check_rc "M214-b 缺库 ⇒ doc-consistency 拒绝核验" "bash plans/doc-consistency.sh 2>&1" 2 "缺 plans/env-guard.sh"
+check_rc "M214-c 缺库 ⇒ preset-score 拒绝核验" "bash plans/preset-score.sh 2>&1" 2 "缺 plans/env-guard.sh"
+check_rc "M214-d 缺库 ⇒ leak-guard 拒绝核验" \
+  "bash plans/dsh-codepunk-leak-guard.sh --tree 2>&1" 2 "缺 plans/env-guard.sh"
+
+echo "[M215 守卫库行为与接入面（抽库后仍可机械核查）]"
+# ① 行为：用**影子 locale**（沙箱内伪造 `locale`）确定性地检验 F195 —— 当前非 UTF-8 且系统声明存在
+#    `en_US.UTF-8` 时，库必须固定 LC_ALL，使随后的 `locale charmap` 变为 UTF-8（不依赖宿主已装 locale）。
+# ② 接入面：机械枚举 plans/*.sh（排除纯库自身与 dsh-codepunk-home.sh）断言全部接入；削弱一个接入行后
+#    枚举器必须报 `MISS <文件>`（判据非空转）。
+fresh
+mkdir -p "$work/cur/fakebin"
+cat > "$work/cur/fakebin/locale" <<'SHEOF'
+#!/bin/sh
+# M215 夹具：确定性影子 locale——`-a` 声明存在 en_US.UTF-8；`charmap` 由 LC_ALL 推导。
+case "${1:-}" in
+  -a) printf 'C\nen_US.UTF-8\n' ;;
+  charmap)
+    case "${LC_ALL:-C}" in
+      *UTF-8*|*utf8*|*UTF8*) printf 'UTF-8\n' ;;
+      *) printf 'ANSI_X3.4-1968\n' ;;
+    esac ;;
+  *) printf '\n' ;;
+esac
+SHEOF
+chmod 755 "$work/cur/fakebin/locale"
+mutate "M215-a 影子 locale 已落地（沙箱夹具）" "$work/cur/fakebin/locale" 'ANSI_X3.4-1968'
+check_contains "M215-a 非 UTF-8 locale 下库固定 LC_ALL（charmap 转为 UTF-8）" \
+  "PATH=\"$work/cur/fakebin:$PATH\" LC_ALL=C bash -c '. plans/env-guard.sh; locale charmap' 2>&1" "UTF-8"
+python3 - "$work/cur/plans/env-guard.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do"
+new = "    for _l in; do"
+assert old in s, 'M215-b 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+check_no_match "M215-b 削弱（候选列表清空）⇒ 不再固定 LC_ALL（判据非空转）" \
+  "PATH=\"$work/cur/fakebin:$PATH\" LC_ALL=C bash -c '. plans/env-guard.sh; locale charmap' 2>&1" "UTF-8"
+fresh
+python3 - "$work/cur" <<'PYEOF'
+import os
+import sys
+root = sys.argv[1]
+assert os.path.basename(root) == 'cur', root
+script = '''#!/usr/bin/env python3
+"""M215 夹具：枚举 plans/*.sh 的守卫库接入面（缺接入即报 MISS，退出码 1）。"""
+import glob, os, sys
+root = os.path.dirname(os.path.abspath(__file__))
+skip = {"env-guard.sh", "dsh-codepunk-home.sh"}
+wired, miss = [], []
+for p in sorted(glob.glob(os.path.join(root, "plans", "*.sh"))):
+    b = os.path.basename(p)
+    if b in skip:
+        continue
+    txt = open(p, encoding="utf-8").read()
+    (wired if "env-guard.sh" in txt else miss).append(b)
+for b in miss:
+    print("MISS %s" % b)
+print("WIRED %d MISS %d" % (len(wired), len(miss)))
+sys.exit(1 if miss else 0)
+'''
+target = os.path.join(root, "enum-wiring.py")
+open(target, "w", encoding="utf-8").write(script)
+os.chmod(target, 0o755)
+print("MUTATED")
+PYEOF
+mutate "M215-c 枚举器已写入沙箱" "$work/cur/enum-wiring.py" 'MISS %s'
+check_rc "M215-c 接入面完整 ⇒ 枚举器通过且无 MISS" "python3 enum-wiring.py 2>&1" 0 "MISS 0"
+python3 - "$work/cur/plans/write-scope-check.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+lines = open(p, encoding='utf-8').read().split('\n')
+keep = [l for l in lines if 'env-guard.sh' not in l]
+removed = len(lines) - len(keep)
+assert removed == 1, 'M215-d 期望摘掉恰 1 行接入行，实得 %d' % removed
+open(p, 'w', encoding='utf-8').write('\n'.join(keep))
+print('MUTATED')
+PYEOF
+check_contains "M215-d 摘掉一个接入行 ⇒ 枚举器点名该文件（判据非空转）" \
+  "python3 enum-wiring.py 2>&1" "MISS write-scope-check.sh"
+
+# M215-e（F441）：裸文件名调用（`bash dsh-codepunk-leak-guard.sh`，`BASH_SOURCE[0]` 无目录段）时，接入式
+#   MUST 仍解析到**同目录**库。旧写法 `_EG="${BASH_SOURCE[0]%/*}/env-guard.sh"` 在裸名下不剥离任何内容，
+#   会拼出 `脚本名/env-guard.sh` 伪路径 ⇒ 库明明在场也 rc=2 缺库（实测：浅克隆夹具即使补了库仍报缺库）。
+#   断言：裸名调用须**到达被测判据**（输出「泄露防护门」），且 MUST NOT 出现缺库消息。
+check_contains "M215-e 裸文件名调用仍须解析到同目录库（到达判据而非缺库）" \
+  "cd '$work/cur/plans' && bash dsh-codepunk-leak-guard.sh --tree 2>&1" "泄露防护门"
+check_no_match "M215-e2 裸名调用 MUST NOT 误报缺库（伪路径回归）" \
+  "cd '$work/cur/plans' && bash dsh-codepunk-leak-guard.sh --tree 2>&1" "env-guard.sh（无法核验）"
+
+# M216（F440）：目录清单行的扩展名计数一旦被插入括号散文，chain 正则失配 ⇒ 该声称不再进入核验面，
+#   而门禁仍报「未出现 plans 扩展名计数声称」（假绿）。M216 证明新判据会点名，且削弱后不再点名。
+echo "[M216 目录清单行的扩展名计数须保持紧邻链式形态（F440）]"
+fresh
+python3 - "$work/cur/docs/development.md" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '（17 个 `.sh` + 3 个 `.py`'
+new = '（17 个 `.sh`〔含 `env-guard.sh` 库〕 + 3 个 `.py`'
+assert old in s, 'M216 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('MUTATED')
+PYEOF
+mutate "M216-a 目录行链式形态已被破坏" "$work/cur/docs/development.md" '个 `\.sh`〔含'
+check_rc "M216-a 目录行链式形态被破坏 ⇒ 须判不可解析（无法核验 ≠ 通过）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "plans 目录行的扩展名计数不可解析"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "        if listing.match(line) and pat.search(line) and not chain_dir.search(line):\n"
+assert old in s, 'M216-b 锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, '        if False:\n', 1))
+print('MUTATED')
+PYEOF
+mutate "M216-b 削弱（形态判据失效）已落地" "$work/cur/plans/doc-consistency.sh" 'if False:'
+check_no_match "M216-b 削弱（去掉形态判据）⇒ 同夹具不再被点名（判据非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "plans 目录行的扩展名计数不可解析"
+fresh
 
 echo "[M204 帮助 MUST 不依赖环境（F421）]"
 fresh
@@ -3393,7 +3533,7 @@ python3 - "$work/cur/docs/development.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-old = '（16 个 `.sh` + 3 个 `.py` + 2 个 `.mjs`'
+old = '（17 个 `.sh` + 3 个 `.py` + 2 个 `.mjs`'
 new = '（13 个 `.sh` + 2 个 `.py` + 2 个 `.mjs`'
 assert old in s, 'M209-a 锚点缺失'
 open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
@@ -3442,6 +3582,7 @@ git init -q --bare "$_m210/origin.git" >/dev/null 2>&1
     && git checkout -q main && git merge -q --no-ff -m "Merge pull request #1 from feat" feat \
     && git push -q origin main ) >/dev/null 2>&1
 _m210_gmf="$work/cur/plans/git-merge-flow.sh"
+cp "$work/cur/plans/env-guard.sh" "$_m210/env-guard.sh"   # F439：削弱副本（weaken-gmf.sh）在此目录执行，须带库
 #   注：PATH 前置 MUST 用**双引号**书写——单引号会阻止 eval 时展开 `$PATH`，导致 `bash: command
 #   not found`（rc=127）被误读为「清理失败」，整条断言的判据随之失效。
 _m210_run="cd '$_m210/wt' && PATH=\"$_m210/bin:\$PATH\" M210_HEAD=feat bash '$_m210_gmf' merge 1 2>&1"

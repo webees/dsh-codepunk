@@ -36,25 +36,11 @@
 # =============================================
 set -uo pipefail
 
-# 判据与输出含多字节（中文结论）。非 UTF-8 locale 下会被逐字节处理并误报，故在系统存在 UTF-8
-# locale 时固定之（与 plans/write-scope-check.sh 同口径；探测只用 ASCII）。
-case "$(locale charmap 2>/dev/null)" in
-  UTF-8|utf8|UTF8) ;;
-  *)
-    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
-      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
-    done ;;
-esac
+_EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
 
 RUN_ROOT=""
 LEDGER=""
 MAXGAP=5
-
-# F421：POSIX 模式（`POSIXLY_CORRECT=1` 或 `bash --posix`）关闭扩展 ⇒ 进程替换报语法错误且无保守措辞，会被误归因为「脚本坏了」；此处前置拒答。
-if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
-  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
-  exit 2
-fi
 
 while [ $# -gt 0 ]; do
   case "$1" in

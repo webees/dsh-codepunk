@@ -27,14 +27,7 @@
 # =============================================
 set -u
 
-# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
-case "$(locale charmap 2>/dev/null)" in
-  UTF-8|utf8|UTF8) ;;
-  *)
-    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
-      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
-    done ;;
-esac
+_EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
 
 # F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当位置参数（报「evidence 文件不存在: -h」），
 #   与全仓「实现者 MUST 返回 0 并打印头部用法」的约定（doc-consistency 第 20 类）不符。现补上。

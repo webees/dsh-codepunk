@@ -33,12 +33,7 @@
 
 set -uo pipefail
 
-# F421：POSIX 模式（`POSIXLY_CORRECT=1` 或 `bash --posix`）关闭扩展 ⇒ 进程替换报语法错误且无保守措辞，会被误归因为「脚本坏了」；此处前置拒答。
-if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
-  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
-  exit 2
-fi
-
+_EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
 RS_NAME="保护 main"
 SLUG="${REPO_SLUG:-webees/dsh-codepunk}"
 DESCRIPTION="${REPO_DESCRIPTION:-多智能体开发流程预设（DeepSeek Harness）：六阶段闭环、双门闩、实现三角、goal 自动续行}"
