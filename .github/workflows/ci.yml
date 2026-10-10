@@ -69,16 +69,11 @@ jobs:
           echo "shellcheck：错误级 0 项；提示/警告级 ${n} 项（不判红）"
 
       - name: 安装 PowerShell 校验器依赖（tree-sitter，见 README「PowerShell 校验」）
-        run: |
-          set -euo pipefail
-          # verify-battery.sh 内嵌调用 checker-self-test.sh，而后者 M122 硬性要求
-          # ps-validate.mjs 真能跑（缺依赖时它报「缺依赖」而非「N 个文件未校验」⇒ 断言失败）；
-          # 装上后 verify-battery 的 PS 语法项也从「ℹ 跳过」变为真实核验。按 README 同一配方安装。
-          mkdir -p "$HOME/.dsh-codepunk/tools"
-          cd "$HOME/.dsh-codepunk/tools"
-          [ -f package.json ] || npm init -y >/dev/null
-          npm i --no-audit --no-fund --loglevel=error tree-sitter tree-sitter-powershell
-          node "$GITHUB_WORKSPACE/plans/ps-validate.mjs" "$GITHUB_WORKSPACE"/plans/windows/*.ps1
+        # 作业 1（门禁回归）：verify-battery.sh 内嵌调用 checker-self-test.sh，而后者 M122 硬性要求
+        # ps-validate.mjs 真能跑（缺依赖时它报「缺依赖」而非「N 个文件未校验」⇒ 断言失败）；装上后
+        # verify-battery 的 PS 语法项也从「ℹ 跳过」变为真实核验。配方单一声明源＝Makefile 的
+        # ps-validate 目标（原先此三联行在本文件两个作业内逐字重复，F454）。
+        run: make ps-validate
 
       - name: 建立本地总库（plans → ~/.dsh-codepunk/scripts）
         run: |
@@ -166,16 +161,10 @@ jobs:
           ruby -v
 
       - name: 安装 PowerShell 校验器依赖（tree-sitter，见 README「PowerShell 校验」）
-        run: |
-          set -euo pipefail
-          # 并非可选：preset-score/verify-battery 缺校验器时只 ℹ 跳过，而本 job 跑的
-          # checker-self-test.sh 的 M122 硬性要求 ps-validate.mjs 真能跑（缺依赖时它报
-          # 「缺依赖」而非「N 个文件未校验」⇒ 该变异断言失败）。按 README 的同一配方安装。
-          mkdir -p "$HOME/.dsh-codepunk/tools"
-          cd "$HOME/.dsh-codepunk/tools"
-          [ -f package.json ] || npm init -y >/dev/null
-          npm i --no-audit --no-fund --loglevel=error tree-sitter tree-sitter-powershell
-          node "$GITHUB_WORKSPACE/plans/ps-validate.mjs" "$GITHUB_WORKSPACE"/plans/windows/*.ps1
+        # 作业 2（存活自检）：并非可选——preset-score/verify-battery 缺校验器时只 ℹ 跳过，而本 job
+        # 跑的 checker-self-test.sh 的 M122 硬性要求 ps-validate.mjs 真能跑（缺依赖时它报「缺依赖」
+        # 而非「N 个文件未校验」⇒ 该变异断言失败）。配方见 Makefile 的 ps-validate 目标（F454）。
+        run: make ps-validate
 
       - name: 变异自检 checker-self-test.sh（断言 rc=0 且末行含「自检通过」）
         timeout-minutes: 25

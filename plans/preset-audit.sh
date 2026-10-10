@@ -259,10 +259,8 @@ import os, re, subprocess
 files = [f for f in subprocess.run(['git','ls-files','-z'],capture_output=True,text=True).stdout.split('\0')
          if f.endswith('.md')]
 if not files:
-    # F388（本轮对抗实测）：说谎/异常 git（exit 0 零输出）或 GIT_DIR/GIT_WORK_TREE 误设时 `git ls-files`
-    #   返回空 ⇒ 下方循环空转却 report PASS（「行号引用均附符号名」「仓内相对链接均可达」）——否决式计分下
-    #   直接得到 100/100 假满分（与 F299 同类，F299 修的是 doc-consistency 类 8）。故回退文件系统遍历
-    #   （真核验，非跳过）；遍历仍为零则打印 NOFILES 由 shell 侧判「无法核验」。
+    # F388：同上一处（同文件的第二份叙述曾逐字重复，F453）——回退文件系统遍历做真核验；
+    #   遍历仍为零则打印 NOFILES，由 shell 侧判「无法核验 ≠ 通过」。
     import os
     for _dp, _dns, _fns in os.walk('.'):
         _dns[:] = [d for d in _dns if d != '.git']

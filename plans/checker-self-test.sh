@@ -3473,6 +3473,37 @@ PYEOF
 mutate "M219-b 削弱（摘掉枚举回退）已落地" "$work/cur/plans/doc-consistency.sh" '# M219 weakened'
 check_contains "M219-b 摘掉回退 ⇒ 同环境退回「文件枚举为空」（判据非空转）" \
   "GIT_INDEX_FILE=/nonexistent-advm bash plans/doc-consistency.sh 2>&1" "文件枚举为空"
+echo "[M220 Makefile 计数声称域（F455：计数声称域扩到 Makefile 后须有存活守护）]"
+fresh
+python3 - "$work/cur" <<'PYEOF'
+import io
+import sys
+root = sys.argv[1]
+assert root.endswith('/cur'), root          # 越界防线：MUST 只作用于沙箱副本
+p = root + '/Makefile'
+s = io.open(p, encoding='utf-8').read()
+assert '16 指标评分' in s, 'M220-a 夹具锚点缺失'
+io.open(p, 'w', encoding='utf-8').write(s.replace('16 指标评分', '15 指标评分', 1))
+print('FIXTURE')
+PYEOF
+mutate "M220-a 夹具：Makefile 声称 15 指标评分（陈旧）已落地" "$work/cur/Makefile" '15 指标评分'
+check_rc "M220-a Makefile 指标计数陈旧 ⇒ 第 1 类须报（域已扩到 Makefile）" \
+  "bash plans/doc-consistency.sh" 1 "Makefile 计数声称陈旧"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import io
+import sys
+p = sys.argv[1]
+s = io.open(p, encoding='utf-8').read()
+lines = s.split('\n')
+hit = [i for i, ln in enumerate(lines) if "[0-9]+ 指标' Makefile" in ln]
+assert len(hit) == 1, 'M220-b 锚点缺失'
+lines[hit[0]] = 'for _v in ; do  # M220 weakened'
+io.open(p, 'w', encoding='utf-8').write('\n'.join(lines))
+print('WEAKENED')
+PYEOF
+mutate "M220-b 削弱（摘掉 Makefile 指标声称核验）已落地" "$work/cur/plans/doc-consistency.sh" '# M220 weakened'
+check_no_match "M220-b 摘掉核验 ⇒ 同夹具不再被点名（判据非空转）" \
+  "bash plans/doc-consistency.sh" "Makefile 计数声称陈旧"
 fresh
 
 echo "[M204 帮助 MUST 不依赖环境（F421）]"
@@ -3785,6 +3816,10 @@ io.open(os.path.join(root, "plans/preset-score.sh"), "a", encoding="utf-8").writ
 p = os.path.join(root, "README.md")
 s = io.open(p, encoding="utf-8").read()
 io.open(p, "w", encoding="utf-8").write(s.replace("16 指标", "21 指标"))
+mk = os.path.join(root, "Makefile")            # F458：口径整体变更 MUST 同步 Makefile 声称
+ms = io.open(mk, encoding="utf-8").read()
+assert "16 指标评分" in ms, "M212 夹具：Makefile 声称锚点缺失"
+io.open(mk, "w", encoding="utf-8").write(ms.replace("16 指标评分", "21 指标评分"))
 print("MUTATED")
 PYEOF
 _m212_rc=$?
@@ -3814,7 +3849,8 @@ check_rc "M212-b 计数口径变更后派生锚夹具仍制造多值漂移" \
 # M213（内容卫生 / 垃圾与重复治理，F435 守护缺口）：B16 的**重复度**两条子判据（跨文件重复块 /
 #   跨文件重复行）MUST 被证明会命中——M211 只覆盖单文件上限、索引缺口与孤儿内容三条，
 #   重复度两条此前**无任何守护**（阈值改动或判据被删都不会被报出）。
-#   夹具：同一 3 行块写入 8 个跟踪文件 ⇒ 重复块冗余、重复行冗余双双越过 §7.1 上限；
+#   夹具：同一 3 行块（行长 ×8 ≈ 936 B）写入 20 个跟踪文件 ⇒ 重复块（≈18 KB）与重复行（≈27 KB）
+#   双双**远超** §7.1 上限（F458：旧夹具 8 文件 ×3 仅贴边上沿，本轮合法去重把总量压回阈值下 ⇒ 断言空转）；
 #   削弱对照（M213-c）证明扣分**只来自** B16 的执行。
 echo "[M213 内容卫生判据 B16（重复度子判据：跨文件重复块 / 跨文件重复行）]"
 fresh
@@ -3823,9 +3859,9 @@ import io, os, sys
 root, src = sys.argv[1], sys.argv[2]
 assert os.path.basename(root) == "cur", "M213 沙箱根异常: %s" % root
 assert os.path.realpath(root) != os.path.realpath(src), "M213 拒绝对源树写入"
-line = "填充段落：跨文件重复块与重复行判据的探针内容（长度足够越过最小块与最小行阈值）" * 3
+line = "填充段落：跨文件重复块与重复行判据的探针内容（长度足够越过最小块与最小行阈值）" * 8
 block = "\n".join(line for _ in range(3)) + "\n"
-for i in range(8):
+for i in range(20):
     io.open(os.path.join(root, "docs", "dup-%d.md" % i), "w", encoding="utf-8").write(block)
 print("MUTATED")
 PYEOF

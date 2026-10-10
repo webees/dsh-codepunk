@@ -194,7 +194,7 @@ PR 描述请按 `.github/pull_request_template.md` 逐项填写——该模板�
 
 ## 7. 开发命令速查
 
-**统一入口是 `make <目标>`**（`make help` 列出全部目标）：`gates`（四道门禁＝文档一致性 + 预设审计 + 指标评分 + 泄露防护门）、`battery`（完整验证电池）、`selftest`（存活自检，约 350 秒）、`write-scope`（写盘纪律门）、`compat`（组合 ↔ DSH 安装兼容核验，需 `DSH_APP_ROOT` 或 `DSH_ASAR`）、`mirror`（把脚本同步到总库正式位）、`clean`（清理本仓运行根）。下面的手工命令与这些目标等价，用于定位单点失败。
+**统一入口是 `make <目标>`**（`make help` 列出全部目标）：`gates`（四道门禁＝文档一致性 + 预设审计 + 指标评分 + 泄露防护门）、`battery`（完整验证电池）、`selftest`（存活自检，约 350 秒）、`write-scope`（写盘纪律门）、`compat`（组合 ↔ DSH 安装兼容核验，需 `DSH_APP_ROOT` 或 `DSH_ASAR`）、`ps-validate`（PowerShell 校验器依赖安装 + 语法校验，CI 与本目标共用同一配方）、`mirror`（把脚本同步到总库正式位）、`clean`（清理本仓运行根）。下面的手工命令与这些目标等价，用于定位单点失败。
 
 以下命令均在**仓库根**执行。`plans/` 是工具脚本的源副本，运行期正式位是用户级总库 `~/.dsh-codepunk/scripts/`（由 `plans/dsh-codepunk-init.sh` 幂等同步）。
 
