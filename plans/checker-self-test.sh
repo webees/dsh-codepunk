@@ -2939,12 +2939,12 @@ fresh
 #        b) 移除注入 ⇒ 同环境 rc=0（证明失败源于该引用，而非环境/其他类）；
 #        c) 通过消息须写明扫描域（「全部跟踪 .md」）——域扩落地，非仅改文案。
 fresh
+cp "$work/cur/CHANGELOG.md" "$work/m194_orig.md"   # F450：字节级还原基准（sed 删除会留下尾部双换行 ⇒ 误触第 29 类）
 printf '\n- 注入探针（自检临时写入）：见 `plans/m194-probe-nonexistent.cjs`。\n' >> "$work/cur/CHANGELOG.md"
 mutate "M194-a 注入型变异（根级 md 中不存在的 plans/*.cjs 引用）" "$work/cur/CHANGELOG.md" 'm194-probe-nonexistent'
 check_rc "M194-a 第 4 类须报出不存在的引用（域含根级 md + 扩展名含 cjs）" "bash plans/doc-consistency.sh 2>&1" 1 "不存在"
 check_contains "M194-a2 报错须可定位（文件:引用）" "bash plans/doc-consistency.sh 2>&1" "CHANGELOG.md:m194-probe-nonexistent.cjs"
-sed -i.bak '/m194-probe-nonexistent/d' "$work/cur/CHANGELOG.md"
-rm -f "$work/cur/CHANGELOG.md.bak"
+cp "$work/m194_orig.md" "$work/cur/CHANGELOG.md"
 mutate_gone "M194-b 删除型变异（移除注入的假引用）" "$work/cur/CHANGELOG.md" 'm194-probe-nonexistent'
 check_rc "M194-b 移除注入后须复归 rc=0（失败确由该引用引起）" "bash plans/doc-consistency.sh" 0 ""
 check_contains "M194-c 通过消息须写明扫描域（全部跟踪 .md）" "bash plans/doc-consistency.sh 2>&1" "全部跟踪 .md"
@@ -3423,6 +3423,56 @@ PYEOF
 mutate_gone "M217-d 摘掉一个调用点已落地（删除型）" "$work/cur/plans/verify-battery.sh" 'codepunk_need_root'
 check_contains "M217-d 摘掉调用点 ⇒ 枚举器点名该文件（接入面守护非空转）" \
   "python3 call-enum.py 2>&1" "CALLMISS 1 plans/verify-battery.sh"
+# M218（内容形态声明落地 / F446）：第 29 类（`.editorconfig` 声明落地）必须有存活守护——
+#   夹具：跟踪文件尾部追加「行尾空白 + 额外换行」；反证：摘掉该类检测后同夹具不再被点名。
+echo "[M218 .editorconfig 声明落地（内容治理第 5 轮：F446 新增第 29 类后须有存活守护）]"
+fresh
+python3 - "$work/cur" <<'PYEOF'
+import sys
+root = sys.argv[1]
+assert root.endswith('/cur'), 'M218 sandbox guard'
+p = root + '/docs/faq.md'
+b = open(p, 'rb').read()
+assert not b.endswith(b'\n\n'), 'M218 fixture precondition'
+open(p, 'wb').write(b + "形态探针  \n\n".encode('utf-8'))
+print('MUTATED')
+PYEOF
+mutate "M218-a 夹具已落地（行尾空白 + 尾部双换行）" "$work/cur/docs/faq.md" '形态探针'
+check_rc "M218-a 尾部双换行 ⇒ 第 29 类须报" "bash plans/doc-consistency.sh" 1 "末尾非单换行"
+check_rc "M218-b 行尾空白 ⇒ 第 29 类须报" "bash plans/doc-consistency.sh" 1 "声明 trim_trailing_whitespace"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+s = io.open(p, encoding='utf-8').read()
+i = s.index("  EC_OUT=$(python3 - <<'PYEOF'")
+j = s.index("\nPYEOF\n)\n", i) + len("\nPYEOF\n)\n")
+s = s[:i] + '  EC_OUT=""\n' + s[j:]
+assert s.count('EC_OUT=""') == 1, 'M218-c 削弱落地断言'
+io.open(p, 'w', encoding='utf-8').write(s)
+print('WEAKENED')
+PYEOF
+mutate "M218-c 削弱（摘掉第 29 类检测）已落地" "$work/cur/plans/doc-consistency.sh" 'EC_OUT=""'
+check_no_match "M218-c 摘掉该类检测 ⇒ 同夹具不再被点名（判据非空转）" "bash plans/doc-consistency.sh" "末尾非单换行"
+
+# M219（第 29 类的枚举回退 / F449）：`git ls-files` 返回 0 但**空结果**时 MUST 回退文件系统遍历
+#   做真核验（MUST NOT 直接判「无法核验」——那会放弃可核验的声明并污染终局归因计数）。
+echo "[M219 第 29 类：git 枚举为空 MUST 回退文件系统遍历（真核验）]"
+fresh
+check_contains "M219-a 索引损坏 ⇒ 第 29 类回退真核验（非「无法核验」）" \
+  "GIT_INDEX_FILE=/nonexistent-advm bash plans/doc-consistency.sh 2>&1" "回退文件系统遍历"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+s = io.open(p, encoding='utf-8').read()
+old = "if not files:\n    for dp, dns, fns in os.walk('.'):"
+assert s.count(old) == 1, 'M219-b 锚点缺失'
+s = s.replace(old, "if False:  # M219 weakened\n    for dp, dns, fns in os.walk('.'):", 1)
+io.open(p, 'w', encoding='utf-8').write(s)
+print('WEAKENED')
+PYEOF
+mutate "M219-b 削弱（摘掉枚举回退）已落地" "$work/cur/plans/doc-consistency.sh" '# M219 weakened'
+check_contains "M219-b 摘掉回退 ⇒ 同环境退回「文件枚举为空」（判据非空转）" \
+  "GIT_INDEX_FILE=/nonexistent-advm bash plans/doc-consistency.sh 2>&1" "文件枚举为空"
 fresh
 
 echo "[M204 帮助 MUST 不依赖环境（F421）]"

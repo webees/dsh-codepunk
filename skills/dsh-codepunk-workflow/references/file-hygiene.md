@@ -235,4 +235,3 @@
 | 6 | 归一的条件性（F367） | 前导多斜杠仅在 POSIX 平台折叠（Windows 的 `//server/share` 保持原样）；大小写折叠仅在 `darwin`/`win32` 生效 ⇒ linux 上 `/ETC/hosts` 与 `/etc/hosts` 视为不同路径（按设计；如需一律折叠须显式改 `CASE_INSENSITIVE_FS`） |
 | 7 | **失败开放**（解释器缺失 / 脚本异常退出 / 超时 / 配置坏掉 ⇒ 放行，F368） | 钩子命令起不来（如 Windows 无 `python3`）或脚本非 0/2 退出时，产品侧不设 decision ⇒ **照常放行**，只在钩子记录里留 `stderrSummary`；`configPath` 坏掉则**零钩子注册**（`dsh-hooks-claude-code/lib/index.js:139,145-146` 仅 `logger.warn`）⇒ 拦截层静默消失。守护：`plans/doc-consistency.sh` 第 7 类核验 `plans/hooks/hooks.json` 可解析、结构与命令引用的仓库内文件存在、**解释器在 PATH 内**（缺失即红灯） |
 | 8 | `matcher` 为**非锚定**正则 | 产品 `compileRegex` 用 `new RegExp(pattern)`（`dsh-hook-protocol/lib/index.js` 注释原文「unanchored matcher regex」）⇒ `todo_write` 等**含** `write`/`edit`/`bash`/`pwsh` 子串的工具名也会触发钩子：多一次判定与记录，判定不出目标即按 §8.2 放行并打提示——**只增噪声，不改变放行结果** |
-
