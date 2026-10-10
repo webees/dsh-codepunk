@@ -120,7 +120,7 @@ _validate_marker() {
 _extract_dsh-codepunk_from_readme() {
   local readme="$1" id=""
   [ -f "$readme" ] || return 1
-  if command -v python3 >/dev/null 2>&1; then
+  if codepunk_have python3; then
     id="$(python3 - "$readme" <<'PY'
 import re, sys
 readme = sys.argv[1]
@@ -393,7 +393,7 @@ cmd_index() {
   #   修法：先带 permitted_classes: [Time]，Psych 3 不认该关键字（ArgumentError）时回退旧调用——
   #   与 agent.cordis.yml 锚点的 aliases 修法同构，macOS 行为不变。
   local parse_rc=0 parser=""
-  if command -v ruby >/dev/null 2>&1; then
+  if codepunk_have ruby; then
     parser="ruby"
     ruby -ryaml -e 'begin; YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; YAML.load_file(ARGV[0]); rescue => e; warn e.message; exit 1; end' \
       "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
@@ -412,7 +412,7 @@ cmd_index() {
   # ③ 语义/类型核验（F129）：结构与解析都通过、但类型非法的文件（如 projects 为标量）此前被当作
   #    空骨架放行，随后 register 会据错模型覆盖注册表 → 真实登记项丢失。此处按同一解析链核验类型。
   local sem_rc=0 sem_msg=""
-  if command -v ruby >/dev/null 2>&1; then
+  if codepunk_have ruby; then
     sem_msg="$(ruby -Ku -ryaml -e '   # -Ku：本片段含中文字面量，须显式声明 -e 源编码为 UTF-8（C/POSIX locale 下默认 US-ASCII 会编译失败）
       begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end   # Psych 4/5 见 ② 的说明
       d = {} if d.nil?
@@ -757,7 +757,7 @@ PYEOF
     return 1
   fi
   # 写入后校验：真实 YAML 解析器必须能读（防「行级解析自洽但 YAML 非法」长期潜伏）
-  if command -v ruby >/dev/null 2>&1; then
+  if codepunk_have ruby; then
     if ! ruby -Ku -ryaml -e '   # -Ku：本片段含中文字面量，须显式声明 -e 源编码为 UTF-8（C/POSIX locale 下默认 US-ASCII 会编译失败）
 begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end   # Psych 4/5 见 ② 的说明
 raise "顶层非映射" unless d.is_a?(Hash)

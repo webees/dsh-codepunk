@@ -41,7 +41,7 @@ echo "===== dsh-codepunk 预设审计 ====="
 echo "[组A 配置层 25]"
 # A1 解析合法
 parse_ok="skip"
-if command -v ruby >/dev/null 2>&1; then
+if codepunk_have ruby; then
   # F214：两路径谓词须**语义一致** —— 统一为「name 为**非空字符串**」（旧 ruby 用 key? 仅查键存在，
   #   而 node 用真值判定 → `name: ""`/`null` 在两类主机上结论不同）。
   # F309：ruby >= 3.1 的 Psych 4/5 默认 aliases: false ⇒ 本仓配置的 YAML 锚点/别名
@@ -78,7 +78,7 @@ esac
 # A2 岗位 6 维
 # F210：A2 计算依赖 python3 —— 缺失时不得让失败消息**为空**（实测缺 python3 时本项输出「[✗] A2 」
 #   即「失败却无原因」）。缺失时给出明确缺口说明，与套件「无法核验 ≠ 通过」口径一致。
-if command -v python3 >/dev/null 2>&1; then
+if codepunk_have python3; then
 A2=$(python3 - <<'PYEOF'
 import re
 s=open("agent.cordis.yml").read()
@@ -107,7 +107,7 @@ fi
 # A7 配置不变量（机械守护核心契约：可恢复 / 工具面收口 / 岗位在位 / 可派遣）
 # F211：A7 依赖 python3；缺失时旧实现得到**空值** → 下一行 `[ -z "$A7" ]` 判为 **PASS**（**假通过**，
 #   实测缺 python3 时本项报 [✅]）。改为：缺失即给明确缺口说明，使该项按「无法核验 ≠ 通过」判失败。
-if command -v python3 >/dev/null 2>&1; then
+if codepunk_have python3; then
 A7=$(python3 - <<'PYEOF'
 import re, sys
 s = open('agent.cordis.yml', encoding='utf-8').read()
@@ -198,7 +198,7 @@ fi
 
 # D3 源码行号引用守护：行号须与符号名同行（行号会随重排漂移，单留行号即成死指针）
 NOPY=0
-if ! command -v python3 >/dev/null 2>&1; then
+if ! codepunk_have python3; then
   report "$FAIL" "D3/E3 无法核验：缺 python3（无法核验 ≠ 通过）——装 python3 或手工核对"
   NOPY=1
 fi
