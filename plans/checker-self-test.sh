@@ -2340,7 +2340,7 @@ else
 fi
 
 # ── M166：未来日期判据须容忍时区偏移（F365：CI 为 UTC 时钟，作者本地「今天」被判未来 ⇒ 合法 PR 假红）──
-if command -v python3 >/dev/null 2>&1; then
+if codepunk_have python3; then
   fresh
   # 用**相对当前 UTC 日期**派生边界，避免硬编码日期随时间失效（F300 家族教训）
   m166_d1=$(python3 -c "import datetime;print((datetime.datetime.now(datetime.timezone.utc).date()+datetime.timedelta(days=1)).isoformat())")
@@ -2389,7 +2389,7 @@ fi
 #   doc·audit·score·preset-compat·write-scope **五个门禁全绿**且零处提到 hooks ⇒ 拦截层静默消失
 #   而无任何红灯（产品侧只有一条 `logger.warn(… — no hooks registered)`）。
 #   断言顺序纪律：同一变异的断言 MUST 排在其 `fresh` 之前（否则跑在已变异副本上）。
-if command -v python3 >/dev/null 2>&1; then
+if codepunk_have python3; then
   fresh
   check_rc "M168-a 基线：钩子配置完整（rc=0）" "bash plans/doc-consistency.sh" 0 "钩子配置完整"
   printf '{\n  "hooks": {\n    "PreToolUse": [ { "matcher": "write|edit",\n' > "$work/cur/plans/hooks/hooks.json"
@@ -3504,6 +3504,83 @@ PYEOF
 mutate "M220-b 削弱（摘掉 Makefile 指标声称核验）已落地" "$work/cur/plans/doc-consistency.sh" '# M220 weakened'
 check_no_match "M220-b 摘掉核验 ⇒ 同夹具不再被点名（判据非空转）" \
   "bash plans/doc-consistency.sh" "Makefile 计数声称陈旧"
+
+#
+# ── M221（D126 依赖探针单一声明源；内容治理第 7 轮：内联 `command -v python3/ruby` 已全部迁库）──
+#   探法与「无法核验」消息若回潮，就会就地分裂（F405 家族：口径漂移 + 多处维护）。
+#   本条直接数仓内形态：夹具注入第二处即令判定式转向，故非空转。
+#   模式串在本文件内以**运行时拼接**构造（M186/M211 同法），否则本文件自身会被计入。
+_M221_A='if command -v python3 >/dev/null 2>&1'
+_M221_INLINE="${_M221_A}; then"
+_M221_MA='python3 不可用（缺失或执行失败）'
+_M221_MSG="${_M221_MA}——无法核验 ≠ 通过"
+_M221_HAVE="[ \$(grep -rhE 'codepunk_(have|py|need_py)' plans/*.sh | wc -l | tr -d ' ') -ge 20 ] && echo HAVE_GE20 || echo HAVE_LT20"
+_M221_INLINE_CHK="[ \$(grep -rhF '$_M221_INLINE' plans/*.sh | wc -l | tr -d ' ') -le 1 ] && echo INLINE_OK || echo INLINE_REGRESSION"
+_M221_MSG_CHK="[ \$(grep -rhF '$_M221_MSG' plans/*.sh | wc -l | tr -d ' ') -le 1 ] && echo MSG_OK || echo MSG_DUP"
+echo "[M221 依赖探针单一声明源（D126：内联 command -v 与核验缺口消息不得回潮）]"
+fresh
+check_contains "M221-a 消费方统一走库探针（codepunk_have/py/need_py ≥ 20 处）" "$_M221_HAVE" "HAVE_GE20"
+check_contains "M221-b 内联形态 ≤1 处（仅 preset-score 的 M85 锚点）" "$_M221_INLINE_CHK" "INLINE_OK"
+python3 - "$work/cur" "$_M221_INLINE" <<'PYEOF'
+import io
+import sys
+root, inline = sys.argv[1], sys.argv[2]
+assert root.endswith('/cur'), root          # 越界防线：MUST 只作用于沙箱副本
+p = root + '/plans/verify-battery.sh'
+s = io.open(p, encoding='utf-8').read()
+assert inline not in s, 'M221-c 夹具锚点已被占用'
+io.open(p, 'a', encoding='utf-8').write('\n' + inline + '\n  :\nfi\n')
+print('FIXTURE')
+PYEOF
+mutate "M221-c 夹具：内联形态回潮（第 2 处）已落地" "$work/cur/plans/verify-battery.sh" "$_M221_INLINE"
+check_contains "M221-c 内联形态回潮 ⇒ 判定式转向 INLINE_REGRESSION（判据非空转）" "$_M221_INLINE_CHK" "INLINE_REGRESSION"
+fresh
+python3 - "$work/cur" "$_M221_MSG" <<'PYEOF'
+import io
+import sys
+root, msg = sys.argv[1], sys.argv[2]
+assert root.endswith('/cur'), root          # 越界防线：MUST 只作用于沙箱副本
+p = root + '/plans/verify-battery.sh'
+s = io.open(p, encoding='utf-8').read()
+assert msg not in s, 'M221-d 夹具锚点已被占用'
+io.open(p, 'a', encoding='utf-8').write('# ' + msg + '\n')
+print('FIXTURE')
+PYEOF
+mutate "M221-d 夹具：核验缺口消息就地复制（第 2 处）已落地" "$work/cur/plans/verify-battery.sh" "$_M221_MSG"
+check_contains "M221-d 消息复制 ⇒ 判定式转向 MSG_DUP（判据非空转）" "$_M221_MSG_CHK" "MSG_DUP"
+
+#
+# ── M222（第 24 类条目前缀完整性；F459 实证：R658 的文档补丁丢掉 4 处 `- **标题**：` 前缀）──
+echo "[M222 CHANGELOG 条目前缀完整性（第 24 类）]"
+fresh
+python3 - "$work/cur" <<'PYEOF'
+import io
+import sys
+root = sys.argv[1]
+assert root.endswith('/cur'), root          # 越界防线：MUST 只作用于沙箱副本
+p = root + '/CHANGELOG.md'
+lines = io.open(p, encoding='utf-8').read().split('\n')
+hit = [i for i, ln in enumerate(lines) if ln.startswith('### 修复')]
+assert hit, 'M222-a 夹具锚点缺失'
+lines.insert(hit[0] + 1, '：条目前缀丢失探针')
+io.open(p, 'w', encoding='utf-8').write('\n'.join(lines))
+print('FIXTURE')
+PYEOF
+mutate "M222-a 夹具：段内无前缀正文行已落地" "$work/cur/CHANGELOG.md" '^：条目前缀丢失探针'
+check_rc "M222-a 条目前缀缺失 ⇒ 第 24 类须报" "bash plans/doc-consistency.sh" 1 "条目前缀缺失"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import io
+import sys
+p = sys.argv[1]
+s = io.open(p, encoding='utf-8').read()
+old = "        listbad.append('%s:%d(%s)' % (_cf, _n, _raw.strip()[:24]))"
+assert s.count(old) == 1, 'M222-b 锚点缺失'
+io.open(p, 'w', encoding='utf-8').write(s.replace(old, "        pass  # M222 weakened"))
+print('WEAKENED')
+PYEOF
+mutate "M222-b 削弱（摘掉条目前缀判定）已落地" "$work/cur/plans/doc-consistency.sh" '# M222 weakened'
+check_no_match "M222-b 摘掉判定 ⇒ 同夹具不再被点名（判据非空转）" \
+  "bash plans/doc-consistency.sh" "条目前缀缺失"
 fresh
 
 echo "[M204 帮助 MUST 不依赖环境（F421）]"

@@ -28,7 +28,9 @@
 #       以 `##` 小节声明的制品名，或该行显式标注「非仓内」——F385：原「巡检节奏」行以运行根
 #       本地脚本 `tools/patrol-cadence.py` 作为「机械」载体，仓内不可复现且仓内已有等价门）
 #   25. 同一制品的多处生成器须一致（INDEX 骨架模板：link 与 init 的 heredoc 须逐字节一致——F360）
-#   24. Markdown 表格列数一致（表格行的单元格数 MUST NOT 超过表头——GFM 规范下多余单元格被忽略
+#   24. Markdown 表格列数一致与列表条目形态（表格行的单元格数 MUST NOT 超过表头——GFM 规范下多余单元格被忽略；
+#       `CHANGELOG.md` 的 `### …` 段内正文行 MUST 以 `- ` 起行或为 2 空格续行——F459 实证：4 处条目前缀
+#       丢失而四门禁 + 自检 + 评分全绿
 #       ⇒ 内容静默丢失；代码跨度内的 `|` 须转义为 `\|`。行单元格数少于表头则补空单元格，不判失败。
 #       F295 实证：10 行不一致，其中 4 行为代码跨度内未转义 `|`）
 #   23. 简报检索日（含 URL 的 benchmarks MUST 带 `retrieved_at`；若原始检索日不可考，须显式写
@@ -94,10 +96,10 @@ codepunk_need_root "$ROOT" || exit 2
 # F253：python3 不可用时，下游未加守卫的判定点（11 处：123/143/152/199/230/572/607/637/830/866/888）
 #   会以**空值**参与比较 ⇒ 输出**虚假不一致**（例：凭空报「阶段口径不一」「文档未声明计数」），
 #   即把「无法核验」归因为「文档缺陷」。与本仓教义（无法核验 ≠ 通过）相悖 ⇒ 统一前置为显式失败（2）。
-#   既有 6 处细粒度 `command -v python3` + na() 分支保持不变（各自标注无法核验）；第 29 类
-#   改用库探针 `codepunk_have python3`（D125：探法单一声明源）。
-command -v python3 >/dev/null 2>&1 && python3 -c 'pass' 2>/dev/null \
-  || { echo "✗ python3 不可用（缺失或执行失败）——无法核验 ≠ 通过" >&2; exit 2; }
+#   既有细粒度 python3 守卫 + na() 分支保持不变（各自标注无法核验），探法统一走库探针
+#   `codepunk_have python3`（D126 单一声明源；内容治理第 7 轮：18 处内联形态已迁移，仅留 1 处 M85 锚点）；第 29 类
+#   改用库探针 `codepunk_have python3`（D126：探法单一声明源）。
+codepunk_need_py
 
 SKILL="skills/dsh-codepunk-workflow/SKILL.md"
 REF="skills/dsh-codepunk-workflow/references"
@@ -685,7 +687,7 @@ if [ -f plans/hooks/hooks.json ]; then
   if [ -n "$HOOK_INTERP" ] && ! command -v "$HOOK_INTERP" >/dev/null 2>&1; then
     bad "钩子解释器 \`${HOOK_INTERP}\` 不在 PATH ⇒ 钩子命令无法启动、产品不设 decision ⇒ 放行（拦截层静默失效）：装该解释器，或移除 agent.cordis.yml 的 hooks-write-scope 条目"
   fi
-  if command -v python3 >/dev/null 2>&1; then
+  if codepunk_have python3; then
     HOOK_ISSUE=$(python3 <<'PYEOF'
 import json, os, re
 issues = []
@@ -730,7 +732,7 @@ fi
 
 echo "[8] 日期形态与未来日期"
 TODAY=$(date +%F)
-if ! command -v python3 >/dev/null 2>&1; then
+if ! codepunk_have python3; then
   na "日期核验（缺 python3）"
 else
   # F365：未来日期判据 MUST 容忍时区偏移 —— 作者本机「今天」最多可超前 UTC「今天」1 天（UTC+14 时区），
@@ -793,7 +795,7 @@ PYEOF
 fi
 
 echo "[9] 编号引用可解析（D 逐条登记 / P 落在声明范围内）"
-if ! command -v python3 >/dev/null 2>&1; then
+if ! codepunk_have python3; then
   na "编号引用核验（缺 python3）"
 else
   NUM_ISSUE=$(python3 <<'PYEOF'
@@ -838,7 +840,7 @@ PYEOF
 fi
 
 echo "[10] 章节级引用可解析"
-if ! command -v python3 >/dev/null 2>&1; then
+if ! codepunk_have python3; then
   na "章节级引用核验（缺 python3）"
 else
   SEC_ISSUE=$(python3 <<'PYEOF'
@@ -905,7 +907,7 @@ PYEOF
 fi
 
 echo "[11] benchmarks 支撑决策号语义相符"
-if ! command -v python3 >/dev/null 2>&1; then
+if ! codepunk_have python3; then
   na "决策号语义核验（缺 python3）"
 else
   SEM_ISSUE=$(python3 <<'PYEOF'
@@ -955,7 +957,7 @@ PYEOF
 fi
 
 echo "[12] 状态取值合法性"
-if ! command -v python3 >/dev/null 2>&1; then
+if ! codepunk_have python3; then
   na "状态取值核验（缺 python3）"
 else
   ST_ISSUE=$(python3 <<'PYEOF'
@@ -998,7 +1000,7 @@ PYEOF
 fi
 
 echo "[13] 状态值正文引用（死状态检测）"
-if ! command -v python3 >/dev/null 2>&1; then
+if ! codepunk_have python3; then
   na "死状态核验（缺 python3）"
 else
   DEAD_ISSUE=$(python3 <<'PYEOF'
@@ -1423,7 +1425,7 @@ PYEOF
   if [ -z "$BM_ISSUE" ]; then ok "含 URL 的简报均带 retrieved_at（或无检索日时显式标注）"
   else bad "简报缺检索日 → ${BM_ISSUE}"; fi
 
-echo "[24] Markdown 表格列数一致与结构完整（表头↔分隔行↔数据行；围栏/缩进/引用块/无行首竖线）"
+echo "[24] Markdown 表格列数一致与结构完整 + 列表条目形态（表头↔分隔行↔数据行；条目前缀；围栏/缩进/引用块/无行首竖线）"
 TBL_ISSUE=$(python3 <<'PYEOF'
 # F296/F297 修复：原实现只认「行首竖线」且仅按 ``` 前缀切换围栏 ⇒ 对**引用块内表格**与「无行首
 #   竖线」的真表格漏检（其多余单元格仍会被渲染器静默丢弃），对 ~~~ 围栏、4 空格/制表符缩进代码块、
@@ -1432,7 +1434,7 @@ TBL_ISSUE=$(python3 <<'PYEOF'
 #   standard.md:29 分隔行后空行 ⇒ GFM 整表不成立，表体渲染为字面管道文本）。
 # 新口径（分隔行驱动）：仅当某行**紧邻**一个列数相符的分隔行时才成立表头；围栏按字符+长度配对；
 #   排除缩进代码块；空行即断表；另新增两条结构性判据（表头↔分隔行列数、分隔行后紧跟空行）。
-import glob, os, re
+import glob, io, os, re
 
 def strip_bq(s):
     while True:
@@ -1462,7 +1464,7 @@ def is_delim(s):
         return False
     return all(re.fullmatch(r':?-+:?', c.strip()) for c in t.strip('|').split('|') if c.strip())
 
-excess, struct = [], []
+excess, struct, listbad = [], [], []
 # F339：同 class 8 —— glob('**/*.md', recursive=True) 默认跟随符号链接 ⇒ 链接环下无限递归（门禁永不返回）；
 #   改用 os.walk（followlinks=False，默认不进入符号链接目录）。
 _md_files = []
@@ -1518,6 +1520,38 @@ for f in sorted(_md_files):
                 excess.append('%s:%d(%d>%d)' % (f, j + 1, c, d))
             j += 1
         i = max(j, i + 1)
+# F459：条目前缀完整性 —— `### …` 段落内的正文行 MUST 以 `- ` 起行或为 2 空格续行，
+#   否则渲染为上一列表项的续段/散段、条目标题不可检索（实证：上一轮的文档补丁丢掉 4 处
+#   `- **标题**：` 前缀，而四门禁 + 自检 + 评分全绿 —— 无任何判据核验列表条目形态）。
+_cf = 'CHANGELOG.md'
+if os.path.exists(_cf):
+    _sec = False
+    _cfence = None
+    for _n, _raw in enumerate(io.open(_cf, encoding='utf-8', errors='replace').read().split('\n'), 1):
+        _fo = fence_of(_raw)
+        if _cfence:
+            if _fo and _fo[0] == _cfence[0] and _fo[1] >= _cfence[1]:
+                _cfence = None
+            continue
+        if _fo:
+            _cfence = _fo
+            continue
+        if _raw.startswith('### '):
+            _sec = True          # F460：`### 修复` 不含 `## ` 前缀（第 3 字符是 `#`）⇒ 旧式判定恒 False，判据零触发
+            continue
+        if _raw.startswith('## '):
+            _sec = False
+            continue
+        if not _sec or _raw.strip() == '':
+            continue
+        _st = _raw.strip()
+        _rule = len(_st) >= 3 and not set(_st) - set('-*_')      # 主题分隔线（---/***/___）
+        if (_raw.startswith(('- ', '* ', '+ ', '  ', '\t', '> ', '|', '#', '`', '~~~'))
+                or _rule or _st in ('---',)):
+            continue
+        listbad.append('%s:%d(%s)' % (_cf, _n, _raw.strip()[:24]))
+if listbad:
+    print('LIST ' + ', '.join(listbad[:4]) + ('' if len(listbad) <= 4 else ' 等共 %d 行' % len(listbad)))
 if excess:
     print('EXCESS ' + ', '.join(excess[:4]) + ('' if len(excess) <= 4 else ' 等共 %d 行' % len(excess)))
 if struct:
@@ -1526,11 +1560,13 @@ PYEOF
 )
   TBL_EXCESS="$(printf '%s' "$TBL_ISSUE" | grep '^EXCESS ' | sed 's/^EXCESS //')"
   TBL_STRUCT="$(printf '%s' "$TBL_ISSUE" | grep '^STRUCT ' | sed 's/^STRUCT //')"
-  if [ -z "$TBL_EXCESS" ] && [ -z "$TBL_STRUCT" ]; then
-    ok "全部 Markdown 表格列数一致且结构完整（表头↔分隔行↔数据行）"
+  TBL_LIST="$(printf '%s' "$TBL_ISSUE" | grep '^LIST ' | sed 's/^LIST //')"
+  if [ -z "$TBL_EXCESS" ] && [ -z "$TBL_STRUCT" ] && [ -z "$TBL_LIST" ]; then
+    ok "全部 Markdown 表格列数一致、结构完整且列表条目前缀齐备（表头↔分隔行↔数据行）"
   else
     if [ -n "$TBL_EXCESS" ]; then bad "表格行单元格数超过表头 → ${TBL_EXCESS}"; fi
     if [ -n "$TBL_STRUCT" ]; then bad "表格结构异常（断表）→ ${TBL_STRUCT}"; fi
+    if [ -n "$TBL_LIST" ]; then bad "条目前缀缺失（渲染为上一列表项续段，条目标题不可检索）→ ${TBL_LIST}"; fi
   fi
 
 echo "[25] 同一制品的多处生成器须一致（INDEX 骨架模板单一来源）"

@@ -170,7 +170,7 @@ then p "✅" "目录树 ↔ 仓内文件一致"; else p "✗" "README 目录树�
 # 7) 脚本语法与健壮性
 for f in plans/*.sh; do bash -n "$f" 2>/dev/null || { p "✗" "bash -n: $f"; F=1; }; done
 # py：用 ast.parse（不生成 __pycache__，避免污染工作树被杂散检查判失败）
-if command -v python3 >/dev/null 2>&1; then
+if codepunk_have python3; then
   for f in plans/*.py; do
     [ -e "$f" ] || continue
     python3 -c 'import ast,sys; ast.parse(open(sys.argv[1],encoding="utf-8").read())' "$f" 2>/dev/null \

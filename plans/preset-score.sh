@@ -104,7 +104,7 @@ UNLABELED=$(grep -rnE "<[A-Z_]{3,}>" "$SKILL" 2>/dev/null | grep -vcE "占位|�
 [ "${UNLABELED:-0}" -gt 3 ] && ded A2 10 "未标注的占位符 ${UNLABELED} 处"
 
 # 行尾空白 / 连续 3+ 空行（格式卫生）
-if command -v python3 >/dev/null 2>&1; then
+if command -v python3 >/dev/null 2>&1; then  # M85 断言锚点：库探针迁移后仅保留本处内联形态
 WS=$(python3 - <<'PYEOF2'
 import subprocess
 files = [f for f in subprocess.run(['git','ls-files', '-z'], capture_output=True, text=True).stdout.split('\0') if f]  # F419：`-z` + NUL 切分（`.split()` 分词 ⇒ 含空白文件名被拆碎 ⇒ 漏扫）
@@ -125,7 +125,7 @@ elif [ -z "${WS:-}" ]; then
 elif [ "$WS" -gt 0 ]; then
   ded A2 10 "行尾空白/连续空行 ${WS} 处"
 fi
-fi   # command -v python3
+fi   # codepunk_have python3
 
 # ── A3 准确性 ───────────────────────────────────────────────────────────────
 NB=$(ls "$BM"/*.md 2>/dev/null | wc -l | tr -d ' ')
@@ -155,7 +155,7 @@ if [ -d "$HOME/.dsh-codepunk/tools/node_modules/js-yaml" ]; then
 elif [ -n "${DSH_APP_ROOT:-}" ] && [ -d "${DSH_APP_ROOT}/node_modules/js-yaml" ]; then
   YAML_DIR="${DSH_APP_ROOT}/node_modules/js-yaml"
 fi
-if command -v ruby >/dev/null 2>&1; then
+if codepunk_have ruby; then
   # F215：两路径谓词须**语义一致**（与 preset-audit 的 F214 同族）——统一为「name 为**非空字符串**」。
   # F309：同 preset-audit A1 —— Psych 4/5（ruby >= 3.1）默认禁用别名，本仓配置的
   #   YAML 锚点会让 YAML.load_file 抛 Psych::AliasesNotEnabled ⇒ 跨版本修法：先带
@@ -195,7 +195,7 @@ SZ=$(wc -c < "$SKILL" | tr -d ' ')
 #   按字节计会把短标语误判为长段落，故按字符计。
 # F194：缺 python3 时不得抛裸 `command not found`（会把**环境缺口**误报成质量缺陷），
 #   而应与套件其它工具一致地标注「无法核验 ≠ 通过」并给出扣分理由。
-if command -v python3 >/dev/null 2>&1; then
+if codepunk_have python3; then
 DUPSEG=$(python3 - <<'PYEOF2'
 import io, os
 seen = {}
@@ -363,7 +363,7 @@ fi
 
 # 注册表 schema 合法性（本地总库；不存在则跳过）：能过真实 YAML 解析器 + 键名一致
 IDX="$HOME/.dsh-codepunk/INDEX.yaml"
-if [ -f "$IDX" ] && command -v ruby >/dev/null 2>&1; then
+if [ -f "$IDX" ] && codepunk_have ruby; then
   # 跨版本 + 跨 locale 双修（与 link.sh ② 同构）：
   #   ① Psych 4/5（ruby ≥ 3.1）的 load_file 是 safe_load，INDEX 未加引号的 last_updated 时间戳
   #      会抛 Psych::DisallowedClass ⇒ 在 Linux 上把「合法注册表」误判为非法；带 permitted_classes
@@ -394,7 +394,7 @@ grep -q "D0[0-9][0-9]" "$REF/standard.md" 2>/dev/null || ded B15 20 "无决策�
 # D118：单文件上限 / 跨文件重复块冗余 / 跨文件重复行冗余 / 孤儿内容 / 溯源档案索引缺口——五项各自独立判据，
 #   上限值**只降不升**（削减落地后下调；上调须登记理由）。判据实现在下方内联 python，
 #   与工位仪器 `tools/junk-dup-scan.py` 同口径（三行窗口 / 块 ≥200 B、行 ≥40 字符）。
-if command -v python3 >/dev/null 2>&1; then
+if codepunk_have python3; then
   HYG_OUT=$(python3 - <<'PYEOF'
 # -*- coding: utf-8 -*-
 """B16 内容卫生判据（供 plans/preset-score.sh 内联调用；也可独立跑做核验）。
