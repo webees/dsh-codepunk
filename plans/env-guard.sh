@@ -25,6 +25,10 @@ fi
 # codepunk_need_root <root>：校验根路径确为本预设仓库（缺 SKILL.md 或 plans/ ⇒ rc=2 拒答）。
 #   F443 / 内容治理第 4 轮：此前 4 个门禁脚本各自内联同一段校验（5 行 ×4 ⇒ 块冗余 217 B ×3、
 #   样板重复行 837 B）；改由库提供，消费方单行调用。错误根必须拒答——不得在错误的树上继续判。
+# ③ 依赖可用性探针（D125）：以**声明**为依据的判据 MUST 先探依赖——探法只在此处定义，
+#    避免各判据各写一遍 `command -v x >/dev/null 2>&1` 而口径漂移（F405 家族）。
+codepunk_have() { command -v "$1" >/dev/null 2>&1; }
+
 codepunk_need_root() {
   if [ -f "$1/skills/dsh-codepunk-workflow/SKILL.md" ] && [ -d "$1/plans" ]; then
     return 0

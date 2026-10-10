@@ -11,6 +11,10 @@
 #       与「可选写成必填」两向；含 `--` 开关的提及属开关式形态，本类不判；仅名称差异只记 ℹ。
 #       F413 实证：`CONTRIBUTING.md` 三处与实现不符（evidence-verify 交付目录、acceptance-verify
 #       交付方、verify-battery 预设根），而第 4/5 类只管路径存在性与退出码声明）
+#   29. `.editorconfig` 声明落地（行尾空白 / 末尾单换行 / 换行形态 / 缩进制表符——硬判项一律以
+#       仓内**已声明**的标准为依据，不引入自定义阈值；git 不可用时回退文件系统遍历，真核验非跳过。
+#       F446 实证：`insert_final_newline` 声明下 `references/file-hygiene.md` 尾部为两个换行而四门禁
+#       全绿、评分满分 ⇒ 声明与落地脱节（F294/F327/F347/F373 家族的「无门禁声称」））
 #   1. 计数声称（16 指标 / 5 组 / 电池项数 / 18 references / 16 benchmarks）
 #   2. 阶段口径（README 表 = preset.yml 阶段项 = stages.md 阶段号 = 6）
 #   3. 术语咨询（裸用「工作区」列出供人工确认；**咨询不判失败**——矩阵已把术语一致性列为人工项）
@@ -89,7 +93,8 @@ codepunk_need_root "$ROOT" || exit 2
 # F253：python3 不可用时，下游未加守卫的判定点（11 处：123/143/152/199/230/572/607/637/830/866/888）
 #   会以**空值**参与比较 ⇒ 输出**虚假不一致**（例：凭空报「阶段口径不一」「文档未声明计数」），
 #   即把「无法核验」归因为「文档缺陷」。与本仓教义（无法核验 ≠ 通过）相悖 ⇒ 统一前置为显式失败（2）。
-#   既有 6 处细粒度 `command -v python3` + na() 分支保持不变（各自标注无法核验）。
+#   既有 6 处细粒度 `command -v python3` + na() 分支保持不变（各自标注无法核验）；第 29 类
+#   改用库探针 `codepunk_have python3`（D125：探法单一声明源）。
 command -v python3 >/dev/null 2>&1 && python3 -c 'pass' 2>/dev/null \
   || { echo "✗ python3 不可用（缺失或执行失败）——无法核验 ≠ 通过" >&2; exit 2; }
 
@@ -734,7 +739,7 @@ if not files:
         _dns[:] = [d for d in _dns if d != '.git']
         for _fn in _fns:
             if _fn.endswith(('.md', '.yml')):
-                files.append(os.path.relpath(os.path.join(_dp, _fn), '.'))
+                files.append(os.path.relpath(os.path.join(_dp, _fn)))
     mode = 'walk'
 files = [f for f in files if f.endswith(('.md', '.yml')) and '/benchmarks/' not in f]
 bad_form, future = [], []
@@ -1446,7 +1451,7 @@ for _dp, _dns, _fns in os.walk('.'):
     _dns[:] = [d for d in _dns if d != '.git']
     for _fn in _fns:
         if _fn.endswith('.md'):
-            _md_files.append(os.path.relpath(os.path.join(_dp, _fn), '.'))
+            _md_files.append(os.path.relpath(os.path.join(_dp, _fn)))
 for f in sorted(_md_files):
     if '/.git/' in f or f.startswith('.git/'):
         continue
@@ -1927,6 +1932,128 @@ PYEOF
       if [ -n "$EXT_BAD" ]; then bad "plans 扩展名计数声称陈旧: ${EXT_BAD}"
       elif [ "${EXT_HITS:-0}" -eq 0 ]; then info "未出现 plans 扩展名计数声称（域：全部跟踪 .md，形态「N 个 \`.ext\`」且行内含 plans/）"
       else ok "plans 扩展名计数声称与实现一致（命中 ${EXT_HITS} 处：.sh/.py/.mjs/.ps1）"; fi
+      ;;
+  esac
+fi
+echo "[29] .editorconfig 声明落地（行尾空白 / 末尾单换行 / 换行形态 / 缩进制表符）"
+# F446：`.editorconfig` 声明 `trim_trailing_whitespace` / `insert_final_newline` / `end_of_line`
+#   （`[*.ps1]` 覆写为 crlf），而仓内**无任何门禁**核验这三项落地（第 17 类只核 `.ps1` 的 CRLF）。
+#   实测 `skills/dsh-codepunk-workflow/references/file-hygiene.md` 尾部为**两个换行**（违反
+#   `insert_final_newline`）而四门禁全绿、评分满分 ⇒ 声明与落地脱节（同 F294/F327/F347/F373）。
+#   硬判项一律以**声明**为依据（不引入自定义阈值）；git 不可用时回退文件系统遍历（真核验，非跳过）。
+if ! codepunk_have python3; then
+  na "缺 python3：第 29 类（.editorconfig 声明落地）无法核验"
+else
+  EC_OUT=$(python3 - <<'PYEOF'
+import fnmatch, os, re, subprocess
+
+sections, cur = [], None
+try:
+    for ln in open('.editorconfig', encoding='utf-8'):
+        s = ln.strip()
+        if not s or s.startswith('#'):
+            continue
+        if s.startswith('[') and s.endswith(']'):
+            cur = (s[1:-1].strip(), {})
+            sections.append(cur)
+        elif '=' in s and cur is not None:
+            k, v = s.split('=', 1)
+            cur[1][k.strip().lower()] = v.strip().lower()
+except OSError:
+    print('UNVER 缺 .editorconfig（判据无声明源）')
+    raise SystemExit
+
+
+def braces(pat):
+    m = re.search(r'\{([^{}]*)\}', pat)
+    if not m:
+        return [pat]
+    out = []
+    for alt in m.group(1).split(','):
+        out.extend(braces(pat[:m.start()] + alt + pat[m.end():]))
+    return out
+
+
+def props(rel):
+    base, p = os.path.basename(rel), {}
+    for pat, kv in sections:
+        for q in braces(pat):
+            if fnmatch.fnmatch(base, q) or fnmatch.fnmatch(rel, q):
+                p.update(kv)
+                break
+    return p
+
+
+TEXT = ('.md', '.sh', '.py', '.mjs', '.js', '.yml', '.yaml', '.json', '.ps1', '.txt',
+        '.ini', '.cfg', '.toml')
+DOT = ('.gitattributes', '.editorconfig', '.gitignore', '.pre-commit-config.yaml')
+r = subprocess.run(['git', 'ls-files', '-z'], capture_output=True)
+files = ([x for x in r.stdout.decode('utf-8', 'replace').split('\0') if x]
+         if r.returncode == 0 else [])
+# F449：`git ls-files` 返回 0 但**空结果**（索引损坏 / 空索引）时，仓内其实有文件——此处 MUST
+#   回退文件系统遍历做**真核验**，MUST NOT 直接判「无法核验」（那会把可核验的声明放弃掉，
+#   并污染终局归因计数）。实测：`GIT_INDEX_FILE=/nonexistent-advm` ⇒ 原实现记 1 处「无法核验」。
+if not files:
+    for dp, dns, fns in os.walk('.'):
+        dns[:] = [d for d in dns if d != '.git']
+        for fn in fns:
+            files.append(os.path.relpath(os.path.join(dp, fn)))
+    print('FALLBACK git 枚举不可用或为空：已回退文件系统遍历（真核验，非跳过）')
+if not files:
+    print('UNVER 文件枚举为空')
+    raise SystemExit
+bad, n = [], 0
+for rel in sorted(files):
+    if not (rel.endswith(TEXT) or os.path.basename(rel) in DOT):
+        continue
+    try:
+        raw = open(rel, 'rb').read()
+    except OSError:
+        continue
+    if len(raw) > 4 * 1024 * 1024 or b'\x00' in raw[:4096]:
+        continue
+    n += 1
+    p = props(rel)
+    eol = p.get('end_of_line', 'lf')
+    try:
+        txt = raw.decode('utf-8')
+    except UnicodeDecodeError:
+        bad.append('%s（非 UTF-8）' % rel)
+        continue
+    nl = b'\r\n' if eol == 'crlf' else b'\n'
+    if not raw.endswith(nl) or raw.endswith(nl * 2):
+        bad.append('%s（末尾非单换行：声明 insert_final_newline）' % rel)
+    if eol == 'crlf':
+        rest = raw.replace(b'\r\n', b'')
+        if b'\n' in rest or b'\r' in rest:
+            bad.append('%s（换行形态不符：声明 crlf）' % rel)
+    elif b'\r\n' in raw:
+        bad.append('%s（换行形态不符：声明 lf）' % rel)
+    for i, ln in enumerate(txt.split('\n'), 1):
+        body = ln[:-1] if ln.endswith('\r') else ln
+        if body != body.rstrip():
+            bad.append('%s:%d（行尾空白：声明 trim_trailing_whitespace）' % (rel, i))
+        if p.get('indent_style', 'space') == 'space' and body.startswith('\t'):
+            bad.append('%s:%d（行首制表符缩进：声明 indent_style=space）' % (rel, i))
+print('SCANNED %d' % n)
+for b in bad[:6]:
+    print('BAD %s' % b)
+print('NBAD %d' % len(bad))
+PYEOF
+)
+  case "$EC_OUT" in
+    *"UNVER "*) na "$(printf '%s\n' "$EC_OUT" | sed -n 's/.*UNVER //p' | head -1)" ;;
+    *)
+      case "$EC_OUT" in *FALLBACK*) info "git 枚举不可用：第 29 类回退文件系统遍历（真核验，非跳过）" ;; esac
+      EC_BAD="$(printf '%s\n' "$EC_OUT" | sed -n 's/^BAD //p' | tr '\n' ' ' | sed 's/ *$//')"
+      EC_SCAN="$(printf '%s\n' "$EC_OUT" | sed -n 's/^SCANNED //p')"
+      EC_N="$(printf '%s\n' "$EC_OUT" | sed -n 's/^NBAD //p')"
+      if [ -n "${EC_BAD}" ]; then
+        bad "违反 .editorconfig 声明: ${EC_BAD}"
+      else
+        ok ".editorconfig 声明落地一致（核验 ${EC_SCAN:-0} 个文本文件，违反 0；末尾换行 / 行尾空白 / 换行形态 / 行首制表符）"
+      fi
+      [ "${EC_N:-0}" = 0 ] || true
       ;;
   esac
 fi

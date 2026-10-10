@@ -233,6 +233,7 @@
 | **诊断的对象点名**（D114：失败诊断 MUST 指出具体对象（文件名/路径/条目），MUST NOT 只报数量。F424 实证：`init.sh --check` 报「缺失/过期 1 个」而不点名 ⇒ 定位需手工遍历 23 个源副本） | `plans/dsh-codepunk-init.sh` `install_scripts()`（`_stale_names`）+ `plans/checker-self-test.sh` M208（含削弱反向断言） | 机械（变异） |
 | **派生计数声称的机械守护**（D115：文档中由仓库实况派生的计数声称（变异项数/类数/电池项数/按扩展名的文件数）MUST 落在门禁域内并逐处比对。F425 实证：`docs/development.md` 声称 `.sh`/`.py` 计数为 13/2 而实况 16/3） | `plans/doc-consistency.sh` 第 1 类扩展名计数声称子项（`git ls-files` 派生）+ `plans/checker-self-test.sh` M209（含削弱反向断言） | 机械（变异） |
 | **清理动作的幂等与终态诚实**（D116：收敛/清理类动作 MUST 幂等——目标状态已达成时报「已完成（无需操作）」且 rc=0，MUST NOT 报失败；并 MUST 清理派生的陈旧引用。F426 实证：`delete_branch_on_merge=true` 下合并已删 head 分支，无条件 `push --delete` 报「删除远端分支失败」，且 `git branch -r` 残留 3 个已不存在的分支） | `plans/git-merge-flow.sh` merge 段（`git ls-remote --heads origin` 探测 + `git remote prune origin`）+ `plans/checker-self-test.sh` M210（a/a2/b/b2/c，含削弱反向断言） | 机械（变异） |
+| **内容形态声明落地**（`.editorconfig` 声明的 `trim_trailing_whitespace` / `insert_final_newline` / `end_of_line`〔`[*.ps1]` 覆写为 crlf〕/ `indent_style` MUST 有门禁核验落地；硬判项一律以**已声明**标准为依据、不引入自定义阈值；`git` 枚举不可用时回退文件系统遍历。F446 实证：`insert_final_newline` 声明下 `skills/dsh-codepunk-workflow/references/file-hygiene.md` 尾部为两个换行，而四门禁全绿、评分满分 ⇒ 声明与落地脱节） | `plans/doc-consistency.sh` 第 29 类 + `plans/checker-self-test.sh` M218（夹具：尾部双换行 / 行尾空白 ⇒ 须报；削弱 ⇒ 不再报） | 机械（变异 M218） |
 | **日期时效性**（文档内实测结论是否已过期） | 无 | 人工 |
 | 需求/流程自洽（阶段归属、汇报链、责任席位是否有人） | 部分（A7/结构检查） | 半人工 |
 
