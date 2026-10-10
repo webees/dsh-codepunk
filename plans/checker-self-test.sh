@@ -19,7 +19,7 @@
 set -u
 
 _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
-# F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当预设根（报「预设根无效: -h」），
+# F361（本轮实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当预设根（报「预设根无效: -h」），
 #   而本脚本的 M149 变异自述「`-h`/`--help` 约定……第 20 类探针 MUST 覆盖全部实现者」——
 #   自身却是缺口（自相矛盾）。现补上。
 SKIPPED=0      # F374：**跳过**计数（环境受限而未执行的变异）——结论行 MUST 据实报告覆盖
@@ -166,7 +166,7 @@ fresh()      { rm -rf "$work/cur"; cp -R "$SRC" "$work/cur"; }
 fresh_nogit(){ rm -rf "$work/cur"; mkdir -p "$work/cur"
                tar -C "$SRC" --exclude=.git -cf - . 2>/dev/null | tar -C "$work/cur" -xf - 2>/dev/null; }
 
-# F397（本轮巡检实测）：变异 MUST 作用于 `$work/cur`（沙箱副本）——裸相对路径（如 `plans/x.sh`）在主 shell
+# F397（本轮实测）：变异 MUST 作用于 `$work/cur`（沙箱副本）——裸相对路径（如 `plans/x.sh`）在主 shell
 #   下解析到**源树**，会把「删除型变异」真的施加于仓库文件（本轮实测：M188-c 的裸 `sed -i.bak` 删掉
 #   `plans/write-scope-check.sh` 的判据 h 实现，紧随的 `rm -f …bak` 又抹掉备份 ⇒ 源树静默退化，
 #   仅因 hub 镜像留有副本才可无损恢复）。为此本脚本自带**源树密封判据**：开工前取指纹，收尾比对。
@@ -2175,7 +2175,7 @@ rm -f "$work/cur/CONTRIBUTING.md.bak"
 check_no_match "M159-d 判据被抹掉 → 不得再报该消息（断言非空转）" \
   "bash plans/doc-consistency.sh 2>&1" "CI 门禁表与实现不符"
 
-echo "[M160 Dependabot 声明 ↔ 仓库与治理脚本（本轮巡检实测）]"
+echo "[M160 Dependabot 声明 ↔ 仓库与治理脚本（本轮实测）]"
 # 守护点：doc-consistency.sh 第 7 类的 Dependabot 子项。声明的生态须有对应清单（否则条目恒不产出 PR）、
 # labels 引用的标签须由 plans/github-setup.sh 幂等创建（否则字段静默失效）、维护文档的生态清单须与声明一致。
 # 本机可跑（纯文本判据，无外部依赖）。
@@ -2211,7 +2211,7 @@ printf '  - package-ecosystem: pip\n' >> "$work/cur/.github/dependabot.yml"
 check_no_match "M160-d 判据被抹掉 → 不得再报该消息（断言非空转）" \
   "bash plans/doc-consistency.sh 2>&1" "Dependabot 配置与仓库/治理脚本不符"
 
-echo "[M161 运行型脚本 MUST 实现 -h/--help（doc-consistency 第 20 类静态子项，本轮巡检实测）]"
+echo "[M161 运行型脚本 MUST 实现 -h/--help（doc-consistency 第 20 类静态子项，本轮实测）]"
 # 守护点：探针表是人工枚举，新增脚本极易漏挂（本轮实测 4 个实现者不在表内）；静态子项以源码为准。
 fresh
 sed -i.bak 's/^  -h|--help) sed -n/  --no-such-flag) sed -n/' "$work/cur/plans/evidence-verify.sh"
@@ -2224,7 +2224,7 @@ fresh
 check_rc "M161-b 干净副本不得报该缺口（断言非空转）" \
   "bash plans/doc-consistency.sh 2>&1 | grep -qF '未实现 -h/--help 用法约定'" 1
 
-echo "[M162 INDEX 骨架模板单一来源（doc-consistency 第 25 类，本轮巡检实测）]"
+echo "[M162 INDEX 骨架模板单一来源（doc-consistency 第 25 类，本轮实测）]"
 # 守护点：link.sh 与 init.sh 是同一制品（总库 INDEX.yaml 骨架）的两处生成器，
 #   且 init 见文件已存在即跳过 ⇒ 模板不一致时终态取决于「谁先建文件」（F360 实证）。
 fresh
@@ -2239,7 +2239,7 @@ fresh
 check_rc "M162-b 干净副本须报单一来源（断言非空转）" \
   "bash plans/doc-consistency.sh 2>&1 | grep -qF 'INDEX 骨架模板单一来源'" 0
 
-echo "[M163 外部输入变量须被记载（doc-consistency 第 5 类子项，本轮巡检实测）]"
+echo "[M163 外部输入变量须被记载（doc-consistency 第 5 类子项，本轮实测）]"
 # 守护点：未在本文件赋值、或写成 `${VAR:-默认}` 的覆盖开关 MUST 被记载（任一 .md 或头部注释块）。
 # 夹具注意：变量名与 `${…:-…}` 形态 MUST 在运行期拼出——若把该形态逐字写在**本文件**里，
 # 守护会把它当成本文件（`plans/checker-self-test.sh`）的一处「未记载覆盖开关」而误报（实测：
@@ -2283,7 +2283,7 @@ mutate "M164-a 断言依赖的规则名确在 hook 源码内" \
   "$work/cur/plans/hook-write-scope.py" "$m164_rule"
 check_rc "M164-b 预设仓库内路径须放行（rc=0）" \
   "HOME='$m164_home' python3 plans/hook-write-scope.py --fixture m164-allow.json 2>&1" 0
-# F367（本轮巡检实测）：黑名单比对曾有两条**静默绕过**（未命中即放行，无任何提示）——
+# F367（本轮实测）：黑名单比对曾有两条**静默绕过**（未命中即放行，无任何提示）——
 #   d) `//etc/hosts`：POSIX 归一（`posixpath.normpath`）**保留前导双斜杠** ⇒ 与根 `/etc` 的字面
 #      前缀比对不成立，而 POSIX 平台上它就是 `/etc/hosts`（同一文件）；
 #   e) 大小写变体 `/ETC/hosts`：macOS 默认卷（APFS/HFS+）不区分大小写 ⇒ 同一文件。
@@ -2469,7 +2469,7 @@ mutate "M171-d 变异（覆盖分支恒假）" "$work/cur/plans/checker-self-tes
 check_rc "M171-d 覆盖分支被破坏后同命令须复现旧文案（证明分支非空转）" \
   "DSH_CODEPUNK_ECHO_SKIPPED=3 bash plans/checker-self-test.sh --coverage-echo" 0 "全部变异均被对应检查项捕获"
 
-echo "[M173 运行根 write_scope 台账段（R17/F377）]"
+echo "[M173 运行根 write_scope 登记段（R17/F377）]"
 # 契约：references/artifacts.md §1.3 —— 运行根 README MUST 含 `write_scope:` 段（5 键：
 #   run_id / allowed_prefixes / created / cleanup_status / exempt），且 `cleanup_status: clean`
 #   是交接门与合并门的前置读数。夹具全部在沙箱内自建 ⇒ 不依赖本席真实运行根。
@@ -2570,38 +2570,6 @@ mutate "M175-b 变异（把 \`-i\` 后缀判据收窄回字母）" \
   "$work/cur/plans/hook-write-scope.py" 'P<suf>\[A-Za-z\]\*'
 check_no_match "M175-b 后缀判据收窄后 \`sed -i.bak\` 不得再被阻断（证明该覆盖非空转）" \
   "python3 plans/hook-write-scope.py --fixture m175-sed.json 2>&1" "$m175_rule"
-
-echo "[M176 巡检名册字段契约（F382：每条须齐备 \`round\`/\`at\`/\`note\`）]"
-# 契约：references/artifacts.md 的 D095/D099 要求运行根 `agents.yaml` 的 `patrol_log` 每条齐备
-#   `round`/`at`/`note`（旧形态 `{round, checked, result}` 缺 at/note 却无任何机械门）。
-#   判据实现：plans/patrol-check.sh --run-root（字段齐备 / 唯一 / 间隔 ≤ N）。
-fresh
-m176_rr="$work/runroot"
-mkdir -p "$m176_rr"
-cat > "$m176_rr/agents.yaml" <<'YAML'
-run_id: run-m176
-patrol_every_n_rounds: 5
-patrol_log:
-  - round: 10
-    at: "2026-10-08T00:00:00Z"
-    note: "巡检：夹具 A（list_agents ⇒ 无中断席）"
-  - round: 15
-    at: "2026-10-08T00:05:00Z"
-    note: "巡检：夹具 B（list_agents ⇒ 无中断席）"
-seats: []
-YAML
-check_rc "M176-a 合规名册须通过（rc=0）" \
-  "bash plans/patrol-check.sh --run-root \"$m176_rr\"" 0 "巡检名册合规"
-sed -i.bak '/^    at: /d' "$m176_rr/agents.yaml"; rm -f "$m176_rr/agents.yaml.bak"
-mutate_gone "M176-b 删除型变异落地（夹具内 \`at\` 字段已消失）" "$m176_rr/agents.yaml" '^    at: '
-check_rc "M176-b 缺 \`at\` 须被报出（rc=1）" \
-  "bash plans/patrol-check.sh --run-root \"$m176_rr\"" 1 "缺 at"
-# 非空转证明：把「缺 at」判据行短路（`[ -n \"\$v_at\" ]` → `true`）⇒ 同一夹具不得再报该消息。
-sed -i.bak 's|\[ -n "\$v_at" \]|true  # F382-MUT|' "$work/cur/plans/patrol-check.sh"
-rm -f "$work/cur/plans/patrol-check.sh.bak"
-mutate "M176-c 变异（缺 at 判据被短路）" "$work/cur/plans/patrol-check.sh" 'F382-MUT'
-check_no_match "M176-c 判据短路后不得再报「缺 at」（证明该判据非空转）" \
-  "bash plans/patrol-check.sh --run-root \"$m176_rr\"" "缺 at"
 
 echo "[M177 hooks 真实路径归一（F383：/etc 与 /private/etc、符号链接同文件须同判）]"
 # 契约：references/file-hygiene.md §8.2 的黑名单是**文件**级承诺（系统路径不得由工具写入）。
@@ -2772,24 +2740,6 @@ GONE_PAT="F394：终局 MUTFAIL ""门（早退点"
 mutate_gone "M186-b 终局门已被删除（删除型变异）" "$work/cur/plans/checker-self-test.sh" "$GONE_PAT"
 check_rc "M186-b 删掉终局门后门计数须降为 1（证明该断言非空转）" "grep -cE 'exit 2; fi\$' plans/checker-self-test.sh | grep -qx 2" 1
 
-echo "[M187 巡检名册单引号标量闭合性（F395：撇号未双写致名册不可解析，而两门曾同报通过）]"
-mkdir -p "$work/rr187"
-cat > "$work/rr187/agents.yaml" <<'YAML187'
-run_id: r187
-patrol_log:
-  - round: 1
-    at: '2026-10-08T00:00:00+07:00'
-    note: '巡检：正常'
-  - round: 2
-    at: '2026-10-08T01:00:00+07:00'
-    note: '巡检：撇号 it's 未双写'
-YAML187
-check_rc "M187-a 单引号标量内未双写撇号须被 patrol-check 报出" "bash plans/patrol-check.sh --run-root \"$work/rr187\"" 1 "单引号标量未闭合"
-sed -i.bak "s/it's/it''s/" "$work/rr187/agents.yaml"
-rm -f "$work/rr187/agents.yaml.bak"
-mutate_gone "M187-b 撇号已双写（删除型变异）" "$work/rr187/agents.yaml" "it's"
-check_rc "M187-b 双写后须判合规（证明该判据非空转）" "bash plans/patrol-check.sh --run-root \"$work/rr187\"" 0 "巡检名册合规"
-
 echo "[M188 运行根 cleanup_status=clean 的实况核验（F396：只验键齐备/取值，残留备份也报通过）]"
 mkdir -p "$work/rr188"
 cat > "$work/rr188/README.md" <<'RR188'
@@ -2837,27 +2787,6 @@ check_rc "M190-b2 合法取值不得被误拒（--order=5 / --id=my-preset.1 须
     && rm -f plans/preset-declare.mjs.bak )
 mutate_gone "M190-c 删除型变异（移除 --order 守卫；作用于沙箱副本）" "$work/cur/plans/preset-declare.mjs" "Number.isSafeInteger(ORDER)"
 check_rc "M190-c 移除守卫后同输入须复现静默产出（order: NaN 落进声明）" "node plans/preset-declare.mjs emit --order=abc >\"$work/m190c.out\" 2>&1; grep -q 'order: NaN' \"$work/m190c.out\" && echo SILENT_NAN" 0 "SILENT_NAN"
-
-# F400：巡检名册时间戳实况核验（判据 i）——未来时间 / 非单调 MUST 报出，合规 MUST 通过。
-#   夹具全部落在 $work 沙箱（纪律 ㉟：变异与夹具 MUST 作用于沙箱副本，绝不碰源树）。
-m191_dir="$work/m191"; rm -rf "$m191_dir"; mkdir -p "$m191_dir/future" "$m191_dir/nonmono" "$m191_dir/ok" "$m191_dir/bad"
-m191_past="$(date -u -v-2H +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '-2 hours' +%Y-%m-%dT%H:%M:%SZ)"
-m191_now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-m191_fut="$(date -u -v+7H +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '+7 hours' +%Y-%m-%dT%H:%M:%SZ)"
-mk191() { # mk191 <目录> <at1> <at2>（时间戳一律带自身的偏移设计符 `Z`，跨时区主机同结果）
-  printf 'updated_at: %s\npatrol_log:\n  - round: 1\n    at: %s\n    note: 夹具一\n  - round: 2\n    at: %s\n    note: 夹具二\n' \
-    "$3" "$2" "$3" > "$m191_dir/$1/agents.yaml"
-}
-mk191 future "$m191_past" "$m191_fut"
-mk191 nonmono "$m191_now" "$m191_past"
-mk191 ok "$m191_past" "$m191_now"
-printf 'updated_at: %s\npatrol_log:\n  - round: 1\n    at: 2026-10-08T22:00+07:00\n    note: 形态夹具（缺秒）\n' \
-  "$m191_now" > "$m191_dir/bad/agents.yaml"
-echo "[M191 巡检名册时间戳实况核验（未来时间 / 非单调）（F400）]"
-check_rc "M191-a 未来时间戳须 rc=1 并报出（判据 i 非空转）" "bash plans/patrol-check.sh --run-root \"$m191_dir/future\" 2>&1" 1 "未来时间"
-check_rc "M191-b 非单调 at 须 rc=1 并报出" "bash plans/patrol-check.sh --run-root \"$m191_dir/nonmono\" 2>&1" 1 "非递减"
-check_rc "M191-c 合规夹具须 rc=0（不得误报）" "bash plans/patrol-check.sh --run-root \"$m191_dir/ok\" 2>&1" 0 "巡检名册合规"
-check_rc "M191-d 形态非法（缺秒/缺偏移）须 rc=1 并报出" "bash plans/patrol-check.sh --run-root \"$m191_dir/bad\" 2>&1" 1 "形态非法"
 
 echo "[M192 运行根残留实况核验须**递归**（F403：原判据 h 只扫顶层 ⇒ 子目录编译缓存不可见）]"
 # F403 实证：`tools/__pycache__/*.pyc` 在运行根子目录在场而 `--run-root` 门 rc=0（只扫顶层）。
@@ -3223,7 +3152,7 @@ check_no_match "M202-c 削弱（去 -a）⇒ 注入的缺陷名不再被点名�
 
 echo "[M203 POSIX 模式前置守卫（F421）]"
 fresh
-for _s in doc-consistency preset-audit preset-score dsh-codepunk-leak-guard write-scope-check patrol-check verify-worktree github-setup git-merge-flow; do
+for _s in doc-consistency preset-audit preset-score dsh-codepunk-leak-guard write-scope-check verify-worktree github-setup git-merge-flow; do
   check_rc "M203-a ${_s} 在 POSIX 模式保守拒答（rc=2 且带措辞）" \
     "POSIXLY_CORRECT=1 bash plans/${_s}.sh 2>&1" 2 "POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）"
 done
@@ -3359,9 +3288,12 @@ python3 - "$work/cur/docs/development.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-old = '（17 个 `.sh` + 3 个 `.py`'
-new = '（17 个 `.sh`〔含 `env-guard.sh` 库〕 + 3 个 `.py`'
-assert old in s, 'M216 锚点缺失'
+import re
+m = re.search(r'（(\d+) 个 `\.sh` \+ (\d+) 个 `\.py`', s)
+assert m is not None, 'M216 锚点缺失（目录行须保持「N 个 `.sh` + M 个 `.py`」链式形态）'
+old = m.group(0)
+new = old.replace('个 `.sh`', '个 `.sh`〔含 `env-guard.sh` 库〕', 1)
+assert new != old and s.count(old) == 1, 'M216 锚点不唯一或未变化'
 open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
 print('MUTATED')
 PYEOF
@@ -3672,7 +3604,7 @@ check_rc "M225-a 仓内许可正文不重复 ⇒ A5 精简度须满分（干净�
 check_no_match "M225-a2 干净态 MUST NOT 出现「成段重复」（判据非空转）" \
   "bash plans/preset-score.sh 2>&1" "成段重复"
 # F472（本轮实测）：两种复制形态由**不同**判据拦截——跨文件（LICENSE ↔ 文档）由 B16「跨文件重复行冗余」
-#   拦截（其上限已按 D118 棘轮到 7000，故复制回正文即 7173 > 7000）；同一文件内复制两份则由 A5
+#   拦截（其上限已按 D118 棘轮到 6500——实测干净态 5925、复制一份即 6966 > 6500，余量 34 字节即失效，故 R665 由 7000 棘轮到 6500）；同一文件内复制两份则由 A5
 #   「成段重复」拦截。夹具按份数参数化，两条断言各自实证，避免把「成段重复」误写成跨文件判据。
 python3 - "$work/cur/docs/licensing.md" "$work/cur/LICENSE" "${_m225_copies:-1}" <<'PYEOF4'
 import io
@@ -3920,9 +3852,12 @@ python3 - "$work/cur/docs/development.md" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-old = '（17 个 `.sh` + 3 个 `.py` + 2 个 `.mjs`'
+import re
+m = re.search(r'（\d+ 个 `\.sh` \+ \d+ 个 `\.py` \+ \d+ 个 `\.mjs`', s)
+assert m is not None, 'M209-a 锚点缺失（目录行须保持三段链式形态）'
+old = m.group(0)
 new = '（13 个 `.sh` + 2 个 `.py` + 2 个 `.mjs`'
-assert old in s, 'M209-a 锚点缺失'
+assert new != old and s.count(old) == 1, 'M209-a 锚点不唯一或未变化'
 open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
 print('MUTATED')
 PYEOF
@@ -4149,6 +4084,61 @@ check_no_match "M213-c 削弱（移除 B16 调用）⇒ 重复块 MUST NOT 再�
 # F416（本轮实测）：**报告顺序** MUST 让因果更早的判据先报。源树被并发改动（运行期间有人在
 #   源树里改脚本）会让 `fresh()` 复制出语法损坏的副本 ⇒ 成批变异「未生效/退出码 2」，
 #   而旧顺序把密封判据排在 MUTFAIL 门**之后** ⇒ 真因（源树已改动）被「自检脚本问题」掩盖，
+echo "[M227 禁止记账机制（R665：记账载体/词汇不得回流，替代机制 MUST 被登记）]"
+fresh
+check_rc "M227-a 干净态须通过并声明单一事实源" \
+  "bash plans/doc-consistency.sh 2>&1" 0 "无记账机制"
+printf '%s\n' "# 记账载体（M227 夹具）" > "$work/cur/ledger.md"
+mutate "M227-b" "$work/cur/ledger.md" '记账载体（M227 夹具）'
+check_rc "M227-b 记账载体回流 ⇒ 须报并点名（判据非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "记账载体回流"
+rm -f "$work/cur/ledger.md"
+printf '%s\n' "| 记账词汇夹具 | 台账 | 名册 |" >> "$work/cur/skills/dsh-codepunk-workflow/references/roles.md"
+mutate "M227-c" "$work/cur/skills/dsh-codepunk-workflow/references/roles.md" '记账词汇夹具'
+check_rc "M227-c 记账词汇回流 ⇒ 须报（预置词汇域 MUST 覆盖 skills/**）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "记账词汇"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "    if os.path.exists(a):"
+new = "    if False:"
+assert old in s, 'M227-d 削弱锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('WEAKENED')
+PYEOF
+check_no_match "M227-d 削弱（去掉载体存在性判据）⇒ 记账载体不再被点名（判据非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "记账载体回流"
+fresh
+
+echo "[M228 索引与工作树不一致须保守拒答（F479；子项无输出 ≠ 通过）]"
+# 守护点：判定类工具枚举 `git ls-files` 时，**索引内列出而工作树缺失**的条目（未暂存删除 / 检出损坏）
+#   MUST 被单列并判「无法核验 ≠ 通过」，MUST NOT 抛原始 Traceback；且第 5 类子项**无输出**
+#   MUST 判保守失败——旧实现「空输出 ⇒ 均被记载」是假绿灯（F479 实证）。
+fresh
+_m228_gone="plans/verify-""worktree.sh"
+rm -f "$work/cur/$_m228_gone"
+check_rc "M228-a 未暂存删除 ⇒ 须报「工作树缺失索引内文件」并 rc=1" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "工作树缺失索引内文件"
+check_no_match "M228-b 该形态 MUST NOT 抛原始 Traceback（卫生规则）" \
+  "bash plans/doc-consistency.sh 2>&1" "Traceback (most recent call last)"
+fresh
+check_no_match "M228-c 干净副本 MUST NOT 报该消息（断言非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "工作树缺失索引内文件"
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "    MISSING.extend(gone)"
+new = "    pass  # M228-d weakened"
+assert old in s, 'M228-d 削弱锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('WEAKENED')
+PYEOF
+check_no_match "M228-d 削弱（去掉索引缺失记录）⇒ 该消息不再出现（判据非空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "工作树缺失索引内文件"
+fresh
+
 #   排查方向被误导。故：先判密封，再判变异落地（顺序由 M200 静态守护）。
 # [F416-顺序锚点] 源树密封判据 MUST 排在 MUTFAIL 门之前（见 D107 / M200）
 # F397：源树密封判据（全轮比对）——任一变异越界改动源树都在此显式失败，不得静默污染工作树。

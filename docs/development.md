@@ -16,7 +16,7 @@
 
 脚本内已固定 UTF-8 locale：当 `locale charmap` 不是 UTF-8 且系统存在 UTF-8 locale 时自动 `export LC_ALL`。原因：C/POSIX 或 ISO-8859 系 locale 下 BSD 工具链逐字节处理，会**误报**一致性缺陷。手工复跑命令时请勿显式指定 `LC_ALL=C`。
 
-**运行模式前置（`POSIXLY_CORRECT`）**：门禁脚本是 bash 脚本且使用 bash 扩展（进程替换 `< <(...)`）。若环境里设了 `POSIXLY_CORRECT=1`（或显式 `bash --posix`），bash 会进入 POSIX 模式：进程替换变成**语法错误**，退出码虽为 2 但输出里只有语法错误文本、没有保守措辞，于是上游会把「环境不支持」误归因为「脚本坏了」（实测：`preset-score` 报 `bash -n 失败`、`doc-consistency` 报「退出码契约漂移」）。因此 8 个门禁脚本（`doc-consistency` / `preset-audit` / `preset-score` / `dsh-codepunk-leak-guard` / `write-scope-check` / `patrol-check` / `verify-worktree` / `github-setup`）在**入口**检测该变量与 `set -o posix` 状态，命中即打印「POSIX 模式 ⇒ 无法核验 ≠ 通过」并 `exit 2`（无法核验 ≠ 通过）。要跑门禁就 `unset POSIXLY_CORRECT`。
+**运行模式前置（`POSIXLY_CORRECT`）**：门禁脚本是 bash 脚本且使用 bash 扩展（进程替换 `< <(...)`）。若环境里设了 `POSIXLY_CORRECT=1`（或显式 `bash --posix`），bash 会进入 POSIX 模式：进程替换变成**语法错误**，退出码虽为 2 但输出里只有语法错误文本、没有保守措辞，于是上游会把「环境不支持」误归因为「脚本坏了」（实测：`preset-score` 报 `bash -n 失败`、`doc-consistency` 报「退出码契约漂移」）。因此 8 个门禁脚本（`doc-consistency` / `preset-audit` / `preset-score` / `dsh-codepunk-leak-guard` / `write-scope-check` / `verify-worktree` / `github-setup`）在**入口**检测该变量与 `set -o posix` 状态，命中即打印「POSIX 模式 ⇒ 无法核验 ≠ 通过」并 `exit 2`（无法核验 ≠ 通过）。要跑门禁就 `unset POSIXLY_CORRECT`。
 
 ## 2. 克隆与布局
 
@@ -30,7 +30,7 @@ git switch -c feat/<主题>          # 本仓按主题分支开发，不直接�
 |---|---|---|
 | `agent.cordis.yml` | AGENT-PLANE 组合（**权威源**） | 可以；改后须 `preset-declare.mjs apply` 并重启 DSH |
 | `preset.yml` | 可选展示描述（`name` / `description` / `order`） | 可以 |
-| `plans/` | 工具脚本源副本（17 个 `.sh` + 3 个 `.py` + 2 个 `.mjs`；其中 `dsh-codepunk-home.sh`、`env-guard.sh` 为纯 source 库，`plans/windows/` 4 个 `.ps1`） | 可以；改后须同步总库正式位 |
+| `plans/` | 工具脚本源副本（16 个 `.sh` + 3 个 `.py` + 2 个 `.mjs`；其中 `dsh-codepunk-home.sh`、`env-guard.sh` 为纯 source 库，`plans/windows/` 4 个 `.ps1`） | 可以；改后须同步总库正式位 |
 | `skills/dsh-codepunk-workflow/` | 流程手册 `SKILL.md` + `references/`（按需细则）+ `benchmarks/`（调研档案） | 可以 |
 | `README.md` / `CONTRIBUTING.md` / `LICENSE` | 使用者向说明 / 贡献者向公约 / MIT 许可 | 可以 |
 | `docs/` | 本套开发与架构文档 | 可以 |
@@ -47,7 +47,7 @@ git switch -c feat/<主题>          # 本仓按主题分支开发，不直接�
 | `bash plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性 27 类 | 0 一致 / 1 不一致 / 2 环境或用法错误 |
 | `bash plans/preset-audit.sh` | 5 组 rubric 审计 | 0 全达标 / 1 有失分 / 2 预设根不存在 |
 | `bash plans/preset-score.sh` | 16 指标评分 | 0 全满分 / 1 有失分 / 2 环境或用法错误 |
-| `bash plans/checker-self-test.sh` | 检查器存活自检（226 项变异） | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
+| `bash plans/checker-self-test.sh` | 检查器存活自检（225 项变异） | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
 | `bash plans/verify-battery.sh` | 完整验证电池（11 项，一次跑完） | 0 全通过 / 1 有失败项 / 2 无法进入预设根 |
 | `bash plans/dsh-codepunk-leak-guard.sh --history` | 泄露防护门（近 20 提交与新增行） | 0 通过 / 1 命中阻断 / 2 用法或环境错误 |
 
@@ -120,8 +120,8 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 
 | 计数 | 派生命令 | 当前实况 |
 |---|---|---|
-| 变异项数 | `grep -oE 'M[0-9]+' plans/checker-self-test.sh \| sort -u \| wc -l` | 226（M1–M226） |
-| 文档一致性类数 | `grep -cE '^echo "\[[0-9]+' plans/doc-consistency.sh` | 29 |
+| 变异项数 | `grep -oE 'M[0-9]+' plans/checker-self-test.sh \| sort -u \| wc -l` | 225（M1–M225） |
+| 文档一致性类数 | `grep -cE '^echo "\[[0-9]+' plans/doc-consistency.sh` | 30 |
 | 电池项数 | `grep -cE '^# [0-9]+\)' plans/verify-battery.sh` | 11 |
 | 保真语义类数 | 用 `ast` 取 `plans/fidelity-gate.py` 中 `PATTERNS` 的键数 | 14 |
 
@@ -135,7 +135,7 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 |---|---|---|
 | 单文件字节 | 262144 | 逐个跟踪文件体积（超限者拆分或削减） |
 | 跨文件重复块冗余 | 800 | ≥3 连续行、每行归一化后 ≥10 字符、块 ≥200 B 的重复块，按 (份数−1)×块字节 累计 |
-| 跨文件重复行冗余 | 7000 | 归一化后 ≥40 字符且完全相同的行，按 (份数−1)×行字节 累计 |
+| 跨文件重复行冗余 | 6500 | 归一化后 ≥40 字符且完全相同的行，按 (份数−1)×行字节 累计（D118 棘轮：许可正文一次跨文件复制即 6966 > 6500） |
 | 孤儿内容 | 0 | 除白名单外，每个跟踪文件的文件名须在**其它**跟踪文件中出现 ≥1 次 |
 | 溯源档案索引缺口 | 0 | `references/learned-skills.md` 的档案表条目数须等于 `benchmarks/` 目录内 `.md` 数，且「N 篇」声称相符 |
 
@@ -145,7 +145,7 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 
 `README.md` 是使用者向的**计数权威宣称处**，下列声称必须与实现一致且**全文唯一**（同一数字在多处出现时，每处都会各自被校验）：
 
-1. 质量工具表的项数：16 指标 / 5 组 / **11 项**电池 / **226 项**变异（M1–M226）/ **14 类**保真。
+1. 质量工具表的项数：16 指标 / 5 组 / **11 项**电池 / **225 项**变异（M1–M225）/ **14 类**保真。
 2. 计数口径文案中的示例（如「18 references」「16 benchmarks」一类声称）。
 3. 硬规则上限、阶段数（六阶段）、岗位数（11 内建 + 2 外部后端；出现「13 岗位」须带历史或例外标记）。
 
