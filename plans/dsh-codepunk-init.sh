@@ -187,14 +187,10 @@ else
   cat > "$DSH_CODEPUNK_INDEX" <<'EOF'
 # ======
 # dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
-# 条目 schema（骨架期声明；条目本体由 dsh-codepunk-link 的 register 构建）：
-#   project_id:        项目 slug（目录名直用，冲突加路径 hash 后缀）
-#   project_root:      工程根绝对路径（resolve 按此匹配输入路径）
-#   dsh_codepunk_path: 总库托管路径（~/.dsh-codepunk/projects/<id>/，须真实存在）
-#   migrated_at:       迁移完成时间（ISO 8601；未迁移项目为 null）
-#   source:            条目来源：register（或历史 migration-report）
-# 字段名以 dsh-codepunk-link 的校验实现为准（早期骨架注释用 repo_path/status 旧名，已对齐）。
-# 树形约定：projects/<project_id>/runs/<run_id>/…（结构 = 现工程内 .dsh-codepunk/ 内容平移）
+# 字段（规范名以 dsh-codepunk-link 校验实现为准）：project_id（slug，冲突加路径 hash）·
+#   project_root（工程根绝对路径）· dsh_codepunk_path（总库托管路径，须存在）·
+#   migrated_at（ISO 8601 或 null）· source（register 或历史 migration-report）
+# 树形约定：projects/<project_id>/runs/<run_id>/…（= 工程内 .dsh-codepunk/ 平移）
 # ======
 schema_version: 1
 projects: []

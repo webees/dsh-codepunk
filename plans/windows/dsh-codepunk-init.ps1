@@ -96,12 +96,10 @@ if (Test-Path $env:DSH_CODEPUNK_INDEX) {
   $skeleton = @'
 # ======
 # dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
-# 条目 schema：
-#   project_id:    项目 slug（目录名直用，冲突加路径 hash 后缀）
-#   repo_path:     工程根绝对路径
-#   readme_marker: 工程根 README 的 frontmatter 标记（dsh-codepunk: <id>，空=未标记）
-#   migrated_at:   迁移完成时间（ISO 8601；未迁移项目可为 null）
-#   status:        active | archived
+# 字段（规范名以 dsh-codepunk-link 校验实现为准）：project_id（slug，冲突加路径 hash）·
+#   project_root（工程根绝对路径）· dsh_codepunk_path（总库托管路径，须存在）·
+#   migrated_at（ISO 8601 或 null）· source（register 或历史 migration-report）
+# 树形约定：projects/<project_id>/runs/<run_id>/…（= 工程内 .dsh-codepunk/ 平移）
 # ======
 schema_version: 1
 projects: []
