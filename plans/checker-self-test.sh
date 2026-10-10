@@ -547,7 +547,7 @@ echo "[M14 声明副本敏感度（双向：未改须一致 / 改适配路径须
 FIX_PATCH="$work/prof/cordis.patch.yml"
 if [ -z "${DSH_APP_ROOT:-}${DSH_ASAR:-}" ]; then
   skip 'M14 跳过（未设 DSH_APP_ROOT/DSH_ASAR，无法进入语义核验模式）'
-elif ! command -v node >/dev/null 2>&1; then
+elif ! codepunk_have node; then
   skip 'M14 跳过（缺 node）'
 else
   fresh; mkdir -p "$work/prof"; : > "$FIX_PATCH"
@@ -2051,7 +2051,7 @@ echo "[M156 电池跳过项不得计入「满分」（F350）]"
 # F370：电池的第 8b 项（声明副本漂移）读 `$DSH_PROFILE_PATCH`，默认指向用户平面实况补丁 ⇒
 #   用户未 apply 时该项 ✗、F=1、结论行变「存在失败项」，于是「跳过 ≠ 通过」永不出现（M156-a 假红）。
 #   此处同样注入**由源生成的沙箱夹具**，使本断言只取决于「跳过项与结论行的关系」这一被检语义。
-if [ -z "${DSH_APP_ROOT:-}${DSH_ASAR:-}" ] || ! command -v node >/dev/null 2>&1; then
+if [ -z "${DSH_APP_ROOT:-}${DSH_ASAR:-}" ] || ! codepunk_have node; then
   skip 'M156 跳过（缺 node 或 DSH_APP_ROOT/DSH_ASAR——声明漂移项无法进入语义模式）'
 else
 fresh; mkdir -p "$work/prof"
@@ -2318,7 +2318,7 @@ check_no_match "M164-c 阻断分支被抹掉 → 不得再命中该规则名（�
   "HOME='$m164_home' python3 plans/hook-write-scope.py --fixture m164-deny.json 2>&1" "$m164_rule"
 
 # ── M165：emit 管道完整性（F362：`process.exit` 丢弃管道缓冲致输出截断）──────
-if command -v node >/dev/null 2>&1; then
+if codepunk_have node; then
   fresh
   # 源填充至 >64 KiB（管道缓冲），确保截断可被观测（不依赖当前源体积）
   i=0
@@ -2362,7 +2362,7 @@ fi
 # 守护点：`doc-consistency.sh` 第 20 类静态子项（`for f in plans/*.sh plans/*.py plans/*.mjs`）。
 #   变异＝抹掉 `plans/ps-validate.mjs` 的 `-h` 字面量（`.mjs` 入口：旧域 `plans/*.sh` 看不见它）
 #   ⇒ 该子项须报出，且探针表里的 `ps-validate -h` 也会漂移（两条 `bad` 同时给出，rc=1）。
-if command -v node >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+if codepunk_have node && command -v python3 >/dev/null 2>&1; then
   fresh
   m167_cmd="bash plans/doc-consistency.sh"
   check_rc "M167-a 基线：域内全部入口有 -h 分支（rc=0）" "$m167_cmd" 0 "无硬性不一致"
@@ -2514,7 +2514,7 @@ echo "[M174 声明写入的**原子性**（F380：就地截断写 vs 临时文�
 #   （写同目录临时文件后 rename），且 MUST 保留原文件权限位。
 #   判据用**可确定观测的不变量**：原子替换会更换目录项 ⇒ 目标 inode 必变；就地写 inode 不变。
 #   （非空转证明见 b：把 rename 换成 copyFileSync 后就地覆盖 ⇒ inode 不变 ⇒ 断言失败。）
-if command -v node >/dev/null 2>&1; then
+if codepunk_have node; then
   fresh
   m174_p="$work/m174.yml"
   : > "$m174_p"                                  # apply --append 要求目标文件已存在（空文件=首次安装）
@@ -3617,6 +3617,51 @@ PYEOF2
 mutate "M223-d 削弱（反转空用法判定）已落地" "$work/cur/plans/env-guard.sh" 'M223-d weakened'
 check_no_match "M223-d 反转判定 ⇒ 同一超界探针不再被点名（判据非空转）" \
   "bash -c '. plans/env-guard.sh; codepunk_usage 900' probe-usage-short.sh 2>&1" '用法块为空'
+fresh
+
+# ── M224（内容治理第 9 轮：单一声明源扩面 —— 仓库根 EG_ROOT／依赖预检 codepunk_need／node 探针，D128）──
+echo "[M224 单一声明源扩面（D128）]"
+fresh
+_m224_w="$work/bin-m224"
+mkdir -p "$_m224_w" 2>/dev/null
+for _t in bash sh env git grep sed sort uniq wc tr head tail cut cat locale mktemp stat basename dirname python3 rm; do
+  _p="$(command -v "$_t" 2>/dev/null)" || continue
+  [ -n "$_p" ] && ln -sf "$_p" "$_m224_w/$_t" 2>/dev/null
+done
+_m224_env="$(command -v env)"
+if [ -x "$_m224_w/bash" ] && [ -n "$_m224_env" ]; then
+  check_rc "M224-a 缺 awk 的影子 PATH ⇒ 消费方仍须拒答并点名（抽库后守护未空转）" \
+    "env -i PATH=\"$_m224_w\" HOME=\"$HOME\" \"$_m224_w/bash\" plans/preset-score.sh 2>&1" 2 "缺少必需工具 awk"
+  check_rc "M224-a2 库探针直调：缺 awk ⇒ rc=2（不依赖消费方可达）" \
+    "env -i PATH=\"$_m224_w\" HOME=\"$HOME\" \"$_m224_w/bash\" -c '. plans/env-guard.sh; codepunk_need awk; echo UNREACHED' 2>&1" 2 "缺少必需工具 awk"
+  sed -i.bak 's@      || { echo "✗ 缺少必需工具 ${_t} ⇒ 无法核验 ≠ 通过（rc=2）" >&2; exit 2; }@      || :  # M224-b weakened@' "$work/cur/plans/env-guard.sh"
+  mutate "M224-b 削弱（库内依赖预检守卫改为空操作）已落地" "$work/cur/plans/env-guard.sh" 'M224-b weakened'
+  check_no_match "M224-b 削弱后同一影子 PATH 下不再点名（判据非空转）" \
+    "env -i PATH=\"$_m224_w\" HOME=\"$HOME\" \"$_m224_w/bash\" -c '. plans/env-guard.sh; codepunk_need awk; echo UNREACHED' 2>&1" "缺少必需工具 awk"
+else
+  echo "  ℹ M224-a/b 跳过（无法构造影子 PATH）——跳过 ≠ 通过"
+fi
+fresh
+python3 - "$work/cur/plans/env-guard.sh" <<'PYEOF3'
+import io
+import sys
+p = sys.argv[1]
+assert p.endswith('/cur/plans/env-guard.sh'), p     # 越界防线：MUST 只作用于沙箱副本
+s = io.open(p, encoding='utf-8').read()
+lines = s.split('\n')
+keep = [ln for ln in lines if not ln.startswith('EG_ROOT=')]
+assert len(keep) == len(lines) - 1, 'M224-c 锚点缺失'
+io.open(p, 'w', encoding='utf-8').write('\n'.join(keep))
+print('REMOVED')
+PYEOF3
+mutate_gone "M224-c 删除型变异（摘掉库内 EG_ROOT 行）" "$work/cur/plans/env-guard.sh" '^EG_ROOT='
+check_rc "M224-c 缺 EG_ROOT ⇒ 消费方拒答（根为空亦不得继续判）" "bash plans/preset-score.sh 2>&1" 2 "根路径不是本预设仓库"
+fresh
+# 模式串运行时拼接：字面量会出现在本自检文件里 ⇒ 计数恒 ≥1（同 M196/F430 的自引用陷阱）
+_m224_pat="command -v node >/dev/null 2>&""1"
+_m224_inline="$(grep -rlF "$_m224_pat" "$work/cur/plans" 2>/dev/null | wc -l | tr -d ' ')"
+check_rc "M224-d 域内内联 node 探针为 0（统一走库探针 codepunk_have，D126）" \
+  "test \"${_m224_inline:-9}\" -eq 0" 0
 fresh
 
 echo "[M204 帮助 MUST 不依赖环境（F421）]"

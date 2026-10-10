@@ -89,7 +89,7 @@ _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "
 case "${1:-}" in
   -h|--help) codepunk_usage 28 ;;
 esac
-ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+ROOT="${1:-${EG_ROOT:-}}"
 cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT" >&2; exit 2; }
 codepunk_need_root "$ROOT" || exit 2
 

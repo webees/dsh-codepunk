@@ -397,7 +397,7 @@ cmd_index() {
     parser="ruby"
     ruby -ryaml -e 'begin; YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; YAML.load_file(ARGV[0]); rescue => e; warn e.message; exit 1; end' \
       "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
-  elif command -v node >/dev/null 2>&1 && _JY="$(_jy_dir)" && [ -n "$_JY" ]; then
+  elif codepunk_have node && _JY="$(_jy_dir)" && [ -n "$_JY" ]; then
     parser="node"
     node -e 'const y=require(process.argv[1]),fs=require("fs");try{y.load(fs.readFileSync(process.argv[2],"utf8"))}catch(e){console.error(e.message);process.exit(1)}' \
       "$_JY" "$DSH_CODEPUNK_INDEX" >/dev/null 2>&1 || parse_rc=1
@@ -424,7 +424,7 @@ cmd_index() {
       lt = d["last_updated"]
       fail "last_updated 须为标量" if lt.is_a?(Hash) || lt.is_a?(Array)
     ' "$DSH_CODEPUNK_INDEX" 2>&1)" || sem_rc=1
-  elif command -v node >/dev/null 2>&1 && _JY="$(_jy_dir)" && [ -n "$_JY" ]; then
+  elif codepunk_have node && _JY="$(_jy_dir)" && [ -n "$_JY" ]; then
     sem_msg="$(node -e '
       const y=require(process.argv[1]),fs=require("fs");
       let d; try { d = y.load(fs.readFileSync(process.argv[2],"utf8")) || {}; } catch(e){ console.log(e.message); process.exit(1); }
