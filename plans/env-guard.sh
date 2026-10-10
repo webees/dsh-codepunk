@@ -21,3 +21,14 @@ if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:spac
   echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
   exit 2
 fi
+
+# codepunk_need_root <root>：校验根路径确为本预设仓库（缺 SKILL.md 或 plans/ ⇒ rc=2 拒答）。
+#   F443 / 内容治理第 4 轮：此前 4 个门禁脚本各自内联同一段校验（5 行 ×4 ⇒ 块冗余 217 B ×3、
+#   样板重复行 837 B）；改由库提供，消费方单行调用。错误根必须拒答——不得在错误的树上继续判。
+codepunk_need_root() {
+  if [ -f "$1/skills/dsh-codepunk-workflow/SKILL.md" ] && [ -d "$1/plans" ]; then
+    return 0
+  fi
+  printf '✗ 根路径不是本预设仓库（缺 skills/dsh-codepunk-workflow/SKILL.md 或 plans/）: %s\n' "$1" >&2
+  return 2
+}

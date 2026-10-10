@@ -1,6 +1,6 @@
-# =============================================
+# ======
 # dsh-codepunk-init（Windows / PowerShell 版）：幂等建立 dsh-codepunk 统一总库骨架
-# ---------------------------------------------
+# ------
 # 职责（与 POSIX 版 dsh-codepunk-init.sh **等价**，唯一差异见末条）：
 #   1. 安装路径常量到总库根 + 同步工具脚本到总库正式位（升级动作：从仓内运行本脚本即同步）
 #   2. 建 projects/ worktrees/ scripts/ 三目录（-Force 天然幂等）
@@ -14,7 +14,7 @@
 # 退出码：0=成功（含幂等无事可做）；1=有失败项（缺失/过期/不一致）；2=环境/用法错误（写权限、父目录缺失）
 # 用法：pwsh -File dsh-codepunk-init.ps1 [-Check]
 #   注：Windows 上写总库脚本正式位为 .ps1；本文件即正式位的源副本。
-# =============================================
+# ======
 [CmdletBinding()]
 param([Alias('h')][switch]$Help, [switch]$Check)
 
@@ -43,7 +43,7 @@ function Fail([string]$m) { Write-Error "x $m"; exit 1 }
 function FailEnv([string]$m) { Write-Error "x $m"; exit 2 }
 function Pass([string]$m) { Write-Host "v $m" }
 
-# --- 1. 目录骨架（幂等） ----------------------------------------------------
+# --- 1. 目录骨架（幂等） ----
 # --- 0. 安装 home.ps1 到总库根 + 同步工具脚本（与 POSIX 端口等价；运行期用总库副本）---
 function Install-Home {
   $src = Join-Path $PSScriptRoot 'dsh-codepunk-home.ps1'
@@ -88,13 +88,13 @@ foreach ($d in @($env:DSH_CODEPUNK_PROJECTS, $env:DSH_CODEPUNK_WORKTREES, $env:D
   }
 }
 
-# --- 2. INDEX.yaml 骨架模板（缺失才写；存在即视为已初始化） ------------------
+# --- 2. INDEX.yaml 骨架模板（缺失才写；存在即视为已初始化） ----
 if (Test-Path $env:DSH_CODEPUNK_INDEX) {
   Pass "INDEX.yaml 已存在，跳过生成（幂等）: $($env:DSH_CODEPUNK_INDEX)"
 } else {
   if ($Check) { Fail "INDEX.yaml 缺失: $($env:DSH_CODEPUNK_INDEX)" }
   $skeleton = @'
-# =============================================
+# ======
 # dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
 # 条目 schema：
 #   project_id:    项目 slug（目录名直用，冲突加路径 hash 后缀）
@@ -102,7 +102,7 @@ if (Test-Path $env:DSH_CODEPUNK_INDEX) {
 #   readme_marker: 工程根 README 的 frontmatter 标记（dsh-codepunk: <id>，空=未标记）
 #   migrated_at:   迁移完成时间（ISO 8601；未迁移项目可为 null）
 #   status:        active | archived
-# =============================================
+# ======
 schema_version: 1
 projects: []
 last_updated: null
@@ -112,7 +112,7 @@ last_updated: null
   Pass "生成 INDEX.yaml 骨架: $($env:DSH_CODEPUNK_INDEX)"
 }
 
-# --- 3. config.yaml 不动性自检（只读断言，绝不写入） ------------------------
+# --- 3. config.yaml 不动性自检（只读断言，绝不写入） ----
 $config = Join-Path $env:DSH_CODEPUNK_HOME 'config.yaml'
 if (Test-Path $config) { Pass "全局配置层保留（未触碰）: $config" }
 else { Pass "无 config.yaml（维持现状，不创建）" }

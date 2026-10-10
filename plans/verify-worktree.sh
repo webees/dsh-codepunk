@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# =============================================
+# ======
 # verify-worktree.sh —— worktree 治理核验脚本
-# ---------------------------------------------
+# ------
 # 用法:
 #   verify-worktree.sh [主仓库路径] [--quiet]
 #   主仓库：位置参数优先，其次环境变量 MAIN_REPO；两者都没有则报用法错误退出
@@ -18,7 +18,7 @@
 #   附加: 主仓库若仍在散落根 → WARN（归位待 run-lead 排期）
 #
 # 退出码: 0=全部通过; 1=存在 FAIL; 2=用法/环境错误
-# =============================================
+# ======
 set -uo pipefail
 
 _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
@@ -72,7 +72,7 @@ FAIL=0
 # 路径归一（须在函数定义之后）：消除符号链接差异
 [ -n "$SCAN_ROOT" ] && SCAN_ROOT="$(phys "$SCAN_ROOT")"
 
-# --- 0. 环境前提 ----------------------------------------------------------
+# --- 0. 环境前提 ----
 SCATTER_CHECK=1
 if [ -z "$SCAN_ROOT" ] || [ ! -d "$SCAN_ROOT" ]; then
   warn "散落根不存在（SCAN_ROOT=${SCAN_ROOT:-未设}）：跳过第 1 项扫描（无桌面环境属正常）"
@@ -86,7 +86,7 @@ MAIN_BASE="$(basename "$MAIN_ABS")"
 
 say "==== verify-worktree · 主仓库: $MAIN_ABS ===="
 
-# --- 1. 散落根 worktree 扫描（含兜底，不只信主仓库登记） --------------------
+# --- 1. 散落根 worktree 扫描（含兜底，不只信主仓库登记） ----
 say "-- [1/2] 扫描 $SCAN_ROOT 下散落 worktree --"
 SCATTER=0
 if [ "${SCATTER_CHECK:-1}" -eq 1 ]; then
@@ -136,7 +136,7 @@ done
 [ "$SCATTER" -eq 0 ] && say "  PASS: 散落根无本主仓库的散落 worktree"
 fi
 
-# --- 2. 主仓库 worktree 列表干净 ------------------------------------------
+# --- 2. 主仓库 worktree 列表干净 ----
 say "-- [2/2] 主仓库 worktree 列表 --"
 WT_COUNT=$(git -C "$MAIN_ABS" worktree list --porcelain 2>/dev/null | grep -c '^worktree ' || true)
 if [ "$WT_COUNT" -le 1 ]; then
@@ -146,7 +146,7 @@ else
   git -C "$MAIN_ABS" worktree list >&2
 fi
 
-# --- 附加：主仓库位置 WARN（归位由 run-lead 另排期，不判 FAIL） ------------
+# --- 附加：主仓库位置 WARN（归位由 run-lead 另排期，不判 FAIL） ----
 if [ "$(dirname "$MAIN_ABS")" = "$SCAN_ROOT" ]; then
   warn "主仓库仍位于散落根: ${MAIN_ABS}（归位工程根由 run-lead 排期，此处仅提示）"
   warn "  建议命令（run-lead 批准后执行）:"
@@ -154,7 +154,7 @@ if [ "$(dirname "$MAIN_ABS")" = "$SCAN_ROOT" ]; then
   warn "    git -C ${SCAN_ROOT}/projects/$(basename "$MAIN_ABS") worktree list   # 复核落点"
 fi
 
-# --- 汇总 ----------------------------------------------------------------
+# --- 汇总 ----
 if [ "$FAIL" -eq 0 ]; then
   say "==== 结果: PASS（exit 0）===="
   exit 0

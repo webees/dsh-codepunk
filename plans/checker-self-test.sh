@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# =============================================
+# ======
 # checker-self-test.sh —— 检查器**存活自检**（变异测试）
-# ---------------------------------------------
+# ------
 # 动机（实证）：F097/F099/F101/F102 一整类缺陷是「检查项因工具不可用/正则不兼容/空值判定
 # 而恒判 PASS」——静态审计自身无法发现这种「守护空转」。本脚本用**注入已知缺陷**的方式验证
 # 检查项真的会失败：在临时副本内逐个变异，断言**对应检查项**（按名称核对，非仅看退出码）
@@ -15,7 +15,7 @@
 # 退出码: 0=通过（结论行据实报「捕获 N/M 项 + 跳过 K 项（跳过 ≠ 通过）」）；1=存在未被捕获的变异（守护失效或空转）；2=环境或自检问题（含：同一预设根上已有另一次自检在运行——并发自检会互相污染 ⇒ 见下方并发互斥块）；3=夹具锚点缺失（仅出现在**夹具子进程**的返回值上：M47/M212 的派生锚未命中时以 rc=3 表示「夹具无法落地」，由 MUTFAIL 门转为 1 —— 见 D120）
 # 环境变量: DSH_CODEPUNK_ECHO_TOTAL / DSH_CODEPUNK_ECHO_SKIPPED（配合 `--coverage-echo` 注入结论行计数，
 #   供永久变异 M171 秒级断言）· DSH_CODEPUNK_SKIP_SELFTEST=1（递归防护：已在自检上下文内时立即退出）
-# =============================================
+# ======
 set -u
 
 _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
@@ -2069,7 +2069,7 @@ check_no_match "M156-b 标注被抹掉 → 不得再报「跳过 ≠ 通过」�
   "DSH_PROFILE_PATCH=\"$BAT_PATCH\" DSH_CODEPUNK_SKIP_SELFTEST=1 bash plans/verify-battery.sh 2>&1" "跳过 ≠ 通过"
 fi
 
-# ---------------------------------------------
+# ------
 # M157 / M158：**无 ruby 主机**上的 YAML 解析路径（F351 / F352 / F353）
 #   本仓默认走 ruby（Psych）；node 回退分支只在**没有 ruby 的主机**上生效，而自检环境
 #   通常有 ruby ⇒ 该分支长期**不可达**（这正是它带缺陷存在多轮的原因）。故此处用「工具农场」
@@ -2077,7 +2077,7 @@ fi
 #   无 ruby 主机，并用**桩 js-yaml**（`DEFAULT_SCHEMA.extend`/`Type`/`load`，按环境变量
 #   返回不同结构）验证：①候选链解析 ②`!!js` 容忍 schema ③解析结果的类型判定（Date 属标量）。
 #   桩目录经 `DSH_CODEPUNK_TOOLS` 显式提供 ⇒ 不受真实 `~/.dsh-codepunk/tools` 内容影响。
-# ---------------------------------------------
+# ------
 echo "[M157 无 ruby 主机的 A1 解析路径（F351）]"
 farm_noruby="$work/farm-noruby"
 mkdir -p "$farm_noruby"
@@ -3176,10 +3176,10 @@ fi
 rm -f "$_m200_bak"
 
 
-# =============================================
+# ======
 # F419/F420/F421（R651 对抗性探针）：本轮修复项的**行为型**守护 —— 断言全部在 `$work/cur` 沙箱内
 #   跑**真门禁**，且每条都带**削弱反向断言**（把守护改回去 ⇒ 检出能力消失），证明判据非空转。
-# =============================================
+# ======
 echo "[M201 文档枚举 MUST 按 NUL 记录（F419）]"
 fresh
 ( cd "$work/cur" && git mv docs/documentation-policy.md "docs/advm probe 'quote'.md" >/dev/null 2>&1 \
@@ -3380,6 +3380,49 @@ PYEOF
 mutate "M216-b 削弱（形态判据失效）已落地" "$work/cur/plans/doc-consistency.sh" 'if False:'
 check_no_match "M216-b 削弱（去掉形态判据）⇒ 同夹具不再被点名（判据非空转）" \
   "bash plans/doc-consistency.sh 2>&1" "plans 目录行的扩展名计数不可解析"
+fresh
+
+echo "[M217 根校验库函数与调用点（内容治理第 4 轮：F443 抽库后须有存活守护）]"
+fresh
+mkdir -p "$work/wrongroot"
+check_rc "M217-a 库函数对错误根返回 2 并点名（库内根校验生效）" \
+  ". plans/env-guard.sh; codepunk_need_root '$work/wrongroot'" 2 "不是本预设仓库"
+python3 - "$work/cur/plans/env-guard.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = '  if [ -f "$1/skills/dsh-codepunk-workflow/SKILL.md" ] && [ -d "$1/plans" ]; then'
+assert s.count(old) == 1, "M217-b anchor"
+open(p, 'w', encoding='utf-8').write(s.replace(old, '  if true; then', 1))
+print('MUTATED')
+PYEOF
+mutate "M217-b 削弱库内根校验已落地（条件恒真 ⇒ 不再拒答）" "$work/cur/plans/env-guard.sh" 'if true; then'
+check_no_match "M217-b 库函数被削弱 ⇒ 不再点名错误根（判据非空转）" \
+  ". plans/env-guard.sh; codepunk_need_root '$work/wrongroot'" "不是本预设仓库"
+fresh
+cat > "$work/cur/call-enum.py" <<'PYEOF'
+import sys
+GATES = ['plans/doc-consistency.sh', 'plans/preset-audit.sh',
+         'plans/preset-score.sh', 'plans/verify-battery.sh']
+miss = [g for g in GATES
+        if 'codepunk_need_root' not in open(g, encoding='utf-8').read()]
+print('CALLMISS %d %s' % (len(miss), ' '.join(miss)))
+sys.exit(1 if miss else 0)
+PYEOF
+check_contains "M217-c 基线：四个门禁均已接入根校验（枚举器干净）" \
+  "python3 call-enum.py 2>&1" "CALLMISS 0"
+python3 - "$work/cur/plans/verify-battery.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+lines = open(p, encoding='utf-8').read().split("\n")
+keep = [ln for ln in lines if not ln.startswith('codepunk_need_root ')]
+assert len(keep) == len(lines) - 1, "M217-d 期望摘掉恰 1 行调用点"
+open(p, 'w', encoding='utf-8').write("\n".join(keep))
+print('MUTATED')
+PYEOF
+mutate_gone "M217-d 摘掉一个调用点已落地（删除型）" "$work/cur/plans/verify-battery.sh" 'codepunk_need_root'
+check_contains "M217-d 摘掉调用点 ⇒ 枚举器点名该文件（接入面守护非空转）" \
+  "python3 call-enum.py 2>&1" "CALLMISS 1 plans/verify-battery.sh"
 fresh
 
 echo "[M204 帮助 MUST 不依赖环境（F421）]"
