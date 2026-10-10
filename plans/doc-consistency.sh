@@ -15,7 +15,8 @@
 #       仓内**已声明**的标准为依据，不引入自定义阈值；git 不可用时回退文件系统遍历，真核验非跳过。
 #       F446 实证：`insert_final_newline` 声明下 `references/file-hygiene.md` 尾部为两个换行而四门禁
 #       全绿、评分满分 ⇒ 声明与落地脱节（F294/F327/F347/F373 家族的「无门禁声称」））
-#   1. 计数声称（16 指标 / 5 组 / 电池项数 / 18 references / 16 benchmarks）
+#   1. 计数声称（16 指标 / 5 组 / 电池项数 / 18 references / 16 benchmarks；域 README + docs/** +
+#      Makefile——F455 实证：`Makefile` 声称「15 指标评分」而实况 16，四门禁全绿）
 #   2. 阶段口径（README 表 = preset.yml 阶段项 = stages.md 阶段号 = 6）
 #   3. 术语咨询（裸用「工作区」列出供人工确认；**咨询不判失败**——矩阵已把术语一致性列为人工项）
 #   4. 工具存在性（**全部跟踪的 .md** 中提到的 `plans/*` 引用必须真实存在；扩展名 sh|py|mjs|cjs|ps1；
@@ -187,6 +188,24 @@ done
 if [ -n "$DOC_CN_BAD" ]; then bad "docs/ 计数声称陈旧:${DOC_CN_BAD}"
 elif [ "$DOC_CN_HITS" -eq 0 ]; then info "docs/ 未出现可识别的计数声称（域：docs/**；写法 N 项变异/已知缺陷/电池/：/，一次跑完）"
 else ok "docs/ 计数声称与实现一致（命中 ${DOC_CN_HITS} 处；域 docs/**，仅识别该族写法）"; fi
+
+# F455：`Makefile` 内的计数声称同样不在门禁域，且**已实际陈旧**——实测 Makefile 声称「15 指标评分」
+#   而实况 16（`bash plans/preset-score.sh` ⇒ 16/16），四门禁全绿（与 F327/F338/F425 同族：域不全）。
+#   域与识别写法在结论里明写；判定沿用同一实现值（评分指标数 / 电池项数）。
+MK_SCORE_N="$(grep -cE '^# ── [AB][0-9]+ ' plans/preset-score.sh)"
+MK_CN_BAD=""
+MK_CN_HITS=0
+for _v in $(grep -oE '[0-9]+ 指标' Makefile | grep -oE '^[0-9]+'); do
+  MK_CN_HITS=$((MK_CN_HITS + 1))
+  [ "$_v" = "$MK_SCORE_N" ] || MK_CN_BAD="$MK_CN_BAD Makefile:指标=${_v}(实况 ${MK_SCORE_N})"
+done
+for _v in $(grep -oE '[0-9]+ 项(独立验证|一次跑完)' Makefile | grep -oE '^[0-9]+'); do
+  MK_CN_HITS=$((MK_CN_HITS + 1))
+  [ "$_v" = "$BAT_N" ] || MK_CN_BAD="$MK_CN_BAD Makefile:电池=${_v}(实况 ${BAT_N})"
+done
+if [ -n "$MK_CN_BAD" ]; then bad "Makefile 计数声称陈旧:${MK_CN_BAD}"
+elif [ "$MK_CN_HITS" -eq 0 ]; then info "Makefile 未出现可识别的计数声称（域：Makefile；写法 N 指标 / N 项独立验证|一次跑完）"
+else ok "Makefile 计数声称与实现一致（命中 ${MK_CN_HITS} 处；域 Makefile）"; fi
 
 # F255：README 与 fidelity-gate.py 均声称保护闸为「14 类」，但**无任何工具**核验该计数
 #   （battery「11 项」/ mutations「126 项」已由上方 cmp_num 守护 ⇒ 覆盖不对称：增删 PATTERNS 会静默漂移）。

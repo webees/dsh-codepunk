@@ -52,7 +52,7 @@ RUN_TMP := $(ROOT)/tmp
 # 总库临时目录（各轮沙箱落点；clean 亦须清理此处，否则「以为已清而实际未清」）
 HUB_TMP := $(HUB_ROOT)/tmp
 
-.PHONY: help gates selftest battery write-scope compat mirror clean
+.PHONY: help gates selftest battery write-scope compat mirror ps-validate clean
 
 help:
 	@printf '%s\n' 'dsh-codepunk 工程化入口 —— 用法: make <目标>'
@@ -63,10 +63,11 @@ help:
 	@printf '%s\n' '  write-scope  写盘纪律门（--repo . --tmp）'
 	@printf '%s\n' '  compat       组合 ↔ DSH 安装兼容核验（需 DSH_APP_ROOT 或 DSH_ASAR）'
 	@printf '%s\n' '  mirror       把 plans/*.sh 与 plans/*.py 安装到总库并逐文件 cmp -s 校验'
+	@printf '%s\n' '  ps-validate  PowerShell 校验器依赖安装 + ps-validate.mjs 语法校验（CI 两作业共用配方）'
 	@printf '%s\n' '  clean        清理仓库临时目录与总库临时目录（tmp/；不动总库 tools/）'
 	@printf '%s\n' '' '例: make gates' '    make compat DSH_APP_ROOT=<解包后的 app 目录>'
 
-# ── 门禁：文档一致性 + 预设审计 + 15 指标评分 + 泄露防护 ────────────────────
+# ── 门禁：文档一致性 + 预设审计 + 16 指标评分 + 泄露防护 ────────────────────
 gates:
 	cd "$(ROOT)" || exit 2; \
 	rc=0; \
@@ -118,6 +119,22 @@ mirror:
 	done; \
 	printf '镜像: %s 个文件与源副本逐字节一致（install -m 755 + cmp -s）\n' "$$n"; \
 	exit $$rc
+
+# ── PowerShell 校验器依赖 + 语法校验（CI 两个作业共用同一配方）────────────────────────
+# F454 实证：同三联行（`npm init` / `npm i tree-sitter…` / `node ps-validate.mjs …`）曾在 ci.yml
+#   两个作业内逐字重复（同文件重复块 212 B ×2）⇒ 抽为本目标作**单一声明源**，CI 步骤退化为
+#   `run: make ps-validate`。依赖落位＝总库 tools/（HUB_ROOT/tools），与原 CI 的
+#   `$HOME/.dsh-codepunk/tools` 等价。
+ps-validate:
+	set -eu; cd "$(ROOT)" || exit 2; \
+	command -v npm >/dev/null 2>&1 || { printf '✗ 缺 npm（PowerShell 校验器依赖安装）\n' >&2; exit 2; }; \
+	command -v node >/dev/null 2>&1 || { printf '✗ 缺 node（ps-validate.mjs 依赖）\n' >&2; exit 2; }; \
+	mkdir -p "$(HUB_ROOT)/tools" || exit 2; \
+	cd "$(HUB_ROOT)/tools" || exit 2; \
+	[ -f package.json ] || npm init -y >/dev/null; \
+	npm i --no-audit --no-fund --loglevel=error tree-sitter tree-sitter-powershell || { \
+	  printf '✗ 依赖安装失败 ⇒ 无法核验 ≠ 通过（F457：存量 %s/package.json 的锁定版本可致 npm ERESOLVE，\n  （原始 CI 三联行配方在同一存量目录同样 rc=1——实证见运行根 logs 目录））：\n    rm -rf "%s" && make ps-validate\n' "$(HUB_ROOT)/tools" "$(HUB_ROOT)/tools" >&2; exit 2; }; \
+	node "$(ROOT)/plans/ps-validate.mjs" "$(ROOT)"/plans/windows/*.ps1
 
 # ── 清理仓库临时目录与总库临时目录（tmp/；不动总库 tools/ 工具安装位）────────────────
 clean:
