@@ -3664,6 +3664,54 @@ check_rc "M224-d 域内内联 node 探针为 0（统一走库探针 codepunk_hav
   "test \"${_m224_inline:-9}\" -eq 0" 0
 fresh
 
+# ── M225（内容治理第 10 轮：许可正文单一声明源 —— 既有 A5「成段重复」判据的守护，D129）──
+echo "[M225 许可正文单一声明源（D129）]"
+fresh
+check_rc "M225-a 仓内许可正文不重复 ⇒ A5 精简度须满分（干净态 rc=0）" \
+  "bash plans/preset-score.sh 2>&1" 0
+check_no_match "M225-a2 干净态 MUST NOT 出现「成段重复」（判据非空转）" \
+  "bash plans/preset-score.sh 2>&1" "成段重复"
+# F472（本轮实测）：两种复制形态由**不同**判据拦截——跨文件（LICENSE ↔ 文档）由 B16「跨文件重复行冗余」
+#   拦截（其上限已按 D118 棘轮到 7000，故复制回正文即 7173 > 7000）；同一文件内复制两份则由 A5
+#   「成段重复」拦截。夹具按份数参数化，两条断言各自实证，避免把「成段重复」误写成跨文件判据。
+python3 - "$work/cur/docs/licensing.md" "$work/cur/LICENSE" "${_m225_copies:-1}" <<'PYEOF4'
+import io
+import sys
+doc, lic, n = sys.argv[1], sys.argv[2], int(sys.argv[3])
+assert doc.endswith('/cur/docs/licensing.md'), doc     # 越界防线：MUST 只作用于沙箱副本
+assert lic.endswith('/cur/LICENSE'), lic
+assert 1 <= n <= 2, n
+body = io.open(doc, encoding='utf-8').read()
+text = io.open(lic, encoding='utf-8').read()
+for i in range(n):
+    body += ('\n## 附 %s（M225 夹具）\n\n```text\n%s```\n' % (chr(65 + i), text))
+io.open(doc, 'w', encoding='utf-8').write(body)
+print('M225 FIXTURE n=%d' % n)
+PYEOF4
+mutate "M225-b 夹具：许可正文被逐字复制回文档已落地" "$work/cur/docs/licensing.md" 'M225 夹具'
+check_rc "M225-b 跨文件复制（LICENSE ↔ 文档）⇒ B16 跨文件重复行冗余须命中且 rc=1（棘轮守护）" \
+  "bash plans/preset-score.sh 2>&1" 1 "跨文件重复行冗余"
+check_no_match "M225-b2 跨文件复制 MUST NOT 由 A5「成段重复」代答（口径分离）" \
+  "bash plans/preset-score.sh 2>&1" "成段重复"
+_m225_copies=2
+python3 - "$work/cur/docs/licensing.md" "$work/cur/LICENSE" "$_m225_copies" <<'PYEOF4'
+import io
+import sys
+doc, lic, n = sys.argv[1], sys.argv[2], int(sys.argv[3])
+assert doc.endswith('/cur/docs/licensing.md'), doc
+assert lic.endswith('/cur/LICENSE'), lic
+assert n == 2, n
+body = io.open(doc, encoding='utf-8').read()
+text = io.open(lic, encoding='utf-8').read()
+for i in range(n):
+    body += ('\n## 附 %s（M225 夹具）\n\n```text\n%s```\n' % (chr(65 + i), text))
+io.open(doc, 'w', encoding='utf-8').write(body)
+print('M225 FIXTURE2 n=%d' % n)
+PYEOF4
+check_rc "M225-b3 同一文件内复制两份 ⇒ A5 成段重复须命中且 rc=1（判据分工的另一半）" \
+  "bash plans/preset-score.sh 2>&1" 1 "成段重复"
+fresh
+
 echo "[M204 帮助 MUST 不依赖环境（F421）]"
 fresh
 check_rc "M204-a HOME 未设 ⇒ init -h 仍 rc=0" "env -u HOME bash plans/dsh-codepunk-init.sh -h 2>&1" 0 "用法"
