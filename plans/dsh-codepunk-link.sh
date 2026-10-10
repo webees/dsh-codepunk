@@ -34,7 +34,7 @@ _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "
 
 SCRIPT_NAME="dsh-codepunk-link"
 
-# ---------- 初始化：DSH_CODEPUNK_HOME / DSH_CODEPUNK_INDEX ----------
+# ---- 初始化：DSH_CODEPUNK_HOME / DSH_CODEPUNK_INDEX ----
 # 外部显式环境变量优先（测试覆写刚需），其次 hub 的 dsh-codepunk-home.sh 常量，最后默认值。
 # 注：hub 文件无条件 export DSH_CODEPUNK_INDEX（与其自身「允许测试覆写」注释矛盾，
 #     缺陷见早期 handoff known_issues），故 source 后恢复外部显式值。
@@ -57,7 +57,7 @@ DSH_CODEPUNK_HOME="$(_resolve_dsh-codepunk_home)"
 DSH_CODEPUNK_INDEX="${DSH_CODEPUNK_INDEX:-$DSH_CODEPUNK_HOME/INDEX.yaml}"
 [ -n "$_DSH_CODEPUNK_INDEX_EXT" ] && DSH_CODEPUNK_INDEX="$_DSH_CODEPUNK_INDEX_EXT"
 
-# ---------- js-yaml 解析路径（F352） ----------
+# ---- js-yaml 解析路径（F352） ----
 # 与 preset-declare / verify-battery 同候选链：cwd 式 `require("js-yaml")` 会漏掉**文档化**的安装位置
 # （$DSH_CODEPUNK_TOOLS → ~/.dsh-codepunk/tools → ${DSH_APP_ROOT}），使「按文档装好 js-yaml」的主机
 # 仍降级为「未做解析核验」。成功时打印 js-yaml 包目录，失败返回 1。
@@ -70,7 +70,7 @@ _jy_dir() {
   return 1
 }
 
-# ---------- 路径规范化 ----------
+# ---- 路径规范化 ----
 _norm_path() {
   local p="$1"
   case "$p" in
@@ -104,7 +104,7 @@ _norm_path() {
   printf '%s' "$p"
 }
 
-# ---------- README 主通道：frontmatter `dsh-codepunk:` 或注释行 ----------
+# ---- README 主通道：frontmatter `dsh-codepunk:` 或注释行 ----
 # 成功输出 project_id；无命中输出空 + exit 1
 # 优先 python3（PyYAML → 行级正则），降级 awk：二者等价，双保险
 # F199：标记值形状校验——python(PyYAML 缺失→正则回退)与 awk 回退都可能把**畸形 YAML 标量**
@@ -194,7 +194,7 @@ PY
   return 1
 }
 
-# ---------- INDEX 解析 ----------
+# ---- INDEX 解析 ----
 # 输入 INDEX.yaml，输出逐条目为单行制表符分隔 key=value（k=v 顺序不保证）
 # 行格式：project_id=… \t root=… \t dsh-codepunk=… \t migrated_at=… \t source=…
 #   root   = project_root 优先，骨架若是 repo_path 则自动兼容（字段别名探测）
@@ -308,7 +308,7 @@ _index_dsh-codepunk_by_id() {  # 按 project_id 匹配 → dsh-codepunk_path（�
   ' | head -1
 }
 
-# ---------- resolve ----------
+# ---- resolve ----
 cmd_resolve() {
   [ $# -ge 1 ] || { printf '用法: %s resolve <项目路径>\n' "$SCRIPT_NAME" >&2; return 2; }
   local target id
@@ -367,7 +367,7 @@ cmd_resolve() {
   return 1
 }
 
-# ---------- index：校验无空悬 + 字段齐 ----------
+# ---- index：校验无空悬 + 字段齐 ----
 cmd_index() {
   if [ ! -f "$DSH_CODEPUNK_INDEX" ]; then
     printf '%s: INDEX 未初始化：%s 不存在\n' "$SCRIPT_NAME" "$DSH_CODEPUNK_INDEX" >&2
@@ -503,7 +503,7 @@ cmd_index() {
   [ "$n_fail" -eq 0 ]
 }
 
-# ---------- register：追加注册条目（不覆盖，需确认） ----------
+# ---- register：追加注册条目（不覆盖，需确认） ----
 # 回滚助手：回滚成功才清理备份；回滚失败必须显式报出并保留备份供人工恢复
 # （原实现无论 cp 成败都打印「已回滚」，且 rm 漏掉时间戳备份 → 假保证 + 残留）
 _rollback() { # $1=备份路径  $2=失败原因
@@ -547,7 +547,7 @@ cmd_register() {
     #   ⇒ 终态注释头取决于「谁先建文件」（顺序① init→register 保留 11 行头；顺序② register→init
     #   只有 1 行头）。机械判据见 plans/doc-consistency.sh 第 25 类（两处模板须一致）。
     if cat > "$DSH_CODEPUNK_INDEX" <<'EOF'
-# =============================================
+# ======
 # dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
 # 条目 schema（骨架期声明；条目本体由 dsh-codepunk-link 的 register 构建）：
 #   project_id:        项目 slug（目录名直用，冲突加路径 hash 后缀）
@@ -557,7 +557,7 @@ cmd_register() {
 #   source:            条目来源：register（或历史 migration-report）
 # 字段名以 dsh-codepunk-link 的校验实现为准（早期骨架注释用 repo_path/status 旧名，已对齐）。
 # 树形约定：projects/<project_id>/runs/<run_id>/…（结构 = 现工程内 .dsh-codepunk/ 内容平移）
-# =============================================
+# ======
 schema_version: 1
 projects: []
 last_updated: null
@@ -776,7 +776,7 @@ raise "projects 非数组" unless d["projects"].is_a?(Array)
   return 0
 }
 
-# ---------- 主入口 ----------
+# ---- 主入口 ----
 case "${1:-}" in
   resolve) shift; cmd_resolve "$@" ;;
   index)   shift; cmd_index "$@" ;;

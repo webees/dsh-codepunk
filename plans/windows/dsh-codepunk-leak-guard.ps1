@@ -1,6 +1,6 @@
-# =============================================
+# ======
 # dsh-codepunk-leak-guard.ps1 — 泄露防护门（Windows / PowerShell 版）
-# ---------------------------------------------
+# ------
 # 与 POSIX 版 dsh-codepunk-leak-guard.sh 语义等价。
 # 设计原则：**机制进仓库，禁词留本地**——公开仓库的守卫脚本本身不得含私人词。
 #
@@ -20,7 +20,7 @@
 #   pwsh -File dsh-codepunk-leak-guard.ps1 -InstallHook  # 装 pre-commit + pre-push + commit-msg 三钩子
 #   pwsh -File dsh-codepunk-leak-guard.ps1 -List         # 脱敏列出载入禁词
 # 退出码：0=通过；1=命中（阻断）；2=用法/环境错误
-# =============================================
+# ======
 [CmdletBinding()]
 param(
   [Alias('h')][switch]$Help,
@@ -68,7 +68,7 @@ $root = Get-RepoRoot
 if (-not $root) { [Console]::Error.WriteLine('不在 git 仓库内'); exit 2 }
 Set-Location $root
 
-# ---------- 载入禁词 ----------
+# ---- 载入禁词 ----
 $raw = New-Object System.Collections.Generic.List[string]
 if (-not [string]::IsNullOrEmpty($env:DSH_CODEPUNK_DENYLIST)) {
   foreach ($t in ($env:DSH_CODEPUNK_DENYLIST -split '[:, \r\n]+')) { $raw.Add($t) }
@@ -93,7 +93,7 @@ if ($List) {
   exit 0
 }
 
-# ---------- 安装 pre-push 钩子 ----------
+# ---- 安装 pre-push 钩子 ----
 if ($InstallHook) {
   $hookDir = (git rev-parse --git-path hooks).Trim()
   if (-not (Test-Path $hookDir)) { New-Item -ItemType Directory -Force -Path $hookDir | Out-Null }
@@ -123,7 +123,7 @@ exit `$LASTEXITCODE
   exit 0
 }
 
-# ---------- 收集待扫内容 ----------
+# ---- 收集待扫内容 ----
 $content = New-Object System.Collections.Generic.List[string]
 $label = ''
 
@@ -156,7 +156,7 @@ if (-not [string]::IsNullOrEmpty($Msg)) {
 
 if ($content.Count -eq 0) { Write-Output "OK 泄露防护门：无可扫描内容（$label）"; exit 0 }
 
-# ---------- 扫描 ----------
+# ---- 扫描 ----
 $hits = 0
 foreach ($pat in $GenericPatterns) {
   $matched = $content | Where-Object { $_ -match $pat -and $_ -notmatch 'noreply\.github\.com' }

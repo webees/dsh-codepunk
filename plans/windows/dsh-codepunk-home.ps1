@@ -1,6 +1,6 @@
-# =============================================
+# ======
 # dsh-codepunk 统一总库 · 共享路径常量（Windows / PowerShell 版）
-# ---------------------------------------------
+# ------
 # 导入方式（所有 CLI 脚本统一）：
 #   . "$HOME\.dsh-codepunk\dsh-codepunk-home.ps1"
 # 亦可先设 $env:DSH_CODEPUNK_HOME 覆盖默认值（测试/沙箱场景），再点源本文件。
@@ -11,7 +11,7 @@
 #   DSH_CODEPUNK_INDEX     全局注册表 INDEX.yaml
 #   DSH_CODEPUNK_WORKTREES worktree 治理区
 #   DSH_CODEPUNK_SCRIPTS   总库工具脚本落位
-# =============================================
+# ======
 
 # 尊重外部预置值（允许测试覆写），否则默认用户级总库根
 if ([string]::IsNullOrEmpty($env:DSH_CODEPUNK_HOME)) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# =============================================
+# ======
 # github-setup.sh —— GitHub 仓库治理幂等应用（仓库元数据 + main 分支保护）
-# ---------------------------------------------
+# ------
 # 用法:
 #   github-setup.sh [--dry-run] [--repo <owner/name>] [-h|--help]
 #     --dry-run     只打印将执行的 gh api 调用（含请求体），不改动远端
@@ -29,7 +29,7 @@
 # 退出码: 0=全部应用且校验通过；1=未完全应用或校验不符（含 required_status_checks 被 GitHub 以 422 拒绝，已写入其余规则、待 CI 首跑后重跑本脚本）；2=环境或用法错误（无 gh、未登录、参数错）
 # 依赖: gh（GitHub CLI，已登录）；写操作需该账号对本仓有 admin 权限
 # 环境变量: REPO_SLUG / REPO_DESCRIPTION / REPO_HOMEPAGE 可覆盖默认值
-# =============================================
+# ======
 
 set -uo pipefail
 
@@ -71,7 +71,7 @@ HOMEPAGE="${REPO_HOMEPAGE:-https://github.com/${SLUG}#readme}"
 command -v gh >/dev/null 2>&1 || die2 "未找到 gh（GitHub CLI）——无法核验 ≠ 通过"
 gh auth status >/dev/null 2>&1 || die2 "gh 未登录——无法核验 ≠ 通过（先执行 gh auth login）"
 
-# ---- API 薄封装：结果入 API_OUT，退出码入 API_RC（均不做隐式退出） --------------
+# ---- API 薄封装：结果入 API_OUT，退出码入 API_RC（均不做隐式退出） ----
 api_get() { # api_get <路径> <jq 表达式>
   API_OUT="$(gh api "$1" --jq "$2" 2>&1)"; API_RC=$?
 }

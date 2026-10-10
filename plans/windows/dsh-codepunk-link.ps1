@@ -1,6 +1,6 @@
-# =============================================
+# ======
 # dsh-codepunk-link.ps1 — 项目↔总库记忆关联解析器（Windows / PowerShell 版）
-# ---------------------------------------------
+# ------
 # 与 POSIX 版 dsh-codepunk-link.sh 语义等价：
 #   dsh-codepunk-link resolve <项目路径>   三态路由：
 #       ① README frontmatter `dsh-codepunk: <id>` 命中（主通道）
@@ -24,7 +24,7 @@
 #   pwsh -File dsh-codepunk-link.ps1 register <项目路径> <id>
 #                                   追加注册条目（不覆盖既有 project_id/project_root；交互确认）
 #   注：当控制台输入被重定向（非交互）时，register 会明确拒绝而非静默按默认值继续。
-# =============================================
+# ======
 [CmdletBinding()]
 param(
   [Alias('h')][switch]$Help,
@@ -46,7 +46,7 @@ $ScriptName = 'dsh-codepunk-link'
 
 function Write-Err([string]$m) { [Console]::Error.WriteLine("$ScriptName`: $m") }
 
-# ---------- 初始化：DSH_CODEPUNK_HOME / DSH_CODEPUNK_INDEX ----------
+# ---- 初始化：DSH_CODEPUNK_HOME / DSH_CODEPUNK_INDEX ----
 # 外部显式环境变量优先（测试覆写刚需），其次 hub 的 home 文件常量，最后默认值。
 $extHome  = $env:DSH_CODEPUNK_HOME
 $extIndex = $env:DSH_CODEPUNK_INDEX
@@ -58,7 +58,7 @@ $DSH_CODEPUNK_HOME  = if ([string]::IsNullOrEmpty($extHome))  { $env:DSH_CODEPUN
 if ([string]::IsNullOrEmpty($DSH_CODEPUNK_HOME)) { $DSH_CODEPUNK_HOME = $home }
 $DSH_CODEPUNK_INDEX = if ([string]::IsNullOrEmpty($extIndex)) { Join-Path $DSH_CODEPUNK_HOME 'INDEX.yaml' } else { $extIndex }
 
-# ---------- 路径规范化（~ 展开 / 绝对化 / 去尾斜杠） ----------
+# ---- 路径规范化（~ 展开 / 绝对化 / 去尾斜杠） ----
 function Normalize-Path([string]$p) {
   if ([string]::IsNullOrEmpty($p)) { return $p }
   if ($p -eq '~') { $p = $HOME }
@@ -72,7 +72,7 @@ function Normalize-Path([string]$p) {
   return $p
 }
 
-# ---------- README 主通道：frontmatter `dsh-codepunk:` 或注释行 ----------
+# ---- README 主通道：frontmatter `dsh-codepunk:` 或注释行 ----
 function Get-ReadmeId([string]$readme) {
   if (-not (Test-Path $readme)) { return $null }
   $lines = [System.IO.File]::ReadAllLines($readme, [System.Text.Encoding]::UTF8)
@@ -96,7 +96,7 @@ function Get-ReadmeId([string]$readme) {
   return $null
 }
 
-# ---------- INDEX 解析（行级，等价 POSIX 降级路径） ----------
+# ---- INDEX 解析（行级，等价 POSIX 降级路径） ----
 function Clean-Value([string]$v) {
   if ($null -eq $v) { return '' }
   return ($v -replace '^\s+|\s+$', '' -replace '["'']', '')
@@ -160,7 +160,7 @@ function Get-IndexRowById([string]$want) {
   return $null
 }
 
-# ---------- resolve ----------
+# ---- resolve ----
 function Invoke-Resolve([string]$targetIn) {
   if ([string]::IsNullOrEmpty($targetIn)) { Write-Err '用法: dsh-codepunk-link resolve <项目路径>'; $script:rc = 2; return }
   $target = Normalize-Path $targetIn
@@ -203,7 +203,7 @@ function Invoke-Resolve([string]$targetIn) {
   $script:rc = 1; return
 }
 
-# ---------- index：校验无空悬 + 字段齐 ----------
+# ---- index：校验无空悬 + 字段齐 ----
 function Invoke-Index() {
   if (-not (Test-Path $DSH_CODEPUNK_INDEX)) { Write-Err "INDEX 未初始化：$DSH_CODEPUNK_INDEX 不存在"; $script:rc = 1; return }
   # ---- 前置核验（与 POSIX 端口对齐；F139：此前仅 Register 有结构守卫，index 会静默通过损坏/类型非法文件）----
@@ -267,7 +267,7 @@ function Invoke-Index() {
   $script:rc = 0
 }
 
-# ---------- register：追加不覆盖 ----------
+# ---- register：追加不覆盖 ----
 function Invoke-Register([string]$targetIn, [string]$id) {
   if ([string]::IsNullOrEmpty($targetIn) -or [string]::IsNullOrEmpty($id)) { Write-Err '用法: dsh-codepunk-link register [-y] <项目路径> <id>'; $script:rc = 2; return }
   $target = Normalize-Path $targetIn
@@ -375,7 +375,7 @@ function Invoke-Register([string]$targetIn, [string]$id) {
   $script:rc = 0
 }
 
-# ---------- 主入口 ----------
+# ---- 主入口 ----
 $script:rc = 0
 switch ($Command) {
   'resolve'  { Invoke-Resolve $Arg1 }

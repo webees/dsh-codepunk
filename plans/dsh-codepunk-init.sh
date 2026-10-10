@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
-# =============================================
+# ======
 # dsh-codepunk-init：幂等建立 dsh-codepunk 统一总库骨架
-# ---------------------------------------------
+# ------
 # 落位：预设 plans/ 下（待评审后移入正式位 scripts/init-hub.sh）。
 # 职责：
 #   0. 安装路径常量到总库根、发布无扩展名入口、**同步工具脚本到总库正式位**（升级动作）
@@ -17,7 +17,7 @@ _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "
 #   不改写 INDEX.yaml 既有内容（仅缺失时生成骨架）、绝不触碰 config.yaml。
 #   注：若你手改过总库 scripts/ 下的副本，运行本脚本会用源副本覆盖之（升级语义），请改源。
 # 用法：bash dsh-codepunk-init.sh [--check]     --check=只断言不创建
-# =============================================
+# ======
 set -euo pipefail
 
 # F421（本轮对抗实测）：**帮助 MUST 不依赖环境**。旧实现里 `-h` 分支（下方 case）位于 `$HOME` 展开
@@ -63,7 +63,7 @@ fail()     { echo "✗ $*" >&2; exit 1; }   # 1 = 有失败项（内容/一致�
 fail_env() { echo "✗ $*" >&2; exit 2; }   # 2 = 环境/用法错误（写权限、父目录缺失等）
 pass() { echo "✓ $*"; }
 
-# --- 0. 安装路径常量文件到总库根（README/SKILL 承诺的 source 路径） ---------------
+# --- 0. 安装路径常量文件到总库根（README/SKILL 承诺的 source 路径） ----
 install_home_sh() {
   [[ -f "$HOME_SH_SRC" ]] || return 0          # 无源副本（内联兜底路径）时不安装
   # 只读（--check）模式：**先判定、绝不创建**总库根（F154：原实现在守卫之前 mkdir，
@@ -114,7 +114,7 @@ publish_bare_commands() {
   done
 }
 
-# --- 0c. 同步工具脚本到总库正式位（预设升级路径） --------------------------------
+# --- 0c. 同步工具脚本到总库正式位（预设升级路径） ----
 # 运行期用的是总库副本（~/.dsh-codepunk/scripts/*），故升级预设后 MUST 同步此处；
 # 原先只建骨架、不同步脚本，导致升级后总库长期停留在旧版且无检测。
 # 同步源 = 本脚本所在目录（即仓内 plans/）：**从仓内运行本脚本即为升级动作**。
@@ -166,7 +166,7 @@ install_scripts
 # 发布无扩展名入口 MUST 在脚本拷入总库之后（F155：原顺序在全新总库上 glob 空匹配，入口从未发布）
 publish_bare_commands
 
-# --- 1. 目录骨架（mkdir -p 幂等） -------------------------------------------------
+# --- 1. 目录骨架（mkdir -p 幂等） ----
 for d in "$DSH_CODEPUNK_PROJECTS" "$DSH_CODEPUNK_WORKTREES" "$DSH_CODEPUNK_SCRIPTS"; do
   if (( CHECK_ONLY )); then
     [[ -d "$d" ]] || fail "目录缺失: $d (运行本体脚本补建)"
@@ -177,7 +177,7 @@ for d in "$DSH_CODEPUNK_PROJECTS" "$DSH_CODEPUNK_WORKTREES" "$DSH_CODEPUNK_SCRIP
   fi
 done
 
-# --- 2. INDEX.yaml 骨架模板（缺失才写；存在即视为已初始化） --------------------------
+# --- 2. INDEX.yaml 骨架模板（缺失才写；存在即视为已初始化） ----
 if [[ -f "$DSH_CODEPUNK_INDEX" ]]; then
   pass "INDEX.yaml 已存在，跳过生成（幂等）: $DSH_CODEPUNK_INDEX"
 else
@@ -185,7 +185,7 @@ else
     fail "INDEX.yaml 缺失: $DSH_CODEPUNK_INDEX"
   fi
   cat > "$DSH_CODEPUNK_INDEX" <<'EOF'
-# =============================================
+# ======
 # dsh-codepunk 统一总库 · 全局注册表 INDEX.yaml（骨架模板，init 内置）
 # 条目 schema（骨架期声明；条目本体由 dsh-codepunk-link 的 register 构建）：
 #   project_id:        项目 slug（目录名直用，冲突加路径 hash 后缀）
@@ -195,7 +195,7 @@ else
 #   source:            条目来源：register（或历史 migration-report）
 # 字段名以 dsh-codepunk-link 的校验实现为准（早期骨架注释用 repo_path/status 旧名，已对齐）。
 # 树形约定：projects/<project_id>/runs/<run_id>/…（结构 = 现工程内 .dsh-codepunk/ 内容平移）
-# =============================================
+# ======
 schema_version: 1
 projects: []
 last_updated: null
@@ -203,7 +203,7 @@ EOF
   pass "生成 INDEX.yaml 骨架: $DSH_CODEPUNK_INDEX"
 fi
 
-# --- 3. config.yaml 不动性自检（只读断言，绝不写入） --------------------------------
+# --- 3. config.yaml 不动性自检（只读断言，绝不写入） ----
 CONFIG="$DSH_CODEPUNK_HOME/config.yaml"
 if [[ -f "$CONFIG" ]]; then
   pass "全局配置层保留（未触碰）: $CONFIG"
