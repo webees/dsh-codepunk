@@ -21,7 +21,7 @@ _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "
 case "${1:-}" in
   -h|--help) codepunk_usage 28 ;;
 esac
-ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+ROOT="${1:-${EG_ROOT:-}}"
 cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT"; exit 2; }   # 2 = 环境/用法错误（与全仓约定一致）
 codepunk_need_root "$ROOT" || exit 2
 
@@ -32,10 +32,7 @@ report() { echo "  [$1] $2"; if [ "$1" = "$FAIL" ]; then LOSE=$((LOSE+1)); fi; r
 # F405（依赖预检，MUST）：判据的计数/裁剪管道依赖下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」
 #   （rc=2），绝不静默降级为通过 —— 实证：B5 的 `git grep -ic … | awk '{s+=$2}'` 在缺 awk 时得空值，
 #   `${N:-0}` 归零 ⇒ 报「B5 全仓零旧名」通过，而旧名实际存在（影子 PATH 实测 rc=0 + 100/100）。
-for _t in git awk sed grep cut tr; do
-  command -v "$_t" >/dev/null 2>&1 \
-    || { echo "✗ 缺少必需工具 ${_t} ⇒ 无法核验 ≠ 通过（rc=2）" >&2; exit 2; }
-done
+codepunk_need git awk sed grep cut tr
 
 echo "===== dsh-codepunk 预设审计 ====="
 echo "[组A 配置层 25]"
@@ -49,7 +46,7 @@ if codepunk_have ruby; then
   #   ⇒ 本机 macOS 系统 ruby 2.6（Psych 3.1）看不出，ubuntu-latest 的 ruby 3.2 必现。
   #   修法：优先带 aliases: true；Psych 3 不认该关键字（ArgumentError）时回退旧调用。
   ruby -ryaml -e 'begin; d=YAML.load_file("agent.cordis.yml", aliases: true); rescue ArgumentError; d=YAML.load_file("agent.cordis.yml"); end; exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && parse_ok="ok" || parse_ok="fail"
-elif command -v node >/dev/null 2>&1; then
+elif codepunk_have node; then
   # F351：node 回退分支两处口径修正——
   #   ① 解析路径须与 preset-declare / verify-battery 同候选链（`$DSH_CODEPUNK_TOOLS` →
   #      `~/.dsh-codepunk/tools` → `$DSH_APP_ROOT` → `$DSH_ASAR` 邻位 → 预设根）：旧的 cwd 式

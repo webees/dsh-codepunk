@@ -19,7 +19,7 @@ _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "
 case "${1:-}" in
   -h|--help) codepunk_usage 28 ;;
 esac
-ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+ROOT="${1:-${EG_ROOT:-}}"
 cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT"; exit 2; }   # 2 = 环境/用法错误（与全仓约定一致）
 codepunk_need_root "$ROOT" || exit 2
 
@@ -33,10 +33,7 @@ EV=""   # 证据累积
 # F405（依赖预检，MUST）：扣分判据的抽取管道（`grep -hoE … | sed … | sort -u`、`tr`/`cut`/`find`）依赖
 #   下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」（rc=2），绝不静默降级为通过 ——
 #   实证：缺 sed 时 A2 的「引用了不存在的脚本」循环体一次都不执行，BADCMD 恒 0 ⇒ 该扣分项静默消失。
-for _t in git awk sed grep cut tr; do
-  command -v "$_t" >/dev/null 2>&1 \
-    || { echo "✗ 缺少必需工具 ${_t} ⇒ 无法核验 ≠ 通过（rc=2）" >&2; exit 2; }
-done
+codepunk_need git awk sed grep cut tr
 
 ded() { # $1=指标变量名 $2=扣分 $3=证据
   eval "cur=\$$1"
@@ -161,7 +158,7 @@ if codepunk_have ruby; then
   #   YAML 锚点会让 YAML.load_file 抛 Psych::AliasesNotEnabled ⇒ 跨版本修法：先带
   #   aliases: true，Psych 3 不认该关键字时回退旧调用。
   ruby -ryaml -e 'begin; d=YAML.load_file("agent.cordis.yml", aliases: true); rescue ArgumentError; d=YAML.load_file("agent.cordis.yml"); end; exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && PARSE="ok" || PARSE="fail"
-elif command -v node >/dev/null 2>&1 && [ -n "$YAML_DIR" ]; then
+elif codepunk_have node && [ -n "$YAML_DIR" ]; then
   YAML_DIR="$YAML_DIR" node -e 'const y=require(process.env.YAML_DIR);const d=y.load(require("fs").readFileSync("agent.cordis.yml","utf8"));process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' 2>/dev/null && PARSE="ok" || PARSE="fail"   # F215：与 ruby 路径同语义
 fi
 [ "$PARSE" = "fail" ] && ded A4 100 "agent.cordis.yml 解析失败"
@@ -263,7 +260,7 @@ fi
 # ── B8 可执行性 ─────────────────────────────────────────────────────────────
 for f in plans/*.sh; do bash -n "$f" 2>/dev/null || ded B8 25 "bash -n 失败: $f"; done
 PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
-if [ -f "$PV" ] && command -v node >/dev/null 2>&1; then
+if [ -f "$PV" ] && codepunk_have node; then
   # ps-validate 退出码语义：0=通过 · 1=语法错误 · 2=依赖缺失（校验器不可用）。
   # 把 2 与 1 混为一谈会错误归因为「语法失败」，故分列。
   node "$PV" plans/windows/*.ps1 >/dev/null 2>&1; PV_RC=$?

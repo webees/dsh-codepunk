@@ -7,11 +7,11 @@ set -u
 
 _EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
 # F361（本轮巡检实测）：本脚本原无 `-h`/`--help` 分支 ⇒ `-h` 被当预设根（报「预设根不存在: -h」），
-#   违反全仓「实现者 MUST 返回 0 并打印用法」约定（第 20 类）——现补上。
+#   第 20 类：实现者须返回 0 并打印用法；未实现者返回 2。
 case "${1:-}" in
   -h|--help) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
 esac
-ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+ROOT="${1:-${EG_ROOT:-}}"
 cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT"; exit 2; }
 codepunk_need_root "$ROOT" || exit 2
 
@@ -20,10 +20,7 @@ p() { printf '  %s %s\n' "$1" "$2"; }
 # F405（依赖预检，MUST）：本电池的指纹/枚举管道依赖下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」
 #   （rc=2），绝不静默降级为通过 —— 实证：缺 awk 时 `cksum … | awk '{print $1"-"$2}'` 双双得空值
 #   ⇒ IDX_BEFORE == IDX_AFTER ⇒ 报「✅ E2E 未污染真实总库（INDEX 校验和不变）」的**空值假通过**。
-for _t in git awk sed grep cksum mktemp tr wc; do
-  command -v "$_t" >/dev/null 2>&1 \
-    || { echo "✗ 缺少必需工具 ${_t} ⇒ 无法核验 ≠ 通过（rc=2）" >&2; exit 2; }
-done
+codepunk_need git awk sed grep cksum mktemp tr wc
 # 无法核验 ≠ 通过：环境不满足时显式判失败，避免「生产者失败→空值→静默 ✅」
 unverified() { p "✗" "$1（无法核验 ≠ 通过）"; F=1; }
 # F350：跳过登记 —— 「跳过 ≠ 通过」。被跳过的项（缺工具、缺环境变量、递归防护开关）MUST 在结论行
@@ -180,7 +177,7 @@ else
   p "ℹ" "python3 缺失：跳过 plans/*.py 语法校验"; skipnote "py 语法（缺 python3）"
 fi
 # mjs：node --check（缺 node 时提示，不判失败）
-if command -v node >/dev/null 2>&1; then
+if codepunk_have node; then
   for f in plans/*.mjs; do
     [ -e "$f" ] || continue
     node --check "$f" >/dev/null 2>&1 || { p "✗" "mjs 语法: $f"; F=1; }
@@ -192,9 +189,9 @@ PV="${PWSH_VALIDATOR:-$HOME/.dsh-codepunk/tools/ps-validate.mjs}"
 # F181：按**显式核验计数**构建结论行 —— 未实际核验的类型不得计入「通过」，否则会与「跳过」提示并列误导
 SH_CN=$(ls plans/*.sh 2>/dev/null | wc -l | tr -d ' ')
 PY_CN=0; command -v python3 >/dev/null 2>&1 && PY_CN=$(ls plans/*.py 2>/dev/null | wc -l | tr -d ' ')
-MJS_CN=0; command -v node >/dev/null 2>&1 && MJS_CN=$(ls plans/*.mjs 2>/dev/null | wc -l | tr -d ' ')
+MJS_CN=0; codepunk_have node && MJS_CN=$(ls plans/*.mjs 2>/dev/null | wc -l | tr -d ' ')
 PS_CN=0; PS_SUFFIX=""
-if [ -f "$PV" ] && command -v node >/dev/null 2>&1; then
+if [ -f "$PV" ] && codepunk_have node; then
   node "$PV" plans/windows/*.ps1 >/dev/null 2>&1 && { PS_CN=$(ls plans/windows/*.ps1 2>/dev/null | wc -l | tr -d ' '); PS_SUFFIX=" + ${PS_CN} .ps1"; } \
     || { p "✗" "PS 语法校验失败"; F=1; }
 fi

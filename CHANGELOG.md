@@ -238,6 +238,7 @@
   自检夹具的**越界防线**（必须绝对沙箱路径 + 源树禁区断言）。三条均由本轮实测缺陷驱动登记。
 
 ### 变更
+- **仓库根与依赖预检入库（D128 单一声明源，F467）**：4 个脚本各自 `cd "$(dirname …)/.." && pwd` 求仓库根、3 处内联依赖预检（`for _t in …; do command -v …`）与 10 处内联 `command -v node` 探针逐字重复 ⇒ 守卫库新增 `EG_ROOT` 与 `codepunk_need`，消费方改 `ROOT="${1:-${EG_ROOT:-}}"` 与单行 `codepunk_need <工具…>`，node 探针统一走 `codepunk_have node`（域内内联残留 0）；跨文件重复行冗余 7653 → 7173 字节（count 87 → 83），重复块与孤儿/超限/空白指标不变（内容治理第 9 轮）。
 - **用法块打印入库（D127 单一声明源，F465）**：域内 5 个脚本各写一遍的 `-h`／`--help` 用法打印行（取第 2 行至第 28 行注释、去行首 `# `、退出 0）**逐字相同**（256 B ×5，是剩余跨文件重复行的最大单一行源）⇒ 收敛为守卫库 `plans/env-guard.sh` 的 `codepunk_usage <行区间>`，消费方改为单行分支（`-h|--help) codepunk_usage 28 ;;`），行区间**显式传参**（各脚本 28／27／30／18 并存）；参数非整数或越界保守拒答 rc=2。新增存活变异 M223（参数形态校验 ＋ 削弱后消息消失）。
 - **依赖探针与核验缺口消息统一入库（D126 单一声明源）**：18 处内联 `command -v python3` / `command -v ruby` 与 3 处 python3 能力探针（presence + executability 两段）改为库调用 `codepunk_have` / `codepunk_need_py`（唯一探法源＝`plans/env-guard.sh`），仅保留 `preset-score.sh` 一处内联形态作为 M85 断言锚点；跨文件重复行冗余 9029 → 8167 字节。新增存活自检 **M221**（a 库探针 ≥20 处；b 内联形态 ≤1 处；c/d 夹具注入第二处内联形态与消息副本 ⇒ 判定式须转向，证明非空转）。
 - **新增 `make ps-validate` 目标**：PowerShell 校验器依赖安装 + `ps-validate.mjs` 语法校验，本地与 CI 两个作业共用同一配方（F454）。
