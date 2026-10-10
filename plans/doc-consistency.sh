@@ -27,7 +27,8 @@
 #   26. 治理矩阵载体可解析（矩阵行内反引号的文件型引用 MUST 在仓内可解析，或为 `artifacts.md`
 #       以 `##` 小节声明的制品名，或该行显式标注「非仓内」——F385：原「巡检节奏」行以运行根
 #       本地脚本 `tools/patrol-cadence.py` 作为「机械」载体，仓内不可复现且仓内已有等价门）
-#   25. 同一制品的多处生成器须一致（INDEX 骨架模板：link 与 init 的 heredoc 须逐字节一致——F360）
+#   25. 同一制品的多处生成器须一致（INDEX 骨架模板：link/init 的 heredoc 与 windows/init 的
+#       here-string 须逐字节一致——F360；F474 扩域到第三处生成器）
 #   24. Markdown 表格列数一致与列表条目形态（表格行的单元格数 MUST NOT 超过表头——GFM 规范下多余单元格被忽略；
 #       `CHANGELOG.md` 的 `### …` 段内正文行 MUST 以 `- ` 起行或为 2 空格续行——F459 实证：4 处条目前缀
 #       丢失而四门禁 + 自检 + 评分全绿
@@ -1574,30 +1575,60 @@ echo "[25] 同一制品的多处生成器须一致（INDEX 骨架模板单一来
 #   `plans/dsh-codepunk-init.sh`（总库初始化时写骨架）是**同一制品的两处生成器**，且 init 见
 #   INDEX 已存在即跳过 ⇒ 两者模板不一致时，终态内容取决于「谁先建文件」（顺序① init→register
 #   保留 init 的模板；顺序② register→init 只有 link 的模板）——实测 link 原为 1 行头、init 为 11 行
-#   注释块，同一输入两种顺序终态不同。此处机械核验两处 heredoc 块**逐字节一致**。
+#   注释块，同一输入两种顺序终态不同。
+# F474（本轮实测）：第三处生成器 `plans/windows/dsh-codepunk-init.ps1`（Windows 等价实现写同一制品）
+#   此前未入核验域，且模板实际漂移——9 行注释 vs 11 行、字段名 `repo_path`/`readme_marker`/`status`
+#   vs `project_root`/`dsh_codepunk_path`/`source`（后者才是 `dsh-codepunk-link` 校验实现与
+#   `dsh-codepunk-link.ps1` 的规范名，前者只是兼容别名）⇒「单一来源」的声称对第三处生成器落空。
+#   此处机械核验**三处**（两处 heredoc + 一处 here-string，行尾归一后逐字节比较）。
 SKEL_ISSUE=$(python3 <<'PYEOF'
 import io, re
-def skel(p):
+
+def skel_sh(p):
     t = io.open(p, encoding="utf-8", errors="replace").read()
-    m = re.search(r"<<'?EOF'\n(.*?)\nEOF\n", t, re.S)
+    m = re.search(r"<<'?EOF'\r?\n(.*?)\r?\nEOF\r?\n", t, re.S)
     if not m or "schema_version: 1" not in m.group(1):
         return None
-    return m.group(1)
-a = skel('plans/dsh-codepunk-link.sh')
-b = skel('plans/dsh-codepunk-init.sh')
-if a is None or b is None:
-    print('MISSING link=%s init=%s' % (a is None, b is None))
-elif a != b:
-    la, lb = a.split('\n'), b.split('\n')
-    d = [str(i + 1) for i in range(max(len(la), len(lb)))
-         if (la[i] if i < len(la) else None) != (lb[i] if i < len(lb) else None)]
-    print('DRIFT 差异行 %s（link %d 行 / init %d 行）' % (','.join(d[:6]), len(la), len(lb)))
+    return m.group(1).replace('\r\n', '\n')
+
+def skel_ps(p):
+    t = io.open(p, encoding="utf-8", errors="replace").read()
+    m = re.search(r"@'\r?\n(.*?)\r?\n'@", t, re.S)
+    if not m or "schema_version: 1" not in m.group(1):
+        return None
+    return m.group(1).replace('\r\n', '\n')
+
+SKEL_FILES = [('plans/dsh-codepunk-link.sh', skel_sh), ('plans/dsh-codepunk-init.sh', skel_sh),
+              ('plans/windows/dsh-codepunk-init.ps1', skel_ps)]
+got = [(f, fn(f)) for f, fn in SKEL_FILES]
+missing = [f for f, v in got if v is None]
+if missing:
+    print('MISSING %s' % ' '.join(missing))
+else:
+    base_f, base = got[0]
+    drift = []
+    for f, v in got[1:]:
+        if v != base:
+            la, lb = base.split('\n'), v.split('\n')
+            d = [str(i + 1) for i in range(max(len(la), len(lb)))
+                 if (la[i] if i < len(la) else None) != (lb[i] if i < len(lb) else None)]
+            drift.append('%s↔%s 差异行 %s（%d 行 vs %d 行）'
+                         % (base_f.split('/')[-1], f.split('/')[-1], ','.join(d[:6]), len(la), len(lb)))
+    # F475：骨架的**数据行**是与消费方的机械耦合——两处归一化实现都按 `^projects:\s*\[\]\s*$`
+    #   把空列表改成可追加形态；若生成器三处一致却写成别的形态（如 `projects: [ ]`），追加条目会产出
+    #   非法 YAML 而三处比较全绿 ⇒ 数据行形态一并纳入核验（并入同一条报告路径，避免口径分裂）。
+    _need = ['schema_version: 1', 'projects: []', 'last_updated: null']
+    _dm = [x for x in _need if x not in base.split('\n')]
+    if _dm:
+        drift.append('骨架数据行形态失配：' + ' | '.join(_dm))
+    if drift:
+        print('DRIFT ' + '；'.join(drift))
 PYEOF
 )
 if [ -z "$SKEL_ISSUE" ]; then
-  ok "INDEX 骨架模板单一来源：link 与 init 逐字节一致"
+  ok "INDEX 骨架模板单一来源：三处生成器（link/init 的 heredoc + windows/init 的 here-string）逐字节一致"
 elif [ "${SKEL_ISSUE%% *}" = "MISSING" ]; then
-  info "INDEX 骨架模板无法核验（未定位到含 schema_version 的 heredoc 块）——无法核验 ≠ 通过"
+  info "INDEX 骨架模板无法核验（未定位到含 schema_version 的模板块：${SKEL_ISSUE#MISSING }）——无法核验 ≠ 通过"
 else
   bad "INDEX 骨架模板漂移 → ${SKEL_ISSUE}"
 fi

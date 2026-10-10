@@ -3711,6 +3711,63 @@ PYEOF4
 check_rc "M225-b3 同一文件内复制两份 ⇒ A5 成段重复须命中且 rc=1（判据分工的另一半）" \
   "bash plans/preset-score.sh 2>&1" 1 "成段重复"
 fresh
+echo "[M226 INDEX 骨架第三处生成器入域（doc-consistency 第 25 类，F474）]"
+check_rc "M226-a 三处骨架生成器逐字节一致 ⇒ 干净态 rc=0" "bash plans/doc-consistency.sh 2>&1" 0 "三处生成器"
+_m226_ps="$work/cur/plans/windows/dsh-codepunk-init.ps1"
+python3 - "$_m226_ps" <<'PYEOF4'
+import io
+import sys
+p = sys.argv[1]
+assert p.endswith('/cur/plans/windows/dsh-codepunk-init.ps1'), p     # 越界防线：MUST 只作用于沙箱副本
+t = io.open(p, encoding='utf-8', newline='').read()
+assert t.count('project_root（工程根绝对路径）') == 1, t.count('project_root（工程根绝对路径）')
+io.open(p, 'w', encoding='utf-8', newline='').write(
+    t.replace('project_root（工程根绝对路径）', 'project_rooot（工程根绝对路径）', 1))
+print('M226 FIXTURE')
+PYEOF4
+mutate "M226-b 夹具：ps1 骨架字段名漂移已落地" "$_m226_ps" 'project_rooot'
+check_rc "M226-b ps1 骨架漂移 ⇒ 第 25 类须报漂移（rc=1）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "骨架模板漂移"
+check_contains "M226-b2 漂移报告须点名第三处生成器（dsh-codepunk-init.ps1）" \
+  "bash plans/doc-consistency.sh 2>&1" "dsh-codepunk-init.ps1"
+# 削弱：把第三处生成器从核验域移除 ⇒ 同一漂移不再被发现（证明判据真的依赖它）
+python3 - "$work/cur/plans/doc-consistency.sh" <<'PYEOF4'
+import io
+import sys
+p = sys.argv[1]
+assert p.endswith('/cur/plans/doc-consistency.sh'), p
+t = io.open(p, encoding='utf-8').read()
+old = "              ('plans/windows/dsh-codepunk-init.ps1', skel_ps)]"
+assert t.count(old) == 1, t.count(old)
+io.open(p, 'w', encoding='utf-8').write(t.replace(old, "              ]", 1))
+print('M226 WEAKEN')
+PYEOF4
+check_no_match "M226-c 移除第三处生成器后 MUST 不再报漂移（反空转）" \
+  "bash plans/doc-consistency.sh 2>&1" "骨架模板漂移"
+fresh
+# M226-d：三处生成器**一致但整体错形**（数据行 `projects: []` 被改成 `projects: [ ]`）——
+#   三处比较全绿，但消费方的 `^projects:\s*\[\]\s*$` 归一化不再匹配 ⇒ 追加条目会产出非法 YAML。
+python3 - "$work/cur" <<'PYEOF5'
+import io
+import os
+import sys
+root = sys.argv[1]
+assert os.path.basename(root) == 'cur', root
+for rel in ('plans/dsh-codepunk-link.sh', 'plans/dsh-codepunk-init.sh',
+            'plans/windows/dsh-codepunk-init.ps1'):
+    p = os.path.join(root, rel)
+    ln = io.open(p, encoding='utf-8', newline='').read().split('\n')
+    # 逐行定位：link.sh 的注释里也含该字面量，故 MUST 只认同「顶格且整行等于它」的那一行；
+    #   ps1 为 CRLF（行尾 `\r` 须保留，比较时剥掉）。
+    hit = [i for i, x in enumerate(ln) if x.rstrip('\r') == 'projects: []']
+    assert len(hit) == 1, (rel, len(hit))
+    ln[hit[0]] = ln[hit[0]].replace('projects: []', 'projects: [ ]', 1)
+    io.open(p, 'w', encoding='utf-8', newline='').write('\n'.join(ln))
+print('M226 FIXTURE-D')
+PYEOF5
+check_rc "M226-d 三处一致但数据行错形 ⇒ 第 25 类须报数据行缺失（rc=1）" \
+  "bash plans/doc-consistency.sh 2>&1" 1 "骨架数据行"
+fresh
 
 echo "[M204 帮助 MUST 不依赖环境（F421）]"
 fresh
