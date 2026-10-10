@@ -363,7 +363,7 @@ if [ -f "$IDX" ] && codepunk_have ruby; then
   #      后由 Psych 3 的 ArgumentError 回退旧调用。
   #   ② `-Ku`（源编码 UTF-8）：本片段含中文字面量，C/POSIX locale 下（无 UTF-8 locale 的最小
   #      容器/CI）ruby 以 US-ASCII 读取 `-e` 源码 ⇒ `invalid multibyte char` 编译失败 ⇒ 同一误判。
-  #      注意：`-E utf-8` 只改**外部编码**，不改 `-e` 源码编码，修不了此病；`-Ku` 才行（两者实测见台账）。
+  #      注意：`-E utf-8` 只改**外部编码**，不改 `-e` 源码编码，修不了此病；`-Ku` 才行（两者实测见 git 提交与 CHANGELOG）。
   ruby -Ku -ryaml -e '
     begin; d = YAML.load_file(ARGV[0], permitted_classes: [Time], aliases: true); rescue ArgumentError; d = YAML.load_file(ARGV[0]); end
     raise "顶层非映射" unless d.is_a?(Hash)
@@ -372,7 +372,7 @@ if [ -f "$IDX" ] && codepunk_have ruby; then
   ' "$IDX" 2>/dev/null || ded B14 20 "总库 INDEX.yaml schema 非法（真实 YAML 解析失败或键名不符）"
 elif [ -f "$IDX" ]; then
   # F216：INDEX 存在但**无 ruby** → 旧实现**静默跳过**该校验（判据消失而不告知 = 「缺失即通过」）。
-  #   与本套件「无法核验 ≠ 通过」口径一致，此处按失分处理并说明原因（可用 python3 解析的可选增强见台账 ℹ）。
+  #   与本套件「无法核验 ≠ 通过」口径一致，此处按失分处理并说明原因（可用 python3 解析的可选增强见 CHANGELOG 记录）。
   ded B14 20 "总库 INDEX.yaml schema 无法核验（缺 ruby）——无法核验 ≠ 通过（装 ruby 后重跑）"
 fi
 # 本地脚本正式位与本仓源副本的 schema 约定一致性由 F2 同步检查覆盖

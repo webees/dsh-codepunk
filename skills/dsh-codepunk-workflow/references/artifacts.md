@@ -307,7 +307,7 @@ knowledge/                      # 知识库（跨 run 沉淀）
 ### 1.3 运行根 `README.md` 的 `write_scope:` 段（R17）
 
 > 机械门：`bash plans/write-scope-check.sh --run-root <运行根>`（0=通过 / 1=段缺失·缺键·取值非法 / 2=运行根或 README 缺失）。
-> 运行根 `README.md` 除 spawn 登记表外 MUST 含 `write_scope:` 段（写盘台账）：允许写入前缀清单 + 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记。机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）据此核验；越界即缺陷（判据与命名见 `references/file-hygiene.md`「写盘白名单与越界判据」）。
+> 运行根 `README.md` 除 spawn 登记表外 MUST 含 `write_scope:` 段（写域登记）：允许写入前缀清单 + 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记。机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）据此核验；越界即缺陷（判据与命名见 `references/file-hygiene.md`「写盘白名单与越界判据」）。
 
 ```yaml
 write_scope:
@@ -325,54 +325,10 @@ write_scope:
     - { path: "skills/dsh-codepunk-workflow/references/file-hygiene.md", reason: "交付物，非临时物" }
 ```
 
-> 口径：`cleanup_status: clean` 是交接门与合并门的**前置读数**；`pending` 不得进入交接/合并（同 D079 残留自查门闩）。台账行与实况不符（写 clean 而门禁判 FAIL）以机械门结论为准。**机械门**：`plans/write-scope-check.sh --run-root <运行根>` 核验 5 键齐备 + 取值合法 + 判据 h（`clean` 时运行根**含子目录**不得存在 `*.bak`/`*.bak-*`/`*~`/`*.orig`/`*.rej`/`*.tmp`/`*.swp`/`__pycache__`/`*.pyc`；F396 顶层实证、F403 递归加严实证）。
+> 口径：`cleanup_status: clean` 是交接门与合并门的**前置读数**；`pending` 不得进入交接/合并（同 D079 残留自查门闩）。登记行与实况不符（写 clean 而门禁判 FAIL）以机械门结论为准。**机械门**：`plans/write-scope-check.sh --run-root <运行根>` 核验 5 键齐备 + 取值合法 + 判据 h（`clean` 时运行根**含子目录**不得存在 `*.bak`/`*.bak-*`/`*~`/`*.orig`/`*.rej`/`*.tmp`/`*.swp`/`__pycache__`/`*.pyc`；F396 顶层实证、F403 递归加严实证）。
 
-## 子代理状态清单（D095：启动自检 + 定时巡检用）
+## 会话与协作状态（D131：MUST NOT 落记账文件）
 
-> 独立 YAML 状态清单（区别于 `runs/<run_id>/README.md` 里的人读登记表）。主进程每次启动 + 每 N 轮定时执行「查 → 比 → 续 → 写」闭环，并在每次巡检后更新本文件。文件名 `runs/<run_id>/agents.yaml`（与同目录 README 登记表双写一致）。
+> 本预设**不落任何状态清单/记事文件**（D131）。会话与协作状态的事实源是 DSH 官方机制：`list_agents`（实测态）、共享任务板（任务归属与依赖）、工作房消息（派工边界与断点）；进度与缺陷编号的事实源是 git 提交 + `CHANGELOG.md`；运行状态的事实源是运行根目录实况（文件 mtime、`git status`）。
 
-```yaml
-# 子代理状态清单 agents.yaml（机器可读，状态唯一真源以运行中 list_agents 为准）
-run_id: run-2026-0001
-updated_at: "2026-09-18T00:00:00Z"   # 每次巡检后刷新
-patrol_every_n_rounds: 5             # 定时巡检间隔（默认 5 轮，可按 run 规模调）
-```
-
-> **写入约束（MUST，D099）**：本文件是**机器可读**清单，写入后 MUST 立即用**严格解析器**回读校验：`node -e "require('<DSH 安装根>/node_modules/js-yaml').load(require('fs').readFileSync('<path>','utf8'))"` ——js-yaml v4 默认**拒绝重复键**，而 `ruby -ryaml`（Psych）**不报重复键**（实测：条目下同时存在两个 `at`/两个 `note` 时 Psych 静默取后者、js-yaml 报 `duplicated mapping key`）⇒ 巡检写回把新条目插在上一轮条目的字段之前这类错位，只有严格解析器能发现。另 MUST 逐条核对**字段归属**（每个 `round` 条目须齐备 `round`/`at`/`note`，不得把上一轮的字段留在新条目之下），并比对关键字段长度：自由文本值（`result` / `note`）若含裸半角冒号加空格 ⇒ YAML **语法错误**（整文件不可解析）；若含**空格 + 半角井号** ⇒ 该值被当作注释**静默截断**（实测：同一条 `result` 源 536 字，写入后仅解析出 325 字）。两者均须改用全角冒号 / 全角井号，或把值加引号。校验命令不得只做 grep——**行存在 ≠ 可解析**。 自由文本值若用**单引号标量**（`note: '…'`）且内含撇号 ⇒ MUST 双写为两个单引号（`it''s`）：未双写则单引号标量未闭合、**整文件不可解析**（实测：`note: '…it's…'` ⇒ js-yaml `bad indentation of a mapping entry`，而 `patrol-check` 与 `write-scope-check` 曾同报通过 ⇒ 已加判据 g）。 `at` / `updated_at` 时间戳 MUST 为 `YYYY-MM-DDThh:mm:ss` 且带偏移（`Z` 或 `±hh:mm`；`Z` 与 `+00:00` 等价，RFC 3339）、MUST NOT 晚于**落盘时刻**、按轮次 MUST **非递减**（历史占位 `未记录…` 豁免）；实测：条目写成次日 `05:05` 而实际落盘 `22:02:37+07:00`，两门仍报通过 ⇒ 名册时间线不可复算（D094/D095 以时间为据）⇒ 已加判据 i。
-
-> **机械门**：`plans/patrol-check.sh --run-root <运行根> [--ledger <台账>] [--max-gap N]` —— 逐条核验 `patrol_log` 的 `round`/`at`/`note` 齐备（字段缺失或值为空即报）、`round` 唯一且为整数、给了 `--ledger` 时每个巡检轮次在台账中有行、升序排序后相邻轮次间隔 ≤ N（默认 5）、单引号标量闭合性（形如 `键: '…'` 的行内单引号个数须为偶数，撇号须双写）、时间戳实况（形态合法 / 不晚于当前时刻（容差 120s）/ 按条目顺序非递减——判据 i）；退出码 0/1/2（0=全部合规 / 1=契约违规并逐条列出 / 2=用法或环境错误，无法核验 ≠ 通过）。
-
-```yaml
-policy:                              # 反循环策略段（细则见 references/anti-loop.md；无该段时按 SKILL R16 默认执行）
-  no_new_evidence_steps: 3           # 连续 N 步无新证据 ⇒ 强制输出「当前假设/已证伪项/下一步不同做法」
-  no_new_evidence_hard: 5            # 连续 N 步无新证据 ⇒ 换策略或上报，禁止原样重试
-  same_failure_fingerprint: 2        # 同一失败指纹重复 N 次 ⇒ 换策略；第 3 次由派发层拒绝并回结构化反馈
-  same_command_repeat: 3             # 同一命令重复 N 次 ⇒ 判为空转，改走后台或降规模
-  step_timeout_s: 300                # 单步超时 ⇒ 转后台任务并降低扫描规模
-  context_hygiene: conclusion-only   # 失败轨迹只写结论与已证伪路径；压缩后复核硬约束原文
-seats:
-  - task_id: chunk-a
-    seat: squad-lead                 # squad-lead | engineer | sdet
-    codename: 衡策                   # staffing.yaml 一致
-    subagent_id: 6420f25a-0000-4000-8000-000000000000
-    label: 衡枢-主责(配置层优化)      # 派单 description 原样
-    status: active                   # active | done | interrupted | recovered | failed
-    last_seen: running               # 最近一次 list_agents 的**工具可见**状态：running | inactive | 未在册
-                                     # （该工具只列可续聊子代理；一次性子代理不列出）
-    expected: active                 # 期望：active（有未完成交付）| done（已签收，可不清）
-    progress_ref: tasks/chunk-a/progress/progress.md
-    last_checkpoint_at: "2026-09-18T00:00:00Z"
-    note: ""                         # 中断原因 / 续行记录
-```
-
-**字段语义**：`status` 为主进程维护的目标态，`last_seen` 为最近巡检的实测态；二者不一致（active 但 running 之外）即中断席。`expected: done` 的席跳过恢复。
-
-**状态迁移主体与触发条件（单点权威；`status` 只由 run-lead 写）**——`interrupted`/`failed` 此前无归属：
-
-| 迁移至 | 主体 | 触发条件（可观测） |
-| --- | --- | --- |
-| `active` | run-lead | 派发该席时（`创建即登记`，`subagent_id` 落盘） |
-| `interrupted` | run-lead | 巡检查得 `expected: active` 而 `last_seen ∈ {inactive, 未在册}`（即中断席）；**同轮写 `last_seen`/`note`（中断原因）** |
-| `recovered` | run-lead | 经授权唤醒（`send_message` 附断点摘要）后续行成功；登记 `note`＝断点与授权 |
-| `done` | run-lead | 接收方签收后（**与 `chunks.yaml` 的 chunk 态同时置**，见 SKILL ⑤） |
-| `failed` | run-lead | 该席不可恢复：连续回修仍不可用、或 `subagent_id` 已不可达而须重建（§5 失败处理）；**记 `note` 与重建去向** |
+> 因此本文件不再提供 `agents.yaml` / 运行根 `README.md` 登记表模板——被移除的模板与写入约束（原 D095 / D099）保留在 git 历史中；运行根 `README.md` 现只需 `write_scope:` 段（D098）。

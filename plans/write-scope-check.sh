@@ -6,7 +6,7 @@
 #   探针/补丁脚本与临时产物 MUST 落在运行根；工程工作树内、主目录顶层与系统临时
 #   目录顶层的**临时/探针命名物**一律视为越界（不依赖 git 跟踪状态——未跟踪同样算）。
 #
-# 退出码: 0=通过; 1=发现越界或运行根 write_scope 台账不合规; 2=无法核验或用法错（--repo 不存在/非目录、
+# 退出码: 0=通过; 1=发现越界或运行根 write_scope 登记不合规; 2=无法核验或用法错（--repo 不存在/非目录、
 #   HOME 未设、未知参数、--exempt-from 文件不可读、--run-root 目录或 README 缺失）
 #
 # 用法:
@@ -25,7 +25,7 @@
 #                    与登记项**相等**、或位于某登记项**之内**（＝登记项为命中路径的**祖先目录**）的命中降级为 INFO（列出但不判 FAIL；登记写法相对/`./x`/尾斜杠/绝对等价）。
 #                    缺省**不启用**（行为同旧版）。文件不存在/不可读 ⇒ exit 2（无法核验 ≠ 通过）。
 #     --run-root <运行根>
-#                    核验该运行根的 `README.md` 是否含 R17 要求的 `write_scope:` 台账段
+#                    核验该运行根的 `README.md` 是否含 R17 要求的 `write_scope:` 登记段
 #                    （键：run_id / allowed_prefixes / created / cleanup_status / exempt；
 #                    cleanup_status 取值须为 clean 或 pending）。只跑这一项、不扫目录树。
 #                    **判据 h（F396，加严 F403）**：`cleanup_status: clean` 时运行根**含子目录**不得存在
@@ -100,9 +100,9 @@ fail() { printf '%s\n' "$*" >&2; FAIL=1; }
 fatal() { printf '✗ %s\n' "$*" >&2; printf '  ⇒ 无法核验，不判「通过」（无法核验 ≠ 通过）\n' >&2; exit 2; }
 FAIL=0
 
-# ── --run-root：核验运行根 README 的 `write_scope:` 台账段（R17 MUST） ──────────
+# ── --run-root：核验运行根 README 的 `write_scope:` 登记段（R17 MUST） ──────────
 # F377 实证：运行根 README 只写了**散文**形态的写盘说明（无 `write_scope:` 键、内容陈旧三十余轮），
-#   而 `references/artifacts.md` §1.3 要求 MUST 含 YAML 台账段（run_id / allowed_prefixes / created /
+#   而 `references/artifacts.md` §1.3 要求 MUST 含 YAML 登记段（run_id / allowed_prefixes / created /
 #   cleanup_status / exempt），且 `cleanup_status: clean` 是**交接门与合并门的前置读数** ⇒ 散文形态下
 #   该读数根本不存在（门闩形同空转）。本模式把该 MUST 变成机械判据（只跑这一项，不扫目录树）。
 if [ -n "${RUN_ROOT}" ]; then
@@ -123,7 +123,7 @@ if [ -n "${RUN_ROOT}" ]; then
     inblk && /^[A-Za-z_][A-Za-z0-9_]*:/ { exit }
     inblk { print }
   ' "${RR_README}")"
-  say "==== write-scope-check · 运行根写盘台账（R17） ===="
+  say "==== write-scope-check · 运行根写域登记（R17） ===="
   say "运行根：${RUN_ROOT}"
   if [ -z "${BLK}" ]; then
     fail "✗ 运行根 README 缺 write_scope: 段（R17 MUST；模板见 references/artifacts.md §1.3）"
@@ -164,8 +164,8 @@ if [ -n "${RUN_ROOT}" ]; then
     fi
   fi
   echo
-  if [ "${FAIL}" -eq 0 ]; then printf '==== 运行根写盘台账：通过（exit 0）====\n'; exit 0; fi
-  printf '==== 运行根写盘台账：不合规（exit 1）====\n'; exit 1
+  if [ "${FAIL}" -eq 0 ]; then printf '==== 运行根写域登记：通过（exit 0）====\n'; exit 0; fi
+  printf '==== 运行根写域登记：不合规（exit 1）====\n'; exit 1
 fi
 
 # hits_line <总数> <路径...> → 「残留 N 处：a、b、c 等」（最多列 4 个路径 + 总数）

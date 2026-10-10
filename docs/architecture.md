@@ -56,10 +56,10 @@ dsh-codepunk 是 DeepSeek Harness 上的**多智能体开发流程预设**，由
 | `plans/preset-score.sh` | 16 指标评分（每项独立 100 分门槛） | 0 全满分 / 1 有失分 / 2 环境或用法错 |
 | `plans/preset-audit.sh` | 5 组 rubric 审计（配置 / 手册 / 调研 / 文档 / 工具层，否决式计分） | 0 全达标 / 1 有失分 / 2 预设根不存在 |
 | `plans/verify-battery.sh` | 完整验证电池（**11 项**：评分、审计、泄露门三模式、格式与卫生、物理杂散、结构、脚本语法与健壮性、DSH 兼容性、E2E 沙箱、检查器存活自检、文档声称一致性） | 0 全通过 / 1 有失败项 / 2 无法进入预设根 |
-| `plans/checker-self-test.sh` | **存活自检**：沙箱副本内注入 **226 项**已知缺陷（M1–M226），断言对应检查项必须报错 | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
-| `plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性 **29 类**（计数声称、阶段口径、编号与章节引用可解析、状态机自洽、日期形态、表格列数等） | 0 一致 / 1 有不一致 / 2 环境或用法错误 |
+| `plans/checker-self-test.sh` | **存活自检**：沙箱副本内注入 **225 项**已知缺陷（M1–M225），断言对应检查项必须报错 | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
+| `plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性 **30 类**（计数声称、阶段口径、编号与章节引用可解析、状态机自洽、日期形态、表格列数等） | 0 一致 / 1 有不一致 / 2 环境或用法错误 |
 | `plans/dsh-codepunk-leak-guard.sh` | 泄露防护门（`--staged` / `--tree` / `--history` / `--msg` / `--install-hook` / `--list`） | 0 通过 / 1 命中阻断 / 2 用法或环境错误 |
-| `plans/write-scope-check.sh` | 写盘纪律门 G1 仓库残留 / G2 主目录散落 / G3 临时目录残留；`--exempt-from` 读台账豁免 | 0 通过 / 1 发现越界 / 2 无法核验或用法错 |
+| `plans/write-scope-check.sh` | 写盘纪律门 G1 仓库残留 / G2 主目录散落 / G3 临时目录残留；`--exempt-from` 读写域登记豁免 | 0 通过 / 1 发现越界 / 2 无法核验或用法错 |
 | `plans/evidence-verify.sh` · `plans/acceptance-verify.sh` | 证据机械校验（`verdict=PASS` 才算过）与签收结构 + 独立性校验（自签一律不合规，比较不区分大小写；**必须传入交付方 `task_id`**，否则 rc=2 不判通过） | 0 通过 / 1 未过 / 2 用法或文件缺失、或未提供交付方 |
 | `plans/fidelity-gate.py` | 语义保护闸（`snapshot` / `verify`，**14 类**语义项比对；受检范围 `.md` / `.yml` / `.sh` / `.ps1`） | 0 零丢失 / 1 检出丢失 / 2 缺参数或未知模式 |
 | `plans/preset-compat.py` · `plans/preset-declare.mjs` · `plans/ps-validate.mjs` | 组合 ↔ DSH 安装兼容核验 / 声明副本漂移 / PowerShell 语法（可选依赖） | 0 通过 / 1 有问题 / 2 无法定位 DSH 安装或参数错误 |
@@ -107,7 +107,7 @@ dsh-codepunk 是 DeepSeek Harness 上的**多智能体开发流程预设**，由
 | 3 | 系统临时目录（`${TMPDIR:-/tmp}/dsh-codepunk-<run_id>-<step>/`） | 运行根不可写时的**次选**，用毕即删 |
 | 4 | 总库 `knowledge/` | 结论性知识 |
 
-禁令：工程工作树内的 `probe-*` / `patch-*` / `tmp*` / `*.bak` / `*.orig` / `*.rej` / `*.log` 等命名物、`$HOME` 顶层散落、系统目录自建物、工程目录内建沙箱副本。**越界即缺陷**：当轮清理并在运行根 `README.md` 的 `write_scope:` 段记台账，未清理不得进入交接门与合并门。
+禁令：工程工作树内的 `probe-*` / `patch-*` / `tmp*` / `*.bak` / `*.orig` / `*.rej` / `*.log` 等命名物、`$HOME` 顶层散落、系统目录自建物、工程目录内建沙箱副本。**越界即缺陷**：当轮清理并在运行根 `README.md` 的 `write_scope:` 段记入写域登记，未清理不得进入交接门与合并门。
 
 ## 6. 不变量与边界
 

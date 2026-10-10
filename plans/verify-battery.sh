@@ -80,7 +80,7 @@ fi   # command -v python3
 #    __pycache__/ *.pyc *.log *.out），且 Makefile:21 把仓内 tmp/ 与 logs/ 记为运行产物落点 ⇒
 #    两类 MUST 分开判：产物只列信息行，其余被忽略项才判杂散。原实现一律判杂散 ⇒ 按文档在 plans/ 内跑门禁
 #    （生成 plans/__pycache__，见 .gitignore:28-32 的 F266 注）或把产物落仓内 tmp/ 后，
-#    本节在本应干净的状态下 rc=1（CONTRIBUTING §5.1 清单第 1 项被阻塞）。实测见台账 F389 行。
+#    本节在本应干净的状态下 rc=1（CONTRIBUTING §5.1 清单第 1 项被阻塞）。实测见 `CHANGELOG.md` 的 F389 条目。
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
   unverified "杂散检查（非 git 工作区）"
 elif ! command -v find >/dev/null 2>&1; then

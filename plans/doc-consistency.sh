@@ -377,7 +377,7 @@ done
 #   依据：CONTRIBUTING「声称与实现是否同步——文档、脚本头注释、退出码契约三者一致」；
 #   实证：`plans/git-merge-flow.sh` 的 `$PR_BODY`（PR 正文覆盖）原只在实现里存在、头部与文档零记载。
 ENVDOC=$(python3 <<'PYEOF'
-import io, re, subprocess
+import io, os, re, subprocess
 SYS = {"PATH","HOME","PWD","OLDPWD","IFS","SHELL","USER","TMPDIR","LANG","LC_ALL","LC_CTYPE","LC_MESSAGES",
        "TERM","BASH_SOURCE","LINENO","FUNCNAME","RANDOM","SECONDS","OSTYPE","BASH","SHLVL","PPID","UID","EUID",
        "BASH_VERSION","BASH_ENV","ENV","REPLY","EDITOR","PAGER","GIT_PAGER","TZ","NO_COLOR","COLUMNS","LINES",
@@ -392,12 +392,25 @@ REF_PY = re.compile(r"os\.environ(?:\.get)?(?:\[|\.get\()?['\"]([A-Z][A-Z0-9_]*)
 REF_MJS = re.compile(r"process\.env\.([A-Z][A-Z0-9_]*)")
 REF_PS = re.compile(r"\$env:([A-Z][A-Z0-9_]*)")
 
+MISSING = []
+
 def tracked(pat):
     out = subprocess.run(["git", "ls-files"], capture_output=True, text=True).stdout
-    return [f for f in out.split("\n") if f and re.search(pat, f)]
+    fs = [f for f in out.split("\n") if f and re.search(pat, f)]
+    # F479：索引内列出而**工作树缺失**（未暂存删除 / 检出损坏）的条目单列并排除——
+    #   原实现在此处抛 FileNotFoundError：既违反自身卫生规则（不得抛原始 Traceback），
+    #   又使本子项**空输出**，被 shell 的 `-z` 分支误判为「均被记载」（假绿灯）。
+    have, gone = [], []
+    for f in fs:
+        (have if os.path.exists(f) else gone).append(f)
+    MISSING.extend(gone)
+    return have
 
 def read(p):
-    return io.open(p, encoding="utf-8", errors="replace").read()
+    try:
+        return io.open(p, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return ""
 
 def header(text, path):
     lines = text.split("\n")
@@ -464,19 +477,27 @@ for f in code:
         pat = re.compile(r"(?<![A-Za-z0-9_])" + re.escape(n) + r"(?![A-Za-z0-9_])")
         if not pat.search(doc_all) and not pat.search(head_all):
             bad.append("%s:%d:%s" % (f, ln, n))
+_pre = ""
+if MISSING:
+    _pre = "MISSING:%s|" % ",".join(sorted(set(MISSING))[:3])
 if nref == 0:
-    print("NOVAR")
+    print(_pre + "NOVAR")
+elif not bad:
+    print(_pre + "ALLOK")
 else:
-    print(",".join(bad[:5]) + ("" if len(bad) <= 5 else " 等共 %d 处" % len(bad)))
+    print(_pre + "BAD:" + ",".join(bad[:5]) + ("" if len(bad) <= 5 else " 等共 %d 处" % len(bad)))
 PYEOF
 )
-if [ "$ENVDOC" = "NOVAR" ]; then
-  info "外部输入变量无法核验（未扫到任何变量）——无法核验 ≠ 通过"
-elif [ -z "$ENVDOC" ]; then
-  ok "外部输入变量均被记载（任一 .md 或脚本头部注释块）"
-else
-  bad "外部输入变量未被记载（文档或头部注释块零提及）→ ${ENVDOC}"
-fi
+ENV_MISSING=""
+case "$ENVDOC" in MISSING:*) ENV_MISSING="${ENVDOC#MISSING:}"; ENV_MISSING="${ENV_MISSING%%|*}"; ENVDOC="${ENVDOC#*|}";; esac
+# F479：索引内列出而工作树缺失的条目 ⇒ 保守拒答（原先在此处抛原始 Traceback 并被误判为通过）
+[ -n "$ENV_MISSING" ] && bad "工作树缺失索引内文件（未暂存删除或检出损坏）→ ${ENV_MISSING}（无法核验 ≠ 通过）"
+case "$ENVDOC" in
+  NOVAR) info "外部输入变量无法核验（未扫到任何变量）——无法核验 ≠ 通过" ;;
+  ALLOK) ok "外部输入变量均被记载（任一 .md 或脚本头部注释块）" ;;
+  BAD:*) bad "外部输入变量未被记载（文档或头部注释块零提及）→ ${ENVDOC#BAD:}" ;;
+  *) bad "外部输入变量无法核验（第 5 类子项无输出——疑似解析失败）——无法核验 ≠ 通过" ;;
+esac
 
 echo "[6] 头部自称项数（仅提示，不计失败——计数口径以实跑输出为准）"
 DOC_CN=$(grep -oE '[一二三四五六七八九十]+项检查' plans/preset-compat.py | head -1)
@@ -1299,8 +1320,8 @@ probe_msg "score 坏根提示"           "bash plans/preset-score.sh --bogus"   
 probe_msg "doc-consistency 坏根提示" "bash plans/doc-consistency.sh --bogus" "预设根不存在" "cd: usage"
 probe_msg "battery 坏根提示"         "bash plans/verify-battery.sh --bogus"  "预设根不存在" "cd: usage"
 # -h/--help 约定：**实现该约定的脚本** MUST 返回 0 并打印头部用法（F153）；
-#   探针覆盖全部实现者（F361 后为 **15 个**：audit/score/doc-consistency/verify-worktree/link/
-#   leak-guard/init/git-merge-flow/github-setup/write-scope-check/patrol-check + acceptance-verify/evidence-verify/
+#   探针覆盖全部实现者（F478 后为 **14 个**：audit/score/doc-consistency/verify-worktree/link/
+#   leak-guard/init/git-merge-flow/github-setup/write-scope-check + acceptance-verify/evidence-verify/
 #   checker-self-test/verify-battery；唯 `dsh-codepunk-home.sh` 为纯 source 库，不属 CLI 入口）；
 #   另有 4 条坏根提示形状探针。下方静态子项保证「实现者集合」无遗漏。
 probe_rc 0 "audit -h"           "bash plans/preset-audit.sh -h"
@@ -1313,7 +1334,6 @@ probe_rc 0 "init -h"            "bash plans/dsh-codepunk-init.sh -h"
 probe_rc 0 "git-merge-flow -h"  "bash plans/git-merge-flow.sh -h"
 probe_rc 0 "github-setup -h"    "bash plans/github-setup.sh -h"
 probe_rc 0 "write-scope -h"     "bash plans/write-scope-check.sh -h"
-probe_rc 0 "patrol-check -h"    "bash plans/patrol-check.sh -h"
 # F361（本轮巡检实测）：以下 4 个脚本原无 `-h` 分支（`-h` 被当位置参数，rc=2 且无用法输出），
 #   而本类的注释自述「探针 MUST 覆盖全部实现者」⇒ 判据集合与实现集合脱节（`checker-self-test.sh`
 #   的 M149 甚至把该约定写进了夹具，自身却是缺口）。
@@ -1328,7 +1348,7 @@ probe_rc 0 "fidelity-gate -h"    "timeout 60 python3 plans/fidelity-gate.py -h"
 probe_rc 0 "preset-compat -h"    "timeout 60 python3 plans/preset-compat.py -h"
 probe_rc 0 "preset-declare -h"   "timeout 60 node plans/preset-declare.mjs -h"
 probe_rc 0 "ps-validate -h"      "timeout 60 node plans/ps-validate.mjs -h"
-RC_DECL=32   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 19 条 -h）；新增探针须同步此值
+RC_DECL=31   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状 + 18 条 -h）；新增探针须同步此值
 # F361 静态子项：**每个运行型入口都 MUST 实现 `-h`**——探针表是人工枚举，
 #   新增脚本时极易漏挂（本轮即 4 个实现者不在表内）。此处以源码为准机械核验实现集合。
 # F366 起域扩为 `plans/` 下全部可执行入口（纯 source 库除外）——否则 `.py`/`.mjs` 永不在域。
@@ -2142,6 +2162,44 @@ PYEOF
       [ "${EC_N:-0}" = 0 ] || true
       ;;
   esac
+fi
+echo "[30] 禁止记账机制（进度与缺陷以 git 提交 + CHANGELOG 为单一事实源）"
+if codepunk_have python3; then
+LEDGER_OUT=$(python3 <<'PYEOF'
+import os
+CARRIERS = ('ledger.md', 'plans/patrol-check.sh', 'plans/patrol-cadence.py',
+            'tools/patrol-readback.cjs', 'tools/close-round.py')
+WORDS = ('台账', '名册', 'patrol_log')
+DOMAIN_EXCLUDE = ('skills/dsh-codepunk-workflow/benchmarks/',)
+bad = []
+for a in CARRIERS:
+    if os.path.exists(a):
+        bad.append('记账载体回流: %s（进度与缺陷改由 git 提交 + CHANGELOG 承载）' % a)
+hits = set()
+for root, dirs, files in os.walk('skills'):
+    dirs[:] = [x for x in dirs if x != '.git']
+    for f in files:
+        rel = os.path.join(root, f).replace(os.sep, '/')
+        if not rel.endswith('.md') or rel.startswith(DOMAIN_EXCLUDE):
+            continue
+        t = open(rel, encoding='utf-8', errors='replace').read()
+        for w in WORDS:
+            if w in t:
+                hits.add('%s:%s' % (rel, w))
+bad += ['记账词汇 %s' % h for h in sorted(hits)[:6]]
+skill = 'skills/dsh-codepunk-workflow/SKILL.md'
+t = open(skill, encoding='utf-8', errors='replace').read() if os.path.exists(skill) else ''
+if '单一事实源' not in t:
+    bad.append('SKILL.md 缺「单一事实源」声明（移除记账机制 MUST 同时登记替代机制）')
+print('FINDINGS ' + '; '.join(bad) if bad else 'CLEAN 0')
+PYEOF
+)
+  case "$LEDGER_OUT" in
+    FINDINGS\ *) bad "第 30 类（禁止记账机制）→ ${LEDGER_OUT#FINDINGS }" ;;
+    *) ok "无记账机制（记账载体 0 个；记账词汇 0 处；单一事实源声明在 SKILL.md）" ;;
+  esac
+else
+  na "缺 python3：第 30 类（禁止记账机制）无法核验"
 fi
 if [ "$NFAIL" = 0 ]; then echo "✔ 无硬性不一致（${NCLASS} 类检查）"; exit 0; fi
 # F421：归因 MUST 区分「不一致」与「无法核验」（na() 计数另计）——旧实现把两者合并成

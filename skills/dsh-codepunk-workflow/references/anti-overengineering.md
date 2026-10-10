@@ -32,7 +32,7 @@
 ```
 
 - **无 upgrade path 的标 `no-trigger`**（"那些会悄悄腐烂"——later 变 never）。
-- 交接包 known_issues 增「简化台账」节：收集 `grep -rn "dsh-debt:"` 结果；**无 trigger 的打回补写**（D079 增量：防「有意简化腐烂成债」）。
+- 交接包 known_issues 增「简化登记」节：收集 `grep -rn "dsh-debt:"` 结果；**无 trigger 的打回补写**（D079 增量：防「有意简化腐烂成债」）。
 
 ## 四、Not-lazy 保护清单（绝不简化）
 

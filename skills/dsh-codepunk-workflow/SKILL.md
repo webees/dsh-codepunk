@@ -53,16 +53,16 @@ metadata:
 1. **关联项目**：`dsh-codepunk-link resolve <工程根路径>`→ `project_id` 与 `dsh_codepunk_path`（**总库托管路径**，绝不等价于工程根；见 benchmarks/preset-tool-fixes.md）。README 有 `dsh-codepunk: <id>` frontmatter → 主通道命中；无 → INDEX 兜底；都无 → 未注册（`dsh-codepunk-link register <工程根> <id>`）。
 2. **装载路径常量**：`source ~/.dsh-codepunk/dsh-codepunk-home.sh`（导出 `DSH_CODEPUNK_HOME`/`DSH_CODEPUNK_PROJECTS`/`DSH_CODEPUNK_INDEX`）。
 3. **建运行根**：`mkdir -p ~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/`——本 run 全部状态（goal/chunks/plan/tasks/handoff）写该目录，**绝不写入工程目录**。
-   - **③′ 运行根 `README.md` MUST 含 `write_scope:` 段（写盘台账，R17）**：登记允许写入前缀（优先序：运行根 → 授权工作树内该任务 `write_paths` → 系统临时目录（**次选**，用毕即删）→ 总库 `knowledge/`）+ 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记；**收尾时 MUST 清理越界物并更新该段**；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验——结论码 2 不得当作通过）。段模板见 `references/artifacts.md` §1.3。
+   - **③′ 运行根 `README.md` MUST 含 `write_scope:` 段（写域登记，R17）**：登记允许写入前缀（优先序：运行根 → 授权工作树内该任务 `write_paths` → 系统临时目录（**次选**，用毕即删）→ 总库 `knowledge/`）+ 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记；**收尾时 MUST 清理越界物并更新该段**；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验——结论码 2 不得当作通过）。段模板见 `references/artifacts.md` §1.3。
 4. **启动自检与子代理恢复（MUST，D094）**：客户端意外关闭会中断子代理，恢复靠以下三步——
    - **a. 查**：`list_agents(scope=descendants)` 列出全部**可续聊**子代理及其**工具可见状态**（`running` | `inactive`——平台内部的 idle/ready 不被该工具外显）。**工具语义（实测）**：① 一次性子代理（`mode: one-shot`）**不列出**；② `scope` 仅 `children`（默认）/`descendants`；③ `descendants` 中 depth>1 的条目**只接受 `interrupt_agent`**（`send_message` 仅达直接子）。
-   - **b. 比**：与 `runs/<run_id>/README.md` 的 spawn 登记表（`task_id | seat | subagent_id | status`）逐行对照，找出「登记为 active 但已非 running」的中断席。
+   - **b. 比**：与本次 spawn 记录（工作房消息里的 target/任务边界 + 共享任务板 owner）逐行对照，找出「已派工但已非 running」的中断席。
    - **c. 续**：读该席工作房 `progress/`、`handoff/`、`evidence.yaml` 定位断点 → `send_message` 精确续行（附断点摘要与待办），不重跑整轮、不重复 spawn。
-   - 前置条件：子代理 MUST 为 `backgroundMode: continuable`（一次性子代理中断后不可恢复，见 D088）；登记表 MUST 每 spawn 即写（stages.md §③ 第 5 条），否则无从比对。
-5. **定时巡检与状态清单（MUST，D095）**：仅靠启动自检不够——新开对话、长任务中途都要周期性巡检，防止中断席长期失联。
-   - **清单**：`runs/<run_id>/agents.yaml` 为独立 YAML 状态清单（模板见 `references/artifacts.md`「子代理状态清单」），与 README 登记表双写一致；每次巡检后刷新 `updated_at`。
-   - **节奏**：启动执行一次；运行中每 `patrol_every_n_rounds`（默认 5 轮）执行一次；收到失败/中断结算通知时加跑一次。
-   - **动作**：每次巡检执行「查→比→续→写」闭环：`list_agents` 查实测态 → 对照清单找 `expected: active` 但非 running 的中断席 → 读断点 `send_message` 续行 → **写回** `agents.yaml`（`status`/`last_seen`/`last_checkpoint_at`/`note`；**取值与触发条件见 `references/artifacts.md`「状态迁移主体」表**——如中断席写 `interrupted`、授权唤醒后续行写 `recovered`、不可恢复写 `failed`）。`status: done` 的席跳过。
+   - 前置条件：子代理 MUST 为 `backgroundMode: continuable`（一次性子代理中断后不可恢复，见 D088）；每次 `spawn_teammate` 的返回 target 与任务边界 MUST 由工作房消息/共享任务板可追溯（**不落任何状态文件**），否则中断席无从比对。
+5. **事件驱动巡检（MUST，D131）**：MUST NOT 落任何记账文件——会话与协作状态以 DSH 官方机制（`list_agents`、共享任务板、工作房消息）为事实源；进度与缺陷以 git 提交 + `CHANGELOG.md` 为**单一事实源**。
+   - **触发**：会话启动自检一次；每次收到失败/中断/席位失联通知即查；交付与合并前复核一次（R12）。MUST NOT 建固定轮次节奏，MUST NOT 写回任何状态清单。
+   - **动作**：`list_agents(scope=descendants)` 查实测态 → 对照会话内 spawn 记录（会话消息 / 共享任务）找中断席 → 读断点 `send_message` 续行（附断点摘要与待办），不重跑整轮、不重复 spawn。
+   - **审计按需（D132）**：全量审计只在三类事件触发——缺陷报告、DSH 版本升级、发布前回归；MUST NOT 逐轮全量重跑（用户 m27663）。
 
 > 第 3 项的写盘纪律细则见 `references/file-hygiene.md` §六/§七 与 `references/roles.md`「各岗位写域（MUST）」；硬规则为 R17（`references/standard.md` D098）。
 > **写盘护栏的机械拦截层见 `references/file-hygiene.md` §八（hooks）**：本预设已声明 `hooks-write-scope`（`plans/hooks/hooks.json` + `plans/hook-write-scope.py`），在工具调用前按 `deny`（黑名单，默认）或 `strict`（白名单）阻断越界写入（钩子退出码 2 即阻断，stderr 作理由回给模型）。它是**启发式拦网**（可被混淆绕过、非沙箱），与 `plans/write-scope-check.sh` 的事后扫描并列，不构成替代。
@@ -107,7 +107,7 @@ metadata:
 
 ### ④ 巡检与交接（P07）
 
-> 顺序 MUST：sdet 证据 pass → 审查门 → 交接包齐全 → 接收方签收 → **run-lead 置 `status: done`** → 解散（未置 `done` 不得进入合并门）。**两处置位（勿混）**：`chunks.yaml` 该 chunk `status: done`（合并门按此判定）+ `agents.yaml` 对应席 `status: done`（巡检按此跳过，D095）。
+> 顺序 MUST：sdet 证据 pass → 审查门 → 交接包齐全 → 接收方签收 → **run-lead 置 `status: done`** → 解散（未置 `done` 不得进入合并门）。**单处置位（D131）**：`chunks.yaml` 该 chunk `status: done`（合并门按此判定）——不另写任何席位状态文件。
 
 1. **证据**：`evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`；**基线（R12）** MUST 确认交付目录 mtime 最新（`ls -la docs/<module>/`）+ `validated_at`，空跑/旧快照打回。
 2. **输出纪律**（D074/D075/D076/D077）：只回 `command+exit_code+log_ref`；汇报 ≤1500 token；首行=结论、编号 ≤5、禁寒暄（`references/output-discipline.md`）。
@@ -117,7 +117,7 @@ metadata:
 
 ### ⑤ 解散与评分（P07 尾 + P16 人事）
 
-1. 签收且 run-lead **置两处 `status: done`**（`chunks.yaml` 的 chunk 态 + `agents.yaml` 的席位态）后，三席 `interrupt_agent` 就地解散（**调用即返回、不等待停止**，随后以 `list_agents` 观察转 `inactive`）（转为可再次续聊的**非运行态**——平台内部记 idle/ready，`list_agents` 外显为 `inactive`；不再派新任务；未置 `done` 不得解散、不得进入合并门）。
+1. 签收且 run-lead **置 `chunks.yaml` 的 chunk 态 `status: done`** 后，三席 `interrupt_agent` 就地解散（**调用即返回、不等待停止**，随后以 `list_agents` 观察转 `inactive`）（转为可再次续聊的**非运行态**——平台内部记 idle/ready，`list_agents` 外显为 `inactive`；不再派新任务；未置 `done` 不得解散、不得进入合并门）。
 2. `subagent_people` 按 evidence / status / handoff 完整度 / ack / retries 打 0–100（base 50，见 `references/knowledge.md`）；评分不阻断。
 3. 沉淀 `tasks/<id>/staffing/scores.yaml` + `knowledge/hr/personas/<codename>.yaml` + `knowledge/hr/teams/<team_name>.yaml`。
 
@@ -141,7 +141,7 @@ metadata:
 |---|---|
 | R1 | 双门闩：brief、staffing 均批准；缺一不得 spawn 实现三角 |
 | R2 | 仅调研岗可联网；主会话/实现组/文档/人事/审计/审查/发布禁止 web |
-| R3 | 小组限工作房与写集内；主会话只写运行根（`~/.dsh-codepunk/projects/<id>/`）状态与 knowledge/，不写业务码；git 操作（worktree add/remove、登记表）限主仓库与工程父目录 |
+| R3 | 小组限工作房与写集内；主会话只写运行根（`~/.dsh-codepunk/projects/<id>/`）状态与 knowledge/，不写业务码；git 操作（worktree add/remove）限主仓库与工程父目录 |
 | R4 | 未签收不得解散；交接材料文档小组归档 |
 | R5 | 评分不阻断；解散即评分 |
 | R6 | 需求变更单通道：用户 → 你 → `change_orders/<id>.yaml`（proposed→applied→closed，**迁移主体=run-lead，未闭环不得 complete**）→ 受影响 task；禁止小组直听用户改需求；goal draft 超时不自动推进 |
@@ -155,7 +155,7 @@ metadata:
 | R14 | 产出归位：收子代理产出/简报 MUST 核对归属域 vs 实际落位；错位即移出并 grep 核销，不得跨 run 漂移 |
 | R15 | 子代理任务边界（MUST）：子代理 MUST NOT 承载循环型目标（收敛到连续 N 轮 / 反复迭代直到达标）；此类目标由主会话按轮驱动，每轮只派单次可收敛任务（实测：循环目标被反复分派产生 47 个异常大会话） |
 | R16 | 反思考循环（MUST）：连续 3 步无新证据、或同一失败指纹重复达 2 次时，MUST 换策略或上报，不得原样重试；被证伪的结论与失败轨迹只写结论与已证伪路径，不得进入上下文或交接包 |
-| R17 | 写盘纪律（MUST）：写入按优先序——① 运行根 `~/.dsh-codepunk/projects/<id>/runs/<run_id>/`（首选）② 授权工作树内该任务的 `write_paths` ③ 系统临时目录（**次选**，用毕即删）④ 总库 `knowledge/`。禁令：工程仓库工作树内落探针/临时脚本或 `*.bak`/`*.orig`/`*.rej`/`*.log`；`$HOME` 顶层散落；`/usr`、`/opt`、`/etc`、`/Library` 等系统目录自建物；在工程目录内建沙箱副本。探针脚本 MUST 落运行根 `logs/`（`logs/probe-r<轮次>-<用途>.sh`）。**越界即缺陷**，MUST 当轮清理并在运行根 `README.md` 的 `write_scope:` 段记台账；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）；细则见 `references/file-hygiene.md`「写盘白名单与越界判据」 |
+| R17 | 写盘纪律（MUST）：写入按优先序——① 运行根 `~/.dsh-codepunk/projects/<id>/runs/<run_id>/`（首选）② 授权工作树内该任务的 `write_paths` ③ 系统临时目录（**次选**，用毕即删）④ 总库 `knowledge/`。禁令：工程仓库工作树内落探针/临时脚本或 `*.bak`/`*.orig`/`*.rej`/`*.log`；`$HOME` 顶层散落；`/usr`、`/opt`、`/etc`、`/Library` 等系统目录自建物；在工程目录内建沙箱副本。探针脚本 MUST 落运行根 `logs/`（`logs/probe-r<轮次>-<用途>.sh`）。**越界即缺陷**，MUST 当轮清理并在运行根 `README.md` 的 `write_scope:` 段记入写域登记；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）；细则见 `references/file-hygiene.md`「写盘白名单与越界判据」 |
 
 ## 4. 工具映射速查
 

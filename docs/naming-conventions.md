@@ -23,7 +23,7 @@
 
 ```text
 ~/.dsh-codepunk/projects/<project_id>/
-  README.md                 # 含 write_scope: 写盘台账段
+  README.md                 # 含 write_scope: 写域登记段
   goal.yaml  chunks.yaml  plan_draft.md
   change_orders/<id>.yaml   # 需求变更单
   approvals/merge.yaml      # 合并门批准
