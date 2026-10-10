@@ -3583,6 +3583,42 @@ check_no_match "M222-b 摘掉判定 ⇒ 同夹具不再被点名（判据非空�
   "bash plans/doc-consistency.sh" "条目前缀缺失"
 fresh
 
+# ── M223（D127 用法打印单一声明源；F465：域内 5 处逐字相同的用法行 256 B ×5 抽入守卫库）──
+echo "[M223 用法块打印入库与行区间参数校验（D127）]"
+fresh
+_M223_MSG='需 1 个行区间整数'
+sed -i.bak 's#^  -h|--help) codepunk_usage 28 ;;#  -h|--help) codepunk_usage notanumber ;;#' "$work/cur/plans/preset-score.sh"
+mutate "M223-a 夹具：用法分支传入非法行区间已落地" "$work/cur/plans/preset-score.sh" 'codepunk_usage notanumber'
+check_rc "M223-a 行区间非法 ⇒ 保守拒答 rc=2（不得静默打印空用法）" \
+  "bash plans/preset-score.sh -h 2>&1" 2 "$_M223_MSG"
+sed -i.bak 's@echo "✗ codepunk_usage 需 1 个行区间整数（形如 28）⇒ 无法核验 ≠ 通过" >&2; exit 2 ;; esac@: ;; esac  # M223-b weakened@' "$work/cur/plans/env-guard.sh"
+mutate "M223-b 削弱（摘掉行区间形态判定）已落地" "$work/cur/plans/env-guard.sh" 'M223-b weakened'
+check_no_match "M223-b 摘掉判定 ⇒ 同一非法参数不再被点名（判据非空转）" \
+  "bash plans/preset-score.sh -h 2>&1" "$_M223_MSG"
+fresh
+
+script_probe="$work/cur/probe-usage-short.sh"
+printf '%s\n' '#!/usr/bin/env bash' > "$script_probe"
+mutate "M223-c 夹具：仅 1 行的用法探针已落地（行区间必然超出其长度）" "$script_probe" '^#!/usr/bin/env bash$'
+check_rc "M223-c 行区间超出脚本长度 ⇒ 保守拒答 rc=2（不得打印空用法后 rc=0）" \
+  "bash -c '. plans/env-guard.sh; codepunk_usage 900' probe-usage-short.sh 2>&1" 2 '用法块为空'
+python3 - "$work/cur/plans/env-guard.sh" <<'PYEOF2'
+import io
+import sys
+p = sys.argv[1]
+assert p.endswith('/cur/plans/env-guard.sh'), p     # 越界防线：MUST 只作用于沙箱副本
+s = io.open(p, encoding='utf-8').read()
+old = '  [ -n "$_u" ] ||'
+new = '  # M223-d weakened\n  [ -z "$_u" ] ||'
+assert s.count(old) == 1, 'M223-d 锚点缺失'
+io.open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('WEAKENED')
+PYEOF2
+mutate "M223-d 削弱（反转空用法判定）已落地" "$work/cur/plans/env-guard.sh" 'M223-d weakened'
+check_no_match "M223-d 反转判定 ⇒ 同一超界探针不再被点名（判据非空转）" \
+  "bash -c '. plans/env-guard.sh; codepunk_usage 900' probe-usage-short.sh 2>&1" '用法块为空'
+fresh
+
 echo "[M204 帮助 MUST 不依赖环境（F421）]"
 fresh
 check_rc "M204-a HOME 未设 ⇒ init -h 仍 rc=0" "env -u HOME bash plans/dsh-codepunk-init.sh -h 2>&1" 0 "用法"
