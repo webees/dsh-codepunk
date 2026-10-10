@@ -30,20 +30,7 @@
 # =============================================
 set -uo pipefail
 
-# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
-case "$(locale charmap 2>/dev/null)" in
-  UTF-8|utf8|UTF8) ;;
-  *)
-    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
-      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
-    done ;;
-esac
-
-# F421：POSIX 模式（`POSIXLY_CORRECT=1` 或 `bash --posix`）关闭扩展 ⇒ 进程替换报语法错误且无保守措辞，会被误归因为「脚本坏了」；此处前置拒答。
-if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
-  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
-  exit 2
-fi
+_EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
 
 # F405（依赖预检，MUST）：本门禁的禁词归一管道（`sed … | awk 'length($0)>=3' | sort -u`）与掩码、文件枚举
 #   都依赖下列外部命令。缺失时**必须**判「无法核验 ≠ 通过」（rc=2），绝不静默降级为通过 ——

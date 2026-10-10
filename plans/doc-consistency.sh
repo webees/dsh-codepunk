@@ -76,14 +76,7 @@
 # =============================================
 set -u
 
-# F195/F196/F197（locale 固定）：C/POSIX 与非 UTF-8 locale 下 BSD 工具链逐字节处理 ⇒ 判据失效或误报，按 `locale charmap` 判定并在存在 UTF-8 locale 时固定。
-case "$(locale charmap 2>/dev/null)" in
-  UTF-8|utf8|UTF8) ;;
-  *)
-    for _l in en_US.UTF-8 C.UTF-8 C.utf8 UTF-8; do
-      if locale -a 2>/dev/null | grep -qx "$_l"; then export LC_ALL="$_l"; break; fi
-    done ;;
-esac
+_EG="$(dirname "${BASH_SOURCE[0]:-$0}")/env-guard.sh"; [ -r "$_EG" ] || { echo "✗ 缺 ${_EG}（无法核验）" >&2; exit 2; }; . "$_EG"  # F195/F197+F421 守卫库
 # -h/--help：打印头部用法并返回 0。仓内约定只对**实现者**成立（实现者 MUST 返回 0 并打印用法；
 #   未实现者按用法错误返回 2）——实测 10 个实现 / 8 个未实现，第 20 类探针覆盖全部实现者。
 case "${1:-}" in
@@ -95,12 +88,6 @@ cd "$ROOT" 2>/dev/null || { echo "✗ 预设根不存在: $ROOT" >&2; exit 2; }
 #   否则检查器会在错误的树上判 1、甚至挂起（实测：preset-score 于错误根 rc=124）。
 if [ ! -f skills/dsh-codepunk-workflow/SKILL.md ] || [ ! -d plans ]; then
   printf '✗ 根路径不是本预设仓库（缺 skills/dsh-codepunk-workflow/SKILL.md 或 plans/）: %s\n' "$ROOT" >&2
-  exit 2
-fi
-
-# F421：POSIX 模式（`POSIXLY_CORRECT=1` 或 `bash --posix`）关闭扩展 ⇒ 进程替换报语法错误且无保守措辞，会被误归因为「脚本坏了」；此处前置拒答。
-if [ -n "${POSIXLY_CORRECT:-}" ] || set -o 2>/dev/null | grep -qE '^posix[[:space:]]+on'; then
-  echo "✗ POSIX 模式（POSIXLY_CORRECT 或 bash --posix）⇒ 无法核验 ≠ 通过（rc=2）" >&2
   exit 2
 fi
 
@@ -298,7 +285,9 @@ fi
 echo "[5] 退出码契约"
 # F231：**空输入守卫** —— plans 下无可检脚本时，下方两处循环均不执行 ⇒ 两个判据都会**恒真通过**（0 脚本 ⇒ 「无违规」）。
 #   与 F230/class 18、F201/B0 的「空输入下判据恒真——无法核验 ≠ 通过」口径统一：以哨兵值让两条判据自行失败。
-if ! ls plans/*.sh plans/*.py plans/*.mjs 2>/dev/null | grep -qv '^plans/doc-consistency\.sh$'; then
+#   F442（本轮实证）：纯 source 库（`env-guard.sh` / `dsh-codepunk-home.sh`）不算「可检脚本」——无 CLI、无判据、
+#   无退出码契约面。若不排除，抽库后本哨兵**永不再触发**：夹具里只要留下库文件，就无法进入「空输入」态（实测 M117）。
+if ! ls plans/*.sh plans/*.py plans/*.mjs 2>/dev/null | grep -qvE '^plans/(doc-consistency\.sh|env-guard\.sh|dsh-codepunk-home\.sh)$'; then
   RC_EMPTY_SENTINEL="（plans 下无可检脚本：无法核验 ≠ 通过）"
 else
   RC_EMPTY_SENTINEL=""
@@ -1324,7 +1313,7 @@ RC_DECL=32   # 声明探针数（9 条用法/环境错 + 4 条坏根提示形状
 RC_HGAP=""
 for f in plans/*.sh plans/*.py plans/*.mjs; do
   base=$(basename "$f")
-  case "$base" in dsh-codepunk-home.sh) continue ;; esac   # 纯 source 库：无 $1/$@，不属 CLI 入口
+  case "$base" in dsh-codepunk-home.sh|env-guard.sh) continue ;; esac   # 纯 source 库：无 $1/$@，不属 CLI 入口
   # 接受两种书写顺序（`-h|--help` / `--help|-h`）与尾部追加别名（如 `-h|--help|help`）：
   #   实测 link.sh 用 `--help|-h|"")`、git-merge-flow.sh 用 `-h|--help|help)`。
   case "$base" in
@@ -1902,6 +1891,13 @@ pat = re.compile(r'(\d+)\s*个\s*`\.(sh|py|mjs|ps1)`')
 # F366 实证 4 个 `.py`/`.mjs` 入口曾整体不在域内」——讲的是**当时不在域内的子集**，不是总数，
 # 且其扩展名计数之间无 `+` 串联 ⇒ 排除。
 chain = re.compile(r'\d+\s*个\s*`\.(?:sh|py|mjs)`\s*\+\s*\d+\s*个\s*`\.(?:py|mjs|ps1)`')
+# F440（本轮实证）：目录清单行（`| \`plans/\` | …`）里的扩展名计数 MUST 保持**紧邻链式**形态——
+# 在计数之间插入括号散文会让上面的 chain 失配，从而使该声称**脱离核验面**，而门禁仍报「未出现声称」
+# （假绿）。故此类行出现计数却无链 ⇒ 判不可解析（无法核验 ≠ 通过）。
+listing = re.compile(r'^\|\s*`plans/`')
+# 目录行专用**严格链**：MUST 从 `.sh` 计数起链（实测：仅用通用 chain 时，插入括号后 `.py` + `.mjs`
+# 两段仍能成链 ⇒ 假绿；严格链要求 `.sh` 计数紧邻 `+` 后随 `.py`/`.mjs` 计数）。
+chain_dir = re.compile(r'\d+\s*个\s*`\.sh`\s*\+\s*\d+\s*个\s*`\.(?:py|mjs)`')
 hits, bad = 0, []
 for f in files:
     try:
@@ -1909,7 +1905,12 @@ for f in files:
     except OSError:
         continue
     for i, line in enumerate(text.splitlines(), 1):
-        if 'plans/' not in line or not chain.search(line):
+        if 'plans/' not in line:
+            continue
+        if listing.match(line) and pat.search(line) and not chain_dir.search(line):
+            bad.append(f'{f}:{i}(plans 目录行的扩展名计数不可解析：MUST 保持「N 个 `.x` + M 个 `.y`」紧邻链式形态)')
+            continue
+        if not chain.search(line):
             continue
         for m in pat.finditer(line):
             ext, claim = m.group(2), int(m.group(1))
