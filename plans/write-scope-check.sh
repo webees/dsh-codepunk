@@ -6,8 +6,8 @@
 #   探针/补丁脚本与临时产物 MUST 落在运行根；工程工作树内、主目录顶层与系统临时
 #   目录顶层的**临时/探针命名物**一律视为越界（不依赖 git 跟踪状态——未跟踪同样算）。
 #
-# 退出码: 0=通过; 1=发现越界或运行根 write_scope 登记不合规; 2=无法核验或用法错（--repo 不存在/非目录、
-#   HOME 未设、未知参数、--exempt-from 文件不可读、--run-root 目录或 README 缺失）
+# 退出码: 0=通过; 1=发现越界或运行根实况不合规（残留 / 记账载体）; 2=无法核验或用法错（--repo 不存在/非目录、
+#   HOME 未设、未知参数、--exempt-from 文件不可读、--run-root 目录缺失或缺 find）
 #
 # 用法:
 #   write-scope-check.sh [--repo <路径>] [--home] [--tmp] [--home-all] [--exempt-from <文件>]
@@ -21,20 +21,21 @@
 #     --home-all     同 --home，并额外**列出**（INFO，永不判 FAIL）$HOME 顶层的
 #                    *.sh/*.py/*.md/*.json/*.yaml/*.yml/*.log（排除 README*、LICENSE*、.DS_Store）
 #     --exempt-from <文件>
-#                    读取豁免登记（约定为运行根 README.md 的 `write_scope:` 段 `exempt:` 列表）；
+#                    读取**显式传入**的豁免清单（每行一项，`#` 起始为注释）；
 #                    与登记项**相等**、或位于某登记项**之内**（＝登记项为命中路径的**祖先目录**）的命中降级为 INFO（列出但不判 FAIL；登记写法相对/`./x`/尾斜杠/绝对等价）。
 #                    缺省**不启用**（行为同旧版）。文件不存在/不可读 ⇒ exit 2（无法核验 ≠ 通过）。
 #     --run-root <运行根>
-#                    核验该运行根的 `README.md` 是否含 R17 要求的 `write_scope:` 登记段
-#                    （键：run_id / allowed_prefixes / created / cleanup_status / exempt；
-#                    cleanup_status 取值须为 clean 或 pending）。只跑这一项、不扫目录树。
-#                    **判据 h（F396，加严 F403）**：`cleanup_status: clean` 时运行根**含子目录**不得存在
-#                    备份/临时命名物与编译缓存（`*.bak` / `*.bak-*` / `*~` / `*.orig` / `*.rej` / `*.tmp` /
-#                    `*.swp` / `__pycache__` / `*.pyc`）——否则该取值与实况不符（R17/§6.2 黑名单；
-#                    声称不可核验时 MUST 判失败）。递归扫描需要 `find`，缺 `find` ⇒ exit 2。
-#                    该模式的 `write_scope:` 段抽取依赖 `awk`/`sed`/`grep`/`head`/`tr`，缺任一个 ⇒
-#                    exit 2（F405：否则空值会被判成「段缺失」，保守但把操作者引向错误原因）。
-#                    运行根或 README 缺失 ⇒ exit 2（无法核验 ≠ 通过）；段缺失/缺键/取值非法/判据 h 命中 ⇒ exit 1。
+#                    **运行根实况核验**（F482：本模式原要求运行根 `README.md` 含 `write_scope:` 登记段，
+#                    该段属记账型载体，与 D131「禁止记账机制」冲突 ⇒ 现只核验实况、MUST NOT 要求任何声明文件）：
+#                    · 判据 h（F396，加严 F403）：运行根**含子目录**不得留备份/临时命名物与编译缓存
+#                      （`*.bak` / `*.bak-*` / `*~` / `*.orig` / `*.rej` / `*.tmp` / `*.swp` /
+#                      `__pycache__` / `*.pyc`）——收尾未清理即缺陷（R17/§6.2 黑名单）。
+#                    · 判据 j（F482，D131）：运行根不得留记账载体（`ledger*.md` / `agents.yaml` /
+#                      `findings` / `progress` / `patrol*.yaml` 等）——进度与缺陷只以 git 提交与
+#                      `CHANGELOG.md` 承载。
+#                    · 另列出运行根顶层实况（INFO）。只跑这一项、不扫仓库目录树。
+#                    递归扫描需要 `find`：缺 `find` ⇒ exit 2（无法核验 ≠ 通过）。
+#                    运行根缺失 ⇒ exit 2；判据 h 或判据 j 命中 ⇒ exit 1。
 #     --quiet        静默通过行；失败行与结论仍输出
 #     -h, --help     显示本用法
 #   未给 --home/--tmp/--home-all 时，默认等价于 `--repo . --tmp`；显式给了模式参数时只跑所选模式。
@@ -100,74 +101,51 @@ fail() { printf '%s\n' "$*" >&2; FAIL=1; }
 fatal() { printf '✗ %s\n' "$*" >&2; printf '  ⇒ 无法核验，不判「通过」（无法核验 ≠ 通过）\n' >&2; exit 2; }
 FAIL=0
 
-# ── --run-root：核验运行根 README 的 `write_scope:` 登记段（R17 MUST） ──────────
-# F377 实证：运行根 README 只写了**散文**形态的写盘说明（无 `write_scope:` 键、内容陈旧三十余轮），
-#   而 `references/artifacts.md` §1.3 要求 MUST 含 YAML 登记段（run_id / allowed_prefixes / created /
-#   cleanup_status / exempt），且 `cleanup_status: clean` 是**交接门与合并门的前置读数** ⇒ 散文形态下
-#   该读数根本不存在（门闩形同空转）。本模式把该 MUST 变成机械判据（只跑这一项，不扫目录树）。
+# ── --run-root：运行根**实况**核验（不落任何声明段，D131） ────────────────────
+# 历史（F377 / F396 / F403）：本模式曾要求运行根 `README.md` 含 `write_scope:` 段，并以
+#   `cleanup_status: clean` 作为交接门/合并门的前置读数。该段本身就是**记账型载体**：D131
+#   禁止记账机制后运行根不再有 `README.md`，旧实现遂把合规实况判成 rc=2「缺 README.md」
+#   （F482 实证）。现只核验实况——判据 h（残留命名物）+ 判据 j（记账载体）+ 顶层实况 INFO。
 if [ -n "${RUN_ROOT}" ]; then
   [ -d "${RUN_ROOT}" ] || fatal "运行根不存在或不是目录: ${RUN_ROOT}"
-  RR_README="${RUN_ROOT}/README.md"
-  [ -f "${RR_README}" ] || fatal "运行根缺 README.md: ${RR_README}（R17 要求其中含 write_scope: 段）"
-  # F405（诊断准确性；与 preset-audit/preset-score/leak-guard/verify-battery 同族）：
-  #   下方 awk 抽取与 sed 归一是**解析依赖**。缺失时 BLK/CS 为空 ⇒ 门**保守地**判失败，但报出的是
-  #   「运行根 README 缺 write_scope: 段」，把操作者引向错误方向（实证：影子 PATH 去掉 awk 后
-  #   rc=1 且报「缺 write_scope: 段」，而该运行根 README 实况合规、正常环境下 rc=0）。
-  #   ⇒ 显式预检，给出真实原因（无法核验 ≠ 通过，rc=2）。
-  for _t in awk sed grep head tr; do
-    command -v "$_t" >/dev/null 2>&1 \
-      || fatal "缺少必需工具 ${_t} ⇒ 无法核验 ≠ 通过（rc=2）"
-  done
-  BLK="$(awk '
-    /^write_scope:[ \t]*$/ { inblk=1; print; next }
-    inblk && /^[A-Za-z_][A-Za-z0-9_]*:/ { exit }
-    inblk { print }
-  ' "${RR_README}")"
-  say "==== write-scope-check · 运行根写域登记（R17） ===="
+  command -v find >/dev/null 2>&1 \
+    || fatal "缺少必需工具 find ⇒ 无法核验运行根实况（无法核验 ≠ 通过，rc=2）"
+  say "==== write-scope-check · 运行根实况核验（R17，D131） ===="
   say "运行根：${RUN_ROOT}"
-  if [ -z "${BLK}" ]; then
-    fail "✗ 运行根 README 缺 write_scope: 段（R17 MUST；模板见 references/artifacts.md §1.3）"
+  say "  顶层实况：$( ( cd "${RUN_ROOT}" && ls -A 2>/dev/null ) | sort | tr '\n' ' ')"
+  RR_N=0
+  RR_JUNK=""
+  RR_JN=0
+  RR_BOOK=""
+  # 判据 h（F396，加严 F403）：运行根**含子目录**不得留备份/临时/编译缓存命名物。
+  #   F403 实证：原实现只扫顶层（shell 通配）⇒ `tools/__pycache__/*.pyc` 在场而门仍 rc=0。
+  RR_N=$( ( cd "${RUN_ROOT}" && find . \( -name '*.bak' -o -name '*.bak-*' -o -name '*~' -o -name '*.orig' \
+            -o -name '*.rej' -o -name '*.tmp' -o -name '*.swp' -o -name '__pycache__' -o -name '*.pyc' \) \
+            -print 2>/dev/null ) | wc -l | tr -d ' ')
+  RR_JUNK=$( ( cd "${RUN_ROOT}" && find . \( -name '*.bak' -o -name '*.bak-*' -o -name '*~' -o -name '*.orig' \
+            -o -name '*.rej' -o -name '*.tmp' -o -name '*.swp' -o -name '__pycache__' -o -name '*.pyc' \) \
+            -print 2>/dev/null ) | head -6 | tr '\n' ' ')
+  if [ "${RR_N:-0}" -gt 0 ]; then
+    fail "✗ 运行根存在备份/临时/编译缓存残留 ${RR_N} 处（收尾未清理，R17/§6.2 黑名单）: ${RR_JUNK}"
   else
-    MISS=""
-    for k in run_id allowed_prefixes created cleanup_status exempt; do
-      printf '%s\n' "${BLK}" | grep -qE "^[[:space:]]+${k}:" || MISS="${MISS} ${k}"
-    done
-    [ -n "${MISS}" ] && fail "✗ write_scope 段缺键:${MISS}"
-    CS="$(printf '%s\n' "${BLK}" | sed -n 's/^[[:space:]]*cleanup_status:[[:space:]]*//p' | head -1 \
-          | sed -E 's/[[:space:]]+#.*$//' | sed -E 's/[[:space:]]+$//' | tr -d '"')"
-    case "${CS}" in
-      clean|pending) say "  ✅ cleanup_status=${CS}" ;;
-      "") fail "✗ write_scope 段缺 cleanup_status 取值（须为 clean 或 pending）" ;;
-      *)  fail "✗ cleanup_status 取值非法: '${CS}'（须为 clean 或 pending）" ;;
-    esac
-    [ -z "${MISS}" ] && [ -n "${CS}" ] && say "  ✅ write_scope 段 5 键齐备（run_id / allowed_prefixes / created / cleanup_status / exempt）"
-    # 判据 h（F396 / 加严 F403）：cleanup_status=clean 的**实况**核验——运行根**含子目录**不得留
-    #   备份/临时命名物与编译缓存（`*.bak`/`*.bak-*`/`*~`/`*.orig`/`*.rej`/`*.tmp`/`*.swp`/`__pycache__`/`*.pyc`）。
-    #   F403 实证：原实现只扫**顶层**（shell 通配）⇒ `tools/__pycache__/*.pyc`（14 个）在场而门仍 rc=0、
-    #   `cleanup_status: clean` 在子目录层面不可核验。递归扫描需要 find ⇒ 缺 find 时显式 exit 2。
-    if [ "${CS}" = "clean" ]; then
-      if command -v find >/dev/null 2>&1; then
-        RR_N=$( ( cd "${RUN_ROOT}" && find . \( -name '*.bak' -o -name '*.bak-*' -o -name '*~' -o -name '*.orig' \
-                  -o -name '*.rej' -o -name '*.tmp' -o -name '*.swp' -o -name '__pycache__' -o -name '*.pyc' \) \
-                  -print 2>/dev/null ) | wc -l | tr -d ' ')
-        RR_JUNK=$( ( cd "${RUN_ROOT}" && find . \( -name '*.bak' -o -name '*.bak-*' -o -name '*~' -o -name '*.orig' \
-                  -o -name '*.rej' -o -name '*.tmp' -o -name '*.swp' -o -name '__pycache__' -o -name '*.pyc' \) \
-                  -print 2>/dev/null ) | head -6 | tr '\n' ' ')
-      else
-        fatal "缺少必需工具 find ⇒ 无法核验运行根残留（无法核验 ≠ 通过）"
-      fi
-      if [ "${RR_N:-0}" -gt 0 ]; then
-        fail "✗ cleanup_status=clean 但运行根存在备份/临时/编译缓存残留 ${RR_N} 处（收尾未清理，R17/§6.2 黑名单）: ${RR_JUNK}"
-      else
-        say "  ✅ cleanup_status=clean 且运行根（含子目录）无备份/临时/编译缓存残留（判据 h 实况核验）"
-      fi
-    fi
+    say "  ✅ 判据 h：运行根（含子目录）无备份/临时/编译缓存残留"
+  fi
+  # 判据 j（F482，D131）：运行根不得留记账载体（台账 / 席位名册 / 进度与缺陷记事）。
+  RR_JN=$( ( cd "${RUN_ROOT}" && find . -maxdepth 2 \( -name 'ledger*.md' -o -name 'agents.yaml' \
+            -o -name 'findings' -o -name 'progress' -o -name 'patrol*.yaml' -o -name 'patrol*.md' \) \
+            -print 2>/dev/null ) | wc -l | tr -d ' ')
+  RR_BOOK=$( ( cd "${RUN_ROOT}" && find . -maxdepth 2 \( -name 'ledger*.md' -o -name 'agents.yaml' \
+            -o -name 'findings' -o -name 'progress' -o -name 'patrol*.yaml' -o -name 'patrol*.md' \) \
+            -print 2>/dev/null ) | head -6 | tr '\n' ' ')
+  if [ "${RR_JN:-0}" -gt 0 ]; then
+    fail "✗ 运行根存在记账载体 ${RR_JN} 处（D131 禁止记账机制；进度与缺陷只以 git 提交与 CHANGELOG 承载）: ${RR_BOOK}"
+  else
+    say "  ✅ 判据 j：运行根无记账载体（D131）"
   fi
   echo
-  if [ "${FAIL}" -eq 0 ]; then printf '==== 运行根写域登记：通过（exit 0）====\n'; exit 0; fi
-  printf '==== 运行根写域登记：不合规（exit 1）====\n'; exit 1
+  if [ "${FAIL}" -eq 0 ]; then printf '==== 运行根实况核验：通过（exit 0）====\n'; exit 0; fi
+  printf '==== 运行根实况核验：不合规（exit 1）====\n'; exit 1
 fi
-
 # hits_line <总数> <路径...> → 「残留 N 处：a、b、c 等」（最多列 4 个路径 + 总数）
 hits_line() {
   local n="$1"; shift
@@ -183,7 +161,7 @@ hits_line() {
 }
 
 # ── 豁免登记（--exempt-from；缺省不启用 ⇒ 行为同旧版） ─────────────────────
-# 契约 §六：真实交付物不属临时物；豁免须在运行根 README.md 的 `write_scope.exempt:` 登记。
+# 契约 §六：真实交付物不属临时物；豁免只经 `--exempt-from <清单文件>` 显式传入（D131：不落登记段）。
 # 本实现只做**机械采信**：登记为「交付物」即降级为 INFO，理由是否成立由人审（不在此判）。
 SQ="'"; DQ='"'
 EXEMPT_FILE_ABS=""
@@ -221,63 +199,19 @@ push_exempt() {  # 去重后登记
   EXEMPT_N=$((EXEMPT_N + 1))
 }
 
-parse_exempt() {  # 解析 `write_scope:` 段内 `exempt:` 列表（见 --help）
-  local f="$1" line ind rest ind_len in_ws=0 in_ex=0 ex_ind="" item pv inner part
-  local _parts=()
+parse_exempt() {  # 解析**显式传入**的豁免清单（每行一项；`#` 起始为注释；见 --help）
+  # F482：原实现解析运行根 README 的 `write_scope.exempt:` 块——该段属记账型载体，D131 禁止。
+  #   现改为纯行式清单：一行一项（相对/绝对路径皆可，`norm_path` 归一并按前缀比较）。
+  local f="$1" line
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line//$'\r'/}"
-    ind="${line%%[![:space:]]*}"
-    rest="${line#"$ind"}"
-    [ -n "$rest" ] || continue                      # 空行/纯空白行
-    case "$rest" in '#'*) continue ;; esac          # 整行注释
-    ind_len=${#ind}
-    if [ "$ind_len" -eq 0 ]; then
-      # 顶层键：仅在 write_scope: 段内继续解析 exempt
-      case "$line" in
-        write_scope:*) in_ws=1; in_ex=0 ;;
-        *)             in_ws=0; in_ex=0 ;;
-      esac
-      continue
-    fi
-    [ "$in_ws" -eq 1 ] || continue
-    if [ "$in_ex" -eq 0 ]; then
-      case "$line" in
-        *exempt:*) ;;   # 仅在 exempt 键所在行之后收集条目
-        *) continue ;;
-      esac
-      item="$(trim_ws "${line#*exempt:}")"
-      ex_ind="$ind_len"; in_ex=1
-      # 行内形式 `exempt: [a, b]`
-      case "$item" in
-        \[*\])
-          inner="${item#[}"; inner="${inner%]}"
-          IFS=',' read -r -a _parts <<< "$inner"
-          for part in ${_parts[@]+"${_parts[@]}"}; do push_exempt "$(norm_path "$part")"; done
-          ;;
-        '') ;;                                    # 块列表，条目在后续行
-        *)  push_exempt "$(norm_path "$item")" ;;
-      esac
-      continue
-    fi
-    # in_ex=1：缩进 > exempt 键 且以 `-` 起者为本列表条目；缩进回退则结束
-    if [ "$ind_len" -le "$ex_ind" ]; then in_ex=0; continue; fi
-    item="$(trim_ws "$line")"
-    case "$item" in
-      -*) item="$(trim_ws "${item#-}")" ;;
-      *)  continue ;;
-    esac
-    # 支持三种写法：`- path: X` / `- { path: X, reason: ... }` / `- X`
-    case "$item" in
-      '{'*path:*) pv="${item#*path:}" ;;
-      path:*)     pv="${item#path:}" ;;
-      *)          pv="$item" ;;
-    esac
-    if [ "$pv" != "$item" ] || [ "${item:0:1}" = "{" ]; then
-      pv="${pv%%, reason:*}"    # 流式映射/同行 reason 的截断（无匹配时原样保留）
-      pv="${pv%%,reason:*}"
-      pv="${pv%\}}"
-    fi
-    push_exempt "$(norm_path "$pv")"
+    line="$(trim_ws "$line")"
+    [ -n "$line" ] || continue
+    case "$line" in '#'*) continue ;; esac
+    line="${line%%#*}"                       # 行内注释（路径本身含 `#` 时请勿使用）
+    line="$(trim_ws "$line")"
+    [ -n "$line" ] || continue
+    push_exempt "$(norm_path "$line")"
   done < "$f"
 }
 

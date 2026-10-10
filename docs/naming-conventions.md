@@ -23,7 +23,7 @@
 
 ```text
 ~/.dsh-codepunk/projects/<project_id>/
-  README.md                 # 含 write_scope: 写域登记段
+  logs/                     # 证据（本 run 的原始输出；D131 下运行根无任何登记文件）
   goal.yaml  chunks.yaml  plan_draft.md
   change_orders/<id>.yaml   # 需求变更单
   approvals/merge.yaml      # 合并门批准

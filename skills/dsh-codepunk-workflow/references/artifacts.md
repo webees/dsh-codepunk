@@ -304,31 +304,17 @@ knowledge/                      # 知识库（跨 run 沉淀）
 > **工程域例外（不属于总库）**：worktree 建在**工程父目录**（`../room-<task_id>`）、S 规模 `rooms/squad-<task_id>/` 在**工程根内**，两者均不进总库；总库只存本 run 状态（goal/chunks/plan/tasks/handoff）。
 > **项目记忆关联**：主通道 = 工程根 `README.md` 顶部 YAML frontmatter `dsh-codepunk: <project_id>`（无 frontmatter 可用 `<!-- dsh-codepunk: <id> -->`）；兜底 = `~/.dsh-codepunk/INDEX.yaml` 注册表（5 字段：project_id / project_root / dsh_codepunk_path / migrated_at / source）。工具 `dsh-codepunk-link resolve <项目路径>` 三态路由「README 标记 → INDEX 回退 → 未注册报错」；`index` 校验无空悬；`register` 追加（不覆盖、需确认）。**冲突以 INDEX 为准**；不批量改写项目 README。正式位 `~/.dsh-codepunk/scripts/`（`plans/` 仅源副本）。
 
-### 1.3 运行根 `README.md` 的 `write_scope:` 段（R17）
+### 1.3 运行根实况核验（R17，D131）
 
-> 机械门：`bash plans/write-scope-check.sh --run-root <运行根>`（0=通过 / 1=段缺失·缺键·取值非法 / 2=运行根或 README 缺失）。
-> 运行根 `README.md` 除 spawn 登记表外 MUST 含 `write_scope:` 段（写域登记）：允许写入前缀清单 + 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记。机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）据此核验；越界即缺陷（判据与命名见 `references/file-hygiene.md`「写盘白名单与越界判据」）。
-
-```yaml
-write_scope:
-  run_id: run-2026-0001
-  allowed_prefixes:                      # 允许写入前缀（按优先序，R17：运行根 → 授权工作树 → 临时目录 → 总库）
-    - "~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/"
-    - "~/.dsh-codepunk/worktrees/<task_id>/"          # 仅限该任务 write_paths
-    - "${TMPDIR:-/tmp}/dsh-codepunk-<run_id>-<step>/" # 次选，用毕即删
-    - "~/.dsh-codepunk/projects/<project_id>/knowledge/"
-  created:                               # 本轮已创建物清单（一行一件：路径 + 用途 + 清理状态）
-    - { path: "logs/probe-r<轮次>-<用途>.sh", purpose: "<用途>", cleaned: true }
-    - { path: "tmp/<run_id>/<step>/", purpose: "<用途>", cleaned: false }
-  cleanup_status: pending                # clean（本轮临时物已全清）| pending（有残留：须写残留清单与责任席）
-  exempt:                                # 豁免登记：真实交付物不属临时物（每条须写理由）
-    - { path: "skills/dsh-codepunk-workflow/references/file-hygiene.md", reason: "交付物，非临时物" }
-```
-
-> 口径：`cleanup_status: clean` 是交接门与合并门的**前置读数**；`pending` 不得进入交接/合并（同 D079 残留自查门闩）。登记行与实况不符（写 clean 而门禁判 FAIL）以机械门结论为准。**机械门**：`plans/write-scope-check.sh --run-root <运行根>` 核验 5 键齐备 + 取值合法 + 判据 h（`clean` 时运行根**含子目录**不得存在 `*.bak`/`*.bak-*`/`*~`/`*.orig`/`*.rej`/`*.tmp`/`*.swp`/`__pycache__`/`*.pyc`；F396 顶层实证、F403 递归加严实证）。
+> 机械门：`bash plans/write-scope-check.sh --run-root <运行根>`（0=通过 / 1=残留或记账载体 / 2=运行根缺失或缺 `find`）。
+> **D131 禁止记账机制**：运行根 MUST NOT 含任何声明/登记/记事文件（`write_scope:` 段、`ledger*.md`、`agents.yaml`、`findings`、`progress`）。运行状态只以**实况**（证据日志、工位仪器、临时沙箱）＋ git 提交与 `CHANGELOG.md` 承载；交接门与合并门只核验实况，MUST NOT 读任何声明文件。
+>
+> 判据（机械门实跑）：**判据 h** 运行根含子目录不得留黑名单命名物与编译缓存（`*.bak` / `*.bak-*` / `*~` / `*.orig` / `*.rej` / `*.tmp` / `*.swp` / `__pycache__` / `*.pyc`）；**判据 j** 不得留记账载体；另列顶层实况（INFO，缺项不判失败）。
+>
+> 运行根推荐实况（非登记）：`logs/`（证据）· `tools/`（工位仪器）· `tmp/`（沙箱，用毕即删，收尾清零）· `knowledge/`（本工程知识；总库白名单）。
 
 ## 会话与协作状态（D131：MUST NOT 落记账文件）
 
 > 本预设**不落任何状态清单/记事文件**（D131）。会话与协作状态的事实源是 DSH 官方机制：`list_agents`（实测态）、共享任务板（任务归属与依赖）、工作房消息（派工边界与断点）；进度与缺陷编号的事实源是 git 提交 + `CHANGELOG.md`；运行状态的事实源是运行根目录实况（文件 mtime、`git status`）。
 
-> 因此本文件不再提供 `agents.yaml` / 运行根 `README.md` 登记表模板——被移除的模板与写入约束（原 D095 / D099）保留在 git 历史中；运行根 `README.md` 现只需 `write_scope:` 段（D098）。
+> 因此本文件不再提供任何登记表模板（`agents.yaml` / 运行根声明段）——被移除的模板与写入约束（原 D095 / D099）保留在 git 历史中；运行根只按**实况**核验（§1.3，`--run-root` 判据 h/j）。

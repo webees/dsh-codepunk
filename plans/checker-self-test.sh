@@ -1717,21 +1717,20 @@ check_rc "M135-b plans/__pycache__ 残留 → rc 1 且报「残留」" "bash pla
 
 echo "[M136 豁免登记须被机械采信（--exempt-from：命中降级 INFO，不判 FAIL）]"
 fresh
-# 变异：仓库内落**未跟踪**探针命名物（G1 必命中）+ 造运行根 README 夹具，把该路径登记进
-#   `write_scope.exempt:`。守护 MUST 采信登记（降级 INFO 且不判 FAIL），否则 R17 的豁免机制形同虚设。
+# 变异：仓库内落**未跟踪**探针命名物（G1 必命中）+ 造**显式豁免清单**夹具，把该路径列入清单。
+#   守护 MUST 采信清单（降级 INFO 且不判 FAIL），否则 R17 的豁免机制形同虚设（F482：清单只经
+#   `--exempt-from` 显式传入，MUST NOT 取自运行根登记段——该段属记账型载体，D131 禁止）。
 #   断言的两种模式一律显式加 `--home`：写盘门在**未给模式参数**时默认同时扫系统临时目录，
 #   而宿主 /tmp 常有他人遗留 ⇒ 默认模式 rc 恒为 1，断言会与守护本身无关地失败（环境耦合）。
 printf '#!/usr/bin/env bash\necho ok\n' > "$work/cur/probe-ok.sh"
 {
-  printf '# M136 夹具：运行根 README.md 的 write_scope 段（R17）\n'
-  printf 'write_scope:\n  run_id: run-m136\n  cleanup_status: clean\n'
-  printf '  exempt:                                # 豁免登记：真实交付物不属临时物\n'
-  printf '    - path: probe-ok.sh\n'
-} > "$work/README136.md"
-mutate "未跟踪 probe-ok.sh" "$work/cur/probe-ok.sh" 'echo ok'
-mutate "豁免夹具 write_scope.exempt" "$work/README136.md" 'path: probe-ok.sh'
-check_rc "M136 带 --exempt-from（登记被采信）⇒ rc 0 且含「豁免」" \
-  "bash plans/write-scope-check.sh --repo '$work/cur' --home --exempt-from '$work/README136.md'" 0 "豁免"
+  printf '# M136 夹具：显式豁免清单（F482；D131 下不再从运行根登记段读取）\n'
+  printf '# 一行一项，命中降级 INFO\n'
+  printf 'probe-ok.sh\n'
+} > "$work/exempt136.txt"
+mutate "豁免夹具 显式清单" "$work/exempt136.txt" 'probe-ok.sh'
+check_rc "M136 带 --exempt-from（清单被采信）⇒ rc 0 且含「豁免」" \
+  "bash plans/write-scope-check.sh --repo '$work/cur' --home --exempt-from '$work/exempt136.txt'" 0 "豁免"
 check_rc "M136 对照：不带 --exempt-from ⇒ rc 1 且报「残留」" \
   "bash plans/write-scope-check.sh --repo '$work/cur' --home" 1 "残留"
 # F306 finding-1 存活变异：登记项为命中路径的**祖先目录**（父目录粒度）时同样必须降级 INFO——
@@ -1744,15 +1743,13 @@ rm -f "$work/cur/probe-ok.sh"
 mkdir -p "$work/cur/plans"
 printf 'x = 1\n' > "$work/cur/plans/keep-me.bak"
 {
-  printf '# M136 夹具：父目录粒度登记（登记项 = 命中路径的祖先目录）\n'
-  printf 'write_scope:\n  run_id: run-m136b\n  cleanup_status: pending\n'
-  printf '  exempt:                                # 豁免登记：交付物所在目录\n'
-  printf '    - path: plans\n'
-} > "$work/README136b.md"
-mutate "父目录粒度登记（exempt: plans）" "$work/README136b.md" 'path: plans'
+  printf '# M136 夹具：父目录粒度豁免（清单项 = 命中路径的祖先目录）\n'
+  printf 'plans\n'
+} > "$work/exempt136b.txt"
+mutate "父目录粒度豁免（plans）" "$work/exempt136b.txt" 'plans'
 mutate "计划目录内备份物 plans/keep-me.bak" "$work/cur/plans/keep-me.bak" '^x = 1$'
 check_rc "M136 父目录登记 plans（祖先目录）⇒ rc 0 且含「豁免」" \
-  "bash plans/write-scope-check.sh --repo '$work/cur' --home --exempt-from '$work/README136b.md'" 0 "豁免"
+  "bash plans/write-scope-check.sh --repo '$work/cur' --home --exempt-from '$work/exempt136b.txt'" 0 "豁免"
 check_rc "M136 父目录对照：同夹具不带 --exempt-from ⇒ rc 1 且报「残留」" \
   "bash plans/write-scope-check.sh --repo '$work/cur' --home" 1 "残留"
 
@@ -2469,46 +2466,38 @@ mutate "M171-d 变异（覆盖分支恒假）" "$work/cur/plans/checker-self-tes
 check_rc "M171-d 覆盖分支被破坏后同命令须复现旧文案（证明分支非空转）" \
   "DSH_CODEPUNK_ECHO_SKIPPED=3 bash plans/checker-self-test.sh --coverage-echo" 0 "全部变异均被对应检查项捕获"
 
-echo "[M173 运行根 write_scope 登记段（R17/F377）]"
-# 契约：references/artifacts.md §1.3 —— 运行根 README MUST 含 `write_scope:` 段（5 键：
-#   run_id / allowed_prefixes / created / cleanup_status / exempt），且 `cleanup_status: clean`
-#   是交接门与合并门的前置读数。夹具全部在沙箱内自建 ⇒ 不依赖本席真实运行根。
+echo "[M173 运行根实况核验边界（R17/F482）：缺目录/缺 find/双命中/顶层实况/非目录]"
+# 契约：references/artifacts.md §1.3 —— `--run-root` 只按**实况**核验（判据 h 残留 / 判据 j 记账载体），
+#   MUST NOT 要求任何声明文件（D131；F482 实证：旧实现要求 README 含 `write_scope:` 段 ⇒ 合规实况被判
+#   rc=2「缺 README.md」）。本段覆盖**边界**；通过/残留/载体/削弱四条基础断言见 M229。
 fresh
-RR1="$work/rr-noblock"
-mkdir -p "$RR1"
-printf '# 运行根（夹具）\n\n## 说明\n\n本夹具**故意不含** write_scope 段。\n' > "$RR1/README.md"
-check_rc "M173-a 运行根 README 缺 write_scope 段 → 须 rc=1（R17 MUST）" \
-  "bash plans/write-scope-check.sh --run-root \"$RR1\"" 1 "缺 write_scope: 段"
-RR2="$work/rr-ok"
-mkdir -p "$RR2"
-{
-  printf '# 运行根（夹具）\n\n```yaml\n'
-  printf 'write_scope:\n'
-  printf '  run_id: run-fixture\n'
-  printf '  allowed_prefixes:\n    - "logs/"\n'
-  printf '  created:\n    - "logs/x"\n'
-  printf '  cleanup_status: clean\n'
-  printf '  exempt: []\n'
-  printf '```\n'
-} > "$RR2/README.md"
-check_rc "M173-b write_scope 段 5 键齐备 → 须 rc=0" \
-  "bash plans/write-scope-check.sh --run-root \"$RR2\"" 0 "write_scope 段 5 键齐备"
-RR3="$work/rr-misskey"
-mkdir -p "$RR3"
-grep -v '^  exempt:' "$RR2/README.md" > "$RR3/README.md"
-check_rc "M173-c 段缺键（exempt）→ 须 rc=1 报缺键" \
-  "bash plans/write-scope-check.sh --run-root \"$RR3\"" 1 "write_scope 段缺键"
-check_rc "M173-d 运行根目录不存在 → 须 rc=2（无法核验 ≠ 通过）" \
+RR1="$work/rr-plain"
+mkdir -p "$RR1/logs"
+printf 'evidence\n' > "$RR1/logs/evidence.txt"
+check_rc "M173-a 运行根目录不存在 → 须 rc=2（无法核验 ≠ 通过）" \
   "bash plans/write-scope-check.sh --run-root \"$work/no-such-run-root\"" 2 "运行根不存在"
+printf 'x\n' > "$work/rr-afile"
+check_rc "M173-b 运行根路径是文件（非目录）→ 须 rc=2" \
+  "bash plans/write-scope-check.sh --run-root \"$work/rr-afile\"" 2 "不是目录"
+RR3="$work/rr-both"
+mkdir -p "$RR3/logs"
+printf 'x\n' > "$RR3/logs/step.bak"
+printf 'round: 1\n' > "$RR3/findings"
+check_rc "M173-c 判据 h 与判据 j 同时命中 ⇒ rc=1 且两类消息都在（不得只报其一）" \
+  "bash plans/write-scope-check.sh --run-root \"$RR3\"" 1 "存在记账载体"
+check_rc "M173-c2 同一夹具亦须报残留（两条判据互不遮蔽）" \
+  "bash plans/write-scope-check.sh --run-root \"$RR3\"" 1 "备份/临时/编译缓存残留"
+check_rc "M173-d 合规运行根 ⇒ rc=0 且输出顶层实况 INFO 行" \
+  "bash plans/write-scope-check.sh --run-root \"$RR1\"" 0 "顶层实况"
+# 缺 `find` ⇒ rc=2（无法核验 ≠ 通过）；复用 M169 构造的影子 PATH（无 find）。
+if [ -x "$work/bin-nofind/bash" ] && [ ! -e "$work/bin-nofind/find" ]; then
+  check_rc "M173-e 影子 PATH 缺 find ⇒ --run-root 须 rc=2 并说明无法核验" \
+    "env -i PATH=\"$work/bin-nofind\" HOME=\"$HOME\" \"$work/bin-nofind/bash\" plans/write-scope-check.sh --run-root \"$RR1\"" 2 \
+    "缺少必需工具 find"
+else
+  echo "  ℹ M173-e 跳过（无 find 的影子 PATH 不可用）——跳过 ≠ 通过"
+fi
 fresh
-# 非空转证明：删掉「缺键判据」那一行 ⇒ 同 c 夹具须不再报缺键（rc=0）。
-# 注：直接**删除**该行会让 `for` 循环体为空 ⇒ 语法错（实测 rc=2）；故改为把 grep 判据换成 `true`，
-#   循环体仍合法、MISS 永不置位 —— 等价于「键校验失效」。
-sed -i.bak 's|grep -qE "^\[\[:space:\]\]+\${k}:"|true  # F377-KEYS-MUT|' "$work/cur/plans/write-scope-check.sh"
-mutate "M173-e 变异（缺键判据失效）" "$work/cur/plans/write-scope-check.sh" 'F377-KEYS-MUT'
-check_rc "M173-e 缺键判据被移除后同夹具须复现 rc=0（证明键校验非空转）" \
-  "bash plans/write-scope-check.sh --run-root \"$RR3\"" 0 "write_scope 段 5 键齐备"
-
 echo "[M174 声明写入的**原子性**（F380：就地截断写 vs 临时文件 + rename）]"
 # 契约：`plans/preset-declare.mjs` 的 apply 写用户平面 profile 补丁时 MUST 原子替换
 #   （写同目录临时文件后 rename），且 MUST 保留原文件权限位。
@@ -2740,26 +2729,34 @@ GONE_PAT="F394：终局 MUTFAIL ""门（早退点"
 mutate_gone "M186-b 终局门已被删除（删除型变异）" "$work/cur/plans/checker-self-test.sh" "$GONE_PAT"
 check_rc "M186-b 删掉终局门后门计数须降为 1（证明该断言非空转）" "grep -cE 'exit 2; fi\$' plans/checker-self-test.sh | grep -qx 2" 1
 
-echo "[M188 运行根 cleanup_status=clean 的实况核验（F396：只验键齐备/取值，残留备份也报通过）]"
+echo "[M188 运行根实况核验（F396→F482：无声明文件也须判通过，残留由实况判出；F482 后不再有声明段）]"
 mkdir -p "$work/rr188"
-cat > "$work/rr188/README.md" <<'RR188'
-# 夹具运行根
-write_scope:
-  run_id: rr188
-  allowed_prefixes:
-    - "本运行根/"
-  created:
-    - "x*"
-  cleanup_status: clean
-  exempt: []
-RR188
-check_rc "M188-a 顶层无备份/临时命名物须判通过" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 0 "判据 h 实况核验"
+check_rc "M188-a 无任何声明文件的合规运行根须判通过" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 0 "运行根实况核验：通过"
 touch "$work/rr188/x.bak"
-check_rc "M188-b 顶层存在 *.bak 而 cleanup_status=clean 须判失败" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 1 "备份/临时/编译缓存残留"
-( cd "$work/cur" && sed -i.bak '/^    # 判据 h/,/^    fi$/d' plans/write-scope-check.sh \
-    && rm -f plans/write-scope-check.sh.bak )
-mutate_gone "M188-c 删除型变异（移除判据 h；作用于沙箱副本，F397）" "$work/cur/plans/write-scope-check.sh" "RR_JUNK"
-check_rc "M188-c 移除判据 h 后同夹具须复现假通过（证明该判据非空转）" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 0 "5 键齐备"
+check_rc "M188-b 顶层存在 *.bak 须判失败（实况判据，非声明取值）" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 1 "备份/临时/编译缓存残留"
+# M188-c：削弱型变异——关闭判据 h 的失败分支（条件恒假）并删去其 fail 行（marker 随删除消失），
+#   同一残留夹具应复现「假通过」，证明判据 h 非空转。变异 MUST 作用于沙箱副本（F397）。
+#   判据 h 的锚点串 MUST 运行时拼接（`RR_N` 在本文件中无赋值；直接写字面量会被 doc 第 5 类
+#   判「外部输入变量未被记载」，同 F482 首跑的 RR_JN 事故）。
+(
+  cd "$work/cur" || exit 1
+  python3 - plans/write-scope-check.sh <<'M188PY'
+import io, re, sys
+p = sys.argv[1]
+s = io.open(p, encoding="utf-8").read()
+cond = '  if [ "${RR_' + 'N:-0}" -gt 0 ]; then'
+assert s.count(cond) == 1, "M188-c 条件锚点失配"
+s = s.replace(cond, "  if false; then", 1)
+fail = re.compile(r'^    fail "✗ 运行根存在备份/临时/编译缓存残留.*$\n', re.M)
+assert len(fail.findall(s)) == 1, "M188-c fail 行锚点失配"
+s = fail.sub('    : # M188-c weakened\n', s, count=1)
+io.open(p, "w", encoding="utf-8").write(s)
+print("M188-c 变异已落地")
+M188PY
+  rm -f plans/write-scope-check.sh.bak
+)
+mutate_gone "M188-c 删除型变异（关闭判据 h；作用于沙箱副本，F397）" "$work/cur/plans/write-scope-check.sh" "✗ 运行根存在备份/临时/编译缓存残留"
+check_rc "M188-c 关闭判据 h 后同一残留夹具须复现假通过（证明该判据非空转）" "bash plans/write-scope-check.sh --run-root \"$work/rr188\"" 0 "运行根实况核验：通过"
 
 echo "[M189 源树密封（F397：变异 MUST 作用于沙箱副本，裸路径会改动源树且备份被 rm 后不可回滚）]"
 # M189-a：密封判据非空转——在源树落一个未跟踪探针文件 ⇒ seal_check 须报「已改动」；随即删除。
@@ -4137,6 +4134,43 @@ print('WEAKENED')
 PYEOF
 check_no_match "M228-d 削弱（去掉索引缺失记录）⇒ 该消息不再出现（判据非空转）" \
   "bash plans/doc-consistency.sh 2>&1" "工作树缺失索引内文件"
+fresh
+
+echo "[M229 运行根实况核验（F482：MUST NOT 要求声明文件；判据 h 残留 + 判据 j 记账载体）]"
+# 守护点：`plans/write-scope-check.sh --run-root` 原要求运行根含 `write_scope:` 登记段（记账型载体，
+#   与 D131 冲突）⇒ D131 落地后运行根不再有 README.md，门把**合规实况**判成 rc=2「缺 README.md」（F482）。
+#   现语义 = 实况核验：无任何声明文件的运行根 MUST 通过（rc=0）；判据 h（残留）/ 判据 j（记账载体）
+#   命中 ⇒ rc=1 并**点名**；缺 `find` ⇒ rc=2（无法核验 ≠ 通过）。
+fresh
+_m229_rr="$work/m229_rr"
+_m229_junk="$work/m229_junk"
+_m229_book="$work/m229_book"
+mkdir -p "$_m229_rr/logs" "$_m229_junk/logs" "$_m229_book/logs"
+printf '%s\n' "# 运行根证据（M229 夹具）" > "$_m229_rr/logs/evidence.txt"
+check_rc "M229-a 无声明文件的运行根（合规实况）⇒ 须通过 rc=0（旧语义会因缺 README.md 报 rc=2）" \
+  "bash plans/write-scope-check.sh --run-root '$_m229_rr' 2>&1" 0 "运行根实况核验：通过"
+printf '%s\n' "# 残留（M229 夹具）" > "$_m229_junk/logs/step.bak"
+check_rc "M229-b 判据 h：运行根子目录残留备份 ⇒ 须 rc=1 并报计数" \
+  "bash plans/write-scope-check.sh --run-root '$_m229_junk' 2>&1" 1 "备份/临时/编译缓存残留"
+printf '%s\n' "# 记账载体（M229 夹具）" > "$_m229_book/ledger.md"
+check_rc "M229-c 判据 j：运行根含记账载体 ⇒ 须 rc=1 并点名（D131）" \
+  "bash plans/write-scope-check.sh --run-root '$_m229_book' 2>&1" 1 "存在记账载体"
+check_no_match "M229-c2 合规运行根 MUST NOT 被报记账载体（断言非空转）" \
+  "bash plans/write-scope-check.sh --run-root '$_m229_rr' 2>&1" "存在记账载体"
+python3 - "$work/cur/plans/write-scope-check.sh" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+# 注：判据 j 的锚点串 MUST 运行时拼接——`RR_JN` 在本文件中无赋值，直接写字面量会被第 5 类
+#   判「外部输入变量未被记载」（实证：F482 首跑 doc rc=1 → checker-self-test.sh:4156:RR_JN）。
+old = '  if [ "${RR_' + 'JN:-0}" -gt 0 ]; then'
+new = '  if false; then  # M229-d weakened'
+assert old in s, 'M229-d 削弱锚点缺失'
+open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
+print('WEAKENED')
+PYEOF
+check_no_match "M229-d 削弱（关闭判据 j）⇒ 记账载体不再被点名（判据非空转）" \
+  "bash plans/write-scope-check.sh --run-root '$_m229_book' 2>&1" "存在记账载体"
 fresh
 
 #   排查方向被误导。故：先判密封，再判变异落地（顺序由 M200 静态守护）。

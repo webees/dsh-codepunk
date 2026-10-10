@@ -53,7 +53,7 @@ metadata:
 1. **关联项目**：`dsh-codepunk-link resolve <工程根路径>`→ `project_id` 与 `dsh_codepunk_path`（**总库托管路径**，绝不等价于工程根；见 benchmarks/preset-tool-fixes.md）。README 有 `dsh-codepunk: <id>` frontmatter → 主通道命中；无 → INDEX 兜底；都无 → 未注册（`dsh-codepunk-link register <工程根> <id>`）。
 2. **装载路径常量**：`source ~/.dsh-codepunk/dsh-codepunk-home.sh`（导出 `DSH_CODEPUNK_HOME`/`DSH_CODEPUNK_PROJECTS`/`DSH_CODEPUNK_INDEX`）。
 3. **建运行根**：`mkdir -p ~/.dsh-codepunk/projects/<project_id>/runs/<run_id>/`——本 run 全部状态（goal/chunks/plan/tasks/handoff）写该目录，**绝不写入工程目录**。
-   - **③′ 运行根 `README.md` MUST 含 `write_scope:` 段（写域登记，R17）**：登记允许写入前缀（优先序：运行根 → 授权工作树内该任务 `write_paths` → 系统临时目录（**次选**，用毕即删）→ 总库 `knowledge/`）+ 本轮已创建物清单 + 清理状态 + `exempt:` 豁免登记；**收尾时 MUST 清理越界物并更新该段**；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验——结论码 2 不得当作通过）。段模板见 `references/artifacts.md` §1.3。
+   - **③′ 运行根实况核验（R17，D131）**：运行根 MUST NOT 落任何登记/记事文件（`write_scope:` 段、`ledger*.md`、`agents.yaml`、`findings`、`progress`）；写域优先序为运行根 → 授权工作树内该任务 `write_paths` → 系统临时目录（**次选**，用毕即删）→ 总库 `knowledge/`。**收尾时 MUST 清理越界/临时物**，并以 `plans/write-scope-check.sh --run-root <运行根>` 按实况复核（exit 0 通过 / 1 残留或记账载体 / 2 无法核验——结论码 2 不得当作通过）；判据见 `references/artifacts.md` §1.3。
 4. **启动自检与子代理恢复（MUST，D094）**：客户端意外关闭会中断子代理，恢复靠以下三步——
    - **a. 查**：`list_agents(scope=descendants)` 列出全部**可续聊**子代理及其**工具可见状态**（`running` | `inactive`——平台内部的 idle/ready 不被该工具外显）。**工具语义（实测）**：① 一次性子代理（`mode: one-shot`）**不列出**；② `scope` 仅 `children`（默认）/`descendants`；③ `descendants` 中 depth>1 的条目**只接受 `interrupt_agent`**（`send_message` 仅达直接子）。
    - **b. 比**：与本次 spawn 记录（工作房消息里的 target/任务边界 + 共享任务板 owner）逐行对照，找出「已派工但已非 running」的中断席。
@@ -155,7 +155,7 @@ metadata:
 | R14 | 产出归位：收子代理产出/简报 MUST 核对归属域 vs 实际落位；错位即移出并 grep 核销，不得跨 run 漂移 |
 | R15 | 子代理任务边界（MUST）：子代理 MUST NOT 承载循环型目标（收敛到连续 N 轮 / 反复迭代直到达标）；此类目标由主会话按轮驱动，每轮只派单次可收敛任务（实测：循环目标被反复分派产生 47 个异常大会话） |
 | R16 | 反思考循环（MUST）：连续 3 步无新证据、或同一失败指纹重复达 2 次时，MUST 换策略或上报，不得原样重试；被证伪的结论与失败轨迹只写结论与已证伪路径，不得进入上下文或交接包 |
-| R17 | 写盘纪律（MUST）：写入按优先序——① 运行根 `~/.dsh-codepunk/projects/<id>/runs/<run_id>/`（首选）② 授权工作树内该任务的 `write_paths` ③ 系统临时目录（**次选**，用毕即删）④ 总库 `knowledge/`。禁令：工程仓库工作树内落探针/临时脚本或 `*.bak`/`*.orig`/`*.rej`/`*.log`；`$HOME` 顶层散落；`/usr`、`/opt`、`/etc`、`/Library` 等系统目录自建物；在工程目录内建沙箱副本。探针脚本 MUST 落运行根 `logs/`（`logs/probe-r<轮次>-<用途>.sh`）。**越界即缺陷**，MUST 当轮清理并在运行根 `README.md` 的 `write_scope:` 段记入写域登记；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界 / 2 无法核验）；细则见 `references/file-hygiene.md`「写盘白名单与越界判据」 |
+| R17 | 写盘纪律（MUST）：写入按优先序——① 运行根 `~/.dsh-codepunk/projects/<id>/runs/<run_id>/`（首选）② 授权工作树内该任务的 `write_paths` ③ 系统临时目录（**次选**，用毕即删）④ 总库 `knowledge/`。禁令：工程仓库工作树内落探针/临时脚本或 `*.bak`/`*.orig`/`*.rej`/`*.log`；`$HOME` 顶层散落；`/usr`、`/opt`、`/etc`、`/Library` 等系统目录自建物；在工程目录内建沙箱副本。探针脚本 MUST 落运行根 `logs/`（`logs/probe-r<轮次>-<用途>.sh`）。**越界即缺陷**，MUST 当轮清理并以运行根实况复核（D131：不落任何登记文件）；机械门 `plans/write-scope-check.sh`（exit 0 通过 / 1 越界或实况不合规 / 2 无法核验）；细则见 `references/file-hygiene.md`「写盘白名单与越界判据」 |
 
 ## 4. 工具映射速查
 
