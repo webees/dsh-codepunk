@@ -1,16 +1,14 @@
 # 模型统一与回退机制（references/model-fallback.md）
 
-> D089 完整展开。**D090 修正其「继承主进程」主张**：实测孩子**不继承**主会话模型，须显式 `agentOptions`（双要件见 standard.md D090）。回退链部分仍有效。
-> 目的：①全链路（主进程 + **11 内建岗位**；2 个外部后端 codex/claude-code 各用其自身路由与后端，不在本链内）统一单一模型路由，消除「子代理与主进程用不同模型」的分裂；②主模型失败时按链回退，不中断流程。
+> D089 完整展开。D090 的「必须显式 `agentOptions`」是旧构建结论，**前提已反转**（现行构建默认继承父会话路由）；回退链部分仍有效。
+> 目的：①全链路（主进程 + **12 个内建角色 preset**〔11 个命名岗位 + generic worker〕；2 个外部后端 codex/claude-code 各用其自身路由与后端，不在本链内）统一单一模型路由，消除「子代理与主进程用不同模型」的分裂；②主模型失败时按链回退，不中断流程。
 > 背景：harness（dsh-llm / agent-loop）**无原生 provider fallback**——回退须由流程纪律层实现（run-lead 认知 + 工具层重试后切换）。
 
 ## 一、模型统一（全链路一致，杜绝分裂）
 
-- **原则（D090）**：子代理**必须显式声明模型**——agent.cordis.yml 各派遣岗位配置
-  `agentOptions: {provider: <PROVIDER>, model: <MODEL>}` + `backgroundMode: continuable`。
-  （实测：删除声明后孩子**不继承**主会话模型，落产品默认模型。）
-- **单一事实源**：主会话用 settings `agent-default-model`；子代理用 `agentOptions` 显式声明同一路由——**部署方需保证两者指向一致**。
-- **为何显式而非继承**：继承路径不经父会话 options，子代理会落到产品默认模型（可能与主会话完全不同），是模型分裂的根因。
+- **现行原则**：子代理默认继承父会话的实时路由；`agentOptions` 仅在需要**偏离**父路由时声明，不再强制。
+- **单一事实源**：主会话用 settings `agent-default-model`；子代理默认沿用同一路由，显式 `agentOptions` 会覆盖父路由。
+- **历史沿革（D090）**：旧构建下删除声明会落产品默认模型，故当时要求显式声明；该前提已在 0.2.0-rc.2 起反转。
 - **改配置生效条件**：改 agent.cordis.yml 或 settings 后**须重启 DSH Desktop**（运行中进程与已建会话持有旧快照）。
 
 ## 二、回退链（模板，部署方按实际环境填写）
@@ -32,7 +30,7 @@
    - 「模型名不存在」类**永久错误**（`mode: always` 下会死循环——此时**主动回退优于空等**）
 2. **执行**：
    - run-lead 认知到持续失败 → 切换主路由（settings `agent-default-model.provider/model`）到下一位
-   - 同步更新子代理 `agentOptions`（保持主/子一致）
+   - 如角色显式覆盖了 `agentOptions`，同步更新以保持主/子一致；未覆盖者随父路由自动切换
    - 记录：回退事件入 `errors/YYYY-MM-DD.md`（时间 / 原 provider / 新 provider / 失败码）
 3. **回退后**：验证新路由可用（一次小请求），再继续流程。
 
@@ -54,5 +52,5 @@
     -d '{"model":"<MODEL>","messages":[{"role":"user","content":"ping"}],"max_tokens":5}'
   ```
   ✅ 响应含 `choices` → 可用；含 `error` → 记 code/message 到 §二 探针列。
-- **主/子同源**：settings `agent-default-model` 与各岗位 `agentOptions` 指向同一 provider/model。
+- **主/子同源**：未覆盖时天然同源；存在显式 `agentOptions` 时必须与 settings 指向同一 provider/model。
 - 回退是**run-lead 裁决动作**：识别持续失败 → 切换 → 验证 → 记录。

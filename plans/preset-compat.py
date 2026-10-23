@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """preset-compat —— 核对组合与当前 DSH 安装的兼容性（可复跑，随 DSH 升级执行）。
 
-八项检查（全部基于实测事实，不做版本号猜测）：
-  1. 引用的插件包存在        —— 组合里每个 `@deepseek-ai/<pkg>` 是否在该 DSH 安装内
+十项检查（全部基于实测事实，不做版本号猜测）：
+  1. 引用的插件包存在        —— 组合里每个 `@deepseek-ai/<pkg>` 是否在 DSH 安装或 profile 内
   2. 配置键被插件接受        —— 键要么在插件 `Config` schema 内声明，要么被插件源码消费
   3. 组/隔离形态合法        —— 顶层条目均为列表行，`group: true` 的服务行落在 `isolate` 域内
-  4. allow 名单工具名有注册来源 —— 名单里每个名字须在安装内有插件注册（F021 类缺陷防线：
-                                  名字不在当前平台的全局工具集里时，`restrict()` 直接抛错）
-  5. 锚点顺序              —— `&role-allow` 定义须早于任何 `*role-allow` 别名（YAML 硬要求）
-  6. allow 名单一致性       —— 研究岗内联名单 = 角色锚点名单 + {web_search, web_fetch}
-  7. agentOptions 覆盖面（信息行）—— 统计未显式声明路由的岗位数（默认继承父会话路由，非缺陷）
-  8. 声明块可被产品 CLI 组合    —— 用 2.0.17 的 `--dump-config` / `--dump-config-schema` 把
+  4. spawn 角色可达         —— 每个 spawn 的 `agentPreset` 必须指向已声明的角色 preset，且 maxDepth 合法
+  5. fork 禁用边界          —— fork 必须显式禁用且不得配置 `agentPreset`
+  6. 角色 persona 在位       —— 每个角色 preset 必须挂载 persona 插件并声明 prefix
+  7. 联网边界               —— 仅 research 角色可挂载 `tool-web`
+  8. 不递归派遣             —— 角色 preset 不得挂载 `tool-subagent`
+  9. 退役字段清理           —— `tool-subagent` 不得再出现 persona/toolFilter/backgroundMode 等旧键
+  10. 声明块可被产品 CLI 组合 —— 用 2.0.18 的 `--dump-config` / `--dump-config-schema` 把
                                   `plans/preset-declare.mjs emit` 的声明块叠加到产品自带 profile 上：
                                   组合须 rc=0 且产物含本预设条目，且不得引入新的诊断类别。
                                   边界（实测）：组合成功证明「YAML 可解析 + patch/insert 可组合 +
@@ -68,6 +69,28 @@ def resolve_app_root() -> Path | None:
     return None
 
 
+def package_roots(app: Path) -> list[Path]:
+    """插件可来自应用安装、当前 desktop profile 或共享 profile 根。"""
+    roots = [
+        app / "node_modules",
+        Path.home() / ".dsh" / "profiles" / "desktop" / "node_modules",
+        Path.home() / ".dsh" / "profiles" / "node_modules",
+    ]
+    out: list[Path] = []
+    for root in roots:
+        if (root / SCOPE).is_dir() and root not in out:
+            out.append(root)
+    return out
+
+
+def find_package(app: Path, pkg: str) -> Path | None:
+    for root in package_roots(app):
+        cand = root / SCOPE / pkg
+        if cand.is_dir():
+            return cand
+    return None
+
+
 def _has_product_marker(root: Path) -> bool:
     """F267：安装**真实性**判据。
 
@@ -76,7 +99,7 @@ def _has_product_marker(root: Path) -> bool:
     `lib/index.js`，内含 27 键 `Config` 与 16 个工具 `name`，零真实插件代码）实测 **rc=0**，
     即「静默通过」（假通过）。
     真安装根自带产品标记：`package.json` 顶层含 `dsh` 键（实测真根 name=dsh-plugin-desktop、
-    version=2.0.17、顶层键含 dsh）。此处要求该标记存在，否则按本仓口径「**无法核验 ≠ 通过**」拒绝。
+    version=2.0.18、顶层键含 dsh）。此处要求该标记存在，否则按本仓口径「**无法核验 ≠ 通过**」拒绝。
     """
     try:
         data = json.loads((root / "package.json").read_text(encoding="utf-8", errors="replace"))
@@ -104,13 +127,17 @@ def parse_entries(text: str) -> list[dict]:
                 "group": False,
                 "has_isolate": False,
                 "disabled": False,
+                "values": {},
             }
             entries.append(cur)
             continue
         if cur is None:
             continue
         ind = len(line) - len(line.lstrip())
-        if line.strip() and re.match(r"^- ", line) and ind <= cur["indent"]:
+        # 任意缩进的列表项都可能开启新条目（包括 `- &锚点` / `- *别名`）；
+        # 只识别 `- id:` 会把别名行误并进上一个插件，进而把后续 config 键
+        # 错记到前一个条目上（实测 persona.maxBytes / persistent-pwsh.*）。
+        if line.strip() and re.match(r"^\s*-\s+", line) and ind <= cur["indent"]:
             cur = None
             continue
         if cur["name"] is None:
@@ -136,8 +163,33 @@ def parse_entries(text: str) -> list[dict]:
                     break
                 m3 = re.match(r"^\s+([A-Za-z_][A-Za-z0-9_]*):", l2)
                 if m3 and ind2 == base + 2:
-                    cur["keys"].append(m3.group(1))
+                    key = m3.group(1)
+                    value = l2.split(":", 1)[1].strip()
+                    value = re.sub(r"\s+#.*$", "", value).strip()
+                    cur["keys"].append(key)
+                    cur["values"][key] = value.strip("'\"")
     return entries
+
+
+def parse_role_presets(text: str) -> list[dict]:
+    """读取 role-presets.cordis.yml 的顶层角色声明（config.id + 原文块）。"""
+    roles: list[dict] = []
+    cur: dict | None = None
+    for line in text.split("\n"):
+        m = re.match(r"^- id: (\S+)\s*$", line)
+        if m:
+            cur = {"row_id": m.group(1), "config_id": None, "body": [line]}
+            roles.append(cur)
+            continue
+        if cur is None:
+            continue
+        cur["body"].append(line)
+        m2 = re.match(r"^    id: (\S+)\s*$", line)
+        if m2 and cur["config_id"] is None:
+            cur["config_id"] = m2.group(1).strip("'\"")
+    for role in roles:
+        role["body"] = "\n".join(role["body"])
+    return roles
 
 
 def schema_keys(src: str) -> set[str]:
@@ -164,15 +216,19 @@ def main() -> int:
     #   报「组合文件不存在：<仓库>/-h/agent.cordis.yml」——同一套 CLI 的用法约定不一致。
     if len(sys.argv) > 1 and sys.argv[1] in ('-h', '--help'):
         print("用法: preset-compat.py [<预设根>]")
-        print("  核验组合与当前 DSH 安装的兼容性（八项：插件包存在 / 配置键被接受 / 组与隔离形态 /")
-        print("  allow 名单有注册来源 / 锚点顺序 / 名单一致性 / agentOptions 覆盖面 / 声明块可被产品 CLI 组合）")
+        print("  核验组合与当前 DSH 安装的兼容性（十项：插件包存在 / 配置键被接受 / 组与隔离形态 /")
+        print("  spawn 角色可达 / fork 禁用边界 / 角色 persona / 联网边界 / 不递归派遣 / 退役字段 / 声明块可组合）")
         print("  环境变量: DSH_APP_ROOT（解包 app 目录）· DSH_ASAR（旧 asar 布局）")
         print("  退出码: 0=兼容 · 1=存在不兼容项 · 2=用法错误或未定位 DSH 安装")
         return 0
     root = Path(sys.argv[1]).expanduser().resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
     combo = root / "agent.cordis.yml"
+    roles_path = root / "role-presets.cordis.yml"
     if not combo.is_file():
         print(f"  ✗ 组合文件不存在：{combo}")
+        return 2
+    if not roles_path.is_file():
+        print(f"  ✗ 角色 preset 源不存在：{roles_path}")
         return 2
 
     app = resolve_app_root()
@@ -199,32 +255,37 @@ def main() -> int:
     #   按本仓教义显式报错，并归入「环境/用法错误」（2），与上面「组合文件不存在」同档。
     try:
         combo_text = combo.read_text(encoding="utf-8")
+        roles_text = roles_path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError) as exc:
         print(f"  ✗ 组合文件不可读：{combo}（{type(exc).__name__}: {exc}）——无法核验 ≠ 通过")
         return 2
     try:
         entries = parse_entries(combo_text)
+        role_entries = parse_entries(roles_text)
+        roles = parse_role_presets(roles_text)
     except Exception as exc:  # 解析失败同属「无法核验」，不得以裸 traceback + 1 冒充兼容性结论
         print(f"  ✗ 组合文件解析失败：{combo}（{type(exc).__name__}: {exc}）——无法核验 ≠ 通过")
         return 2
-    pkgs = {e["name"].split("/")[1] for e in entries if e["name"] and e["name"].startswith(SCOPE + "/")}
+    all_entries = entries + role_entries
+    pkgs = {e["name"].split("/")[1] for e in all_entries if e["name"] and e["name"].startswith(SCOPE + "/")}
 
     fails: list[str] = []
 
     # 1) 包存在性
-    missing = sorted(p for p in pkgs if not (app / "node_modules" / SCOPE / p).is_dir())
+    missing = sorted(p for p in pkgs if find_package(app, p) is None)
     if missing:
         fails.append("缺包：" + ", ".join(missing))
     print(f"  {'✅' if not missing else '✗'} 插件包存在（{len(pkgs) - len(missing)}/{len(pkgs)}）")
 
     # 2) 配置键被接受（schema 声明 或 源码消费）
     unknown: list[str] = []
-    for e in entries:
+    for e in all_entries:
         if not e["name"] or not e["name"].startswith(SCOPE + "/") or not e["keys"]:
             continue
         pkg = e["name"].split("/")[1]
-        src_path = app / "node_modules" / SCOPE / pkg / "lib" / "index.js"
-        if not src_path.is_file():
+        pkg_dir = find_package(app, pkg)
+        src_path = (pkg_dir / "lib" / "index.js") if pkg_dir else None
+        if src_path is None or not src_path.is_file():
             continue
         src = src_path.read_text(encoding="utf-8", errors="ignore")
         declared = schema_keys(src)
@@ -241,97 +302,97 @@ def main() -> int:
     # 3) group / isolate 形态
     bad_group = [
         e["id"]
-        for e in entries
+        for e in all_entries
         if e["group"] and not e["has_isolate"]
     ]
     if bad_group:
         fails.append("group 缺 isolate：" + ", ".join(bad_group))
-    print(f"  {'✅' if not bad_group else '✗'} group 隔离形态（{sum(1 for e in entries if e['group'])} 个组）")
+    print(f"  {'✅' if not bad_group else '✗'} group 隔离形态（{sum(1 for e in all_entries if e['group'])} 个组）")
 
-    # 4) 提示（不计失败）：continuable 岗位未声明 agentOptions 时，子代理落产品默认模型
-    #    公开预设默认留空由部署方自配（D090「部署方必配」），故此处只提示不判失败。
-    need_opt = [
-        e["id"]
-        for e in entries
-        if e["name"] == "@deepseek-ai/dsh-tool-subagent"
-        and "agentOptions" not in e["keys"]
-        and "backgroundMode" in e["keys"]
-        and not e.get("disabled")
-    ]
-    if need_opt:
-        print(f"  ℹ {len(need_opt)} 个岗位未声明 agentOptions（默认**继承父会话实时路由**，非产品默认）——"
-              f"公开预设默认留空属预期；仅需偏离父路由时才声明；涉及：{', '.join(sorted(need_opt)[:4])}{' …' if len(need_opt) > 4 else ''}")
-
-    # 7) allow 名单的每个名字必须在安装内有注册来源（F021 类缺陷的机械防线：
-    #    写了当前平台不存在的全局工具名 → restrict() 直接抛错、该岗全部派遣失败）
-    # F329：两侧提取的字符类**不得收窄**——工具名允许连字符/点/大写（如 `code-search`、`a.b`），
-    #   原字符类 `[a-z_][a-z0-9_]*` 会把这类名字**静默丢弃**，永不进入校验集合：若某个不存在的
-    #   连字符名同时写在锚点与内联名单里，本检查会 rc=0 宣称兼容，而产品 `tools.restrict()` 在挂载
-    #   时抛 `names unknown global tool`（`<app>/node_modules/@deepseek-ai/dsh-tools/lib/index.js:2908`）
-    #   ⇒ 该岗全部派遣失败。故名单侧用 `[^']+`（引号内即名字），注册侧放宽到字母数字/点/连字符/下划线。
-    import re as _re2
-    _lines7 = combo.read_text(encoding="utf-8").splitlines()
-    allow_names = set()
-    for l in _lines7:
-        if 'allow:' in l and '!!js' in l:
-            body = l.split('!!js "', 1)[-1].rstrip('"')
-            for elem in body.split(','):
-                # 平台三元里 `?` 之前是判据（如 'win32'），不是工具名，只取 `?` 之后的分支
-                part = elem.split('?', 1)[1] if '?' in elem else elem
-                allow_names |= {n.strip() for n in _re2.findall(r"'([^']+)'", part) if n.strip()}
-    reg = set()
-    _nm = os.path.join(app, "node_modules", SCOPE)
-    for pkg in os.listdir(_nm) if os.path.isdir(_nm) else []:
-        libd = os.path.join(_nm, pkg, 'lib')
-        if not os.path.isdir(libd):
+    # 4) spawn 角色可达：agentPreset 必须指向 role-presets.cordis.yml 的 config.id。
+    role_ids = {r["config_id"] for r in roles if r["config_id"]}
+    subagent_entries = [e for e in entries if e["name"] == "@deepseek-ai/dsh-tool-subagent"]
+    role_bad: list[str] = []
+    for e in subagent_entries:
+        if e.get("disabled"):
             continue
-        for fn in os.listdir(libd):
-            if fn.endswith('.js'):
-                try:
-                    reg |= set(_re2.findall(r'name:\s*"([A-Za-z][A-Za-z0-9._-]{0,40})"',
-                                           open(os.path.join(libd, fn), encoding='utf-8', errors='ignore').read()))
-                except OSError:
-                    pass
-    unknown = sorted(n for n in allow_names if n not in reg)
-    if unknown:
-        fails.append(f"allow 名单含安装内无注册来源的工具名: {unknown}（restrict 会直接抛错）")
-        print(f"  ✗ allow 名单工具名（无注册来源: {', '.join(unknown)}）")
+        preset = e["values"].get("agentPreset", "")
+        if not preset:
+            role_bad.append(f"{e['id']} 缺 agentPreset")
+        elif preset not in role_ids:
+            role_bad.append(f"{e['id']} 指向未声明角色 {preset}")
+        depth = e["values"].get("maxDepth", "")
+        if depth != "1":
+            role_bad.append(f"{e['id']} maxDepth={depth or '缺失'}（本地 spawn 应为 1）")
+    if role_bad:
+        fails.append("spawn 角色不可达：" + ", ".join(role_bad))
+    print(f"  {'✅' if not role_bad else '✗'} spawn 角色可达（{len(role_ids)} 个角色 preset）")
+
+    # 5) fork 禁用且不得配置 agentPreset。
+    fork = next((e for e in subagent_entries if e["id"] == "tool-subagent-fork"), None)
+    fork_bad = []
+    if fork is None:
+        fork_bad.append("缺 tool-subagent-fork 条目")
     else:
-        print(f"  ✅ allow 名单工具名（{len(allow_names)} 个均有注册来源）")
+        if not fork.get("disabled"):
+            fork_bad.append("fork 未禁用")
+        if fork["values"].get("agentPreset"):
+            fork_bad.append("fork 不得配置 agentPreset")
+    if fork_bad:
+        fails.append("fork 边界违规：" + ", ".join(fork_bad))
+    print(f"  {'✅' if not fork_bad else '✗'} fork 禁用边界")
 
-    # 5) 锚点顺序：&role-allow 必须早于任何 *role-allow 别名（YAML 要求先定义后用）
-    text_lines = combo.read_text(encoding="utf-8").split("\n")
-    def_idx = next((i for i, l in enumerate(text_lines) if l.strip().startswith("allow: &role-allow")), None)
-    alias_idx = [i for i, l in enumerate(text_lines) if l.strip() == "allow: *role-allow"]
-    if def_idx is None:
-        fails.append("未找到锚点定义 allow: &role-allow")
-        print("  ✗ 锚点定义缺失")
-    elif alias_idx and def_idx > min(alias_idx):
-        fails.append(f"锚点定义（第 {def_idx + 1} 行）晚于首个别名（第 {min(alias_idx) + 1} 行）→ 挂载必失败")
-        print("  ✗ 锚点顺序")
-    else:
-        print(f"  ✅ 锚点顺序（定义第 {def_idx + 1} 行，{len(alias_idx)} 处别名）")
+    # 6) 每个角色 preset 必须挂载 persona 且声明 prefix；prompt 变量必须是 DSH 已注册的内置变量。
+    persona_bad = []
+    for role in roles:
+        rid = role["config_id"] or role["row_id"]
+        body = role["body"]
+        if "@deepseek-ai/dsh-persona" not in body:
+            persona_bad.append(f"{rid} 缺 persona 插件")
+        elif not re.search(r"^\s+prefix:\s*\S", body, re.M):
+            persona_bad.append(f"{rid} persona 缺 prefix")
+    prompt_vars = set(re.findall(r"\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}", combo_text + "\n" + roles_text))
+    unsupported_vars = sorted(prompt_vars - {"provider", "model"})
+    if unsupported_vars:
+        persona_bad.append("不支持的提示词变量: " + ", ".join(unsupported_vars))
+    if persona_bad:
+        fails.append("persona 不完整：" + ", ".join(persona_bad))
+    print(f"  {'✅' if not persona_bad else '✗'} 角色 persona（{len(roles)} 个）")
 
-    # 6) allow 名单一致性：研究岗内联 = 角色锚点 + {web_search, web_fetch}
-    import re as _re
-    def names(expr):
-        return [x.strip().strip("'\"") for x in expr.split(",") if x.strip()]
+    # 7) 联网边界：只有 research 角色可挂载 tool-web。
+    web_bad = []
+    for role in roles:
+        rid = role["config_id"] or role["row_id"]
+        has_web = "@deepseek-ai/dsh-tool-web" in role["body"]
+        if has_web != rid.endswith("-research"):
+            web_bad.append(f"{rid} tool-web={has_web}")
+    if web_bad:
+        fails.append("联网边界违规：" + ", ".join(web_bad))
+    print(f"  {'✅' if not web_bad else '✗'} 联网边界（仅 research 挂 tool-web）")
 
-    def_expr = text_lines[def_idx].split('!!js "', 1)[-1].rstrip('"') if def_idx is not None else ""
-    inline = next((l for l in text_lines if "allow: !!js" in l and "web_search" in l), "")
-    inline_expr = inline.split('!!js "', 1)[-1].rstrip('"') if inline else ""
-    if def_expr and inline_expr:
-        base_all = set(names(def_expr)) - {"process.platform === 'win32' ? 'pwsh' : 'bash'"}
-        role_all = base_all | {"bash", "pwsh"}
-        inline_all = set(names(inline_expr)) | {"bash", "pwsh"}
-        extra = inline_all - role_all
-        if extra != {"web_search", "web_fetch"}:
-            fails.append(f"研究岗内联 allow 与角色锚点差集异常: {sorted(extra)}")
-            print("  ✗ allow 名单一致性")
-        else:
-            print("  ✅ allow 名单一致性（内联 = 角色 + web_search/web_fetch）")
+    # 8) 角色 preset 不得递归挂载 tool-subagent。
+    recurse_bad = [
+        (r["config_id"] or r["row_id"])
+        for r in roles
+        if re.search(r"name:\s*'@deepseek-ai/dsh-tool-subagent'\s*$", r["body"], re.M)
+    ]
+    if recurse_bad:
+        fails.append("角色递归派遣：" + ", ".join(recurse_bad))
+    print(f"  {'✅' if not recurse_bad else '✗'} 不递归派遣")
 
-    # 8) 声明块可被产品 CLI 组合（2.0.17 的 `--dump-config` / `--dump-config-schema`）
+    # 9) tool-subagent 不得再出现退役字段。
+    retired = {"persona", "toolFilter", "backgroundMode", "enableRunInBackground"}
+    retired_bad = [
+        f"{e['id']}.{key}"
+        for e in subagent_entries
+        for key in e["keys"]
+        if key in retired
+    ]
+    if retired_bad:
+        fails.append("退役字段残留：" + ", ".join(sorted(set(retired_bad))))
+    print(f"  {'✅' if not retired_bad else '✗'} 退役字段清理")
+
+    # 10) 声明块可被产品 CLI 组合（2.0.18 的 `--dump-config` / `--dump-config-schema`）
     #    边界（实测，MUST 知悉）：组合成功只证明「YAML 可解析 + patch/insert 结构可组合 + 条目被产品
     #    loader 接受」；**不证明插件可解析或可挂载**——把插件名改成不存在的包，`--dump-config` 仍 rc=0；
     #    坏 YAML 则 rc=1（`failed to parse …`）。诊断比对按「消息类别」（`[/N]` 索引归一化），

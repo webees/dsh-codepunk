@@ -201,8 +201,8 @@ if [ "$PS_CN" -eq 0 ]; then
   p "ℹ" "PS 语法校验未计入（无校验器或校验未通过）：如需启用，见 README「PowerShell 校验」一节"
 fi
 
-# 8) DSH 兼容性（7 项：插件包存在 / 配置键被接受 / group 隔离形态 / allow 名单工具名有注册来源 /
-#    锚点顺序 / allow 名单一致性 / agentOptions 覆盖面信息行）
+# 8) DSH 兼容性（十项：插件包存在 / 配置键被接受 / group 隔离形态 / spawn 角色可达 /
+#    fork 边界 / 角色 persona / 联网边界 / 递归派遣 / 退役字段 / CLI 组合）
 # DSH 0.1.7 起不再打包 app.asar，改为解包 app/ 目录；两种布局都支持，
 # 位置一律由环境变量给出（不硬编码任何平台路径）。核验细节见 preset-compat.py。
 APPROOT="${DSH_APP_ROOT:-}"

@@ -6,22 +6,22 @@
 
 ### 1. 为什么子代理看不到 web 工具？
 
-因为工具可见性是**逐岗白名单**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点 `&role-allow`，语义是「全关只放行」——未列入的工具对该岗**不可见**。调研岗是唯一例外，内联追加 `web_search, web_fetch`。硬规则 R2 同步规定：仅调研岗可联网，主会话、实现组、文档、人事、审计、审查、发布一律禁止。另注意 allow 只能列**当前 DSH 实例已挂载**的全局工具名：写错名字会在 spawn 时随 `tools.restrict()` 直接 throw（fail-closed）。
+因为每个 spawn 角色通过独立 `agentPreset` 挂载 `role-presets.cordis.yml` 中的角色组合；只有 research 角色挂载 `tool-web`。`toolFilter` / `persona` 已退役，不再是工具面控制通道。硬规则 R2 同步规定：仅调研岗可联网，主会话、实现组、文档、人事、审计、审查、发布一律禁止。
 
 ### 2. 子代理为什么不能再自己派子代理？
 
-岗位 `maxDepth: 1` 是**绝对委派深度上限**，只有主会话能组建三人小组——这与双门闩（简报批准 ∧ 用工批准方可开工）配套，防止绕开审批自行扩编。外部后端（codex / claude-code）设 `provider-managed`。
+岗位 `maxDepth: 1` 是**绝对委派深度上限**，且角色 preset 不挂载 `tool-subagent`；只有主会话能组建三人小组——这与双门闩（简报批准 ∧ 用工批准方可开工）配套，防止绕开审批自行扩编。外部后端（codex / claude-code）保持禁用。
 
 ### 3. 为什么改了 `agent.cordis.yml` 会话里没变化？
 
 两类原因，都要按序排查：
 
-1. **两处表示**：进程实读的是 profile patch 内的**内联副本**，不是源文件。改源后必须 `node plans/preset-declare.mjs apply` 重写副本，再用 `check` 确认零漂移。
+1. **两处表示**：进程实读的是 profile patch 内的**内联副本**，不是源文件。改 `agent.cordis.yml` 或 `role-presets.cordis.yml` 后必须 `node plans/preset-declare.mjs apply` 重写副本，再用 `check` 确认零漂移。
 2. **生效时机**：插件配置在**进程启动时**读取，改配置后须**重启 DSH Desktop**；新开对话不重读。
 
 ### 4. 为什么同一份组合要存在两处？
 
-自 DSH 0.1.7 起 `dsh-agent-preset-registry` 不再扫描 `~/.dsh/.agent-presets/<id>/`：注册表既**不扫描目录**也**不接受 preset 路径**。自定义预设必须以 `@deepseek-ai/dsh-agent-preset` 声明行注入 profile，否则引用该预设的会话恢复时报 `Unknown agent preset`。于是「源 + 副本」成为必然，`preset-declare.mjs` 负责二者不漂移（唯一必要适配是 `customSkillDirs` 的 `baseUrl` 基准变化，生成与比对时自动处理）。
+自 DSH 0.1.7 起 `dsh-agent-preset-registry` 不再扫描 `~/.dsh/.agent-presets/<id>/`：注册表既**不扫描目录**也**不接受 preset 路径**。自定义预设必须以 `@deepseek-ai/dsh-agent-preset` 声明行注入 profile，否则引用该预设的会话恢复时报 `Unknown agent preset`。于是「源 + 副本」成为必然，`preset-declare.mjs` 负责二者不漂移（必要适配是 `customSkillDirs`、hooks 的 `configPath` 与 `pluginRoot` 的 `baseUrl` 基准变化，生成与比对时自动处理）。
 
 ## 门禁与退出码
 
@@ -31,7 +31,7 @@
 
 ### 6. `evidence` 通过就能解散小组了吗？
 
-不能。`evidence pass ≠ 可解散`。顺序是：证据通过 → 审查门（`diff ⊆ write_paths` + 清单 + 审查记录）→ 交接包齐全 → 接收方签收 → 工程主责在**两处**置 `status: done`（`chunks.yaml` 的 chunk 态 + `agents.yaml` 的席位态）→ 才解散。未置 `done` 不得解散，也不得进入合并门。
+不能。`evidence pass ≠ 可解散`。顺序是：证据通过 → 审查门（`diff ⊆ write_paths` + 清单 + 审查记录）→ 交接包齐全 → 接收方签收 → 工程主责在 `chunks.yaml` 将该 chunk 置 `status: done` → 才解散。未置 `done` 不得解散，也不得进入合并门。
 
 ### 7. 门禁红了，怎么判断是不是我造成的？
 
@@ -70,11 +70,11 @@ bash plans/dsh-codepunk-init.sh --check  # 只断言：有缺失/过期即非零
 
 三层保障：
 
-1. **登记**：每次 spawn 即在运行根 `README.md` 写登记表，并维护独立清单 `runs/<run_id>/agents.yaml`；
-2. **启动自检**：`list_agents(scope=descendants)` 查实测态 → 对照清单找「登记为 active 但已非 running」的中断席 → 读该席工作房 `progress/`、`handoff/`、`evidence.yaml` 定位断点 → 用 `send_message` 精确续行（不重跑整轮、不重复 spawn）；
-3. **定时巡检**：默认每 5 轮执行一次同样的「查 → 比 → 续 → 写」闭环，失败结算通知时加跑一次。
+1. **会话内记录**：spawn 时由工作房消息与共享任务板留下派工边界、任务归属与依赖；不落 `agents.yaml`、运行根登记表等状态文件（D131）。
+2. **启动自检**：`list_agents(scope=descendants)` 查实测态 → 对照本次 spawn 记录找已派工但非 running 的中断席 → 读该席工作房 `progress/`、`handoff/`、`evidence.yaml` 定位断点 → 用 `send_message` 精确续行（不重跑整轮、不重复 spawn）。
+3. **事件驱动巡检**：失败、中断或结算通知到达时执行同样的「查 → 比 → 续」；不按固定轮次巡检。
 
-前置条件：该席必须是 `backgroundMode: continuable`（一次性子代理中断后不可恢复）；`scope=descendants` 中深度大于 1 的条目只接受 `interrupt_agent`，`send_message` 仅达直接子。
+前置条件：本地 spawn 角色固定为 `continuable`（一次性子代理中断后不可恢复）；`scope=descendants` 中深度大于 1 的条目只接受 `interrupt_agent`，`send_message` 仅达直接子。
 
 ### 13. 预设自身的调研资料为什么不能写进工程目录？
 
@@ -88,7 +88,7 @@ R13 / R14：**内容归什么域就写什么域**。关于预设自身的调研�
 
 1. **各取两套版本号**（勿互相推断）：应用版本 `plutil -extract CFBundleShortVersionString raw "<DSH 应用包>/Contents/Info.plist"`；CLI / 包版本 `dsh --version`。
 2. **设环境变量**：`DSH_APP_ROOT`（解包 app 目录）/ `DSH_ASAR`（旧 asar 布局）/ `DSH_PROFILE_PATCH`（profile patch 路径）。本仓所有依赖安装位置的检查都取环境变量，两种布局都支持。
-3. **跑兼容核验**：`python3 plans/preset-compat.py`（插件包存在 / 配置键被接受 / group 隔离与锚点顺序 / allow 名单一致性）。
+3. **跑兼容核验**：`python3 plans/preset-compat.py`（十项：插件包 / 配置键 / 隔离 / spawn 可达 / fork / persona / 联网 / 递归 / 退役字段 / CLI 组合）。
 4. **验声明漂移**：`node plans/preset-declare.mjs check`。
 5. **跑全量电池**：`bash plans/verify-battery.sh`（含 DSH 兼容性项）。
 6. **对照破坏性变更表**：`references/harness-alignment.md` 记录已适配的三项（注册表不再扫描预设目录、`app.asar` → 解包 `app/`、`dsh-workflow-worker-thread` 并入 `@deepseek-ai/dsh-workflow-ptc`），机制级变更对照 `benchmarks/deepseek-harness-study.md`。

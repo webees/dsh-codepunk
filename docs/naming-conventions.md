@@ -30,7 +30,6 @@
   runs/<run_id>/
     tasks/<task_id>/{brief,staffing,handoff,progress}/
     reviews/  errors/YYYY-MM-DD.md  docs/memory/  logs/  tmp/<run_id>/<step>/
-    agents.yaml             # 子代理状态清单
 ```
 
 ## 2. 编号体系
@@ -40,8 +39,8 @@
 | 阶段号 | `P01`–`P17` | `references/standard.md` 阶段号段 | 须落在已声明范围或 span 内（`doc-consistency.sh` 第 9 类） |
 | 决策号 | `D0xx` | `references/standard.md` 决策登记表 | 逐条登记，未登记即红（第 9 类） |
 | 硬规则 | `R1`–`R17` | `SKILL.md` §3 硬规则表 | 禁「R 加三位及以上数字」写法（第 19 类） |
-| 变异号 | `M1`–`M149` | `plans/checker-self-test.sh` 变异表 | 计数与 README 声称同步（第 1 类） |
-| 检查类号 | `[1]`–`[24]` | `plans/doc-consistency.sh` 的类段输出 | 每个类须在治理矩阵中登记（第 22 类） |
+| 变异号 | `M1`–`M226` | `plans/checker-self-test.sh` 变异表 | 计数与 README 声称同步（第 1 类） |
+| 检查类号 | `[1]`–`[30]` | `plans/doc-consistency.sh` 的类段输出 | 每个类须在治理矩阵中登记（第 22 类） |
 | 发现编号 | `Fnnn` | `references/skill-governance.md` 溯源表 | 提交信息尾部附注 |
 | 轮次 | 「轮次 N」 | 会话/审计轮次的中文写法 | 禁止与硬规则同形的三位写法 |
 
@@ -63,11 +62,11 @@ grep -cE '^# [0-9]+\)' plans/verify-battery.sh                     # 电池项�
 | 项 | 规则 | 示例 |
 |---|---|---|
 | 岗位标识 | 图标 + 中文名 + ID；人类可读处用图标 | `📚 文档小组 docs` |
-| 规范 ID | 工具名、登记表、评分聚合一律用规范 ID | `docs-lead`、`ind-res`、`sys-arch` |
+| 规范 ID | 工具名、评分聚合一律用规范 ID | `docs-lead`、`ind-res`、`sys-arch` |
 | 门户简称 | README 等门户表述用简称；同一文档内**不得混用**两种写法 | `docs`、`research` |
 | codename（人设名） | 2 个汉字、表意、同一 run 内唯一；引用格式 `<codename>（<seat>@<task_id>）` | 衡策（squad-lead@chunk-a） |
 | team_name | 2 个汉字、同一 run 内唯一 | 砺石 |
-| 登记行 | `\| task_id \| 席位 \| codename \| subagent_id \| status \|` | 席位取 `squad-lead` / `engineer` / `sdet` |
+| 编制锁定 | `staffing.yaml` 锁定三角席位、codename 与 team_name | 不落 `subagent_id` 登记表 |
 | 席层 | `主会话` / `人类` / `主责` / `专员` / `实现` / `门禁` / `跨组` | 不使用 `L0`–`L5` 记号 |
 
 图标使用边界：README、岗位表、run 记录、汇报表格**可用**；persona 正文、`SKILL.md` 正文、prompt 正文**禁用**（AI 读取处，且装饰性符号消耗常驻 token）。

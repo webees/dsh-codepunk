@@ -3,8 +3,8 @@
 **运行于 DeepSeek Harness 的多智能体开发流程预设**——主会话担任工程主责并编排岗位子代理，把工程从需求推进到交付：**六阶段闭环、证据驱动、可审计、可恢复、持续进化**。
 
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-2.0.17-blue.svg)](skills/dsh-codepunk-workflow/references/harness-alignment.md)
-[![Gates](https://img.shields.io/badge/quality%20gates-doc--consistency%20rc%3D0%20%C2%B7%20score%2015%2F15-brightgreen.svg)](plans/verify-battery.sh)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-2.0.18-blue.svg)](skills/dsh-codepunk-workflow/references/harness-alignment.md)
+[![Gates](https://img.shields.io/badge/quality%20gates-doc--consistency%20rc%3D0%20%C2%B7%20score%2016%2F16-brightgreen.svg)](plans/verify-battery.sh)
 [![Merge flow](https://img.shields.io/badge/merge%20flow-PR%20%2B%20merge%20commit%20%C2%B7%20no%20direct%20push-blueviolet.svg)](CONTRIBUTING.md)
 
 ## 目录
@@ -54,12 +54,12 @@
 
 ## 快速开始
 
-前置：DeepSeek Harness（本仓实测应用版本 2.0.17，兼容核验见 [references/harness-alignment.md](skills/dsh-codepunk-workflow/references/harness-alignment.md)）；macOS 或 Linux 用 bash 工具链，Windows 用 pwsh（见「平台支持」）。
+前置：DeepSeek Harness（本仓实测应用版本 2.0.18，兼容核验见 [references/harness-alignment.md](skills/dsh-codepunk-workflow/references/harness-alignment.md)）；macOS 或 Linux 用 bash 工具链，Windows 用 pwsh（见「平台支持」）。
 
 **第一步：把预设源文件落位**（唯一权威副本；完整安装说明见 [docs/deployment.md](docs/deployment.md)）：
 
 ```bash
-mkdir -p "$HOME/.dsh/.agent-presets/dsh-codepunk" && cp -R agent.cordis.yml preset.yml skills "$HOME/.dsh/.agent-presets/dsh-codepunk/"
+mkdir -p "$HOME/.dsh/.agent-presets/dsh-codepunk" && cp -R agent.cordis.yml role-presets.cordis.yml preset.yml skills "$HOME/.dsh/.agent-presets/dsh-codepunk/"
 ```
 
 **第二步：生成 preset 声明并注入 profile patch**（DeepSeek Harness 自 0.1.7 起不再扫描 `~/.dsh/.agent-presets/<id>/`，必须以声明行注入，否则会话恢复时报 `Unknown agent preset: dsh-codepunk`）：
@@ -92,8 +92,8 @@ source ~/.dsh-codepunk/dsh-codepunk-home.sh        # 导出 DSH_CODEPUNK_HOME / 
 1. **关联项目**：`dsh-codepunk-link resolve <工程根路径>`；未注册先 `register`。
 2. **装载路径常量**：`source ~/.dsh-codepunk/dsh-codepunk-home.sh`。
 3. **建运行根**：在总库内建 `projects/<project_id>/runs/<run_id>/`；**工程目录保持纯净**（运行状态一律不落工程仓库）。运行根 **MUST NOT** 落任何登记/台账文件（D131：进度与缺陷只以 git 提交与 `CHANGELOG.md` 承载）。
-4. **启动自检与子代理恢复**：列出可续聊子代理，与 spawn 登记表逐行比对，找出中断席并读断点续行（不重跑整轮）。
-5. **定时巡检与状态清单**：按「查 → 比 → 续 → 写」闭环刷新 `agents.yaml`，防中断席长期失联。
+4. **启动自检与子代理恢复**：用 `list_agents(scope=descendants)` 列实测态，对照本次会话的 spawn 记录（工作房消息 + 共享任务板）找中断席，读断点 `send_message` 续行（不重跑整轮）。
+5. **事件驱动巡检**：失败、中断或结算通知到达时加跑「查 → 比 → 续」；不按固定轮次巡检，不落 `agents.yaml` 等状态文件（D131/D132）。
 
 自证环境（三条命令应全绿，退出码契约见下表）：
 
@@ -154,8 +154,8 @@ flowchart LR
 | `plans/preset-audit.sh` | 5 组 rubric 审计（配置/手册/调研/文档/工具层；否决式计分：零失分即满分）；YAML 解析优先 ruby，无 ruby 时用 node+js-yaml（候选链查找、容忍 `!!js` 标签）；D3/E3 在 `git` 枚举为空时回退文件系统遍历（空枚举不得判满分） | 0=全项达标；1=存在失分项；2=预设根不存在 |
 | `plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性核对（30 类：计数声称 · 阶段口径 · 工具存在性 · 退出码契约 · 编号可解析 · 章节引用 · 退出码实测 · 表格列数 · 制品生成器一致 · 外部输入变量记载等） | 0=一致；1=存在不一致；2=环境或用法错误 |
 | `plans/checker-self-test.sh` | 检查器存活自检（变异测试）：沙箱副本内注入 **226 项**已知缺陷，断言对应检查项必须报错——专治「守护空转」；**同一预设根上并发互斥**（预设根是可写共享资源：密封探针写入源树、沙箱由源根整树复制 ⇒ 并行自检互相污染、结论不可归因） | 0=通过（结论行据实报「捕获 N/M 项 + 跳过 K 项（跳过 ≠ 通过）」）；1=有守护未捕获；2=环境或自检问题（含：同一预设根上已有另一次自检在运行） |
-| `plans/preset-declare.mjs` | preset 声明块生成与校验（`emit` / `check` / `apply`；源 `agent.cordis.yml` ↔ profile patch 内联副本语义比对） | 0=一致或成功；1=确认漂移；2=环境或参数错误 |
-| `plans/preset-compat.py` | 组合与当前 DeepSeek Harness 安装的兼容核验（插件包存在 · 配置键被接受 · group 隔离与锚点顺序 · allow 名单一致性） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
+| `plans/preset-declare.mjs` | preset 声明块生成与校验（`emit` / `check` / `apply`；双源 `agent.cordis.yml` + `role-presets.cordis.yml` ↔ profile patch 内联副本语义比对） | 0=一致或成功；1=确认漂移；2=环境或参数错误 |
+| `plans/preset-compat.py` | 组合与当前 DeepSeek Harness 安装的兼容核验（十项：插件包 · 配置键 · group/isolate · spawn 可达 · fork 边界 · persona · 联网边界 · 递归派遣 · 退役字段 · CLI 组合） | 0=兼容；1=存在不兼容项；2=无法定位 DSH 安装 |
 | `plans/evidence-verify.sh <evidence.yaml> <交付目录>` | 证据机械校验（防假通过门）：`task_id` · `command` · `exit_code=0` · `log_ref` 齐备且位于交付目录内（绝对路径与 `..`/符号链接逃逸判 FAIL）+ 证据 `id` 去重 + 时间序（`validated_at` 须晚于交付目录 mtime）；**交付目录必填**（缺参或目录不存在 ⇒ 2「无法核验 ≠ 通过」，不得误归因为「log_ref 文件不存在」） | 0=通过（verdict=PASS）；1=未过；2=用法或文件缺失（含缺交付目录） |
 | `plans/acceptance-verify.sh <acceptance.yaml> <交付方 task_id>` | 签收机械校验：`task_id` · `accepted_by[]` · `accepted_at` 齐备 + 签收独立性（自签一律不合规，**比较不区分大小写**；缺交付方 ⇒ 无法核验 ≠ 通过） | 0=合规；1=不合规；2=用法或文件缺失、或未提供交付方 |
 | `plans/write-scope-check.sh [--repo <路径>] [--home] [--tmp] [--home-all] [--run-root <运行根>]` | 写盘纪律门：仓库残留（含未跟踪文件）· 主目录顶层散落 · 临时目录双根残留；`--exempt-from` 读显式豁免清单；`--run-root` 核验**运行根实况**（判据 h 残留 / 判据 j 记账载体，D131；MUST NOT 要求任何声明文件）；扫描工具缺失（PATH 无 `find`）⇒ 显式失败，不静默通过 | 0=通过；1=发现越界或运行根实况不合规；2=无法核验或用法错误（含缺 `find`、`--run-root` 目录缺失） |
@@ -261,7 +261,8 @@ skills/
 .gitattributes                      # 换行策略：仓库内 LF，.ps1 检出 CRLF
 .gitignore                          # 白名单式忽略（运行状态一律不入仓）
 .pre-commit-config.yaml
-agent.cordis.yml                    # 组合：persona + 工具 + realm（预设的权威定义）
+agent.cordis.yml                    # 主组合：主会话工具 + 派遣条目 + realm
+role-presets.cordis.yml             # 角色组合：12 个岗位的 persona / 工具面 / 隔离域
 CHANGELOG.md
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md                     # 贡献指南（面向贡献者）
@@ -321,7 +322,7 @@ SUPPORT.md
 ## 维护公约（改动前必读）
 
 1. **Host / Agent 平面边界**：服务注册不进本预设；需要 `isolate` realm 的行必须放在带 `isolate:` 的 group 内。
-2. **逐岗 allow 白名单锚点**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点（调研岗唯一例外，内联追加检索工具）。allow 是「全关只放行」列表，未列入的工具一律不可见；新增岗位或工具须同步锚点，且只能列当前实例已挂载的全局工具名。
+2. **逐岗独立角色 preset**：12 个 spawn 角色各由 `role-presets.cordis.yml` 中独立 `agentPreset` 提供 persona 与工具面；仅 research 挂载 `tool-web`。`toolFilter` / `persona` 已退役，新增岗位须同步角色 preset 与派遣条目。
 3. **强制层级要分清**：画布工具权限是机械强制（`restrict` 真移除工具）；文件写集是**约定强制为主**（人设自律 + 审查门 `diff ⊆ write_paths` + 工作房隔离），另有**拦截层**机械拦网 `plans/hook-write-scope.py`（PreToolUse 钩子，启发式、非沙箱，见 `references/file-hygiene.md` §八）与**事后**扫描门 `plans/write-scope-check.sh`；两者都不等价于沙箱。
 4. **编号可解析**：内部编号一律以 `skills/dsh-codepunk-workflow/references/standard.md` 为唯一释义，禁止引入该文件之外的编号引用。
 5. **文件归宿**：预设自身的资料（开源基准、流程改进）存 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写入任何工程目录；各 run 的 `research/briefs/` 只放该工程业务调研。接收子代理产出时复核归属域与实际落位一致。

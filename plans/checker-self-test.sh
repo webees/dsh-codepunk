@@ -162,9 +162,28 @@ else
 fi
 export HOME="$SANDBOX"
 
-fresh()      { rm -rf "$work/cur"; cp -R "$SRC" "$work/cur"; }
+# 兼容核验会从「当前 HOME 的 desktop profile」解析仅装在 profile 内的插件（如
+#   `dsh-hooks-claude-code`）。沙箱 HOME 下该目录不存在 ⇒ 基线电池会误报「缺包」，
+#   并连带击穿 M156/M182。这里只链接**插件目录**，不链接 profile patch，避免把用户
+#   平面的声明漂移带进自检；沙箱仍不写真实 profile。
+if [ -d "$REAL_HOME/.dsh/profiles/desktop/node_modules" ]; then
+  mkdir -p "$SANDBOX/.dsh/profiles/desktop"
+  ln -s "$REAL_HOME/.dsh/profiles/desktop/node_modules" \
+    "$SANDBOX/.dsh/profiles/desktop/node_modules" 2>/dev/null \
+    || cp -R "$REAL_HOME/.dsh/profiles/desktop/node_modules" \
+         "$SANDBOX/.dsh/profiles/desktop/node_modules" 2>/dev/null
+fi
+
+# 沙箱副本 MUST NOT 带入源树的本地运行产物：`work/`、字节码缓存等被 .gitignore 明示忽略的
+#   条目会污染电池的「物理杂散」与 doc-consistency 的文件系统回退，制造与变异无关的假红。
+#   这里按路径排除运行产物，但仍复制 `.git`（多数断言依赖 git 工作区语义）。
+_fresh_tar_excludes=(--exclude='./work' --exclude='./tmp' --exclude='./logs'
+                     --exclude='./node_modules' --exclude='./.dsh-codepunk-*'
+                     --exclude='__pycache__' --exclude='*.pyc' --exclude='.DS_Store')
+fresh()      { rm -rf "$work/cur"; mkdir -p "$work/cur"
+               tar -C "$SRC" "${_fresh_tar_excludes[@]}" -cf - . 2>/dev/null | tar -C "$work/cur" -xf - 2>/dev/null; }
 fresh_nogit(){ rm -rf "$work/cur"; mkdir -p "$work/cur"
-               tar -C "$SRC" --exclude=.git -cf - . 2>/dev/null | tar -C "$work/cur" -xf - 2>/dev/null; }
+               tar -C "$SRC" --exclude=.git "${_fresh_tar_excludes[@]}" -cf - . 2>/dev/null | tar -C "$work/cur" -xf - 2>/dev/null; }
 
 # F397（本轮实测）：变异 MUST 作用于 `$work/cur`（沙箱副本）——裸相对路径（如 `plans/x.sh`）在主 shell
 #   下解析到**源树**，会把「删除型变异」真的施加于仓库文件（本轮实测：M188-c 的裸 `sed -i.bak` 删掉
@@ -281,9 +300,13 @@ t = open(sys.argv[1], encoding='utf-8').read()
 m = re.search(re.escape(sys.argv[2]) + r'([一二三四五六七八九十]+)项检查', t)
 if not m:
     print(''); raise SystemExit(0)
-n = '一二三四五六七八九十'
-i = n.index(m.group(1)[-1])
-print('' if i + 1 >= len(n) else n[i + 1])
+nums = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十',
+        '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十']
+try:
+    i = nums.index(m.group(1))
+except ValueError:
+    print(''); raise SystemExit(0)
+print(nums[i + 1] if i + 1 < len(nums) else '')
 PYEOF
 }
 
@@ -498,10 +521,17 @@ fresh; printf '\nfail "x $HOME%s注入"\n' "$FW" >> "$work/cur/plans/dsh-codepun
 check "M1 全角紧邻陷阱 → B1b" "bash plans/preset-audit.sh" "B1b"
 
 fresh
-sed -i '' '1,/backgroundMode: continuable/{s/backgroundMode: continuable/backgroundMode: one-shot/;}' "$work/cur/agent.cordis.yml" 2>/dev/null \
-  || sed -i '1,/backgroundMode: continuable/{s/backgroundMode: continuable/backgroundMode: one-shot/;}' "$work/cur/agent.cordis.yml"
-mutate "岗位改为 one-shot" "$work/cur/agent.cordis.yml" 'backgroundMode: one-shot'
-check "M2 削弱岗位可恢复性 → A7" "bash plans/preset-audit.sh" "A7"
+python3 - "$work/cur/agent.cordis.yml" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = 'agentPreset: dsh-codepunk-worker'
+assert old in s, 'M2 变异目标串未找到'
+open(p, 'w', encoding='utf-8').write(s.replace(old, 'agentPreset: no-such-role-zz', 1))
+print('MUTATED')
+PYEOF
+mutate "首个 spawn 角色 preset 改为不可达" "$work/cur/agent.cordis.yml" 'agentPreset: no-such-role-zz'
+check "M2 削弱岗位角色可达性 → A7" "bash plans/preset-audit.sh" "A7"
 
 fresh; printf '\n见 [工具](plans/no-such-tool-xyz.sh)。\n' >> "$work/cur/README.md"
 check "M3 仓内死链 → E3" "bash plans/preset-audit.sh" "E3"
@@ -553,6 +583,10 @@ else
   fresh; mkdir -p "$work/prof"; : > "$FIX_PATCH"
   check_rc "M14a 由源生成副本 → 一致（自足夹具，不依赖用户平面）" \
     "node plans/preset-declare.mjs apply --append --patch \"$FIX_PATCH\" >/dev/null && node plans/preset-declare.mjs check --patch \"$FIX_PATCH\"" 0 "语义一致"
+  check_contains "M14c 内联 hooks configPath 回到预设目录" \
+    "node plans/preset-declare.mjs emit" "../../.agent-presets/dsh-codepunk/plans/hooks/hooks.json"
+  check_contains "M14d 内联 hooks pluginRoot 回到预设根" \
+    "node plans/preset-declare.mjs emit" "new URL('../../.agent-presets/dsh-codepunk/', baseUrl)"
   python3 - "$FIX_PATCH" <<'PYEOF'
 import sys
 p = sys.argv[1]
@@ -844,7 +878,7 @@ echo "[M118 A7 缺配置须判「无法核验」（F232）]"
 fresh
 rm -f "$work/cur/agent.cordis.yml"
 mutate_gone "删除 agent.cordis.yml" "$work/cur/agent.cordis.yml" 'tool-subagent-squad-lead'
-check_rc "M118 缺配置 → A7 判无法核验（非恒真通过）" "bash plans/preset-audit.sh 2>&1" 1 "A7 配置不变量违规: agent.cordis.yml 缺失"
+check_rc "M118 缺配置 → A7 判无法核验（非恒真通过）" "bash plans/preset-audit.sh 2>&1" 1 "A7 配置不变量违规: agent.cordis.yml 或 role-presets.cordis.yml 缺失"
 
 echo "[M117 class 5 空脚本输入须判「无法核验」（F231）]"
 fresh
@@ -865,8 +899,8 @@ check_rc "M116 无 ps1 → class 18 判无法核验（非恒真通过）" "bash 
 
 echo "[M114/M115 audit A2 与 D3 正检可达（F229）]"
 fresh
-sed -i.bak 's/边界：/边界=/g' "$work/cur/agent.cordis.yml"
-mutate "persona 维度词「边界：」全部改名" "$work/cur/agent.cordis.yml" '边界='
+sed -i.bak 's/边界：/边界=/g' "$work/cur/role-presets.cordis.yml"
+mutate "persona 维度词「边界：」全部改名" "$work/cur/role-presets.cordis.yml" '边界='
 check_rc "M114 缺岗位维度 → A2 报 FAIL 0/11" "bash plans/preset-audit.sh 2>&1" 1 "A2 FAIL 0/11"
 fresh
 printf '\n> 探针：见 plans/preset-score.sh:123 的实现。\n' >> "$work/cur/README.md"
@@ -1088,11 +1122,11 @@ open(p, 'w', encoding='utf-8').write(s.replace('32768', '32769'))
 PYEOF
 mutate "体积预算改为 32769" "$work/cur/plans/preset-score.sh" '32769'
 check_rc "M39 阈值不一致 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "SKILL 体积上限"
-echo "[M40 岗位数一致性（doc-consistency 第 21 类存活）]"
+echo "[M40 角色数一致性（doc-consistency 第 21 类存活）]"
 fresh
 printf '\n> 现行：13 岗位已全 continuable。\n' >> "$work/cur/skills/dsh-codepunk-workflow/references/model-routing.md"
 mutate "注入无标记的 13 岗位现在时声称" "$work/cur/skills/dsh-codepunk-workflow/references/model-routing.md" '13 岗位已全'
-check_rc "M40 岗位数过度声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "岗位数声称问题"
+check_rc "M40 角色数过度声称 → doc-consistency 失败" "bash plans/doc-consistency.sh" 1 "角色数声称问题"
 echo "[M41 矩阵覆盖（doc-consistency 第 22 类存活）]"
 fresh
 sed -i.bak 's/第 21 类/第 二一类/' "$work/cur/skills/dsh-codepunk-workflow/references/skill-governance.md"
@@ -1198,7 +1232,10 @@ else
 import sys
 s, d = sys.argv[1], sys.argv[2]
 t = open(s, encoding='utf-8').read()
-open(d, 'w', encoding='utf-8').write(t.replace("'@deepseek-ai/dsh-agent-preset'", "'@deepseek-ai/dsh-agent-preset-x'", 1))
+old = "    - id: preset-dsh-codepunk\n      name: '@deepseek-ai/dsh-agent-preset'"
+assert old in t, 'M51 主 preset 包装锚点未找到'
+new = old.replace("'@deepseek-ai/dsh-agent-preset'", "'@deepseek-ai/dsh-agent-preset-x'")
+open(d, 'w', encoding='utf-8').write(t.replace(old, new, 1))
 PYEOF
   mutate "篡改包装顶层 name" "$work/patch51t.yml" '@deepseek-ai/dsh-agent-preset-x'
   check_rc "M51 包装 name 漂移 → check 报漂移" "node plans/preset-declare.mjs check --patch '$work/patch51t.yml' 2>&1" 1 "声明包装漂移"
@@ -1243,31 +1280,23 @@ fresh
 printf '\n见 `plans/no-such-script.sh`。\n' >> "$work/cur/docs/faq.md"
 mutate "docs 内引用不存在的 plans 脚本" "$work/cur/docs/faq.md" 'plans/no-such-script.sh'
 check_rc "M140 docs 内死引用 → 第 4 类报缺脚本" "bash plans/doc-consistency.sh 2>&1" 1 "文档提到但不存在的脚本"
-echo "[M141 allow 名单连字符工具名不得静默漏检（F329：提取字符类收窄致假通过）]"
+echo "[M141 spawn 的 agentPreset 不可达不得静默漏检（F329 同类：解析收窄致假通过）]"
 fresh
 if [ -z "${DSH_APP_ROOT:-}" ] || [ ! -d "${DSH_APP_ROOT:-/nonexistent}" ]; then
   skip 'M141 跳过（未设 DSH_APP_ROOT，无法核验安装真实性；属环境受限）'
 else
-  cat > "$work/inject141.py" <<'PYEOF'
-import io, sys
-p, name = sys.argv[1], sys.argv[2]
-L = io.open(p, encoding='utf-8').read().split('\n')
-ai = next(i for i, l in enumerate(L) if '&role-allow' in l)
-ii = next(i for i, l in enumerate(L) if 'allow:' in l and '!!js' in l and i != ai)
-def add(line):
-    s = line.rstrip(); tail = ''
-    if s.endswith('"'):
-        s, tail = s[:-1].rstrip(), '"'
-    core = s[:-1].rstrip()
-    core = core + (',' if core.endswith(("'", '"')) else '')
-    return core + "'%s']" % name + tail
-L[ai], L[ii] = add(L[ai]), add(L[ii])
-io.open(p, 'w', encoding='utf-8').write('\n'.join(L))
+  python3 - "$work/cur/agent.cordis.yml" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = 'agentPreset: dsh-codepunk-worker'
+assert old in s, 'M141 变异目标串未找到'
+open(p, 'w', encoding='utf-8').write(s.replace(old, 'agentPreset: no-such-preset-zz', 1))
+print('MUTATED')
 PYEOF
-  python3 "$work/inject141.py" "$work/cur/agent.cordis.yml" 'no-such-tool-zz'
-  mutate "锚点与内联同时注入不存在的连字符工具名" "$work/cur/agent.cordis.yml" 'no-such-tool-zz'
-  check_rc "M141 连字符未知名 → compat 检查 4 报无注册来源" \
-    "DSH_APP_ROOT=\"$DSH_APP_ROOT\" python3 plans/preset-compat.py . 2>&1" 1 "无注册来源"
+  mutate "首个 spawn 注入不可达 agentPreset" "$work/cur/agent.cordis.yml" 'agentPreset: no-such-preset-zz'
+  check_rc "M141 agentPreset 不可达 → compat 第 4 项报错" \
+    "DSH_APP_ROOT=\"$DSH_APP_ROOT\" python3 plans/preset-compat.py . 2>&1" 1 "spawn 角色不可达"
 fi
 echo "[M52 accepted_by 流式数组（F171 修复存活）]"
 fresh
@@ -1292,8 +1321,8 @@ python3 - "$work/cur/plans/preset-audit.sh" <<'PYEOF'
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-old = 'agent.cordis.yml 2>/dev/null || true'
-new = 'agent.cordis.yml 2>/dev/null || echo 0'
+old = 'n=$(grep -ihc -- "$OLD_NAME" agent.cordis.yml role-presets.cordis.yml 2>/dev/null | awk'
+new = 'n=$(grep -ihc -- "$OLD_NAME" agent.cordis.yml role-presets.cordis.yml 2>/dev/null || echo 0'
 if old not in s:
     print('ANCHOR-MISSING')
 else:
@@ -1760,16 +1789,24 @@ fresh
 #   对照：造**非**契约命名空间的同形条目（`probe-*`）⇒ MUST 降级 INFO（rc 0，输出「归属不明」）。
 #   两条断言一律显式 `--tmp` 且把 TMPDIR 指向沙箱根——默认模式还会扫宿主 /tmp，
 #   与宿主遗留耦合（他人残留会让断言与守护本身无关地失败）。
+#   宿主 /tmp 上既有的本契约命名空间条目不属于本夹具；用**显式豁免清单**隔离它们，
+#   不得为跑测试删除或改写宿主文件。清单只用于本段两条断言。
+m137_exempt="$work/exempt137.txt"
+: > "$m137_exempt"
+# macOS 的 `/tmp` 是 `/private/tmp` 的符号链接；`find /tmp` 不跟随该链接，会得到空清单。
+#   写盘门扫描的是 realpath（`/private/tmp`），故豁免清单也须按 realpath 生成。
+find "$(cd /tmp 2>/dev/null && pwd -P)" -mindepth 1 -maxdepth 1 -name 'dsh-codepunk-*' \
+  -print 2>/dev/null >> "$m137_exempt" || true
 mkdir -p "$work/tmp137/dsh-codepunk-r601-probe"
 printf 'x = 1\n' > "$work/tmp137/dsh-codepunk-r601-probe/probe.py"
 mutate "契约命名空间残留（轮次 601）" "$work/tmp137/dsh-codepunk-r601-probe/probe.py" '^x = 1$'
 check_rc "M137 契约命名空间残留 ⇒ rc 1 且报「G3 临时目录残留」" \
-  "TMPDIR='$work/tmp137' bash plans/write-scope-check.sh --repo '$work/cur' --tmp" 1 "G3 临时目录残留"
+  "TMPDIR='$work/tmp137' bash plans/write-scope-check.sh --repo '$work/cur' --tmp --exempt-from '$m137_exempt'" 1 "G3 临时目录残留"
 rm -rf "$work/tmp137/dsh-codepunk-r601-probe"
 printf '#!/usr/bin/env bash\necho foreign\n' > "$work/tmp137/probe-foreign-x.sh"
 mutate "非契约命名空间同形条目 probe-foreign-x.sh" "$work/tmp137/probe-foreign-x.sh" 'echo foreign'
 check_rc "M137 对照：非契约命名空间同形条目 ⇒ rc 0 且含「归属不明」" \
-  "TMPDIR='$work/tmp137' bash plans/write-scope-check.sh --repo '$work/cur' --tmp" 0 "归属不明"
+  "TMPDIR='$work/tmp137' bash plans/write-scope-check.sh --repo '$work/cur' --tmp --exempt-from '$m137_exempt'" 0 "归属不明"
 # M142（F331）：自签判据须**不区分大小写**——交付方 task-a 的签收方写 Task-A MUST 仍判自签。
 #   红证（退回旧实现）：区分大小写的子串包含 ⇒ 该夹具 verdict=PASS（自签被改大小写绕过）。
 mkdir -p "$work/acc142"
@@ -2323,7 +2360,7 @@ if codepunk_have node; then
   m165_cmd='a=$(node plans/preset-declare.mjs emit | wc -c); node plans/preset-declare.mjs emit > "$work/m165.yml"; b=$(wc -c < "$work/m165.yml"); if [ "$a" = "$b" ]; then echo "PIPE_OK a=$a"; else echo "✗ emit 管道截断 a=$a b=$b"; exit 1; fi'
   check_rc "M165-a emit 管道输出须与文件重定向等长" "$m165_cmd" 0 "PIPE_OK"
   m165_before=$(grep -c 'process.stdout.write' "$work/cur/plans/preset-declare.mjs" || true)
-  sed -i.bak 's/writeSync(1, renderBlock/process.stdout.write(renderBlock/' "$work/cur/plans/preset-declare.mjs"
+  sed -i.bak 's/writeSync(1, renderAll/process.stdout.write(renderAll/' "$work/cur/plans/preset-declare.mjs"
   m165_after=$(grep -c 'process.stdout.write' "$work/cur/plans/preset-declare.mjs" || true)
   if [ "$m165_after" -gt "$m165_before" ]; then
     echo "  · M165-b 变异落地（process.stdout.write ${m165_before} → ${m165_after}）"
@@ -3737,7 +3774,7 @@ open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
 print('MUTATED')
 PYEOF
 check_rc "M205-b 削弱（删归因分支）⇒ 退回旧文案（判据非空转）" \
-  "GIT_INDEX_FILE=/nonexistent-advm bash plans/doc-consistency.sh 2>&1" 1 "存在 1 处不一致"
+  "GIT_INDEX_FILE=/nonexistent-advm bash plans/doc-consistency.sh 2>&1" 1 "处不一致"
 fresh
 
 echo "[M206 判定的根 MUST NOT 可被宿主环境重定向（F422）]"

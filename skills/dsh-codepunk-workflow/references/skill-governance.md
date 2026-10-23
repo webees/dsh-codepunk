@@ -106,7 +106,7 @@
 | D087 | ⚠已废弃（D089 取代）岗位路由改道 | 实战 | model-routing.md §五 | v1.0 |
 | D088 | 子代理可恢复性（continuable） | 实战 | agent.cordis.yml / preset-tool-fixes F-003 | v1.0 |
 | D089 | 模型统一与回退 | 实战经验 | model-fallback.md / settings | v1.0 |
-| D090 | 子代理路由双要件（agentOptions + continuable） | 实战经验 | agent.cordis.yml / model-routing.md | v1.0 |
+| D090 | 子代理路由双要件（agentOptions + continuable；历史前提已反转） | 实战经验 | agent.cordis.yml / model-routing.md | v1.0（历史） |
 | D094 | 启动自检与子代理恢复 | 实战需求 | SKILL §1.1 第 4 条 / stages.md §③ / agent.cordis.yml | v1.0 |
 | D095 | ~~定时巡检与子代理状态清单~~（**已废止**，取代者 D131/D132） | 内部需求 → 用户指令 m27663 | SKILL §1.1 第 5 条 | v1.2 |
 | D096 | 持久 shell 与工具调用超时 | DSH 2.0.12 | SKILL §4 / agent.cordis.yml | v1.1 |
@@ -119,9 +119,9 @@
 
 | 缺陷类别 | 负责检查项 | 方式 |
 |---|---|---|
-| 组合/岗位不变量（缺 persona、非 continuable、disabled、缺 toolFilter） | `preset-audit` A7 | 机械 |
+| 组合/岗位不变量（角色 preset 缺失、fork 未禁、persona 缺失、联网越界、递归派遣、退役字段） | `preset-audit` A7 | 机械 |
 | YAML 可解析 / 条目形状 | `preset-audit` A1 · `preset-compat` 配置键项 | 机械 |
-| 组合 ↔ DSH 兼容（包存在/键接受/隔离/锚点/allow 名单） | `preset-compat`（7 项） | 机械 |
+| 组合 ↔ DSH 兼容（插件包/配置键/隔离/spawn 可达/fork/persona/联网/递归/退役字段/CLI 组合） | `preset-compat`（10 项） | 机械 |
 | 源 ↔ profile 副本漂移 | `preset-declare check`（语义）+ `verify-battery` 8b | 机械 |
 | 脚本语法（`.sh`/`.ps1`/`.py`/`.mjs` 四类） | `verify-battery` 7 | 机械 |
 | 路径/脚本引用存在性（含 references 内、markdown 死链） | `preset-score` A2 · `preset-audit` E3 | 机械 |
@@ -148,7 +148,7 @@
 6. **双向留证**：负向探针须同时记录**变异生效**与**捕获**两个事实，且优先在**副本内**验证。
 8. **判据不得空转**：阈值/取值类判据 MUST NOT 用**字面捕获**（如 `(32768)`——只能匹配自身
 
-9. **原始文本可疑 ≠ 缺陷**：任何基于**原始文本匹配**的怀疑（如「同名 YAML 锚点被二次定义」、「该行含 X」），在判定前 MUST 用**真实解析器或运行时**复核 —— 注释、字符串与代码的界限由解析器决定，文本级匹配无法区分。轮次 168 实测：`&role-allow` 在 L437 的第二次出现实为**注释**，两个产品自带 YAML 库（`yaml`、`js-yaml`）解析后**仅 research 含 web**，与文档声称一致；若据原始文本即判缺陷，将产生误报。
+9. **原始文本可疑 ≠ 缺陷**：任何基于**原始文本匹配**的怀疑（如「同名 YAML 锚点被二次定义」、「该行含 X」），在判定前 MUST 用**真实解析器或运行时**复核 —— 注释、字符串与代码的界限由解析器决定，文本级匹配无法区分。历史轮次 168 曾因把注释中的 `&role-allow` 二次出现误当缺陷；现行角色 preset 已不再使用该锚点，但「文本命中须经解析器复核」的教训仍然有效。
    字面，永不报警）；须用**泛化捕获**（如 `(?:≤|超预算[ ]*)([0-9]{5})`），并在负向探针里
    改动**另一侧**的取值以证明「能察觉分歧」（F148 实证：字面捕获的条目负向探针未捕获）。
 7. **文案自洽**：新检查的**消息文案**不得含 shell 元字符（反引号等会被双引号当命令替换）或**会被本检查自匹配的样例**（F145：消息里的三位 R 号被第 19 类自身命中）；改动消息后须同步所有断言期望串（F145 第三处：M37 期望串过时被自检当场抓出）。
@@ -167,7 +167,7 @@
 | **移植对等性**（4 对 sh↔ps1：关键词白名单 + leak-guard 通用模式签名双向对等；ps1 工作树行尾 CRLF 落地校验在**无 git 环境回退文件系统字节核验**——F335） | `doc-consistency.sh` 第 17 类 | 机械 |
 | **pwsh 钩子参数语法**（Windows 侧生成钩子不得用 `$1` 等 PS 不支持的位置参数语法） | `doc-consistency.sh` 第 18 类 | 机械 |
 | **硬规则命名空间洁净**（禁三位以上 R 号；轮次引用写「轮次 N」） | `doc-consistency.sh` 第 19 类 | 机械 |
-| **岗位数一致性**（11 内建 + 2 外部后端；「13 岗位」须带历史/例外标记） | `doc-consistency.sh` 第 21 类 | 机械 |
+| **角色数一致性**（12 个角色 preset = 11 个命名岗位 + generic worker；2 个外部后端为禁用态；「13 岗位」须带历史/例外标记） | `doc-consistency.sh` 第 21 类 | 机械 |
 | **矩阵覆盖**（每个检查类须在治理矩阵中登记，含「第 a–b 类」范围写法） | `doc-consistency.sh` 第 22 类 | 机械 |
 | **钩子配置完整性**（产品启动时读取的 `plans/hooks/hooks.json`：JSON 可解析 · matcher/type/command 齐备 · 命令引用的仓库内文件存在 · **解释器在 PATH 内**——缺解释器时钩子起不来、产品不设 decision ⇒ 放行，属失败开放；F368 实证：坏配置下五个门禁全绿） | `doc-consistency.sh` 第 7 类子项（+ 存活自检 M168） | 机械 |
 | **hooks 护栏路径归一**（`/etc`＝`/private/etc`＝符号链接＝大小写变体同判；F383 实证） | `plans/hook-write-scope.py` 的 `canon()` | 机械（M177） |

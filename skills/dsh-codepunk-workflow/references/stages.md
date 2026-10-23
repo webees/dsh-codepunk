@@ -28,20 +28,20 @@
 ## ③ 多小组并行开发（P05–P06）
 
 1. **建工作房**：先确认主仓库已归位工程根 → 依其父目录建 worktree：`git -C <主仓库路径> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>` → `git -C <主仓库路径> worktree list` 复核落点。**禁止在非工程根目录建 worktree**。S 规模（单组）可改用 `rooms/squad-<task_id>/` + 写集纪律。
-2. **创建即登记（MUST）**：建成/重建/恢复后**立即**登记进 `runs/<run_id>/README.md` 的 worktree 表（列：仓库｜路径｜分支（`dsh-codepunk/<run_id>/<task_id>`）｜run｜用途｜状态；表头首次建表时新建）。状态三态全程登记：`active`→`recovered`→`recycled`（D073 合并回收时标；行不删、分支 refs 留审计）。以 `worktree list` 实况为准，不凭记忆。
+2. **工作房实况（MUST）**：建成/重建/恢复后以 `git -C <主仓库路径> worktree list` 复核路径与分支（`dsh-codepunk/<run_id>/<task_id>`）；派工边界、任务归属与依赖写入工作房消息与共享任务板，不落 `runs/<run_id>/README.md` worktree 表等状态文件（D131）。合并回收按 D073 以实况复核。
 3. **并行派遣**（全部后台 continuable〔D088〕，同一轮消息发出）：`subagent_squad_lead`（简报全量+工作房+汇报节奏）· `subagent_engineer`（技术切片+写集+工作房）· `subagent_sdet`（acceptance+证据格式+允许命令）。prompt 必含：工作房绝对路径、write_paths、read 材料、报告对象（你）、交接要求。
 4. **并行上限**按 scale：S≤1 / M≤3 / L≤6 组（本预设自律上限，D024；DSH 无同名平台字段）；双门闩齐即**自动**开工（D031）。
    - **限流自适应（D086）**：spawn 前查 `knowledge/lessons/rate-limit-history.yaml`；当日 ≥2 次 429 → 降并发（L1 ≤2/批+10s / L2 串行 / L3 暂停并通知 sponsor）。细则见 references/rate-limit-adaptation.md。
-5. **登记 subagent id（MUST）**：每 spawn 后把 `task → seat → subagent id` 记入 `runs/<run_id>/README.md`（列 `task_id | seat | subagent_id | status`，一行一 spawn；seat ∈ squad-lead/engineer/sdet，id 取返回值）。巡检/追问/解散靠此表，勿凭记忆。
+5. **spawn 记录（MUST）**：派工边界与任务归属由工作房消息/共享任务板可追溯；不写 `subagent_id` 登记表等状态文件（D131）。巡检/追问/解散以 `list_agents` 实况与这些官方机制为准，勿凭记忆。
 6. 小组独立开发互不干扰；你经 `list_agents`/结算通知/`send_message` 巡检。S 规模默认三帽折叠（run-lead 兼三席，产物换帽留痕 `seat=`，见 roles.md）；M/L 全席上阵。
 7. **checkpoint 断点续行（D067）**：`progress/`+`handoff/`+`evidence.yaml`+工作房 = 可重放状态（每阶段产出即一个 checkpoint）；中断后 `list_agents` 定位闲置 + 读 `progress/` 找断点 → `send_message` 精确续行，不整轮重来。
-   - **客户端重启后恢复（D094）**：见 SKILL §1.1 第 4 条「启动自检」；**定时巡检（D095）**：见 SKILL §1.1 第 5 条，「查→比→续→写」闭环后写回 `agents.yaml`；`status: done` 跳过——`list_agents(scope=descendants)` 查 → 对照 spawn 登记表比 → 读断点续；子代理 MUST continuable（一次性不可恢复）。
+   - **客户端重启后恢复（D094）**：见 SKILL §1.1 第 4 条「启动自检」；巡检为事件驱动（D131/D132）：`list_agents(scope=descendants)` 查 → 对照本次会话 spawn 记录比 → 读断点续，不落 `agents.yaml`；本地 spawn 角色固定 continuable（一次性不可恢复）。
 8. 连续 2 次无实质进展 → `at_risk`，催办或介入；超时 → 延长/失败/强制解散（P14）。
 9. 缺资料 → 成员申请 → 你 approve/redact/deny → `subagent_docs` 打包下发；**禁止小组自行联网**。
 
 ## ④ 巡检与交接（P07）
 
-顺序 MUST：sdet 证据 pass → 代码审查门 → 交接包齐全（含残留自查节）→ 接收方签收 → run-lead 置 `status: done` → 解散。**未置 `done` 不得进入合并门**；**置位须两处齐**——`chunks.yaml` 的 chunk `status: done`（合并门依据）与 `agents.yaml` 的席位 `status: done`（巡检依据，D095）**；`done` 只能由 run-lead 置位（执行席自置即红灯）。
+顺序 MUST：sdet 证据 pass → 代码审查门 → 交接包齐全（含残留自查节）→ 接收方签收 → run-lead 置 `chunks.yaml` 的 chunk `status: done` → 解散。**未置 `done` 不得进入合并门**；`done` 只能由 run-lead 置位（执行席自置即红灯）。不再维护 `agents.yaml` 席位态（D131）。
 
 1. **证据**：sdet 产 `evidence.yaml`（command + exit_code=0 + log_ref）；`evidence pass ≠ 可解散`。
    - **交付基线（R12）**：验收前 MUST 确认交付目录 mtime 最新（`ls -la docs/<module>/`）；evidence 须带 `validated_at` 与所对基线；疑似空跑/旧快照 → 打回重跑，禁止放行。

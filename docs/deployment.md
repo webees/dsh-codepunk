@@ -7,7 +7,7 @@
 | 项 | 要求 | 说明 |
 |---|---|---|
 | DSH 版本 | ≥ 0.1.7 的注册模型 | 0.1.7 起 `dsh-agent-preset-registry` **不再扫描**预设目录，自定义预设必须经声明行注入 profile |
-| 实测基线 | 应用 2.0.17 / CLI 包 0.2.0-rc.2 | 两套版本号独立，勿互相推断；取值命令见 §6 |
+| 实测基线 | 应用 2.0.18 / CLI 包 0.2.1-rc.2 | 两套版本号独立，勿互相推断；取值命令见 §6 |
 | node | 用于 `preset-declare.mjs`（生成 / 校验声明块） | 缺 js-yaml 时 `check` 降级为行内容比对；`apply` 在降级模式仍拒答不兼容根结构（按首个有效行做文本判定）与含 `---`/`...` 文档分隔符的补丁 |
 | python3 | 用于兼容核验与多数门禁 | 缺失时相关检查报「无法核验」，不得当作通过 |
 | 平台 | macOS / Linux（bash）/ Windows（pwsh） | Windows 侧经 `plans/windows/*.ps1` 覆盖核心脚本 |
@@ -18,7 +18,7 @@
 # ① 落位源文件（唯一权威）
 DST="$HOME/.dsh/.agent-presets/dsh-codepunk"
 mkdir -p "$DST"
-cp -R agent.cordis.yml preset.yml skills "$DST/"
+cp -R agent.cordis.yml role-presets.cordis.yml preset.yml skills "$DST/"
 
 # ② 生成声明块并注入 profile patch（首次安装：--append，自动备份）
 DSH_PROFILE_PATCH="$HOME/.dsh/profiles/<profile>/cordis.patch.yml" \
@@ -54,7 +54,7 @@ python3 plans/preset-compat.py
 - **默认 patch 路径**：取 `$DSH_PROFILE_PATCH`，其次 `~/.dsh/profiles/desktop/cordis.patch.yml`。
 - **依赖发现顺序**（不硬编码平台路径）：`$DSH_CODEPUNK_TOOLS` → `~/.dsh-codepunk/tools` → `$DSH_APP_ROOT` → `$DSH_ASAR` 同级 → 当前目录；找不到 js-yaml 时 `check` 退化为行内容比对（仍能捕获增删改，但报不出精确路径）。同一候选链也被 `plans/preset-audit.sh` 的 A1 与 `plans/dsh-codepunk-link.sh` 的 INDEX 核验使用；解析 `agent.cordis.yml` 时须容忍 `!!js` 自定义标签（本仓含 9 处），否则会被误报为「YAML 解析失败」。
 - **重复声明**：同一 `id` 在 patch 内出现多处时，`check` / `apply` 一律以退出码 2 拒绝并提示人工保留一处。
-- **唯一必要适配**：内联后 `customSkillDirs` 的 `baseUrl` 指向 profile 目录，须改写为回到预设目录的相对路径；生成时自动加、比对时自动归一——**这是设计行为，不是漂移**。
+- **必要路径适配**：内联后 `baseUrl` 指向 profile 目录，`customSkillDirs`、hooks 的 `configPath` 与 `pluginRoot` 都须改写为回到预设目录的相对路径；生成时自动加、比对时自动归一——**这是设计行为，不是漂移**。
 
 ## 4. `preset.yml` 的语义
 

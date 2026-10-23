@@ -4,7 +4,8 @@ retrieved_at: 2026-10-08
 source_count: 25
 ---
 
-> 支撑决策号：D095（定时巡检）延伸 · 性质：外部调研（DSH 2.0.17 产品特性与预设作者配置面）
+> 支撑决策号：D095（巡检机制沿革）延伸 · 性质：外部调研（DSH 2.0.17 产品特性与预设作者配置面）
+> **当前基线（2026-10-23 本机实测）**：DSH Desktop 2.0.18 / 内核 `@deepseek-ai/dsh` 0.2.1-rc.2。下文 2.0.17 事实保留为历史检索快照。
 
 # DSH 最新版本与预设作者可用配置面
 
@@ -69,14 +70,14 @@ source_count: 25
 | 沙箱策略声明 | 不适用 | 沙箱与审批栈属宿主平面（本预设注释已明示）；预设不应声明 `sandbox-policy` |
 | 插件版本兼容 / 豁免 | 可直接采用 | 无代码改动；升级 DSH 后若插件被跳过，用 `dsh plugin --profile <p> version-exemptions` 排查，并写入 `docs/maintenance.md` 的升级检查项 |
 | 配置检视与 schema dump | 可直接采用 | 无。建议把 `dsh --dump-config-schema` 作为预设升级自检步骤写入 `docs/development.md`（先读 schema-dump 安全说明） |
-| `schedule_*` 工具范围收紧 | 需改造（认知项） | 在 `skills/dsh-codepunk-workflow` 中注明：**子代理内无定时提醒工具**，定时巡检只能由主会话声明与执行（与现有 D095 巡检纪律一致） |
+| `schedule_*` 工具范围收紧 | 需改造（认知项） | 在 `skills/dsh-codepunk-workflow` 中注明：**子代理内无定时提醒工具**；巡检为事件驱动，由主会话按 D131/D132 执行，不建固定轮次节奏 |
 | 破坏性移除（invariants / 子路径清单 / 登录错误码） | 不适用 | 本预设未引用 `dsh-invariants`、未导出子路径插件、不处理账号错误码 |
 | 桌面端内置 CLI | 可直接采用 | 无文件改动；升级后可用菜单栏安装 `dsh` 命令，便于在应用外跑 `plans/` 门禁与 `--dump-config` |
 
 ## 四、未核验项清单
 
 1. **`preset.yml`（`name`/`description`/`order`）无官方文档佐证**：官方仓库中检索到的预设形态是「组合行 + `agent-preset` 声明 + bundle patch」，未找到描述 `preset.yml` 展示元数据的官方页面 ⇒ 该文件的规范**无法核验**。
-2. **2.0.17 之后是否有更新桌面版**：仅能确认 `anywhere-labs/deepseek-harness-desktop` 的 tags 以 `v2.0.17` 为最新（另有 `-next`/`-beta.1` 同源变体）；是否存在未打 tag 的更新渠道**无法核验**。
+2. **2.0.17 之后是否有更新桌面版（历史检索时点）**：当时仅能确认 tags 以 `v2.0.17` 为最新；当前本机已是 2.0.18，本节不代表现状。
 3. **Claude Code Mods 兼容层**：仅见 `v0.2.1-alpha.1` 发行说明一句话；npm 上未检索到对应包名，配置面**无法核验**。
 4. **异步问答模式**：发行说明称「需要手动配置开启」但未给键名，键名与取值**无法核验**。
 5. **各机制的引入版本号**：官方 changelog 只按发布批次列举用户可见变化，未逐机制标注引入版本；本简报中标为「已用/未用」的机制（hooks、MCP、persona 的 `complete`/`includeRuntimeContext` 等）**具体引入版本无法核验**。

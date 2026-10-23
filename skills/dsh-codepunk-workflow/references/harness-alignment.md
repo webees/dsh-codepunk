@@ -8,10 +8,10 @@
 |---|---|---|
 | goal 自动续行 / 结算自动递送 | `dsh-goal` + `dsh-tool-goal` + `dsh-goal-round-driver`（§0.1） | 词汇 Goal→Round→Turn→Step；armed 进程本地；resume 需人类消息；**动作权限（实测契约）**：`edit`/`pause`/`resume` 须**人类直请**；`complete`/`blocked` 可在自动续行中调用，且 `blocked` 在达最小轮数前被拒。
 | skill playbook 渐进披露 | `dsh-skill` + `dsh-skill-filesystem` + `dsh-tool-skill` | preset 技能经组合 `skill-filesystem` baseUrl 装载（非目录扫描） |
-| subagent 派遣/continuable | `dsh-subagent`（spawn/fork/ACP/codex/claude-code 五后端）+ `dsh-tool-subagent-*` | outputSchema/depthLimit/toolFilter/persona 静态声明 |
-| 委派深度上限 | `dsh-tool-subagent` 的 `maxDepth`（官方 `README.zh.md`） | **绝对委派深度上限**：`0` 禁止委派、正整数即上限层数；`'provider-managed'` 不向进程外提供方发送上限。默认取 Host 设置（`1`）。提供方须具备 `depthLimit` 能力，否则 MUST 用 `provider-managed`（否则挂载即报错）。本预设 11 岗位 + generic 均设 `maxDepth: 1` → 岗位子代理**不能再向下派遣**（只有主会话能组建小组，与双门闩配套）；两个外部后端（codex/claude-code，禁用态）设 `provider-managed` |
+| subagent 派遣/continuable | `dsh-subagent`（spawn/fork/ACP/codex/claude-code 五后端）+ `dsh-tool-subagent-*` | outputSchema/depthLimit/agentPreset 静态声明；persona 与工具面由角色 Agent Preset 提供 |
+| 委派深度上限 | `dsh-tool-subagent` 的 `maxDepth`（官方 `README.zh.md`） | **绝对委派深度上限**：`0` 禁止委派、正整数即上限层数；`'provider-managed'` 不向进程外提供方发送上限。默认取 Host 设置（`1`）。提供方须具备 `depthLimit` 能力，否则 MUST 用 `provider-managed`（否则挂载即报错）。本预设 12 个角色 preset 均设 `maxDepth: 1` → 岗位子代理**不能再向下派遣**（只有主会话能组建小组，与双门闩配套）；两个外部后端（codex/claude-code，禁用态）设 `provider-managed` |
 | 后台调用开关 | `enableRunInBackground`（默认 `true`） | 公开子代理的 `run_in_background` 参数；**设 false 时连强制后台调用也一并拒绝** |
-| 子代理生命周期（可追问 vs 一次性） | `dsh-subagent` 两条 API：`startContinuable()` → `mode: "continuable"`；一次性路径 → **写死** `mode: "one-shot"`（**按符号定位**：`startContinuable` / `runOneShot` 一族；2026-10-05 实测 mode 赋值在 lib/index.js 的 1685/2444/2448/3121 行——**行号会随重排漂移，勿作判据**） | 三条硬事实：① 岗位工具**后台**派遣才可 `send_message` 追问（预设 **11 内建岗位**已全 `backgroundMode: continuable`（**2 个外部后端（codex/claude-code）为 `one-shot`**——其提供方无 `prepareContinuable`，属平台限制，见 F149））；② `workflow` 的 `agent()` 与任何 `run_in_background: false` 调用都走 `start()` → 一次性，**预设改不动**；③ mode 在创建时写进 `subagent/descriptor` 事件落盘，**已存在的一次性记录无法追溯改造**。生效须重启 DSH Desktop（新开对话不重读插件配置）。⑤ **两种「后台」产出不同句柄，勿混**（官方 `README.zh.md`）：`continuable` 后台派发返回 「started subagent <childId>」，经 `send_message`/`interrupt_agent`/结算通知管理；`one-shot` + `run_in_background: true` 返回 「started background subagent job <id>」，经 `job_output` 收集、`job_kill` 停止——**`job_*` 收不到 continuable 子代理的产出**，反之 `send_message` 也不能追问 job。⑥ `workflow` 的 `agent()` 亦**不接受 `toolFilter`/`persona`**（该路径无此参数），故其孩子**不经岗位白名单过滤**——只能靠编排脚本自身约束其行为（只读/限定目录），不得把明文授权或密钥注入其 prompt |
+| 子代理生命周期（可追问 vs 一次性） | `dsh-subagent` 两条 API：`startContinuable()` → `mode: "continuable"`；一次性路径 → **写死** `mode: "one-shot"`（**按符号定位**：`startContinuable` / `runOneShot` 一族；行号会随重排漂移，勿作判据） | 三条硬事实：① 岗位工具**后台**派遣才可 `send_message` 追问（预设 **12 个本地 spawn 角色**固定可续行；**2 个外部后端（codex/claude-code）为一次性**——其提供方无 `prepareContinuable`，属平台限制，见 F149）；② `workflow` 的 `agent()` 与任何 `run_in_background: false` 调用都走 `start()` → 一次性，**预设改不动**；③ mode 在创建时写进 `subagent/descriptor` 事件落盘，**已存在的一次性记录无法追溯改造**。生效须重启 DSH Desktop（新开对话不重读插件配置）。⑤ **两种「后台」产出不同句柄，勿混**（官方 `README.zh.md`）：`continuable` 后台派发返回 「started subagent <childId>」，经 `send_message`/`interrupt_agent`/结算通知管理；`one-shot` + `run_in_background: true` 返回 「started background subagent job <id>」，经 `job_output` 收集、`job_kill` 停止——**`job_*` 收不到 continuable 子代理的产出**，反之 `send_message` 也不能追问 job。⑥ `workflow` 的 `agent()` 亦**不接受 `agentPreset`/`toolFilter`/`persona`**（该路径无此参数），故其孩子**不经角色工具面过滤**——只能靠编排脚本自身约束其行为（只读/限定目录），不得把明文授权或密钥注入其 prompt |
 | 待迁移候选：team 编排 | `dsh-experimental-agent-team`（持久 mailbox + 任务 DAG blockedBy/writeScopes） | 与三人小组同构；实验性，writeScopes 为建议非锁 |
 | 巡检/交接/合并流程固化 | `dsh-workflow`（JS 编排：agent/parallel/pipeline/phase + outputSchema） | 可选固化方案；worker 非安全边界 |
 | 上下文纪律（D074） | `dsh-compaction`（pressure/overflow）+ `dsh-session-query-sqlite` + tool-result pruner | 「摘要即证据」官方对应机制 |
@@ -23,22 +23,23 @@
 | 目标命令（人类通道） | `dsh-command-goal`（`/goal` 设置或查看长任务目标） | 与 `dsh-tool-goal`（模型通道）配对；两者注入同一个 `goals` 服务 |
 | 交付物声明 | `dsh-tool-present`（`present` 工具：把产出文件标记为最终交付） | 注入 `tools`/`fs`/`sessionProjections`；主会话用它汇总交付 |
 
-## DSH 兼容核验（应用 2.0.17 / CLI 包 0.2.0-rc.2，2026-10）
+## DSH 兼容核验（应用 2.0.18 / CLI 包 0.2.1-rc.2，2026-10-23）
 
 > **两套版本号（勿混用）**：DSH 桌面**应用版本**与 **CLI/包版本**是两个独立系列，实测取值——
-> 应用版本：`plutil -extract CFBundleShortVersionString raw "<DSH 应用包>/Contents/Info.plist"`（本次实测 `2.0.17`；应用包路径按本机安装位置取，勿写死）；
-> CLI/包版本：`dsh --version`（本次 `0.2.0-rc.2`）。
+> 应用版本：`plutil -extract CFBundleShortVersionString raw "<DSH 应用包>/Contents/Info.plist"`（本次实测 `2.0.18`；应用包路径按本机安装位置取，勿写死）；
+> CLI/包版本：`dsh --version`（本次 `0.2.1-rc.2`）。
 > 本文按**事实来源**分别标注：应用布局/包名变更（如 asar 解包、`dsh-workflow-worker-thread` 并入）引应用版本；插件源码行为（如子代理路由）引包版本。核验前先各自取值，勿以一个数推断另一个。
 
-**2.0.17 三项破坏性变更**（均已适配并实测）：
+**2.0.18 三项破坏性变更**（均已适配并实测）：
 
 | 变更 | 实测结论 | 本仓适配 |
 |---|---|---|
 | 注册表不再扫描预设目录 | `dsh-agent-preset-registry` 的 `definitions` 只由声明方插件 `register()` 填充；`~/.dsh/.agent-presets/<id>/` 既不被扫描，也不接受 preset 路径。旧式目录预设的会话恢复报 `Unknown agent preset: <id>` | 以 `@deepseek-ai/dsh-agent-preset` 声明行注入 profile patch；生成与漂移校验见 `plans/preset-declare.mjs`（`emit`/`check`/`apply`） |
 | `app.asar` → 解包 `app/` | 应用改为解包目录 `Contents/Resources/app/`，插件在 `app/node_modules/@deepseek-ai/`；凡指向 `app.asar/...` 的路径失效（实测：2.0.10 仍为 asar，2.0.12 起解包） | 所有依赖安装位置的检查改取环境变量：`DSH_APP_ROOT`（解包目录）/ `DSH_ASAR`（旧布局）/ `DSH_PROFILE_PATCH`；`verify-battery.sh` 两种布局都支持 |
 | `dsh-workflow-worker-thread` 并入 | 该包名在 2.0.17 已不存在，保留旧名会让 preset 挂载失败 | 改用 `@deepseek-ai/dsh-workflow-ptc`（`id: workflow-ptc`） |
+| 子代理角色化 | `tool-subagent` 的 `persona` / `toolFilter` / `backgroundMode` 已退役；角色由独立 `agentPreset` 提供 | 12 个角色 preset 定义 persona 与工具面；spawn 条目只保留 `agentPreset` / `maxDepth`；fork 禁用 |
 
-**组合双表示与漂移风险**：同一份组合存在于两处——`agent.cordis.yml`（源，权威）与 profile patch 内的 `plugins:` 内联副本（进程实读）。副本必须由源生成；唯一必要适配是 `customSkillDirs` 的 `baseUrl` 基准变化（内联后指向 profile 目录，须改写为回到预设目录的相对路径），`preset-declare.mjs` 生成时自动加、`check` 比对时自动归一。
+**组合双表示与漂移风险**：同一份组合存在于两处——`agent.cordis.yml`（源，权威）与 profile patch 内的 `plugins:` 内联副本（进程实读）。副本必须由源生成；必要适配是 `customSkillDirs`、hooks 的 `configPath` 与 `pluginRoot` 的 `baseUrl` 基准变化（内联后指向 profile 目录，须改写为回到预设目录的相对路径），`preset-declare.mjs` 生成时自动加、`check` 比对时自动归一。
 
 ```bash
 node plans/preset-declare.mjs check     # 语义比对：漂移即 exit 1 并列出差异路径
@@ -55,7 +56,7 @@ python3 plans/preset-compat.py          # 组合↔DSH 安装兼容核验（需 
 | 插件包名存在 | 逐个在 `app.asar` 内检索 `@deepseek-ai/<pkg>` | ✅ 全部命中 |
 | 条目结构合法 | 用 `entryListSchema`（= `js-yaml` JSON_SCHEMA + `!!js` 表达式标签）解析本文件 | ✅ 无缺 id/name |
 | config 键受支持 | 取各插件的 `Config` schema 与本文件所用键比对 | ✅ 全部在 schema 内 |
-| toolFilter 工具名有效 | 与各插件的工具注册名比对 | ✅ 14 个名字全部有效 |
+| 角色 preset 工具面有效 | 与各插件的工具注册名比对；`agentPreset` 全部可达 | ✅ 12 个角色 preset 全部可达 |
 | group 隔离齐全 | 服务行须落在带 `isolate` realm 的组内 | ✅ planning/compaction/delegation 三组齐 |
 | 元数据格式 | `preset.yml` 支持 `name`/`description`/`order`（均可选） | ✅ 三项齐 |
 | 官方能力对齐 | 与随包发布的 `presets/standard` 逐行对照 | ✅ 条目数、组、isolate 一致 |

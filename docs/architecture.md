@@ -10,7 +10,7 @@ dsh-codepunk 是 DeepSeek Harness 上的**多智能体开发流程预设**，由
 
 | 层 | 载体 | 职责 | 生效方式 |
 |---|---|---|---|
-| 用户预设（AGENT-PLANE 组合） | `agent.cordis.yml`（源，权威）+ profile patch 内联副本 | 岗位 persona、工具白名单、服务与隔离域组合 | 进程启动时读取；改动须**重启 DSH Desktop** 生效 |
+| 用户预设（AGENT-PLANE 组合） | `agent.cordis.yml` + `role-presets.cordis.yml`（源，权威）+ profile patch 内联副本 | 主会话组合、12 个角色 Agent Preset、服务与隔离域 | 进程启动时读取；改动须**重启 DSH Desktop** 生效 |
 | 技能（playbook） | `skills/dsh-codepunk-workflow/`（`SKILL.md` + `references/` + `benchmarks/`） | 流程正文（L0 常驻）、按需细则、调研档案 | 经组合内 `skill-filesystem` 装载，渐进披露；主会话开工前加载 |
 | 团队编排（六阶段闭环） | `SKILL.md` §2 + `references/stages.md`（P01–P17） | 组队、并行开发、交接、评分、再规划 | 由 goal 自动续行驱动，逐阶段推进 |
 
@@ -26,10 +26,10 @@ dsh-codepunk 是 DeepSeek Harness 上的**多智能体开发流程预设**，由
 
 | 表示 | 位置 | 角色 |
 |---|---|---|
-| 源 | `agent.cordis.yml` | 唯一权威，人工只改这里 |
+| 源 | `agent.cordis.yml` + `role-presets.cordis.yml` | 唯一权威，人工只改这里 |
 | 副本 | profile patch 内 `id: preset-dsh-codepunk` 声明的 `plugins:` 内联块 | 进程实读；由源生成，**勿手改** |
 
-自 DSH 0.1.7 起 `dsh-agent-preset-registry` 不再扫描 `~/.dsh/.agent-presets/<id>/`，自定义预设必须以声明行注入 profile，否则会话恢复时报 `Unknown agent preset`。副本由 `plans/preset-declare.mjs` 的 `emit` / `apply` 生成、由 `check` 做语义比对（`customSkillDirs` 的 `baseUrl` 基准差异自动归一）。生成、校验与安装步骤见 [deployment.md](deployment.md)。
+自 DSH 0.1.7 起 `dsh-agent-preset-registry` 不再扫描 `~/.dsh/.agent-presets/<id>/`，自定义预设必须以声明行注入 profile，否则会话恢复时报 `Unknown agent preset`。副本由 `plans/preset-declare.mjs` 的 `emit` / `apply` 生成、由 `check` 做语义比对（`customSkillDirs`、hooks 的 `configPath` 与 `pluginRoot` 的 `baseUrl` 基准差异自动归一）。生成、校验与安装步骤见 [deployment.md](deployment.md)。
 
 ## 2. 宿主机制依赖
 
@@ -38,8 +38,8 @@ dsh-codepunk 是 DeepSeek Harness 上的**多智能体开发流程预设**，由
 | 预设概念 | 官方机制 | 本预设用法 | 已知硬约束 |
 |---|---|---|---|
 | goal 自动续行 / 回报自动递送 | `dsh-goal` · `dsh-tool-goal` · `dsh-goal-round-driver` | 每工程目标 `create_goal` 建会话级 goal（create 即 armed），`maxGoalRounds` 默认 256 为轮次预算 | 续行状态**进程本地**；resume/fork 后须 `update_goal resume` 重武装；`blocked` / halt 时禁新 spawn；`edit`/`pause`/`resume` 须人类直请，且 `blocked` 在达最小轮数前被平台拒绝 |
-| 子代理派遣与续行 | `dsh-subagent` + `dsh-tool-subagent-*` | 11 个内建岗位全部 `backgroundMode: continuable`；2 个外部后端（codex / claude-code）为 `one-shot` | 岗位 `maxDepth: 1`（岗位不能再向下派遣）；continuable 后台派发返回 `started subagent <childId>`，经 `send_message` / `interrupt_agent` / 结算通知管理；`one-shot` + 后台返回 job id，经 `job_output` / `job_kill` 收集——**两类句柄不通用** |
-| 大并发编排（可选） | `dsh-workflow`（本仓用 `@deepseek-ai/dsh-workflow-ptc`） | 仅用于只读或限定目录的编排 | 其 `agent()` 孩子为**一次性**且**不经** `toolFilter` / `persona` 过滤；不得向其 prompt 注入明文授权或密钥 |
+| 子代理派遣与续行 | `dsh-subagent` + `dsh-tool-subagent-*` + `dsh-agent-preset` | 12 个角色由独立 `agentPreset` 提供；本地 spawn 固定 `continuable`；外部后端保持禁用 | 岗位 `maxDepth: 1` 且不挂 `tool-subagent`（不能再向下派遣）；后台派发返回 `started subagent <childId>`，经 `send_message` / `interrupt_agent` / 结算通知管理 |
+| 大并发编排（可选） | `dsh-workflow`（本仓用 `@deepseek-ai/dsh-workflow-ptc`） | 仅用于只读或限定目录的编排 | 其 `agent()` 孩子为**一次性**且不继承角色 preset 的工具面；不得向其 prompt 注入明文授权或密钥 |
 | 沙箱与审批 | `dsh-sandbox` · `dsh-sandbox-policy` · `dsh-user-approval` | 依赖宿主环境策略；本预设不自设沙箱取值 | 沙箱三值封闭词汇：`read-only` / `workspace-write` / `danger-full-access`；`workspace-write` 的可写根只有**会话 cwd + `/tmp` + `os.tmpdir()`**；宿主不认识「授权工作树 `write_paths`」 |
 | 技能装载 | `dsh-skill` · `dsh-skill-filesystem` · `dsh-tool-skill` | 预设技能经组合内 `customSkillDirs` 装载（非目录扫描） | 插件配置在进程启动时读取；新开对话不重读 |
 | 上下文纪律 | `dsh-compaction`（pressure / overflow） | 证据只回 `command` + `exit_code` + `log_ref`；汇报 ≤1500 token | 「摘要即证据」的代价是细节不可回溯，故证据必须落盘 |
@@ -79,7 +79,7 @@ dsh-codepunk 是 DeepSeek Harness 上的**多智能体开发流程预设**，由
 | 跨 run 知识 | `~/.dsh-codepunk/projects/<project_id>/knowledge/`（`hr/`、`lessons/`、`research/`、`handoffs/`、`prompts/`） | 长期沉淀，供招聘 / 规划 / 提示词优化 |
 | 工程交付物 | 授权工作树内的 `write_paths`（M/L 档 `git worktree add ../room-<task_id>`） | 合并后由发布席回收工作树 |
 | 预设自身资料 | `skills/dsh-codepunk-workflow/benchmarks/`（调研 / 基准 / 优化） | 随仓库发布 |
-| 仓库源 | `agent.cordis.yml`、`preset.yml`、`plans/`、`skills/`、`README.md`、`CONTRIBUTING.md`、`LICENSE` | 版本化；运行状态**不入仓** |
+| 仓库源 | `agent.cordis.yml`、`role-presets.cordis.yml`、`preset.yml`、`plans/`、`skills/`、`README.md`、`CONTRIBUTING.md`、`LICENSE` | 版本化；运行状态**不入仓** |
 
 两条强约束：
 

@@ -234,7 +234,7 @@ PR 描述请按 `.github/pull_request_template.md` 逐项填写——该模板�
 ## 8. 维护公约（改动前必读）
 
 1. **Host/Agent 平面边界**：服务注册（bash-sandbox、文件服务、goal 服务、任务注册表等 host 平面组件）不进本预设；需要 `isolate` realm 的行必须放在带 `isolate:` 的 group 内。
-2. **逐岗 allow 白名单**：每岗 `toolFilter.allow` 收敛为单一 YAML 锚点（调研岗是唯一例外，内联追加联网工具）。allow 是「全关只放行」列表，未列入的工具一律不可见，且**只能列当前 DSH 实例已挂载的全局工具名**；`report` 是子代理注册在自身层的汇报工具，切勿列入 allow。
+2. **逐岗独立角色 Agent Preset**：每个 spawn 角色在 `role-presets.cordis.yml` 有独立 `@deepseek-ai/dsh-agent-preset`，其 `plugins` 即完整工具面（未挂载的工具不可见）。`toolFilter` / `persona` 已从 `tool-subagent` 退役，勿回填；仅 research 挂载 `tool-web`，其余角色不挂网页工具。
 3. **编号可解析**：`Pxx` / `D0xx` 一律以 `skills/dsh-codepunk-workflow/references/standard.md` 为唯一释义；新增编号先登记再引用，禁止引入该文件之外的外部编号。
 4. **文件归宿**：关于预设自身的调研、基准与优化资料只写入 `skills/dsh-codepunk-workflow/benchmarks/`，绝不写进任何工程目录；接收外部产出时核对「内容归属域」与「实际落位」一致，错位立即移出并核销引用。
 

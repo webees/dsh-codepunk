@@ -23,7 +23,7 @@
 #      域与空枚举口径见 F327/F408）
 #   5. 退出码契约（头部「# 退出码」行声明的码集合须覆盖实现用到的 `exit N`；子项：外部输入
 #      变量（未赋值或 `${VAR:-默认}` 形式）MUST 被记载于任一 .md 或脚本头部注释块——F358）
-#   6. 头部自称项数（preset-compat「七项检查」↔ 源码输出分支数，双分支时按咨询处理）（**仅提示，不计失败**）
+#   6. 头部自称项数（preset-compat「N 项检查」↔ 源码输出分支数，双分支时按咨询处理）（**仅提示，不计失败**）
 #   26. 治理矩阵载体可解析（矩阵行内反引号的文件型引用 MUST 在仓内可解析，或为 `artifacts.md`
 #       以 `##` 小节声明的制品名，或该行显式标注「非仓内」——F385：原「巡检节奏」行以运行根
 #       本地脚本 `tools/patrol-cadence.py` 作为「机械」载体，仓内不可复现且仓内已有等价门）
@@ -38,8 +38,8 @@
 #       「未记录」并注明依据——依赖约定「URL+retrieved_at+事实/推断」；F151 实证）
 #   22. 矩阵覆盖（每个检查类 1..N 须在 skill-governance 矩阵中被提及——含「第 a–b 类」范围写法；
 #       防「新增检查类却忘记登记矩阵」，F150 实证）
-#   21. 岗位数一致性（`N 岗位` 声称须与配置实况相符：内建 11 + 外部后端 2；出现「13 岗位」的行
-#       须带历史/例外标记——F149 实证：现在时声称「13 岗位全 continuable」属过度声称）
+#   21. 角色数一致性（配置实况 = 12 个本地 spawn 角色 preset〔11 个命名岗位 + generic worker〕
+#       + 2 个外部后端；旧口径「11 内建 + 2 外部」「13 岗位」只许出现在历史/例外语境——F149 实证）
 #   20. 退出码契约实测（探针表：用法/环境错误必须 2——F128/F146 类的契约漂移机械门；
 #       子项：`-h`/`--help` 约定须由**全部运行型脚本**实现，且探针表覆盖全部实现者——F361）
 #       输入不存在、参数非法、坏根等，逐条实跑断言）
@@ -516,7 +516,6 @@ THRESH='评分基准 base|all|base[：: ]+([0-9]+)
 retries 单次扣分|all|每次[ ]*[−-]([0-9]+)
 retries 上限扣分|all|上限[ ]*[−-]([0-9]+)
 handoff 缺件扣分|last|每缺[ ]*1[ ]*文件[ ]*[−-]([0-9]+)
-巡检周期（轮）|all|每[ ]*([0-9]+)[ ]*轮
 收口轮数|all|([0-9]+)[ ]*轮未交付
 证据门 exit_code|all|exit_code[ ]*[=＝][ ]*([0-9]+)
 SKILL 体积上限（字节）|all|(≤|超预算[ ]*)([0-9]{5})
@@ -1372,10 +1371,11 @@ elif [ -n "$RC_BAD" ]; then bad "退出码契约漂移 → ${RC_BAD}"
 elif [ "$RC_V" -gt 0 ]; then info "退出码探针 ${RC_N} 条中 ${RC_V} 条因**环境缺口**无法核验（${RC_GAP}）——无法核验≠通过（F180）"
 else ok "${RC_DECL} 条探针：用法/环境错误返回 2、-h 返回 0"; fi
 
-echo "[21] 岗位数一致性（11 内建 + 2 外部）"
+echo "[21] 角色数一致性（12 个角色 preset + 2 个外部后端）"
 ROLE_COUNT_ISSUE=$(python3 <<'PYEOF'
 import glob, os, re
-# 实况：yml 中 tool-subagent-* 条目 = 11 内建岗位 + 2 外部后端 + 3 控制面
+# 实况：agent.cordis.yml 的 12 个启用 spawn 条目各指向 role-presets.cordis.yml 的一个角色；
+#   另有 fork 控制项与 2 个外部后端（禁用态）。
 # F234：**输入存在性守卫** —— 旧实现 `open('agent.cordis.yml')` 无守卫 ⇒ 文件缺失时抛 **原始 Traceback**（违反本套件
 #   「禁裸 Traceback」卫生规则），且 python 中断后 stdout 为空 ⇒ 变量空 ⇒ **判据假通过（报「岗位数声称与配置实况一致」）**。
 try:
@@ -1383,30 +1383,50 @@ try:
 except OSError:
     print('无法核验：agent.cordis.yml 缺失或不可读——无法核验 ≠ 通过')
     raise SystemExit
-ids = re.findall(r'id:\s*tool-subagent-([a-z-]+)', t)
-EXT = {'codex', 'claude-code'}
-CTRL = {'control', 'list-agents', 'fork'}
-builtin = [i for i in ids if i not in EXT | CTRL]
-ext = [i for i in ids if i in EXT]
+try:
+    r = open('role-presets.cordis.yml', encoding='utf-8', errors='replace').read()
+except OSError:
+    print('无法核验：role-presets.cordis.yml 缺失或不可读——无法核验 ≠ 通过')
+    raise SystemExit
+# 只统计真正挂载的 spawn 行；控制面（control/list-agents）与禁用条目不算角色。
+entries = re.findall(r'^    - id: (tool-subagent[a-z0-9-]*)\n(.*?)(?=^    - id:|\Z)', t, re.M | re.S)
+spawn = []
+ext = []
+for name, body in entries:
+    if "name: '@deepseek-ai/dsh-tool-subagent'" not in body:
+        continue
+    if re.search(r'^      disabled:\s*true', body, re.M):
+        if name in ('tool-subagent-codex', 'tool-subagent-claude-code'):
+            ext.append(name)
+        continue
+    if name == 'tool-subagent-fork':
+        continue
+    if re.search(r'^        provider:\s*spawn', body, re.M):
+        spawn.append(name)
+role_ids = re.findall(r'^    id: (dsh-codepunk-[^\n]+)', r, re.M)
 bad = []
-if len(builtin) != 11 or len(ext) != 2:
-    bad.append('配置实况异常：内建 %d / 外部 %d（期望 11/2）' % (len(builtin), len(ext)))
+if len(spawn) != 12 or len(role_ids) != 12 or len(ext) != 2:
+    bad.append('配置实况异常：spawn %d / 角色 preset %d / 外部 %d（期望 12/12/2）'
+               % (len(spawn), len(role_ids), len(ext)))
+if len(set(role_ids)) != len(role_ids):
+    bad.append('角色 preset id 重复')
 files = (['skills/dsh-codepunk-workflow/SKILL.md', 'README.md']
          + glob.glob('skills/dsh-codepunk-workflow/references/*.md'))
-MARK = ('历史', '当时', '已废弃', '⚠', '外部后端', 'one-shot', '不适用')
+MARK = ('历史', '当时', '已废弃', '⚠', '外部后端', 'one-shot', '不适用', '旧构建', '沿革')
 for f in files:
     try:
         tt = open(f, encoding='utf-8', errors='replace').read()
     except OSError:
         continue
     for ln in tt.split('\n'):
-        if '13 岗位' in ln and not any(m in ln for m in MARK):
+        stale = ('13 岗位' in ln or '11 内建' in ln or '11 个内建' in ln or '11 岗位' in ln)
+        if stale and not any(m in ln for m in MARK):
             bad.append(os.path.basename(f) + ':' + ln.strip()[:60])
 print('; '.join(bad[:3]))
 PYEOF
 )
-  if [ -z "$ROLE_COUNT_ISSUE" ]; then ok "岗位数声称与配置实况一致（11 内建 + 2 外部；13 仅见于历史/例外语境）"
-  else bad "岗位数声称问题 → ${ROLE_COUNT_ISSUE}"; fi
+  if [ -z "$ROLE_COUNT_ISSUE" ]; then ok "角色数声称与配置实况一致（12 个角色 preset + 2 个外部后端；旧口径仅见于历史/例外语境）"
+  else bad "角色数声称问题 → ${ROLE_COUNT_ISSUE}"; fi
 
 echo "[22] 矩阵覆盖（新增检查类须登记矩阵）"
 MTX_ISSUE=$(python3 <<'PYEOF'
