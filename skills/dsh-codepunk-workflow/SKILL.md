@@ -58,7 +58,7 @@ metadata:
    - **a. 查**：`list_agents(scope=descendants)` 列出全部**可续聊**子代理及其**工具可见状态**（`running` | `inactive`——平台内部的 idle/ready 不被该工具外显）。**工具语义（实测）**：① 一次性子代理（`mode: one-shot`）**不列出**；② `scope` 仅 `children`（默认）/`descendants`；③ `descendants` 中 depth>1 的条目**只接受 `interrupt_agent`**（`send_message` 仅达直接子）。
    - **b. 比**：与本次 spawn 记录（工作房消息里的 target/任务边界 + 共享任务板 owner）逐行对照，找出「已派工但已非 running」的中断席。
    - **c. 续**：读该席工作房 `progress/`、`handoff/`、`evidence.yaml` 定位断点 → `send_message` 精确续行（附断点摘要与待办），不重跑整轮、不重复 spawn。
-   - 前置条件：子代理 MUST 为 `backgroundMode: continuable`（一次性子代理中断后不可恢复，见 D088）；每次 `spawn_teammate` 的返回 target 与任务边界 MUST 由工作房消息/共享任务板可追溯（**不落任何状态文件**），否则中断席无从比对。
+   - 前置条件：本地 spawn 固定为 `continuable`（一次性子代理中断后不可恢复，见 D088）；每次 `spawn_teammate` 的返回 target 与任务边界 MUST 由工作房消息/共享任务板可追溯（**不落任何状态文件**），否则中断席无从比对。
 5. **事件驱动巡检（MUST，D131）**：MUST NOT 落任何记账文件——会话与协作状态以 DSH 官方机制（`list_agents`、共享任务板、工作房消息）为事实源；进度与缺陷以 git 提交 + `CHANGELOG.md` 为**单一事实源**。
    - **触发**：会话启动自检一次；每次收到失败/中断/席位失联通知即查；交付与合并前复核一次（R12）。MUST NOT 建固定轮次节奏，MUST NOT 写回任何状态清单。
    - **动作**：`list_agents(scope=descendants)` 查实测态 → 对照会话内 spawn 记录（会话消息 / 共享任务）找中断席 → 读断点 `send_message` 续行（附断点摘要与待办），不重跑整轮、不重复 spawn。
@@ -100,8 +100,8 @@ metadata:
 ### ③ 多小组并行开发（P05–P06）
 
 1. **建工作房**：`git -C <主仓库路径> worktree add ../room-<task_id> -b dsh-codepunk/<run_id>/<task_id>` → `git -C <主仓库路径> worktree list` 复核；**禁止在非工程根目录建 worktree**。
-2. **创建即登记（MUST）**：`runs/<run_id>/README.md` worktree 表 + `task → seat → subagent id`（`task_id | seat | subagent_id | status`；seat ∈ squad-lead/engineer/sdet）+ `active`→`recovered`→`recycled`（D073）；三帽折叠留痕 `seat=`；以 `worktree list` 实况为准。
-3. **并行派遣**（后台 continuable，D088）：`subagent_squad_lead` · `subagent_engineer` · `subagent_sdet`；prompt 必含工作房路径、`write_paths`、read 材料、报告对象、交接要求；并发 S≤1 / M≤3 / L≤6（**本预设自律上限**，D024；DSH 无同名平台字段，勿当配置项），双门闩齐即**自动**开工（D031）。
+2. **工作房实况（MUST）**：建/重建/恢复后以 `git -C <主仓库路径> worktree list` 复核路径与分支；派工边界、任务归属与依赖写入工作房消息与共享任务板，不落 `runs/<run_id>/README.md`、`subagent_id` 登记表等状态文件（D131）；合并回收按 D073 以实况复核。
+3. **并行派遣**（后台可续行；本地 spawn 固定 continuable，D088）：`subagent_squad_lead` · `subagent_engineer` · `subagent_sdet`；prompt 必含工作房路径、`write_paths`、read 材料、报告对象、交接要求；并发 S≤1 / M≤3 / L≤6（**本预设自律上限**，D024；DSH 无同名平台字段，勿当配置项），双门闩齐即**自动**开工（D031）。
 4. **限流/续行**：查 `knowledge/lessons/rate-limit-history.yaml`（当日 ≥2 次 429 → +10s 降并发，D086）；断点续行（D067）靠 `progress/`、`handoff/`、`evidence.yaml`、`list_agents`、`send_message`。
 5. 连续 2 次无进展 → `at_risk`（超时 P14）；缺资料 → 申请 → 你 approve/redact/deny → `subagent_docs` 打包；**禁止小组自行联网**（R2）。
 

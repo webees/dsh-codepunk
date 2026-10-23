@@ -69,7 +69,7 @@ chunks:
 | `ready → in_progress` | run-lead | **派发该 chunk 的实现三角时**（双门闩齐、三席已 spawn） |
 | `in_progress → testing` | run-lead | 收到 engineer 交付（工作房 `artifact_index.md`/`evidence.yaml` 落盘、`git diff` 非空）且 sdet 已开工验收 |
 | `testing → handoff` | run-lead | sdet 验收通过并产出交接包（`handoff/` 齐、审查门过） |
-| `handoff → done` | run-lead | 接收方签收后置 done（**两处齐**：`chunks.yaml` chunk 态 + `agents.yaml` 席位态，见 SKILL ⑤） |
+| `handoff → done` | run-lead | 接收方签收后置 `chunks.yaml` chunk 态为 done；不维护 `agents.yaml` 席位态（D131） |
 
 
 ## 工作简报（②，你签发）

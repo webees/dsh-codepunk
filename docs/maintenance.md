@@ -6,9 +6,8 @@
 
 | 时机 | 动作 | 产物 |
 |---|---|---|
-| 进程启动（新会话/恢复会话） | 启动自检：`list_agents(scope=descendants)` 列实测态 → 对照登记表找中断席 → 读断点续行 | 运行根 `README.md` 登记表、`agents.yaml` |
-| 运行中每 5 轮 | 定时巡检：同一「查 → 比 → 续 → 写」闭环 | `agents.yaml` 刷新 |
-| 收到失败 / 中断结算通知 | 加跑一次巡检 | 同上 |
+| 进程启动（新会话/恢复会话） | 启动自检：`list_agents(scope=descendants)` 列实测态 → 对照本次会话 spawn 记录找中断席 → 读断点续行 | 工作房消息、共享任务板、断点文件 |
+| 收到失败 / 中断结算通知 | 事件驱动巡检：同一「查 → 比 → 续」闭环 | 同上；不落状态文件 |
 | 每次交接前 | 交接材料齐全性 + 证据新鲜度 + diff 写集核验 | `handoff/`、`evidence.yaml` |
 | 每次合并前 | 写盘纪律门 + 证据门 + 审查门 + 合并门留痕 | `approvals/merge.yaml` |
 | 每月 | 技能复检：检测外部源变化、评审升级、维护技能档案 | 升级评估 + `benchmarks/` 更新 |
@@ -16,9 +15,9 @@
 ### 1.1 巡检闭环（MUST）
 
 1. **查**：`list_agents` 取实测态（工具语义：一次性子代理不列出；`scope` 仅 `children` / `descendants`；深度大于 1 的条目只接受 `interrupt_agent`）。
-2. **比**：与运行根 `README.md` 的 spawn 登记表、`agents.yaml` 清单逐行对照，找出 `expected: active` 但已非 running 的中断席。
+2. **比**：对照本次会话的 spawn 记录（工作房消息 + 共享任务板），找出已派工但已非 running 的中断席。
 3. **续**：读该席工作房的 `progress/`、`handoff/`、`evidence.yaml` 定位断点，`send_message` 精确续行——不重跑整轮、不重复 spawn。
-4. **写**：写回 `agents.yaml` 的 `status` / `last_seen` / `last_checkpoint_at` / `note`，并刷新 `updated_at`；`status: done` 的席跳过。
+4. **不落状态文件**：巡检结果只用于当轮判断；运行状态以 DSH 官方机制与文件实况为准（D131/D132），禁止维护 `agents.yaml` 或运行根登记表。
 
 > 硬规则 R12：结算通知是**事件提醒**，可滞后于实况。巡检与交接前 MUST 以交付目录 mtime、证据落盘时刻、`git` 实况复核，不得据通知断言当前状态。
 
@@ -77,7 +76,7 @@
 
 1. **取版本**：应用版本 `plutil -extract CFBundleShortVersionString raw "<DSH 应用包>/Contents/Info.plist"`；CLI / 包版本 `dsh --version`（两套编号互不推断）。
 2. **设环境变量**：`DSH_APP_ROOT`（解包 app 目录）/ `DSH_ASAR`（旧 asar 布局）/ `DSH_PROFILE_PATCH`（profile patch 路径）。本仓不硬编码任何平台路径。
-3. **兼容核验**：`python3 plans/preset-compat.py` 的七项检查须全通过（含锚点顺序与 allow 名单一致性）。
+3. **兼容核验**：`python3 plans/preset-compat.py` 的十项检查须全通过（插件包 / 配置键 / 隔离 / spawn 可达 / fork / persona / 联网 / 递归 / 退役字段 / CLI 组合）。
 4. **验声明漂移**：`node plans/preset-declare.mjs check`；漂移即 `apply` 重写副本。
 5. **跑电池**：`bash plans/verify-battery.sh`，重点看 DSH 兼容性与结构项。
 6. **对照变更表**：`references/harness-alignment.md`（已适配项与两套布局）；机制级变更对照 `benchmarks/deepseek-harness-study.md` 对齐表。

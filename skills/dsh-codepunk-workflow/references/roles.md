@@ -31,7 +31,7 @@
 |---|---|
 | 格式 | 2 个汉字，表意（团队特性或任务域） |
 | 唯一性 | 同一 run 内唯一 |
-| 生成者 | `subagent_people` 招聘时生成，与三角席位一并登记 |
+| 生成者 | `subagent_people` 招聘时生成，随 `staffing.yaml` 锁定 |
 | 引用格式 | `team_name`，用于评分聚合（`knowledge/hr/teams/<team_name>.yaml`） |
 | 禁用 | 英文名、与 codename 冲突、与既有团队重名 |
 
@@ -39,14 +39,14 @@
 
 | 场景 | 写法 | 示例 |
 |---|---|---|
-| 工具名、登记表、评分聚合 | 规范 ID | `ind-res`、`people-lead`、`docs-lead`、`sys-arch` |
+| 工具名、评分聚合 | 规范 ID | `ind-res`、`people-lead`、`docs-lead`、`sys-arch` |
 | README 等门户表述 | 简称 | `research`、`people`、`docs`、`sys-arch` |
 
 两处图标一致；同一文档内不得混用（规范 ID 与简称择一）。
 
-### 登记格式（run README）
+### 派工边界
 
-`| task_id | 席位 | codename | subagent_id | status |`，席位取 `squad-lead` / `engineer` / `sdet`。
+派工边界、任务归属与依赖由工作房消息和共享任务板承载，不落 `subagent_id` 登记表（D131）。
 
 ## 人设必须覆盖的维度（MUST）
 
@@ -207,5 +207,5 @@
 ## 三三制（MUST）
 
 - 每个被启用的工作环节 MUST 有 Lead/Doer/Check 三席；缺一席不得宣称完成。
-- 同一交付物上监督不得兼任执行；仅 S 规模折叠例外，且 MUST 在 `reviews/<task_id>.md` 与 `agents.yaml` 留 `seat=` 换帽痕迹——无痕即视为绕过门闩（红灯）。
+- 同一交付物上监督不得兼任执行；仅 S 规模折叠例外，且 MUST 在 `reviews/<task_id>.md` 留 `seat=` 换帽痕迹——无痕即视为绕过门闩（红灯）。
 - 只有 run-lead（你）对 goal active 与合并拥有终裁签名权。

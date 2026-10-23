@@ -37,6 +37,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, '..');
 const INDENT = ' '.repeat(10);
 const SOURCE_REL = 'agent.cordis.yml';
+const ROLE_SOURCE_REL = 'role-presets.cordis.yml';
 
 // ── 依赖发现（不硬编码任何平台路径） ─────────────────────────────────────────
 function loadYaml() {
@@ -150,6 +151,7 @@ const PATCH = resolve(
     join(homedir(), '.dsh', 'profiles', 'desktop', 'cordis.patch.yml'),
 );
 const SOURCE = join(PRESET_ROOT, SOURCE_REL);
+const ROLE_SOURCE = join(PRESET_ROOT, ROLE_SOURCE_REL);
 
 function die(msg, code = 2) {
   console.error(`  ✗ ${msg}`);
@@ -167,33 +169,50 @@ const BAR = '# ' + '─'.repeat(76);
 function headerLines() {
   return [
     BAR,
-    `# 自定义 preset 声明（DSH 0.1.7+ 注册表不扫描目录，须以声明行注入 profile）`,
+    '# 自定义 preset 声明（DSH 0.1.7+ 注册表不扫描目录，须以声明行注入 profile）',
     `# 源与权威：<preset-root>/${SOURCE_REL}`,
-    `# 本块是其内联副本。改源后跑：node plans/preset-declare.mjs apply`,
-    `# 校验副本是否漂移：node plans/preset-declare.mjs check`,
-    `# 回滚：删除以下 insert 块`,
+    '# 本块是其内联副本。改源后跑：node plans/preset-declare.mjs apply',
+    '# 校验副本是否漂移：node plans/preset-declare.mjs check',
+    '# 回滚：删除以下 insert 块',
+    BAR,
+  ];
+}
+
+function roleHeaderLines() {
+  return [
+    BAR,
+    '# 角色 Agent Preset 声明（由 role-presets.cordis.yml 生成，勿手改）',
+    '# 角色声明必须位于主 preset 之前；子代理通过 agentPreset 选择。',
+    '# 校验：node plans/preset-declare.mjs check',
     BAR,
   ];
 }
 
 /**
- * 内联副本必须做的一处适配：`customSkillDirs` 用 `new URL('skills/', baseUrl)` 定位。
- * 独立目录挂载时 baseUrl = 预设目录；内联进 profile 后 baseUrl = profile 目录，
- * 必须改写为回到预设目录的相对路径，否则技能目录解析不到。
+ * 内联副本必须做的路径适配：独立目录挂载时 baseUrl = 预设目录；内联进 profile 后
+ * baseUrl = profile 目录，所有 `new URL(<预设内相对路径>, baseUrl)` 都必须回到预设目录，
+ * 否则技能目录、hooks 配置与钩子根目录都会解析到 profile 下。
  */
 function adaptSourceLine(line) {
-  if (!line.includes("new URL('skills/', baseUrl)")) return null;
-  return line.replace("new URL('skills/', baseUrl)", `new URL('../../.agent-presets/${ID}/skills/', baseUrl)`);
+  const rewrites = [
+    ["new URL('skills/', baseUrl)", `new URL('../../.agent-presets/${ID}/skills/', baseUrl)`],
+    ["new URL('plans/hooks/hooks.json', baseUrl)", `new URL('../../.agent-presets/${ID}/plans/hooks/hooks.json', baseUrl)`],
+    ["new URL('./', baseUrl)", `new URL('../../.agent-presets/${ID}/', baseUrl)`],
+  ];
+  for (const [from, to] of rewrites) {
+    if (line.includes(from)) return line.replace(from, to);
+  }
+  return null;
 }
 
-function renderBlock(sourceLines) {
+function adaptLines(sourceLines) {
   const body = [];
   for (const line of sourceLines) {
     const adapted = adaptSourceLine(line);
     if (adapted) {
       const pad = ' '.repeat(Math.max(0, line.length - line.trimStart().length));
       body.push(`${pad}# 内联进 profile 后 baseUrl 指向 profile 目录，不再按预设目录解析；`);
-      body.push(`${pad}# 此路径回到 ~/.dsh 再指向预设自带 skills/（由 preset-declare.mjs 生成，勿手改）。`);
+      body.push(`${pad}# 此路径回到 ~/.dsh 再指向预设自带资源（由 preset-declare.mjs 生成，勿手改）。`);
       body.push(adapted);
     } else {
       body.push(line);
@@ -202,6 +221,20 @@ function renderBlock(sourceLines) {
   // 源文件以换行结尾时 split('\n') 会多出一个空尾元素；不清掉它每次 apply 都会
   // 追加一个尾随空行（实测 +1 行/次，永不收敛）。
   while (body.length && !body[body.length - 1].trim()) body.pop();
+  return body;
+}
+
+function renderRoleBlock(roleLines) {
+  const body = adaptLines(roleLines);
+  return [
+    ...roleHeaderLines(),
+    '- insert:',
+    ...body.map((l) => (l.trim() ? '    ' + l : '')),
+  ];
+}
+
+function renderBlock(sourceLines) {
+  const body = adaptLines(sourceLines);
   return [
     ...headerLines(),
     '- insert:',
@@ -215,9 +248,17 @@ function renderBlock(sourceLines) {
   ];
 }
 
+function renderAll(roleLines, sourceLines) {
+  return [...renderRoleBlock(roleLines), '', ...renderBlock(sourceLines)];
+}
+
 // ── 副本定位 ────────────────────────────────────────────────────────────────
-function locateBlock(patchLines) {
-  const anchor = new RegExp(`^\\s*- id: preset-${ID.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`);
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function locateBlock(patchLines, rowId) {
+  const anchor = new RegExp(`^\\s*- id: ${escapeRe(rowId)}\\s*$`);
   const start = patchLines.findIndex((l) => anchor.test(l));
   if (start < 0) return null;
   // 起点回溯：把「声明头注释 + `- insert:` 指令行」一并纳入替换区间。
@@ -252,35 +293,67 @@ function locateBlock(patchLines) {
   return { head, end };
 }
 
-/** 从 patch 文本里取出副本的 plugins 原文（10 空格缩进区；保留块内空行——块标量靠空行分段）。 */
-function copyPluginLines(patchLines, span) {
+function spanText(patchLines, span) {
+  return patchLines.slice(span.head, span.end).join('\n');
+}
+
+/** 从 insert 块取出声明原文；自动去掉块内最小缩进，供无 js-yaml 时行比对。 */
+function copyInsertLines(patchLines, span) {
   let start = -1;
   for (let j = span.head; j < span.end; j++) {
-    if (patchLines[j].trim() === 'plugins:') {
+    if (patchLines[j].trim() === '- insert:') {
       start = j;
       break;
     }
   }
   if (start < 0) return null;
-  const out = [];
+  const raw = [];
+  let minIndent = null;
   for (let j = start + 1; j < span.end; j++) {
-    const l = patchLines[j];
-    if (!l.trim()) {
-      out.push('');
+    const line = patchLines[j];
+    if (!line.trim()) {
+      raw.push('');
       continue;
     }
-    if (!l.startsWith(INDENT)) break;
-    out.push(l.slice(INDENT.length));
+    const indent = line.match(/^\s*/)[0].length;
+    if (minIndent === null || indent < minIndent) minIndent = indent;
+    raw.push(line);
   }
+  if (minIndent === null) return [];
+  const out = raw.map((l) => (l.trim() ? l.slice(minIndent) : ''));
   while (out.length && !out[out.length - 1].trim()) out.pop();
   return out;
 }
 
+function insertEntriesFromSpan(patchLines, span, yaml) {
+  if (!yaml) return null;
+  try {
+    const doc = yaml.load(spanText(patchLines, span), { schema: schemaFor(yaml) });
+    if (!Array.isArray(doc) || !doc[0] || !Array.isArray(doc[0].insert)) return null;
+    return doc[0].insert;
+  } catch {
+    return null;
+  }
+}
+
 // ── 语义比对 ────────────────────────────────────────────────────────────────
-/** 副本内联后 baseUrl 变为 profile 目录，故 skills 路径被改写为回到预设目录——归一后应相等。 */
-function normalizeCopyText(s) {
-  if (typeof s !== 'string') return s;
-  return s.replace(new RegExp(`\\.\\./\\.\\./\\.agent-presets/${ID}/`, 'g'), '');
+/** 副本内联后 baseUrl 变为 profile 目录，故预设内路径被改写为回到预设目录——归一后应相等。 */
+function normalizeCopyValue(value) {
+  if (typeof value === 'string') {
+    let s = value;
+    // 预设根目录在源里是 `new URL('./', baseUrl)`；副本是回到预设根的目录 URL。
+    // 先还原这一形态，再统一去掉其余 `../../.agent-presets/<id>/` 前缀。
+    s = s.split(`new URL('../../.agent-presets/${ID}/', baseUrl)`).join("new URL('./', baseUrl)");
+    s = s.split(`../../.agent-presets/${ID}/`).join('');
+    return s;
+  }
+  if (Array.isArray(value)) return value.map(normalizeCopyValue);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = normalizeCopyValue(v);
+    return out;
+  }
+  return value;
 }
 
 function deepDiff(a, b, path = '', out = []) {
@@ -319,16 +392,192 @@ function summarizePlugins(entries) {
   return entries.map((e) => `${e?.id ?? '?'} (${e?.name ?? '?'})`);
 }
 
+function roleIdsFromSource(roleLines) {
+  const ids = [];
+  for (const line of roleLines) {
+    const m = line.match(/^- id:\s*(\S+)\s*$/);
+    if (m) ids.push(m[1]);
+  }
+  return ids;
+}
+
+function uniqueSpans(spans) {
+  const seen = new Set();
+  const out = [];
+  for (const span of spans) {
+    const key = `${span.head}:${span.end}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(span);
+  }
+  return out.sort((a, b) => a.head - b.head);
+}
+
+function findRoleSpans(patchLines, roleRowIds) {
+  return uniqueSpans(roleRowIds.map((id) => locateBlock(patchLines, id)).filter(Boolean));
+}
+
+/** 角色声明共享一个顶层 `- insert:`；区间只覆盖角色行，不吞后续主 preset 的头注释。 */
+function findRoleGroupSpan(patchLines, roleRowIds) {
+  const spans = findRoleSpans(patchLines, roleRowIds);
+  if (spans.length === 0) return null;
+  let head = spans[0].head;
+  for (let j = head - 1; j >= 0; j--) {
+    const line = patchLines[j];
+    if (!line.trim() || line.trimStart().startsWith('#')) continue;
+    if (/^-\s*insert:\s*$/.test(line)) head = j;
+    break;
+  }
+  // 把 insert 上方紧邻的角色声明头注释一并纳入替换区间；否则第二次 apply 会留下旧头注释。
+  for (let j = head - 1; j >= 0; j--) {
+    const line = patchLines[j];
+    if (!line.trimStart().startsWith('#')) break;
+    head = j;
+  }
+  return { head, end: spans[spans.length - 1].end };
+}
+
+function stripQuotes(s) {
+  return String(s ?? '').trim().split(String.fromCharCode(39, 34)).join('');
+}
+
+function checkMainWrapper(patchLines, span, yaml) {
+  const lines = patchLines.slice(span.head, span.end);
+  const text = lines.join('\n');
+  const probs = [];
+  let decl = null;
+  if (yaml) {
+    try {
+      const doc = yaml.load(text, { schema: schemaFor(yaml) });
+      decl = Array.isArray(doc) && doc[0] && Array.isArray(doc[0].insert) ? doc[0].insert[0] : null;
+    } catch {
+      decl = null;
+    }
+  }
+  if (decl) {
+    if (decl.name !== '@deepseek-ai/dsh-agent-preset') probs.push('顶层 name 与期望不一致（当前 ' + String(decl.name) + '）');
+    if (!decl.config || decl.config.id !== ID) probs.push('config.id 与期望不一致');
+    if (!decl.config || String(decl.config.order) !== String(ORDER)) {
+      probs.push(`config.order 与期望不一致（当前 ${decl.config ? decl.config.order : '缺失'}，期望 ${ORDER}）`);
+    }
+  } else {
+    const nameLine = lines.find((l) => l.trimStart().startsWith('name:'));
+    const idLine = lines.find((l) => l.trimStart().startsWith('id:') && !l.includes('- id:'));
+    const orderLine = lines.find((l) => l.trimStart().startsWith('order:'));
+    const nameVal = nameLine ? stripQuotes(nameLine.slice(nameLine.indexOf(':') + 1)) : '';
+    const idVal = idLine ? stripQuotes(idLine.slice(idLine.indexOf(':') + 1)) : '';
+    const orderVal = orderLine ? stripQuotes(orderLine.slice(orderLine.indexOf(':') + 1)) : '';
+    if (nameVal !== '@deepseek-ai/dsh-agent-preset') probs.push('顶层 name 与期望不一致（当前 ' + nameVal + '）');
+    if (idVal !== ID) probs.push('config.id 与期望不一致');
+    if (orderVal !== String(ORDER)) probs.push(`config.order 与期望不一致（当前 ${orderVal || '缺失'}，期望 ${ORDER}）`);
+  }
+  if (probs.length) {
+    console.log('  ✗ 声明包装漂移：' + probs.join('；') + '（修复：node plans/preset-declare.mjs apply）');
+    return false;
+  }
+  return true;
+}
+
+function compareEntries(label, srcEntries, copyEntries) {
+  const diffs = deepDiff(srcEntries, normalizeCopyValue(copyEntries));
+  if (diffs.length === 0) {
+    console.log(`  ✅ ${label}与源语义一致（${srcEntries.length} 条）`);
+    return true;
+  }
+  console.log(`  ✗ ${label}与源漂移（语义比对）：源 ${srcEntries.length} 条 / 副本 ${copyEntries.length} 条`);
+  for (const d of diffs.slice(0, 20)) console.log('     · ' + d);
+  console.log('     修复：node plans/preset-declare.mjs apply');
+  return false;
+}
+
+function compareLines(label, srcLines, copyLines) {
+  const norm = (ls) => ls.map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  const a = norm(srcLines);
+  const b = norm(copyLines);
+  if (a.length === b.length && a.every((l, i) => l === b[i])) {
+    console.log(`  ✅ ${label}与源一致（行内容比对，${a.length} 行）`);
+    return true;
+  }
+  console.log(`  ⚠ 无法判定是否漂移（缺 js-yaml，仅行内容比对；已忽略注释行）：${label}`);
+  console.log(`     源 ${a.length} 行 / 副本 ${b.length} 行`);
+  console.log('     启用语义核验：设 DSH_APP_ROOT 指向 DSH app 目录，或在 ~/.dsh-codepunk/tools 内 npm i js-yaml');
+  const n = Math.max(a.length, b.length);
+  let shown = 0;
+  for (let i = 0; i < n && shown < 10; i++) {
+    if (a[i] !== b[i]) {
+      console.log(`     行 ${i + 1}：源 ${JSON.stringify((a[i] ?? '').slice(0, 70))}`);
+      console.log(`              副本 ${JSON.stringify((b[i] ?? '').slice(0, 70))}`);
+      shown++;
+    }
+  }
+  return null;
+}
+
+/** 静态守卫：旧字段、agentPreset 可达性、fork 禁用、角色工具面边界。 */
+function validateSources(roleLines, sourceLines, yaml) {
+  if (!yaml) return;
+  const schema = schemaFor(yaml);
+  let mainEntries;
+  let roleEntries;
+  try {
+    mainEntries = yaml.load(sourceLines.join('\n'), { schema });
+    roleEntries = yaml.load(roleLines.join('\n'), { schema });
+  } catch (e) {
+    die(`源组合解析失败：${e.message}`);
+  }
+  if (!Array.isArray(mainEntries)) die('agent.cordis.yml 根节点不是序列');
+  if (!Array.isArray(roleEntries)) die('role-presets.cordis.yml 根节点不是序列');
+
+  const roleConfigIds = new Set();
+  for (const role of roleEntries) {
+    const id = role?.config?.id;
+    if (typeof id !== 'string' || !id) die('角色 preset 缺 config.id');
+    if (role?.id !== `preset-${id}`) die(`角色 preset 行 id 与 config.id 不一致：${role?.id ?? '?'} / ${id}`);
+    if (roleConfigIds.has(id)) die(`角色 preset config.id 重复：${id}`);
+    roleConfigIds.add(id);
+    const plugins = role?.config?.plugins;
+    if (!Array.isArray(plugins)) die(`角色 preset ${id} 缺 plugins`);
+    if (!plugins.some((p) => p?.name === '@deepseek-ai/dsh-persona')) die(`角色 preset ${id} 缺 persona 插件`);
+    if (plugins.some((p) => p?.name === '@deepseek-ai/dsh-tool-subagent')) die(`角色 preset ${id} 递归挂载 tool-subagent`);
+    const hasWeb = plugins.some((p) => p?.name === '@deepseek-ai/dsh-tool-web');
+    if (hasWeb !== id.endsWith('-research')) die(`角色 preset ${id} 的 tool-web 边界不符（仅 research 可挂）`);
+  }
+
+  const delegation = mainEntries.find((e) => e?.id === 'delegation');
+  if (!delegation || !Array.isArray(delegation.config)) die('agent.cordis.yml 缺 delegation 分组');
+  for (const entry of delegation.config) {
+    if (entry?.name !== '@deepseek-ai/dsh-tool-subagent') continue;
+    const cfg = entry.config ?? {};
+    if ('persona' in cfg || 'toolFilter' in cfg) die(`tool-subagent ${entry.id} 仍含退役字段 persona/toolFilter`);
+    if (entry.id === 'tool-subagent-fork') {
+      if (entry.disabled !== true) die('tool-subagent-fork 必须显式 disabled: true');
+      if ('agentPreset' in cfg) die('tool-subagent-fork 不得配置 agentPreset');
+      continue;
+    }
+    if (entry.disabled) continue;
+    if (cfg.provider === 'spawn') {
+      if (typeof cfg.agentPreset !== 'string' || !cfg.agentPreset) die(`spawn 子代理 ${entry.id} 缺 agentPreset`);
+      if (!roleConfigIds.has(cfg.agentPreset)) die(`spawn 子代理 ${entry.id} 的 agentPreset 无对应声明：${cfg.agentPreset}`);
+    }
+  }
+}
+
 // ── 动作 ────────────────────────────────────────────────────────────────────
 if (!existsSync(SOURCE)) die(`源组合不存在：${SOURCE}`);
+if (!existsSync(ROLE_SOURCE)) die(`角色 preset 源不存在：${ROLE_SOURCE}`);
 const sourceLines = readFileSync(SOURCE, 'utf8').split('\n');
+const roleLines = readFileSync(ROLE_SOURCE, 'utf8').split('\n');
+const roleRowIds = roleIdsFromSource(roleLines);
+if (roleRowIds.length === 0) die(`role-presets.cordis.yml 未发现角色声明：${ROLE_SOURCE}`);
+const probeYaml = loadYaml();
+validateSources(roleLines, sourceLines, probeYaml);
 
 if (action === 'emit') {
   // F362（实测）：`process.stdout.write(...)` 紧接 `process.exit(0)` 时，stdout 在**管道**
   //   （`| cmd`、`$(...)`、子进程 capture）上是异步写，exit 立即终止进程 ⇒ 只写出管道缓冲
   //   （实测恰 64 KiB）内的部分；截断产物仍是**合法 YAML** 且含声明 id，故下游会静默采用
   //   半截声明（红证：`emit | wc -c` = 65536 vs 重定向 71493）。故改为同步写 fd 1。
-  writeSync(1, renderBlock(sourceLines).join('\n') + '\n');
+  writeSync(1, renderAll(roleLines, sourceLines).join('\n') + '\n');
   process.exit(0);
 }
 
@@ -342,7 +591,6 @@ if (patchText.includes('\0')) {
   die(`profile patch 含 NUL 字节（非文本文件）：${PATCH}`
       + '——无法核验其 YAML 结构，拒绝读写（无法核验 ≠ 通过；请从备份重建）');
 }
-const probeYaml = loadYaml();
 if (probeYaml && patchText.trim() !== '') {
   let rootVal;
   try {
@@ -381,24 +629,52 @@ if (!probeYaml && patchText.trim() !== '') {
         + '请安装 js-yaml（见本文件头注的依赖发现顺序）后重试');
   }
 }
-// 重复声明检测（F302）：同一 id 出现多处时产品注册行为未定义，且本工具既不改也不报 ⇒ 先显式拒绝（无法核验 ≠ 通过）。
-const declCount = patchText.split(`id: preset-${ID}`).length - 1;
-if (declCount > 1) {
-  die(`profile patch 中存在 ${declCount} 处声明：id: preset-${ID}`
-      + `——重复声明将被产品重复注册或行为未定义；请保留 1 处（本工具不擅自删改多余块）`);
+
+const mainRowId = `preset-${ID}`;
+const countRow = (rowId) => (patchText.match(new RegExp(`^\\s*- id: ${escapeRe(rowId)}\\s*$`, 'gm')) ?? []).length;
+const mainCount = countRow(mainRowId);
+if (mainCount > 1) {
+  die(`profile patch 中存在 ${mainCount} 处声明：id: ${mainRowId}`
+      + '——重复声明将被产品重复注册或行为未定义；请保留 1 处（本工具不擅自删改多余块）');
 }
-const span = locateBlock(patchLines);
-if (!span && !(action === 'apply' && args.append !== undefined)) {
-  die(`profile patch 中找不到声明：id: preset-${ID}（首次安装用 apply --append 追加）`);
+for (const rowId of roleRowIds) {
+  const n = countRow(rowId);
+  if (n > 1) {
+    die(`profile patch 中存在 ${n} 处声明：id: ${rowId}`
+        + '——重复声明将被产品重复注册或行为未定义；请保留 1 处（本工具不擅自删改多余块）');
+  }
 }
-if (!span && action === 'check') die(`profile patch 中找不到声明：id: preset-${ID}`);
+
+const mainSpan = locateBlock(patchLines, mainRowId);
+if (!mainSpan && !(action === 'apply' && args.append !== undefined)) {
+  die(`profile patch 中找不到声明：id: ${mainRowId}（首次安装用 apply --append 追加）`);
+}
+if (!mainSpan && action === 'check') die(`profile patch 中找不到声明：id: ${mainRowId}`);
 
 if (action === 'apply') {
-  const block = renderBlock(sourceLines);
-  const merged = span
-    ? [...patchLines.slice(0, span.head), ...block, ...patchLines.slice(span.end)]
-    : [...patchLines, ...block];
-  const mergedText = merged.join('\n');
+  const roleBlock = renderRoleBlock(roleLines);
+  const mainBlock = renderBlock(sourceLines);
+  let lines = patchLines.slice();
+
+  // 角色声明必须先集中到一个 insert 块，再整体放到主 preset 之前。
+  const oldRoleSpan = findRoleGroupSpan(lines, roleRowIds);
+  if (oldRoleSpan) lines.splice(oldRoleSpan.head, oldRoleSpan.end - oldRoleSpan.head);
+  let currentMain = locateBlock(lines, mainRowId);
+  if (!currentMain) {
+    if (args.append === undefined) die(`profile patch 中找不到声明：id: ${mainRowId}`);
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    lines = [...lines, ...roleBlock, '', ...mainBlock];
+  } else {
+    // 移除主 preset 头前的分隔空行后再插入，保证重复 apply 不累积空行。
+    let insertAt = currentMain.head;
+    while (insertAt > 0 && !lines[insertAt - 1].trim()) insertAt--;
+    lines.splice(insertAt, currentMain.head - insertAt, ...roleBlock, '');
+    currentMain = locateBlock(lines, mainRowId);
+    if (!currentMain) die('内部错误：插入角色声明后主 preset 定位失败');
+    lines.splice(currentMain.head, currentMain.end - currentMain.head, ...mainBlock);
+  }
+
+  const mergedText = lines.join('\n');
   if (mergedText === patchText) {
     console.log(`  ✅ 无需改动，副本已与源一致：${ID}`);
     process.exit(0);
@@ -445,7 +721,7 @@ if (action === 'apply') {
           + '——本工具不产出无法解析的 profile patch（无法核验 ≠ 通过）');
     }
   }
-  console.log(`  ✅ 已用源${span ? '重写' : '追加'}声明块：${ID}`);
+  console.log(`  ✅ 已用源${mainSpan ? '重写' : '追加'}声明块：${ID}`);
   console.log(`     备份：${backup}`);
   console.log('     生效：重启 DSH Desktop（声明在进程启动时读取）');
   process.exit(0);
@@ -453,118 +729,64 @@ if (action === 'apply') {
 
 // check
 const yaml = loadYaml();
-const copyLines = copyPluginLines(patchLines, span);
-if (!copyLines) die(`声明块内找不到 plugins: 段：id: preset-${ID}`);
+const roleSpan = findRoleGroupSpan(patchLines, roleRowIds);
+if (!roleSpan) {
+  die('角色声明缺失——修复：node plans/preset-declare.mjs apply');
+}
+if (roleSpan.end > mainSpan.head) {
+  die('角色声明必须位于主 preset 之前——修复：node plans/preset-declare.mjs apply');
+}
+const between = patchLines.slice(roleSpan.end, mainSpan.head)
+  .filter((l) => l.trim() && !l.trimStart().startsWith('#'));
+if (between.length) {
+  die('角色声明与主 preset 之间夹带其他顶层条目——修复：node plans/preset-declare.mjs apply');
+}
+
+let roleOk;
+let mainOk;
+if (!yaml) {
+  const roleCopy = copyInsertLines(patchLines, roleSpan);
+  if (!roleCopy) die('角色声明块内找不到 - insert:');
+  roleOk = compareLines('角色声明副本', roleLines, roleCopy);
+  if (roleOk === null) process.exit(2);
+} else {
+  const schema = schemaFor(yaml);
+  let srcRoleEntries;
+  try {
+    srcRoleEntries = yaml.load(roleLines.join('\n'), { schema });
+  } catch (e) {
+    die(`角色源解析失败：${e.message}`);
+  }
+  const copyRoleEntries = insertEntriesFromSpan(patchLines, roleSpan, yaml);
+  if (!copyRoleEntries) die('角色声明块不是合法的 insert 序列');
+  roleOk = compareEntries('角色声明副本', srcRoleEntries, copyRoleEntries);
+}
+
+if (!roleOk) process.exit(1);
 
 if (!yaml) {
-  // 降级比对口径与语义比对一致：忽略注释行与空行（apply 会插入适配注释，计为差异即假阳性）
-  const norm = (ls) => ls.map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
-  const a = norm(sourceLines);
-  const b = norm(copyLines);
-  const same = a.length === b.length && a.every((l, i) => l === b[i]);
-  if (same) {
-    console.log(`  ✅ 声明副本与源一致（行内容比对，${a.length} 行）：${ID}`);
-    process.exit(0);
+  const mainCopy = copyInsertLines(patchLines, mainSpan);
+  if (!mainCopy) die('主 preset 声明块内找不到 - insert:');
+  mainOk = compareLines('主 preset 声明副本', sourceLines, mainCopy);
+  if (mainOk === null) process.exit(2);
+  if (mainOk && !checkMainWrapper(patchLines, mainSpan, null)) process.exit(1);
+} else {
+  const schema = schemaFor(yaml);
+  let srcEntries;
+  try {
+    srcEntries = yaml.load(sourceLines.join('\n'), { schema });
+  } catch (e) {
+    die(`源组合解析失败：${e.message}`);
   }
-  // 忽略注释后仍有差异：**无法判定**是真实漂移还是环境差异——不冒充「确认漂移」
-  console.log(`  ⚠ 无法判定是否漂移（缺 js-yaml，仅行内容比对；已忽略注释行）：${ID}`);
-  console.log(`     源 ${a.length} 行 / 副本 ${b.length} 行`);
-  console.log('     启用语义核验：设 DSH_APP_ROOT 指向 DSH app 目录，或在 ~/.dsh-codepunk/tools 内 npm i js-yaml');
-  const n = Math.max(a.length, b.length);
-  let shown = 0;
-  for (let i = 0; i < n && shown < 10; i++) {
-    if (a[i] !== b[i]) {
-      console.log(`     行 ${i + 1}：源 ${JSON.stringify((a[i] ?? '').slice(0, 70))}`);
-      console.log(`              副本 ${JSON.stringify((b[i] ?? '').slice(0, 70))}`);
-      shown++;
-    }
-  }
-  process.exit(2);            // 2=环境/无法核验（区别于 1=确认漂移）
+  const mainInsert = insertEntriesFromSpan(patchLines, mainSpan, yaml);
+  const copyEntries = Array.isArray(mainInsert) && mainInsert[0]?.config?.plugins;
+  if (!Array.isArray(copyEntries)) die('主 preset 声明块内缺 config.plugins 序列');
+  mainOk = compareEntries('主 preset 声明副本', srcEntries, copyEntries);
+  if (mainOk && !checkMainWrapper(patchLines, mainSpan, yaml)) mainOk = false;
 }
 
-const schema = schemaFor(yaml);
-let srcEntries, copyEntries;
-try {
-  srcEntries = yaml.load(sourceLines.join('\n'), { schema });
-} catch (e) {
-  die(`源组合解析失败：${e.message}`);
-}
-try {
-  const copyDoc = yaml.load(copyLines.join('\n'), { schema });
-  copyEntries = Array.isArray(copyDoc) ? copyDoc : [];
-} catch (e) {
-  die(`副本解析失败：${e.message}`);
-}
-
-// 归一：副本 skills 路径改写
-for (const e of copyEntries) {
-  const dirs = e?.config?.customSkillDirs;
-  if (Array.isArray(dirs)) e.config.customSkillDirs = dirs.map(normalizeCopyText);
-}
-
-const diffs = deepDiff(srcEntries, copyEntries);
-
-if (diffs.length === 0) {
-  const a = summarizePlugins(srcEntries);
-  const b = summarizePlugins(copyEntries);
-  const sameNames = a.length === b.length && a.every((x, i) => x === b[i]);
-  // F170：包装字段亦须一致——此前只 deepDiff 内嵌条目，改**顶层 name / config.id** 不会被发现
-  //   （生成侧 apply 写包装、校验侧只验内嵌 → 生成/校验不齐，与 F169 同族）。
-  {
-    const wrapIdx = patchLines.findIndex((l) => l.includes(`- id: preset-${ID}`));
-    if (wrapIdx >= 0) {
-      // F326：窗口须覆盖**整个声明块**——固定 8 行窗口在块内插入注释行（`order:` 被下移）时会误报
-      //   「config.order 缺失（期望 N）」，值其实在位且正确 ⇒ 假红 + 消息失实（独立复核实测）。
-      const wrapLines = patchLines.slice(wrapIdx, span && span.end > wrapIdx ? span.end : wrapIdx + 8);
-      const wrap = wrapLines.join('\n');
-      const probs = [];
-      // F305：包装字段须按 **YAML 语义**比对（解析后取值），不得用文本正则/切片——
-      //   否则语义等价改写（给纯量加引号、改引号风格）会被误判为漂移（实测：`id: "dsh-codepunk"`
-      //   触发假红「config.id 与期望不一致」，而内嵌条目走 deepDiff 语义比对，两者口径不一）。
-      let wrapDoc = null;
-      try {
-        const indent = wrapLines[0].match(/^\s*/)[0].length;
-        const dedented = wrapLines.map((l) => l.replace(new RegExp(`^\\s{0,${indent}}`), ''));
-        const doc = yaml.load(dedented.join('\n'), { schema });
-        wrapDoc = Array.isArray(doc) ? doc[0] : doc;
-      } catch (e) {
-        wrapDoc = null; // 解析失败 ⇒ 退回文本口径（保守：宁可报漂移，不得假通过）
-      }
-      let nameVal = '';
-      if (wrapDoc && typeof wrapDoc.name === 'string') nameVal = wrapDoc.name;
-      else {
-        const nameLine = wrapLines.find((l) => l.trimStart().startsWith('name:'));
-        nameVal = nameLine ? nameLine.slice(nameLine.indexOf(':') + 1).trim().split(String.fromCharCode(39, 34)).join('') : '';
-      }
-      if (nameVal !== '@deepseek-ai/dsh-agent-preset') probs.push('顶层 name 与期望不一致（当前 ' + nameVal + '）');
-      const idSemantic = wrapDoc && wrapDoc.config && typeof wrapDoc.config.id === 'string' ? wrapDoc.config.id === ID : null;
-      const idOk = idSemantic !== null ? idSemantic : new RegExp('^\\s*id:\\s*' + ID + '\\s*$', 'm').test(wrap);
-      if (!idOk) probs.push('config.id 与期望不一致');
-      // F325：包装 `config.order` 亦须比对——生成侧 `apply` 写 order（renderBlock），校验侧此前只比
-      //   name / config.id，实测副本 `order: 9`（期望 5）时 check 仍报「语义一致」而 apply 会改写
-      //   ⇒ 校验漏项、漂移可静默通过。口径与 apply 一致：期望值取 ORDER（CLI 默认 5）。
-      let orderVal = null;
-      if (wrapDoc && wrapDoc.config && wrapDoc.config.order !== undefined && wrapDoc.config.order !== null) {
-        orderVal = String(wrapDoc.config.order);
-      } else {
-        const orderLine = wrapLines.find((l) => l.trimStart().startsWith('order:'));
-        if (orderLine) orderVal = orderLine.slice(orderLine.indexOf(':') + 1).trim();
-      }
-      if (orderVal === null) probs.push(`config.order 缺失（期望 ${ORDER}）`);
-      else if (orderVal !== String(ORDER)) probs.push(`config.order 与期望不一致（当前 ${orderVal}，期望 ${ORDER}）`);
-      if (probs.length) {
-        console.log('  ✗ 声明包装漂移：' + probs.join('；') + '（修复：node plans/preset-declare.mjs apply）');
-        process.exit(1);
-      }
-    }
-  }
-  console.log(`  ✅ 声明副本与源语义一致（${srcEntries.length} 条）：${ID}`);
-  if (!sameNames) console.log('     ⚠ 条目名称顺序不同但结构一致，请复核');
+if (mainOk) {
+  console.log(`  ✅ 角色与主 preset 声明均与源一致：${ID}`);
   process.exit(0);
 }
-
-console.log(`  ✗ 声明副本与源漂移（语义比对）：${ID}`);
-console.log(`     源 ${srcEntries.length} 条 / 副本 ${copyEntries.length} 条`);
-for (const d of diffs.slice(0, 20)) console.log('     · ' + d);
-console.log('     修复：node plans/preset-declare.mjs apply');
 process.exit(1);

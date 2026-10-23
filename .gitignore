@@ -14,6 +14,7 @@
 !GOVERNANCE.md
 !Makefile
 !agent.cordis.yml
+!role-presets.cordis.yml
 !preset.yml
 !plans/
 !plans/**

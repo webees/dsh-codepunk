@@ -124,7 +124,7 @@
 
 | 层级 | 落点（文件:行号） | 效果与范围 |
 |---|---|---|
-| 部署平面 | `PKG/dsh-base/cordis.patch.yml:229-233` | `mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'`；`workspaceRoot: !!js process.cwd()`；环境变量同时决定沙箱模式与审批策略（`:232`、`:248`）；影响所有新会话 |
+| 部署平面 | `PKG/dsh-base/cordis.patch.yml:243-247` | `mode: !!js process.env.DSH_PERMISSION_MODE ?? 'workspace-write'`；`workspaceRoot: !!js process.cwd()`；环境变量同时决定沙箱模式与审批策略；影响所有新会话 |
 | 用户平面 | `PROF/cordis.patch.yml`（`- id: permission` 段） | id 定向覆盖层（语法自述见文件头 `:1-4`：top-level YAML array of loader patch entries，允许 `!!js`）；声明 `permission` 预设表与 `defaultPreset`；对**新会话**机械生效。**核验方式**：`grep -n 'id: permission' <该文件>`。**该文件不写行号**：DSH Desktop 会自行重写用户平面（实测同一轮内该区块由 `:217-230` 漂到 `:205-218`，文件 mtime 与漂移同刻）⇒ 行号必失准，第 27 类对 `PROF/` 带行号的引用直接判失败 |
 | 会话级 | `PKG/dsh-sandbox-policy/lib/index.js:40` 的 `setSandboxMode()` | `function setSandboxMode(session, mode) { session.append("sandbox/mode", { mode }); }`；用户入口为 `/permission` 命令或 UI 控件（`PKG/dsh-permission-presets/README.zh.md:50`）；只影响当前会话，重启后按事件回放保留 |
 | 解析优先级 | `PKG/dsh-sandbox-policy/lib/index.js:141-146` 的 `resolve()` | `request.mode ?? overrideOf(session) ?? defaultMode`；工作根恒取会话不可变 cwd（`session?.header.cwd`）；预设平面不宜作强制点（`PRESET/agent.cordis.yml:6` 自述沙箱归宿主平面） |
@@ -151,7 +151,7 @@
 
 要点：① 表内不得保留 `custom`/`auto` 名称，且 `defaultPreset` 必须指向表内项，否则插件加载即报错（`PKG/dsh-permission-presets/lib/index.js:175-184`）；② 出厂预设表**不含** `read-only`（`PKG/dsh-permission-presets/lib/index.js:143-156`），本机 profile 自行补入，收敛时须显式保留；③ 删掉 `danger-full-access` 行不会关闭升权通道——升权阶梯是 `dsh-sandbox` 内封闭表（`read-only` 可升两级，`workspace-write` 只能升到 `danger-full-access`），仍须经 `ask` 审批，这是唯一的人类闸口。
 
-方案乙（可选加固：部署平面）。在部署环境设 `DSH_PERMISSION_MODE=workspace-write`，使 bundle 层默认值也不再是宽值（依据 `PKG/dsh-base/cordis.patch.yml:232,248`）。
+方案乙（可选加固：部署平面）。在部署环境设 `DSH_PERMISSION_MODE=workspace-write`，使 bundle 层默认值也不再是宽值（依据 `PKG/dsh-base/cordis.patch.yml:246-247`）。
 
 方案丙（可选，彻底禁用写盘工具：宿主侧工具闸门；**轮次 628 起本预设已声明**，见 §八）。在 profile 追加 `hooks-claude-code` 行并配 `hooks.json` 中对 `Write`/`Edit`/`Bash` 的 `PreToolUse` command 钩子，退出码 2 即阻断该次调用（挂载点 `PKG/dsh-hooks-claude-code/lib/index.js:248-257`，拒绝文案 `Error: blocked by PreToolUse hook`，能力自述 `PKG/dsh-hooks-claude-code/README.zh.md:60,157`）。限制：随附所有 bundle 组合均未挂载钩子桥（全树 grep 无命中），且只运行 command 钩子（`http`/`mcp_tool`/`prompt`/`agent` handler 被跳过并告警，`PKG/dsh-hook-protocol/README.zh.md`）。片段全文见调研文件 §三 方案乙。
 > **现状（轮次 628）**：本预设已按此方案落地**自有**钩子（预设平面，非用户平面）：`agent.cordis.yml` 的 `- id: hooks-write-scope` + `plans/hooks/hooks.json` + `plans/hook-write-scope.py`，机制、模式、覆盖与缺口见 §八。上段「随附 bundle 未挂载」仍属实——挂载的是**本预设自己声明**的条目。
@@ -171,7 +171,7 @@
 | 1 | 无多可写根；每个会话只有一个工作区根（`PKG/dsh-sandbox-policy/README.zh.md`「已知限制」节：额外可写根不属于 `SandboxExecutionPolicy`） | 无法同时授权「运行根 + 授权工作树 + 知识库」三处互异目录；§6.1 就高落点只能靠人设纪律与审查维持 |
 | 2 | 不能禁写 `/tmp` 与 `os.tmpdir()`（`workspace-write` 语义上必然包含临时区） | 临时区散落物不会被告警或拦截；只能靠 §6.4 G3 机械门在收尾时发现 |
 | 3 | cwd 覆盖 `$HOME` 时不拦 `$HOME` 顶层（白名单以 cwd 为根） | 若会话 cwd 为 `$HOME` 或其祖先，`$HOME` 顶层散落即在白名单内；§6.2 该禁令仍需人设加 G2 兜底 |
-| 4 | 主会话无工具白名单配置键（`toolFilter` 仅对子代理生效，由 `PKG/dsh-subagent/lib/index.js:522` 的 `childCtx.tools.restrict()` 消费，schema 见 `PKG/dsh-tool-subagent/lib/index.js:265-268`） | 主会话不能经配置机械禁 `write`/`edit`/`bash`；可行替代是**只读子代理**（`allow` 列表去掉 `write`/`edit`/`bash`） |
+| 4 | 主会话无工具白名单配置键（`toolFilter` 已退役；角色工具面改由独立 Agent Preset 的插件挂载决定） | 主会话不能经配置机械禁 `write`/`edit`/`bash`；可行替代是**只读子代理**（角色 preset 不挂载写盘工具） |
 | 5 | `read-only` 下 `bash` 仍可执行（只禁写）；产品无内置只读工具集或只读角色 | 只读模式不能防读外泄与派生进程；「只读」≠「无副作用」 |
 | 6 | 网络与进程限制不在沙箱词汇内（`PKG/dsh-sandbox/README.zh.md`「已知限制」节：文件操作是完整的策略词汇） | 「禁联网」只能靠工具允许表移除 `web_search`/`web_fetch`；沙箱不构成网络闸门 |
 | 7 | 宿主不认识「授权工作树 `write_paths`」 | `~/.dsh-codepunk/worktrees/...` 的写集隔离仍靠 git 加人设纪律加审查门，不是沙箱；跨工作房写不会被告警 |

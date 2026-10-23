@@ -39,13 +39,9 @@ echo "[组A 配置层 25]"
 # A1 解析合法
 parse_ok="skip"
 if codepunk_have ruby; then
-  # F214：两路径谓词须**语义一致** —— 统一为「name 为**非空字符串**」（旧 ruby 用 key? 仅查键存在，
-  #   而 node 用真值判定 → `name: ""`/`null` 在两类主机上结论不同）。
-  # F309：ruby >= 3.1 的 Psych 4/5 默认 aliases: false ⇒ 本仓配置的 YAML 锚点/别名
-  #   （`&role-allow`/`*role-allow`）会让 YAML.load_file 抛 Psych::AliasesNotEnabled
-  #   ⇒ 本机 macOS 系统 ruby 2.6（Psych 3.1）看不出，ubuntu-latest 的 ruby 3.2 必现。
-  #   修法：优先带 aliases: true；Psych 3 不认该关键字（ArgumentError）时回退旧调用。
-  ruby -ryaml -e 'begin; d=YAML.load_file("agent.cordis.yml", aliases: true); rescue ArgumentError; d=YAML.load_file("agent.cordis.yml"); end; exit(d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?} ? 0 : 1)' 2>/dev/null && parse_ok="ok" || parse_ok="fail"
+  # F214：两路径谓词须**语义一致** —— 统一为「name 为**非空字符串**」。
+  # 两个源文件都必须解析：主组合与角色 preset 缺一不可。
+  ruby -ryaml -e 'ARGV.each do |p|; begin; d=YAML.load_file(p, aliases: true); rescue ArgumentError; d=YAML.load_file(p); end; exit 1 unless d.is_a?(Array) && d.all?{|r| r.is_a?(Hash) && r["name"].is_a?(String) && !r["name"].empty?}; end' agent.cordis.yml role-presets.cordis.yml 2>/dev/null && parse_ok="ok" || parse_ok="fail"
 elif codepunk_have node; then
   # F351：node 回退分支两处口径修正——
   #   ① 解析路径须与 preset-declare / verify-battery 同候选链（`$DSH_CODEPUNK_TOOLS` →
@@ -61,7 +57,7 @@ elif codepunk_have node; then
     [ -n "$_c" ] && [ -d "$_c/node_modules/js-yaml" ] && { A1_JY="$_c/node_modules/js-yaml"; break; }
   done
   if [ -n "$A1_JY" ]; then
-    node -e 'const y=require(process.argv[1]),fs=require("fs");const s=y.DEFAULT_SCHEMA.extend([new y.Type("tag:yaml.org,2002:js",{kind:"scalar",resolve:()=>true,construct:d=>String(d)})]);const d=y.load(fs.readFileSync("agent.cordis.yml","utf8"),{schema:s});process.exit(Array.isArray(d)&&d.every(r=>r&&typeof r.name==="string"&&r.name.length>0)?0:1)' "$A1_JY" 2>/dev/null && parse_ok="ok" || parse_ok="fail"   # F214：与 ruby 路径同语义
+    node -e 'const y=require(process.argv[1]),fs=require("fs");const s=y.DEFAULT_SCHEMA.extend([new y.Type("tag:yaml.org,2002:js",{kind:"scalar",resolve:()=>true,construct:d=>String(d)})]);for(const p of process.argv.slice(2)){const d=y.load(fs.readFileSync(p,"utf8"),{schema:s});if(!Array.isArray(d)||!d.every(r=>r&&typeof r.name==="string"&&r.name.length>0))process.exit(1)}' "$A1_JY" agent.cordis.yml role-presets.cordis.yml 2>/dev/null && parse_ok="ok" || parse_ok="fail"   # F214：与 ruby 路径同语义
   else
     parse_ok="noyaml"
   fi
@@ -70,7 +66,7 @@ case "$parse_ok" in
   ok)   report "$PASS" "A1 解析 OK" ;;
   fail) report "$FAIL" "A1 YAML 解析失败" ;;
   noyaml) report "$FAIL" "A1 无法核验（有 node 但候选链内未找到 js-yaml：\$DSH_CODEPUNK_TOOLS / ~/.dsh-codepunk/tools / \$DSH_APP_ROOT）——无法核验 ≠ 通过（装 ruby，或按本文件头注的依赖顺序安装 js-yaml 后重跑）" ;;
-  skip) report "$FAIL" "A1 无法核验（无 ruby/node，无法解析 agent.cordis.yml）——无法核验 ≠ 通过（装 ruby 或 node 后重跑）" ;;
+  skip) report "$FAIL" "A1 无法核验（无 ruby/node，无法解析 agent.cordis.yml + role-presets.cordis.yml）——无法核验 ≠ 通过（装 ruby 或 node 后重跑）" ;;
 esac
 # A2 岗位 6 维
 # F210：A2 计算依赖 python3 —— 缺失时不得让失败消息**为空**（实测缺 python3 时本项输出「[✗] A2 」
@@ -78,9 +74,18 @@ esac
 if codepunk_have python3; then
 A2=$(python3 - <<'PYEOF'
 import re
-s=open("agent.cordis.yml").read()
+s=open("role-presets.cordis.yml", encoding="utf-8").read()
 names=["squad-lead","engineer","sdet","product","research","people","docs","proc-audit","sys-arch","code-review","release-eng"]
-ok=sum(1 for n in names if all(d in (re.search(r"tool-subagent-"+n+r".*?persona: \|-(.*?)(?=\n\s+- id:|\Z)",s,re.S).group(1) if re.search(r"tool-subagent-"+n+r".*?persona: \|-(.*?)(?=\n\s+- id:|\Z)",s,re.S) else "") for d in ["你是","边界：","协作：","质量：","禁区：","输出："]))
+ok=0
+for n in names:
+    m=re.search(r"^- id: preset-dsh-codepunk-"+re.escape(n)+r"\n(.*?)(?=^- id:|\Z)",s,re.M|re.S)
+    if not m:
+        continue
+    body=m.group(1)
+    pm=re.search(r"prefix: \|-\n(.*?)(?=\n      - id:|\Z)",body,re.S)
+    persona=pm.group(1) if pm else ""
+    if all(d in persona for d in ["你是","边界：","协作：","质量：","禁区：","输出："]):
+        ok+=1
 print("OK" if ok==11 else f"FAIL {ok}/11")
 PYEOF
 )
@@ -88,13 +93,17 @@ else
   A2="无法核验（缺 python3）——无法核验 ≠ 通过"
 fi
 [ "$A2" = "OK" ] && report "$PASS" "A2 岗位 6 维 11/11" || report "$FAIL" "A2 ${A2:-核验失败但未给出原因（疑似缺运行时）——无法核验 ≠ 通过}"
-# A3 无过期注释
-[ "$(grep -c 'str_replace' agent.cordis.yml)" -eq 0 ] && report "$PASS" "A3 无 str_replace 残留" || report "$FAIL" "A3 str_replace 残留"
+# A3 无过期注释（两个源文件都查）
+if [ "$(grep -hc 'str_replace' agent.cordis.yml role-presets.cordis.yml 2>/dev/null | awk '{s+=$1}END{print s+0}')" -eq 0 ]; then
+  report "$PASS" "A3 无 str_replace 残留"
+else
+  report "$FAIL" "A3 str_replace 残留"
+fi
 # A5 品牌卫生：如本仓库有改名历史，用 OLD_NAME 环境变量注入旧名做回归检查（默认跳过，不在仓库内硬编码旧名）
 if [ -n "${OLD_NAME:-}" ]; then
   # F172：`grep -c` 零命中时输出 0 且退出 1——写 `|| echo 0` 会得到**两行** "0\n0"，
   #   使 [ "$n" -eq 0 ] 报错并走 FAIL 分支（健康仓库被误判失分）。用 || true + 默认值。
-  n=$(grep -ic -- "$OLD_NAME" agent.cordis.yml 2>/dev/null || true)
+  n=$(grep -ihc -- "$OLD_NAME" agent.cordis.yml role-presets.cordis.yml 2>/dev/null | awk '{s+=$1}END{print s+0}')
   n=${n:-0}
   [ "$n" -eq 0 ] && report "$PASS" "A5 零旧名（OLD_NAME=${OLD_NAME}）" || report "$FAIL" "A5 旧名残留 $n 处"
 else
@@ -106,35 +115,62 @@ fi
 #   实测缺 python3 时本项报 [✅]）。改为：缺失即给明确缺口说明，使该项按「无法核验 ≠ 通过」判失败。
 if codepunk_have python3; then
 A7=$(python3 - <<'PYEOF'
-import re, sys
-s = open('agent.cordis.yml', encoding='utf-8').read()
-# 岗位条目：tool-subagent-* 且非外部后端（codex/claude-code 为一次性、不套本契约）
-entries = re.findall(r'    - id: (tool-subagent[a-z0-9-]*)\n(.*?)(?=\n    - id:|\Z)', s, re.S)
+import re
+main = open('agent.cordis.yml', encoding='utf-8').read()
+roles_src = open('role-presets.cordis.yml', encoding='utf-8').read()
 bad = []
-n_role = 0
+
+# 角色 preset：id / persona / 联网边界 / 禁止递归派遣。
+roles = {}
+for m in re.finditer(r'^- id: (preset-dsh-codepunk-[^\n]+)\n(.*?)(?=^- id:|\Z)', roles_src, re.M | re.S):
+    rid, body = m.group(1), m.group(2)
+    cid_m = re.search(r'^    id: ([^\n]+)', body, re.M)
+    cid = cid_m.group(1).strip() if cid_m else ''
+    if not cid or rid != f'preset-{cid}':
+        bad.append(f'{rid} 的 config.id 缺失或与行 id 不一致')
+    roles[cid] = body
+    if "@deepseek-ai/dsh-persona" not in body or not re.search(r'^\s+prefix:\s*\S', body, re.M):
+        bad.append(f'{cid or rid} 缺 persona/prefix')
+    has_web = bool(re.search(r"name:\s*'@deepseek-ai/dsh-tool-web'\s*$", body, re.M))
+    if has_web != cid.endswith('-research'):
+        bad.append(f'{cid or rid} tool-web 边界不符')
+    if re.search(r"name:\s*'@deepseek-ai/dsh-tool-subagent'\s*$", body, re.M):
+        bad.append(f'{cid or rid} 递归挂载 tool-subagent')
+
+expected = {'dsh-codepunk-worker', 'dsh-codepunk-squad-lead', 'dsh-codepunk-engineer', 'dsh-codepunk-sdet',
+            'dsh-codepunk-product', 'dsh-codepunk-research', 'dsh-codepunk-people', 'dsh-codepunk-docs',
+            'dsh-codepunk-proc-audit', 'dsh-codepunk-sys-arch', 'dsh-codepunk-code-review', 'dsh-codepunk-release-eng'}
+for cid in sorted(expected - set(roles)):
+    bad.append(f'缺角色 preset {cid}')
+
+# 主组合的派遣条目：旧字段、fork 边界、agentPreset 可达、maxDepth。
+retired = ('persona:', 'toolFilter:', 'backgroundMode:', 'enableRunInBackground:')
+entries = re.findall(r'^    - id: (tool-subagent[a-z0-9-]*)\n(.*?)(?=^    - id:|\Z)', main, re.M | re.S)
 for name, body in entries:
-    # 只审「派遣条目」：控制面单元（tool-subagent-control / -list-agents 等）本就不带
-    # persona/toolFilter/backgroundMode，纳入会误报。
     if "name: '@deepseek-ai/dsh-tool-subagent'" not in body:
         continue
-    if name in ('tool-subagent-codex', 'tool-subagent-claude-code'):
+    for key in retired:
+        if key in body:
+            bad.append(f'{name} 含退役字段 {key.rstrip(":")}')
+    disabled = bool(re.search(r'^      disabled:\s*true', body, re.M))
+    preset_m = re.search(r'^        agentPreset:\s*([^\n]+)', body, re.M)
+    preset = preset_m.group(1).strip() if preset_m else ''
+    if name == 'tool-subagent-fork':
+        if not disabled:
+            bad.append('fork 未禁用')
+        if preset:
+            bad.append('fork 不得配置 agentPreset')
         continue
-    n_role += 1
-    if re.search(r'^      disabled:\s*true', body, re.M):
-        bad.append(f'{name} 被 disabled')
-    if 'persona:' not in body:
-        bad.append(f'{name} 缺 persona')
-    if name == 'tool-subagent-fork' or name == 'tool-subagent':
-        pass                      # 通用委派两席同样要求过滤与可恢复（下方一视同仁）
-    if 'backgroundMode: continuable' not in body:
-        bad.append(f'{name} 非 continuable（破坏可恢复/可追问）')
-    if 'toolFilter:' not in body:
-        bad.append(f'{name} 缺 toolFilter（孩子将回到完整工具面）')
-    m = re.search(r'^        maxDepth:\s*(\d+)', body, re.M)
-    if m and int(m.group(1)) < 1:
-        bad.append(f'{name} maxDepth={m.group(1)}（无法再派遣）')
-if n_role < 13:
-    bad.append(f'岗位条目仅 {n_role} 个（应 ≥13：11 岗位 + 通用委派 2 席）')
+    if disabled:
+        continue
+    if not preset:
+        bad.append(f'{name} 缺 agentPreset')
+    elif preset not in roles:
+        bad.append(f'{name} 的 agentPreset 不可达: {preset}')
+    depth_m = re.search(r'^        maxDepth:\s*([^\n]+)', body, re.M)
+    if not depth_m or depth_m.group(1).strip() != '1':
+        bad.append(f'{name} maxDepth 应为 1')
+
 print(' | '.join(bad))
 PYEOF
 )
@@ -143,8 +179,8 @@ else
 fi
 # F232：**输入存在性守卫** —— `agent.cordis.yml` 缺失时，上述 python 取不到任何条目 ⇒ `A7` 恒空 ⇒ 旧实现报
 #   「✅ 配置不变量」= **空输入恒真**（被判据校验的配置根本不存在）。与 F230/F231、F201/B0 的「无法核验 ≠ 通过」口径统一。
-[ -z "$A7" ] && [ -f agent.cordis.yml ] && report "$PASS" "A7 配置不变量（可恢复/工具面收口/岗位在位/可派遣）" \
-             || report "$FAIL" "A7 配置不变量违规: ${A7:-agent.cordis.yml 缺失——无法核验 ≠ 通过}"
+[ -z "$A7" ] && [ -f agent.cordis.yml ] && [ -f role-presets.cordis.yml ] && report "$PASS" "A7 配置不变量（角色 preset 可达/工具面收口/岗位在位/可派遣）" \
+             || report "$FAIL" "A7 配置不变量违规: ${A7:-agent.cordis.yml 或 role-presets.cordis.yml 缺失——无法核验 ≠ 通过}"
 
 # B1b 全角紧邻陷阱守护：`$VAR` 直接跟全角标点时，bash 会把全角字节并进变量名，
 #     在 set -u 下报 unbound variable 并中止脚本（本会话实测在 init.sh 真实发生）。

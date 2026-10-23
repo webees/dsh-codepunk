@@ -1,6 +1,6 @@
 # 预设工具修正台账（meta · 只放预设/流程自身的缺陷与修复）
 
-> 支撑决策号：D090（F-004 双要件实证来源）· 性质：缺陷修复台账（F-xxx 编号），非决策号调研，不占 D 系列；供 D083 月度复检引用。
+> 支撑决策号：D090（子代理路由实证来源）· 性质：缺陷修复台账（F-xxx 编号），非决策号调研，不占 D 系列；供 D083 月度复检引用。
 > 归属域：本文件属**预设/流程自身**资料（R13），不得出现在任何工程的 run 目录里。
 > 工程业务取证请写各自 `projects/<id>/runs/<run>/research/briefs/`。
 > 快照日期 滚动（缺陷台账，非快照）——内容为该日实况；上游版本漂移后不代表现状
@@ -46,37 +46,37 @@
 - 通用教训：**provider 目录登记的型号名必须与上游实际可用的命名口径一致**，
   否则任何指向该 provider 的 agent 会持续重试空转。
 
-## F-003 · one-shot 子代理被限流打断即整轮报废
+## F-003 · one-shot 子代理被限流打断即整轮报废（旧构建）
 
 - 症状：one-shot 子代理在流控（429）失败后，GUI 记录显示
   「一次性子代理记录 · 不支持后续消息」，且「仅可从已完成轮次的最后一条消息分支」——
   失败轮没有已完成轮可分支 ⇒ **该轮工作不可恢复**，只能重新 spawn、从零取证。
 - 影响：评分/取证循环因此重复消耗多轮完整工作。
-- 根因：预设部分岗位 `backgroundMode: one-shot`。one-shot 在网关抖动下等于「每轮都可能整轮作废」。
-- 修复：全部派遣岗位改 `continuable`（外部后端 provider 保持 `enableRunInBackground: false` 不动）。
-- 生效障碍：同 F-002——`backgroundMode` 在插件注册期解析，**须新开对话或重启 DSH** 才生效。
+- 根因（旧构建）：预设部分岗位使用 `backgroundMode: one-shot`。one-shot 在网关抖动下等于「每轮都可能整轮作废」。
+- 旧构建修复：全部派遣岗位改 `continuable`（外部后端 provider 保持 `enableRunInBackground: false` 不动）。
+- 历史生效障碍：同 F-002——`backgroundMode` 在旧构建的插件注册期解析，须新开对话或重启 DSH 才生效。
 - 未重启前的可用替代：① `workflow` 的 `agent(prompt, {provider, model})` 逐次显式路由；
   ② 通用 `subagent`（本就是 continuable）承担评审轮，失败后可 send_message 续跑。
 - 历史 one-shot 记录**无法转为可对话**：其运行时对象已随轮次结束释放，
   且平台只允许从「已完成轮次的最后一条消息」分支。
 
-## F-003 补充 · 跨预设范围（sponsor 追加指令「所有 one-shot 子代理改为可对话」）
+## F-003 补充 · 跨预设范围（历史：sponsor 追加指令「所有 one-shot 子代理改为可对话」）
 
 - 清点 `~/.dsh/.agent-presets/` 下各预设的 subagent 岗位，仅带岗位的预设需处置。
-- 处置：dsh-codepunk 及同类预设的岗位统一改 `continuable`（YAML 校验 + 备份）；
+- 旧构建处置：dsh-codepunk 及同类预设的岗位统一改 `continuable`（YAML 校验 + 备份）；
   仅含外部后端的预设无需改。
-- **刻意不改**：`provider: codex` / `claude-code` 等外部 CLI 后端（`enableRunInBackground: false`）——
+- **刻意不改（历史事实）**：`provider: codex` / `claude-code` 等外部 CLI 后端（`enableRunInBackground: false`）——
   它们不是 harness 内常驻会话，改 backgroundMode 既无意义也可能破坏后端语义。
-- 生效条件：`backgroundMode` / `agentOptions` 均在插件注册期解析 →
+- 历史生效条件：`backgroundMode` / `agentOptions` 均在旧构建的插件注册期解析 →
   **新开一次对话**即生效；改 `settings.yaml`（模型 / retryPolicy）才需重启 DSH Desktop。
 
-## F-004 · 「删 agentOptions 即继承主模型」被实测否证
+## F-004 · 「删 agentOptions 即继承主模型」被旧构建实测否证（历史）
 
 - 假设被否证：曾把各岗位 `agentOptions` 全删，假设「子代理继承父模型」。实测否证：
   UI 注入的路由不在 `parent.options` 上，孩子落**产品默认**模型
   （descriptor 实证；继承链见 `dsh-subagent` 的 `parentAgentOptionsForDelegation()` / `resolveChildAgentOptions()`——**以符号定位，勿引行号**：2026-10-05 复核时原引的 `lib/index.js:780-781` 已变成无关注释。另注：D090 的「不继承」前提已在 0.2.0-rc.2 反转，见 references/model-routing.md §五）。
 - 反证样本：能跑通的子代理，其 `request/header` 与显式声明一致——说明「能跑」来自**显式声明**，不来自继承。
-- 修复（D090）：各岗位重新写入 `agentOptions: {provider, model}`，
+- 旧构建修复（D090）：各岗位重新写入 `agentOptions: {provider, model}`，
   与 `backgroundMode: continuable` 并列为**双要件**（YAML 校验通过）。
 - 附带事实：`workflow` 的 `agent()` 与 `run_in_background: false` 结构性一次性，
   记录不可续聊、历史不可追溯 ⇒ 需要「可续聊」就必须走 continuable 岗位工具，不能靠 workflow。

@@ -28,7 +28,7 @@ git switch -c feat/<主题>          # 本仓按主题分支开发，不直接�
 
 | 路径 | 内容 | 可否直接改 |
 |---|---|---|
-| `agent.cordis.yml` | AGENT-PLANE 组合（**权威源**） | 可以；改后须 `preset-declare.mjs apply` 并重启 DSH |
+| `agent.cordis.yml` + `role-presets.cordis.yml` | AGENT-PLANE 组合与 12 个角色 Agent Preset（**双源权威**） | 可以；改后须 `preset-declare.mjs apply` 并重启 DSH |
 | `preset.yml` | 可选展示描述（`name` / `description` / `order`） | 可以 |
 | `plans/` | 工具脚本源副本（16 个 `.sh` + 3 个 `.py` + 2 个 `.mjs`；其中 `dsh-codepunk-home.sh`、`env-guard.sh` 为纯 source 库，`plans/windows/` 4 个 `.ps1`） | 可以；改后须同步总库正式位 |
 | `skills/dsh-codepunk-workflow/` | 流程手册 `SKILL.md` + `references/`（按需细则）+ `benchmarks/`（调研档案） | 可以 |
@@ -44,7 +44,7 @@ git switch -c feat/<主题>          # 本仓按主题分支开发，不直接�
 |---|---|---|
 | `bash -n plans/*.sh` | 全部 shell 脚本语法 | 0 通过 |
 | `node plans/preset-declare.mjs check` | 源 ↔ profile 内联副本漂移 | 0 一致 / 1 漂移 / 2 参数或环境错误 |
-| `bash plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性 27 类 | 0 一致 / 1 不一致 / 2 环境或用法错误 |
+| `bash plans/doc-consistency.sh` | 文档「声称 ↔ 实现」一致性 30 类 | 0 一致 / 1 不一致 / 2 环境或用法错误 |
 | `bash plans/preset-audit.sh` | 5 组 rubric 审计 | 0 全达标 / 1 有失分 / 2 预设根不存在 |
 | `bash plans/preset-score.sh` | 16 指标评分 | 0 全满分 / 1 有失分 / 2 环境或用法错误 |
 | `bash plans/checker-self-test.sh` | 检查器存活自检（226 项变异） | 0 全部捕获 / 1 有未捕获 / 2 环境或自检问题 |
@@ -147,7 +147,7 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 
 1. 质量工具表的项数：16 指标 / 5 组 / **11 项**电池 / **226 项**变异（M1–M226）/ **14 类**保真。
 2. 计数口径文案中的示例（如「18 references」「16 benchmarks」一类声称）。
-3. 硬规则上限、阶段数（六阶段）、岗位数（11 内建 + 2 外部后端；出现「13 岗位」须带历史或例外标记）。
+3. 硬规则上限、阶段数（六阶段）、角色数（12 个内建角色 preset = 11 个命名岗位 + generic worker；2 个外部后端为禁用态；出现「13 岗位」须带历史或例外标记）。
 
 改动目录结构段时另须注意：`verify-battery.sh` 会比对 **README 目录树 ↔ 仓内跟踪文件**，死条目与漏列都判失败。
 
@@ -158,7 +158,7 @@ bash plans/dsh-codepunk-init.sh --check    # 只断言不写盘；非零退出�
 - [ ] `bash plans/checker-self-test.sh` 返回 0（新增检查项时必须）。
 - [ ] `bash plans/dsh-codepunk-leak-guard.sh --history` 通过（禁词留在本地 `~/.dsh-codepunk/denylist.txt`，不进仓）。
 - [ ] 改了 `plans/*.sh` 或 `plans/windows/*.ps1` → 两侧语义同步并各过语法校验。
-- [ ] 改了 `agent.cordis.yml` → `node plans/preset-declare.mjs apply` 且 `check` 返回 0。
+- [ ] 改了 `agent.cordis.yml` 或 `role-presets.cordis.yml` → `node plans/preset-declare.mjs apply` 且 `check` 返回 0。
 - [ ] 新增顶层文件 → 已在发布仓 `.gitignore` 白名单登记（默认拒绝策略，未登记会静默不入库）。
 - [ ] 预设自身资料落在 `benchmarks/`，未写进任何工程目录。
 
